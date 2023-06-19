@@ -3,7 +3,7 @@ from scipy.signal import lfilter
 from neuron import h
 
 def minmax(x):
-		return (x - np.min(x)) / (np.max(x) - np.min(x))
+	return (x - np.min(x)) / (np.max(x) - np.min(x))
 
 class SpikeGenerator:
   
