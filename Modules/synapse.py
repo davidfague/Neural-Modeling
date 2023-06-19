@@ -85,7 +85,6 @@ class Synapse(PointCurrent):
                   syn_mod: str = 'Exp2Syn', gmax: float = 0.01,
                   record: bool = False):
         super().__init__(segment)
-        self.stim = stim
         self.gmax = gmax
         self.__synapse_type(syn_mod)
         self.setup(record)
