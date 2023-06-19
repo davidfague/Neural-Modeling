@@ -65,6 +65,7 @@ class SynapseGenerator:
 				synapses.append(Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record))
 							 
 		self.synapses.append(synapses)
+		return synapses	
 	
 	#TODO: add docstring
 	def add_synapses_to_cell(self, cell, segments: list, probs: list = None, 
