@@ -1,5 +1,5 @@
 import random
-from synapse import Synapse
+from Modules.synapse import Synapse
 
 class SynapseGenerator:
 
