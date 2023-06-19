@@ -3,6 +3,8 @@ from typing import List, Optional, Any, TYPE_CHECKING
 import numpy as np
 from neuron import h
 
+#TO DO: update syn_params
+
 class PointCurrent(ABC):
     """A module for current point process"""
 
@@ -102,11 +104,15 @@ class Synapse(PointCurrent):
             self.gmax_var = '_nc_weight'
         elif syn_mod == 'pyr2pyr':
             self.gmax_var = 'initW'
+            self.syn_params = {}
         elif syn_mod == 'int2pyr':
             self.gmax_var = 'initW'
+            self.syn_params = {}
         elif 'AMPA_NMDA' in syn_mod:
+            self.syn_params = {}
             self.gmax_var = 'initW'
         elif 'GABA_AB' in syn_mod:
+            self.syn_params = {}
             self.gmax_var = 'initW'
         else:
             raise ValueError("Synpase type not defined.")
