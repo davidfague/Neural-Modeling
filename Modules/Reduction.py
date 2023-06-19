@@ -76,7 +76,7 @@ class Reductor():
     '''
     pass
 
-  def find_space_const_in_cm(diameter, rm, ra):
+  def find_space_const_in_cm(self, diameter, rm, ra):
       ''' returns space constant (lambda) in cm, according to: space_const = sqrt(rm/(ri+r0)) '''
       # rm = Rm/(PI * diam), diam is in cm and Rm is in ohm * cm^2
       rm = float(rm) / (math.pi * diameter)
