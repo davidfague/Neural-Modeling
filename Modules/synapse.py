@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Any, TYPE_CHECKING
 import numpy as np
+from neuron import h
 
 class PointCurrent(ABC):
     """A module for current point process"""
