@@ -9,8 +9,8 @@ class SynapseGenerator:
 		self.synapses = []
 
 	#TODO: check typing
-	def add_synapses(self, segments: list, gmax: object, syn_mod: str, density: float, 
-					 number_of_synapses: int, probs: list = None, record: bool = False) -> None:
+	def add_synapses(self, segments: list, gmax: object, syn_mod: str, density: float = None, 
+					 number_of_synapses: int = None, probs: list = None, record: bool = False) -> None:
 		'''
 		Creates a list of synapses by specifying density or number of synapses.
 
