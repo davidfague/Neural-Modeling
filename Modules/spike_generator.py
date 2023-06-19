@@ -217,8 +217,9 @@ class SpikeGenerator:
 	
 	#TODO: fix call
 	#TODO: check division by 1000
-	def generate_spikes_from_profile(self, fr_profile):
+	def generate_spikes_from_profile(self, fr_profile, mean_fr):
 		''' sample spikes '''
+		fr_profile = fr_profile * mean_fr
 		sample_values = np.random.poisson(fr_profile / 1000)
 		spike_times = np.where(sample_values > 0)[0]
 		return spike_times
