@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Any, TYPE_CHECKING
 import numpy as np
+from neuron import h
+
+#TO DO: update syn_params
 
 class PointCurrent(ABC):
     """A module for current point process"""
@@ -84,7 +87,6 @@ class Synapse(PointCurrent):
                   syn_mod: str = 'Exp2Syn', gmax: float = 0.01,
                   record: bool = False):
         super().__init__(segment)
-        self.stim = stim
         self.gmax = gmax
         self.__synapse_type(syn_mod)
         self.setup(record)
@@ -102,16 +104,20 @@ class Synapse(PointCurrent):
             self.gmax_var = '_nc_weight'
         elif syn_mod == 'pyr2pyr':
             self.gmax_var = 'initW'
+            self.syn_params = {}
         elif syn_mod == 'int2pyr':
             self.gmax_var = 'initW'
+            self.syn_params = {}
         elif 'AMPA_NMDA' in syn_mod:
+            self.syn_params = {}
             self.gmax_var = 'initW'
         elif 'GABA_AB' in syn_mod:
+            self.syn_params = {}
             self.gmax_var = 'initW'
         else:
             raise ValueError("Synpase type not defined.")
         self.syn_type = syn_mod
-        self.pp_obj = getattr(h, syn_type)(self.segment)
+        self.pp_obj = getattr(h, self.syn_type)(self.segment)
 
     def __setup_synapse(self):
         self.syn = self.pp_obj

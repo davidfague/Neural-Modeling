@@ -1,6 +1,5 @@
 import random
 from Modules.synapse import Synapse
-from neuron import h
 
 class SynapseGenerator:
 
@@ -10,8 +9,8 @@ class SynapseGenerator:
 		self.synapses = []
 
 	#TODO: check typing
-	def add_synapses(self, segments: list, gmax: object, syn_mod: str, density: float, 
-					 number_of_synapses: int, probs: list = None, record: bool = False) -> None:
+	def add_synapses(self, segments: list, gmax: object, syn_mod: str, density: float = None, 
+					 number_of_synapses: int = None, probs: list = None, record: bool = False) -> None:
 		'''
 		Creates a list of synapses by specifying density or number of synapses.
 
@@ -66,6 +65,7 @@ class SynapseGenerator:
 				synapses.append(Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record))
 							 
 		self.synapses.append(synapses)
+		return synapses	
 	
 	#TODO: add docstring
 	def add_synapses_to_cell(self, cell, segments: list, probs: list = None, 

@@ -1,40 +1,43 @@
 from neuron_reduce import subtree_reductor
-from cable_expander import cable_expander_func
+from Modules.cable_expander_func import cable_expander
+import math
 
 class Reductor():
-  def __init__(cell, method=str, synapses_list=None, netcons_list=None, reduction_frequency=0, sections_to_expand=None, furcations_x=None, nbranches=None, return_seg_to_seg: bool = False):
+  def __init__(self, cell=None, method=None, synapses_list=None, netcons_list=None, reduction_frequency=0, sections_to_expand=None, furcations_x=None, nbranches=None, return_seg_to_seg: bool = False) -> None:
     '''
-    cell: hoc model cell object (TO TEST: providing python cell_model object instead)
+    cell: hoc model cell object (TO DO: providing python cell_model object instead)
     method: str for method to use ex. 'expand cable', 'neuron_reduce'
     synapses_list: list of synapse objects
     netcons_list: list of netcon objects
     reduction_frequency: frequency used in calculated transfer impedance
-    sections_to_expand: list of sections for 'cable expand' method
-    furcations_x: list of x (0 to 1) locs corresponding to sections_to_expand to bifurcate section at
-    nbranches: list of integar number of branches corresponding to sections_to_expand to choose the number of new branches at furcation_x
     return_seg_to_seg: bool for returning a dictionary mapping original segments to reduced.
     '''
-    if method == 'expand cable': # sanity checks
-      if sections_to_expand:
-        if furcations_x:
-          if nbranches:
-            reduced_cell, synapses_list, netcons_list, txt = cable_expander(cell, sections_to_expand, furcations_x, nbranches,
-                                                                              synapses_list, netcons_list, reduction_frequency=reduction_frequency,return_seg_to_seg=True)
+    self.original_cell = cell
+    if self.original_cell is not None:
+      if method == 'expand cable': # sanity checks
+        if sections_to_expand:
+          if furcations_x:
+            if nbranches:
+              reduced_cell, synapses_list, netcons_list, txt = cable_expander(cell, sections_to_expand, furcations_x, nbranches,
+                                                                                synapses_list, netcons_list, reduction_frequency=reduction_frequency,return_seg_to_seg=True)
+            else:
+              raise ValueError('Must specify nbranches list for cable_expander()')
           else:
-            raise ValueError('Must specify nbranches list for cable_expander()')
+            raise ValueError('Must specify furcations_x list for cable_expander()')
         else:
-          raise ValueError('Must specify furcations_x list for cable_expander()')
+          raise ValueError('Must specify sections_to_expand for cable_expander()')
+      elif method == 'neuron_reduce':
+        reduced_cell, synapses_list, netcons_list, txt = subtree_reductor(cell, synapses_list, netcons_list, reduction_frequency=reduction_frequency,return_seg_to_seg=True)
+      elif method == 'lambda':
+        self.update_model_nseg_using_lambda(cell)
+        return
       else:
-        raise ValueError('Must specify sections_to_expand for cable_expander()')
-    elif method == 'neuron_reduce':
-      reduced_cell, synapses_list, netcons_list, txt = subtree_reductor(cell, synapses_list, netcons_list, reduction_frequency=reduction_frequency,return_seg_to_seg=True)
-    else:
-      raise ValueError(f"Method '{method}' not implemented.")
-
-    if return_seg_to_seg:
-      return reduced_cell, synapses_list, netcons_list, txt
-    else:
-      return reduced_cell, synapses_list, netcons_list
+        raise ValueError(f"Method '{method}' not implemented.")
+  
+      if return_seg_to_seg:
+        return reduced_cell, synapses_list, netcons_list, txt
+      else:
+        return reduced_cell, synapses_list, netcons_list
 
   def get_other_seg_from_seg_to_seg(segments, seg=str,seg_to_seg=dict):
     '''
@@ -73,3 +76,38 @@ class Reductor():
     returns segment
     '''
     pass
+
+  def find_space_const_in_cm(self, diameter, rm, ra):
+      ''' returns space constant (lambda) in cm, according to: space_const = sqrt(rm/(ri+r0)) '''
+      # rm = Rm/(PI * diam), diam is in cm and Rm is in ohm * cm^2
+      rm = float(rm) / (math.pi * diameter)
+      # ri = 4*Ra/ (PI * diam^2), diam is in cm and Ra is in ohm * cm
+      ri = float(4 * ra) / (math.pi * (diameter**2))
+      space_const = math.sqrt(rm / ri)  # r0 is negligible
+      return space_const
+
+  def calculate_nseg_from_lambda(self, section):
+    rm = 1.0 / section.g_pas  # in ohm * cm^2
+    ra = section.Ra  # in ohm * cm
+    diam_in_cm = section.L / 10000
+    space_const_in_cm = self.find_space_const_in_cm(diam_in_cm,
+                                                      rm,
+                                                      ra)
+    space_const_in_micron = 10000 * space_const_in_cm
+    nseg=int((float(section.L) / space_const_in_micron) * 10 / 2) * 2 + 1
+    return nseg
+  
+  def update_model_nseg_using_lambda(self, cell):
+    '''
+    Optomizes number of segments using length constant
+    '''
+    initial_nseg = 0
+    new_nseg = 0
+    for sec in cell.all:
+      initial_nseg += sec.nseg
+      sec.nseg = self.calculate_nseg_from_lambda(sec)
+      new_nseg += sec.nseg
+    if initial_nseg != new_nseg:
+      print('Model nseg changed from', initial_nseg, 'to', new_nseg)
+    else:
+      print('Model nseg did not change')
