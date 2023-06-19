@@ -1,5 +1,6 @@
 from neuron_reduce import subtree_reductor
 from Modules.cable_expander_func import cable_expander
+import math
 
 class Reductor():
   def __init__(self, cell=None, method=None, synapses_list=None, netcons_list=None, reduction_frequency=0, sections_to_expand=None, furcations_x=None, nbranches=None, return_seg_to_seg: bool = False) -> None:
