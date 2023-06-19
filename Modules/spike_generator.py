@@ -96,7 +96,7 @@ class SpikeGenerator:
 		
 		return fr_profile
 	
-	def noise_modulation(self, num_obs: int, A: list = None, B: list = None, bounds: tuple = (0, 2)) -> np.ndarray:
+	def noise_modulation(self, num_obs: int, A: list = None, B: list = None, bounds: tuple = (0.00001, 1.99999)) -> np.ndarray:
 		'''
 		Produce pink ("1/f") noise out of the white noise.
 		The idea is to generate a white noise and then filter it to impose autocovariance structure with
