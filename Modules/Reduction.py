@@ -74,14 +74,14 @@ class Reductor():
     '''
     pass
 
-def find_space_const_in_cm(diameter, rm, ra):
-    ''' returns space constant (lambda) in cm, according to: space_const = sqrt(rm/(ri+r0)) '''
-    # rm = Rm/(PI * diam), diam is in cm and Rm is in ohm * cm^2
-    rm = float(rm) / (math.pi * diameter)
-    # ri = 4*Ra/ (PI * diam^2), diam is in cm and Ra is in ohm * cm
-    ri = float(4 * ra) / (math.pi * (diameter**2))
-    space_const = math.sqrt(rm / ri)  # r0 is negligible
-    return space_const
+  def find_space_const_in_cm(diameter, rm, ra):
+      ''' returns space constant (lambda) in cm, according to: space_const = sqrt(rm/(ri+r0)) '''
+      # rm = Rm/(PI * diam), diam is in cm and Rm is in ohm * cm^2
+      rm = float(rm) / (math.pi * diameter)
+      # ri = 4*Ra/ (PI * diam^2), diam is in cm and Ra is in ohm * cm
+      ri = float(4 * ra) / (math.pi * (diameter**2))
+      space_const = math.sqrt(rm / ri)  # r0 is negligible
+      return space_const
 
   def calculate_nseg_from_lambda(section):
     rm = 1.0 / section.g_pas  # in ohm * cm^2
