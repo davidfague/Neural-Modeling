@@ -28,7 +28,7 @@ class Reductor():
       elif method == 'neuron_reduce':
         reduced_cell, synapses_list, netcons_list, txt = subtree_reductor(cell, synapses_list, netcons_list, reduction_frequency=reduction_frequency,return_seg_to_seg=True)
       elif method == 'lambda':
-        update_model_nseg_using_lambda(cell)
+        self.update_model_nseg_using_lambda(cell)
         return
       else:
         raise ValueError(f"Method '{method}' not implemented.")
