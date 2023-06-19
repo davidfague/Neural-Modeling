@@ -1,3 +1,4 @@
+# TO DO: Perhaps change duplicate_synapse call so that synapses only go where netcons will go
 import pdb
 import collections
 import itertools as it
