@@ -111,7 +111,7 @@ class Synapse(PointCurrent):
         else:
             raise ValueError("Synpase type not defined.")
         self.syn_type = syn_mod
-        self.pp_obj = getattr(h, syn_type)(self.segment)
+        self.pp_obj = getattr(h, self.syn_type)(self.segment)
 
     def __setup_synapse(self):
         self.syn = self.pp_obj
