@@ -9,12 +9,10 @@ class Reductor():
     synapses_list: list of synapse objects
     netcons_list: list of netcon objects
     reduction_frequency: frequency used in calculated transfer impedance
-    sections_to_expand: list of sections for 'cable expand' method
-    furcations_x: list of x (0 to 1) locs corresponding to sections_to_expand to bifurcate section at
-    nbranches: list of integar number of branches corresponding to sections_to_expand to choose the number of new branches at furcation_x
     return_seg_to_seg: bool for returning a dictionary mapping original segments to reduced.
     '''
-    if cell is not None:
+    self.original_cell = cell
+    if self.original_cell is not None:
       if method == 'expand cable': # sanity checks
         if sections_to_expand:
           if furcations_x:
