@@ -1,6 +1,5 @@
 import random
 from Modules.synapse import Synapse
-from neuron import h
 
 class SynapseGenerator:
 
