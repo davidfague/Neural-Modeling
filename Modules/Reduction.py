@@ -14,29 +14,28 @@ class Reductor():
     nbranches: list of integar number of branches corresponding to sections_to_expand to choose the number of new branches at furcation_x
     return_seg_to_seg: bool for returning a dictionary mapping original segments to reduced.
     '''
-    if method == 'expand cable': # sanity checks
-      if sections_to_expand:
-        if furcations_x:
-          if nbranches:
-            reduced_cell, synapses_list, netcons_list, txt = cable_expander(cell, sections_to_expand, furcations_x, nbranches,
-                                                                              synapses_list, netcons_list, reduction_frequency=reduction_frequency,return_seg_to_seg=True)
+    if cell is not None:
+      if method == 'expand cable': # sanity checks
+        if sections_to_expand:
+          if furcations_x:
+            if nbranches:
+              reduced_cell, synapses_list, netcons_list, txt = cable_expander(cell, sections_to_expand, furcations_x, nbranches,
+                                                                                synapses_list, netcons_list, reduction_frequency=reduction_frequency,return_seg_to_seg=True)
+            else:
+              raise ValueError('Must specify nbranches list for cable_expander()')
           else:
-            raise ValueError('Must specify nbranches list for cable_expander()')
+            raise ValueError('Must specify furcations_x list for cable_expander()')
         else:
-          raise ValueError('Must specify furcations_x list for cable_expander()')
+          raise ValueError('Must specify sections_to_expand for cable_expander()')
+      elif method == 'neuron_reduce':
+        reduced_cell, synapses_list, netcons_list, txt = subtree_reductor(cell, synapses_list, netcons_list, reduction_frequency=reduction_frequency,return_seg_to_seg=True)
       else:
-        raise ValueError('Must specify sections_to_expand for cable_expander()')
-    elif method == 'neuron_reduce':
-      reduced_cell, synapses_list, netcons_list, txt = subtree_reductor(cell, synapses_list, netcons_list, reduction_frequency=reduction_frequency,return_seg_to_seg=True)
-    elif method is None:
-      return
-    else:
-      raise ValueError(f"Method '{method}' not implemented.")
-
-    if return_seg_to_seg:
-      return reduced_cell, synapses_list, netcons_list, txt
-    else:
-      return reduced_cell, synapses_list, netcons_list
+        raise ValueError(f"Method '{method}' not implemented.")
+  
+      if return_seg_to_seg:
+        return reduced_cell, synapses_list, netcons_list, txt
+      else:
+        return reduced_cell, synapses_list, netcons_list
 
   def get_other_seg_from_seg_to_seg(segments, seg=str,seg_to_seg=dict):
     '''
@@ -85,18 +84,18 @@ class Reductor():
       space_const = math.sqrt(rm / ri)  # r0 is negligible
       return space_const
 
-  def calculate_nseg_from_lambda(section):
+  def calculate_nseg_from_lambda(self, section):
     rm = 1.0 / section.g_pas  # in ohm * cm^2
     ra = section.Ra  # in ohm * cm
     diam_in_cm = section.L / 10000
-    space_const_in_cm = find_space_const_in_cm(diam_in_cm,
+    space_const_in_cm = self.find_space_const_in_cm(diam_in_cm,
                                                       rm,
                                                       ra)
     space_const_in_micron = 10000 * space_const_in_cm
     nseg=int((float(section.L) / space_const_in_micron) * 10 / 2) * 2 + 1
     return nseg
   
-  def update_model_nseg_using_lambda(cell):
+  def update_model_nseg_using_lambda(self, cell):
     '''
     Optomizes number of segments using length constant
     '''
@@ -104,7 +103,7 @@ class Reductor():
     new_nseg = 0
     for sec in cell.all:
       initial_nseg += sec.nseg
-      sec.nseg = calculate_nseg_from_lambda(sec)
+      sec.nseg = self.calculate_nseg_from_lambda(sec)
       new_nseg += sec.nseg
     if initial_nseg != new_nseg:
       print('Model nseg changed from', initial_nseg, 'to', new_nseg)
