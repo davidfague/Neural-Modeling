@@ -237,7 +237,7 @@ class SpikeGenerator:
 	#TODO: check relation to synapse
 	def set_netcon(self, synapse, stim):
 		nc = h.NetCon(stim, synapse.pp_obj, 1, 0, 1)
-		self.netcons_list.append(nc)
+		self.netcons.append(nc)
 		synapse.ncs.append(nc)
 		return nc
 	
