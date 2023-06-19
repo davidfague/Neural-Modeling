@@ -226,7 +226,7 @@ class SpikeGenerator:
 	
 	def set_spike_train(self, synapse, spikes):
 		stim = self.set_vecstim(spikes)
-		nc = self.set_netcon(stim, synapse)
+		nc = self.set_netcon(synapse, stim)
 		return nc
 	
 	def set_vecstim(self, stim_spikes):
