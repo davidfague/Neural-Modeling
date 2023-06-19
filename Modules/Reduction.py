@@ -2,7 +2,7 @@ from neuron_reduce import subtree_reductor
 from Modules.cable_expander_func import cable_expander
 
 class Reductor():
-  def __init__(self, cell, method: str, synapses_list: list, netcons_list: list, sections_to_expand: list, furcations_x: list, nbranches: list, reduction_frequency = 0, return_seg_to_seg: bool = False) -> None:
+  def __init__(cell=None, method=None, synapses_list=None, netcons_list=None, reduction_frequency=0, sections_to_expand=None, furcations_x=None, nbranches=None, return_seg_to_seg: bool = False) -> None:
     '''
     cell: hoc model cell object (TO DO: providing python cell_model object instead)
     method: str for method to use ex. 'expand cable', 'neuron_reduce'
@@ -27,6 +27,9 @@ class Reductor():
           raise ValueError('Must specify sections_to_expand for cable_expander()')
       elif method == 'neuron_reduce':
         reduced_cell, synapses_list, netcons_list, txt = subtree_reductor(cell, synapses_list, netcons_list, reduction_frequency=reduction_frequency,return_seg_to_seg=True)
+      elif method == 'lambda':
+        update_model_nseg_using_lambda(cell)
+        return
       else:
         raise ValueError(f"Method '{method}' not implemented.")
   
