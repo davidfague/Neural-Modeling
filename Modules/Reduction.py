@@ -73,3 +73,38 @@ class Reductor():
     returns segment
     '''
     pass
+
+def find_space_const_in_cm(diameter, rm, ra):
+    ''' returns space constant (lambda) in cm, according to: space_const = sqrt(rm/(ri+r0)) '''
+    # rm = Rm/(PI * diam), diam is in cm and Rm is in ohm * cm^2
+    rm = float(rm) / (math.pi * diameter)
+    # ri = 4*Ra/ (PI * diam^2), diam is in cm and Ra is in ohm * cm
+    ri = float(4 * ra) / (math.pi * (diameter**2))
+    space_const = math.sqrt(rm / ri)  # r0 is negligible
+    return space_const
+
+  def calculate_nseg_from_lambda(section):
+    rm = 1.0 / section.g_pas  # in ohm * cm^2
+    ra = section.Ra  # in ohm * cm
+    diam_in_cm = section.L / 10000
+    space_const_in_cm = find_space_const_in_cm(diam_in_cm,
+                                                      rm,
+                                                      ra)
+    space_const_in_micron = 10000 * space_const_in_cm
+    nseg=int((float(section.L) / space_const_in_micron) * 10 / 2) * 2 + 1
+    return nseg
+  
+  def update_model_nseg_using_lambda(cell):
+    '''
+    Optomizes number of segments using length constant
+    '''
+    initial_nseg = 0
+    new_nseg = 0
+    for sec in cell.all:
+      initial_nseg += sec.nseg
+      sec.nseg = calculate_nseg_from_lambda(sec)
+      new_nseg += sec.nseg
+    if initial_nseg != new_nseg:
+      print('Model nseg changed from', initial_nseg, 'to', new_nseg)
+    else:
+      print('Model nseg did not change')
