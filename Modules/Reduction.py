@@ -2,7 +2,7 @@ from neuron_reduce import subtree_reductor
 from Modules.cable_expander_func import cable_expander
 
 class Reductor():
-  def __init__(cell, method=str, synapses_list=None, netcons_list=None, reduction_frequency=0, sections_to_expand=None, furcations_x=None, nbranches=None, return_seg_to_seg: bool = False):
+  def __init__(cell=None, method=str, synapses_list=None, netcons_list=None, reduction_frequency=0, sections_to_expand=None, furcations_x=None, nbranches=None, return_seg_to_seg: bool = False):
     '''
     cell: hoc model cell object (TO TEST: providing python cell_model object instead)
     method: str for method to use ex. 'expand cable', 'neuron_reduce'
