@@ -174,7 +174,8 @@ class SpikeGenerator:
 			Firing rate profile.
 
 		'''
-						 
+		if fr_time_shift is None:
+			raise(TypeError('fr_time_shift must be integar not None'))
 		times_where_spikes=[] 
 		for spike_train in spike_trains_to_delay:
 		  if len(spike_train)>0: #equivalent to if there is a spike
