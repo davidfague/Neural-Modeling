@@ -23,20 +23,20 @@ class Reductor():
 			if method == 'expand cable':
 				self.check_sanity_in_expand_cable(sections_to_expand, furcations_x, nbranches)
 				reduced_cell, synapses_list, netcons_list, txt = cable_expander(cell, sections_to_expand, furcations_x, 
-																				nbranches,synapses_list, netcons_list, 
-																				reduction_frequency=reduction_frequency, 
-																				return_seg_to_seg = True)
+												nbranches, synapses_list, netcons_list, 
+												reduction_frequency=reduction_frequency, 
+												return_seg_to_seg = True)
 			elif method == 'neuron_reduce':
 					reduced_cell, synapses_list, netcons_list, txt = subtree_reductor(cell, synapses_list, netcons_list, 
-																					  reduction_frequency = reduction_frequency, 
-																					  return_seg_to_seg = True)
+													  reduction_frequency = reduction_frequency, 
+													  return_seg_to_seg = True)
 			elif method == 'lambda':
 					self.update_model_nseg_using_lambda(cell)
 			else:
 				raise NotImplementedError
 
 		#TODO: fix call (__init__ does not return)
-		if return_seg_to_seg:
+		if (return_seg_to_seg) and (method != 'lambda'):
 			return reduced_cell, synapses_list, netcons_list, txt
 		else:
 			return reduced_cell, synapses_list, netcons_list
