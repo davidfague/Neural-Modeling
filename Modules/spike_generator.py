@@ -89,7 +89,7 @@ class SpikeGenerator:
 		if method == '1f_noise':
 			fr_profile = self.noise_modulation(num_obs = len(t))
 		elif method == 'delay':
-			fr_profile = self.delay_modulation(fr_profile, spike_trains_to_delay, time_shift, t)
+			fr_profile = self.delay_modulation(spike_trains_to_delay=spike_trains_to_delay, time_shift=time_shift, spike_train_t=t)
 		else:
 			raise NotImplementedError
 		
