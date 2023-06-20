@@ -109,7 +109,7 @@ class Reductor():
 		'''
 		Optimizes number of segments using length constant
 		'''
-		initial_nseg, new_nseg = 0
+		initial_nseg, new_nseg = 0, 0
 
 		for sec in cell.all:
 			initial_nseg += sec.nseg
