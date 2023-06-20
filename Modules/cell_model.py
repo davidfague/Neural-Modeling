@@ -177,7 +177,7 @@ class CellModel:
               self.spikes = None
           else:
               vec = h.Vector()
-              nc = h.NetCon(self.soma(0.5)._ref_v, None, sec=self.soma)
+              nc = h.NetCon(self.soma[0](0.5)._ref_v, None, sec=self.soma)
               nc.threshold = self.spike_threshold
               nc.record(vec)
               self.spikes = vec
