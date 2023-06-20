@@ -179,7 +179,7 @@ class SpikeGenerator:
 		for spike_train in spike_trains_to_delay:
 		  if len(spike_train)>0: #equivalent to if there is a spike
 		    for time_where_spike in spike_train:
-		      times_where_spikes.append(times_where_spike)
+		      times_where_spikes.append(time_where_spike)
 			    
 				# Compute the firing rate profile from the histogram
 		hist, _ = np.histogram(times_where_spikes, bins = spike_train_t)
