@@ -68,9 +68,8 @@ class SynapseGenerator:
 		return synapses	
 	
 	#TODO: add docstring
-	def add_synapses_to_cell(self, cell, segments: list, probs: list = None, 
-							 exc_density: float = None, inh_density: float = None, 
-							 total_synapses = None, ratio = None):
+	def add_synapses_to_cell(self, cell, segments: list, gmax: object, syn_mod: str, density: float = None, 
+					 number_of_synapses: int = None, probs: list = None, record: bool = False) -> None:
 		'''
 		Add synapses to cell after cell python object has already been initialized.
 
@@ -84,8 +83,7 @@ class SynapseGenerator:
 		probs: 
 
 		'''
-		#TODO: fix call
-		# synapses = self.add_synapses(segments = segments, exc_density, inh_density, number_of_synapses = total_synapses, ratio, probs = probs)
-		synapses = [] # dummy
+		#TODO:
+		synapses = self.add_synapses(segments = segments, syn_mod = syn_mod, density = density, number_of_synapses = number_of_synapses, probs = probs, record = record, )
 		for syn in synapses:
 			cell.synapses.append(syn)
