@@ -14,7 +14,7 @@ class CellModel:
     def __init__(self, hoc_model: NeuronHocTemplate, synapses: list, netcons: list) -> None:
 
         # Parse the hoc model
-        self.all, self.soma, self.apic, self.dend, self.axon = None
+        self.all, self.soma, self.apic, self.dend, self.axon = None, None, None, None, None
         for model_part in ["all", "soma", "apic", "dend", "axon"]:
             setattr(self, model_part, self.convert_section_list(getattr(hoc_model, model_part)))
         
