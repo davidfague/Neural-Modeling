@@ -17,7 +17,7 @@ class SpikeGenerator:
 		     			origin: str, 
 					  	rhythmicity: bool = False, 
 						rhythmic_mod = None, rhythmic_f = None,
-					  	spike_trains_to_delay = None, time_shift = None) -> None:
+					  	spike_trains_to_delay = None, time_shift = None, spike_train_dt: float = 1e-3) -> None:
 		'''
 		Generate spike trains.
 
@@ -82,14 +82,14 @@ class SpikeGenerator:
 	#TODO: add docstring
 	def get_firing_rate_profile(self, t, mean_firing_rate: float, method: str, 
 								rhythmicity: bool = False, rhythmic_f = None, rhythmic_mod = None,
-								spike_trains_to_delay = None, time_shift = None):
+								spike_trains_to_delay = None, time_shift = None, spike_train_dt: float = 1e-3):
 
 		# Create the firing rate profile
 		#TODO: add bounds, etc.
 		if method == '1f_noise':
 			fr_profile = self.noise_modulation(num_obs = len(t))
 		elif method == 'delay':
-			fr_profile = self.delay_modulation(spike_trains_to_delay=spike_trains_to_delay, time_shift=time_shift, spike_train_t=t)
+			fr_profile = self.delay_modulation(spike_trains_to_delay=spike_trains_to_delay, time_shift=time_shift, spike_train_t=t, spike_train_dt=spike_train_dt)
 		else:
 			raise NotImplementedError
 		
