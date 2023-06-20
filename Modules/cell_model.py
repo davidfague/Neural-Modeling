@@ -48,7 +48,7 @@ class CellModel:
             else:
                 # Get the parent segment, sec
                 pseg = sec.parentseg()
-                if psec is None: raise RuntimeError("Section {sec} is attached to None.")
+                if pseg is None: raise RuntimeError("Section {sec} is attached to None.")
                 psec = pseg.sec
 
                 # Process and get the new length
