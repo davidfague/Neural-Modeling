@@ -96,19 +96,16 @@ class Synapse:
     '''
     class for adding synapses
     '''
-    def __init__(self, segment, syn_type: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False):
-        super().__init__(segment)
-
+    def __init__(self, segment, syn_mod: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False):
         self.segment = segment
-
-        self.syn_type = syn_type
+        self.syn_type = syn_mod
         self.gmax = gmax
         self.gmax_var = None # Variable name of maximum conductance (uS)
         self.syn_params = None
         self.synapse_neuron_obj = None
         self.rec_vec = None  # vector for recording
 
-        self.set_params_based_on_synapse_mod(syn_type)
+        self.set_params_based_on_synapse_mod(syn_mod)
         self.setup(record)
         self.ncs = [] #TODO: Check if redundant
 
