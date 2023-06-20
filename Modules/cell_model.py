@@ -133,7 +133,7 @@ class CellModel:
     def calc_seg_coords(self) -> dict:
 
         nseg_total = sum(sec.nseg for sec in self.all)
-        p0, p05, p1 = np.zeros((nseg_total, 3))
+        p0, p05, p1 = np.zeros((nseg_total, 3)), np.zeros((nseg_total, 3)), np.zeros((nseg_total, 3))
         r = np.zeros(nseg_total)
 
         seg_idx = 0
