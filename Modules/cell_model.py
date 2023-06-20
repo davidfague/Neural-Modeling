@@ -352,7 +352,7 @@ class CellModel:
           for netcon in self.netcons:
               syn = netcon.syn()
               syn_type=syn.hname().split('[')[0]
-              if (syn in self.synapses_list) or syn in self.synapse:
+              if syn in self.synapses:
                   syn_seg_id = self.seg_info.index(next((s for s in self.seg_info if s['seg'] == syn.get_segment()), None))
                   seg_dict = self.seg_info[syn_seg_id]
                   if syn in seg_dict['seg'].point_processes():
