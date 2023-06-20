@@ -12,7 +12,7 @@ NeuronAnyNumber = TypeVar("NeuronAnyNumber")
 
 class CellModel:
 
-    def __init__(self, hoc_model: NeuronHocTemplate, synapses: list, netcons: list) -> None:
+    def __init__(self, hoc_model: NeuronHocTemplate, synapses: list, netcons: list, spike_threshold: Optional[float] = None) -> None:
 
         # Parse the hoc model
         self.all, self.soma, self.apic, self.dend, self.axon = None, None, None, None, None
@@ -21,7 +21,8 @@ class CellModel:
         
         self.synapses = synapses
         self.netcons = netcons
-
+        self.spike_threshold = spike_threshold
+        
         # Angles and rotations that were used to branch the cell
         # Store to use for geometry file generation
         self.sec_angs = [] 
