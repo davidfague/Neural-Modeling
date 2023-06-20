@@ -1,6 +1,7 @@
 import numpy as np
 import warnings
 from typing import Union, Tuple, List, Optional, Any, TYPE_CHECKING
+from neuron import h
 
 # Typing
 from typing import TypeVar
