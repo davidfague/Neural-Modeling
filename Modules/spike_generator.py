@@ -252,14 +252,13 @@ class SpikeGenerator:
 	
 	#TODO: add rationale for exp
 	def get_mean_fr(self, mean_firing_rate: object) -> float:
-		if mean_firing_rate <= 0:
-			raise ValueError("mean_firing_rate <= 0.")
 		if callable(mean_firing_rate): # mean_firing_rate is a distribution
 			 # Sample from the distribution
 			mean_fr = mean_firing_rate(size = 1)
 		else: # mean_firing_rate is a float
 			mean_fr = mean_firing_rate
-
+		if mean_fr <= 0:
+			raise ValueError("mean_fr <= 0.")
 		return mean_fr
 
 	@staticmethod
