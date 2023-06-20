@@ -221,7 +221,7 @@ class SpikeGenerator:
 	def generate_spikes_from_profile(self, fr_profile, mean_fr):
 		''' sample spikes '''
 		fr_profile = fr_profile * mean_fr
-		sample_values = np.random.poisson(fr_profile / 1000)
+		sample_values = st.poisson(fr_profile / 1000).rvs()
 		spike_times = np.where(sample_values > 0)[0]
 		return spike_times
 	
