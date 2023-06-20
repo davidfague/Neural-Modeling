@@ -97,7 +97,7 @@ class SpikeGenerator:
 			fr_profile = self.rhythmic_modulation(fr_profile, rhythmic_f, rhythmic_mod, t)
 		
 		#TODO: check if fr_profile can even be negative
-		if np.sum(fr_profile < 0) == 0:
+		if np.sum(fr_profile < 0) != 0:
 			warnings.warn("Found zeros in fr_profile.")
 
 		fr_profile[fr_profile < 0] = 0 # Can't have negative firing rates.
