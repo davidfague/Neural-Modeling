@@ -170,10 +170,10 @@ class Synapse:
 
     # PRAGMA MARK: Utility
     def get_section(self) -> h.Section:
-        return self.pp_obj.get_segment().sec
+        return self.synapse_neuron_obj.get_segment().sec
 
     def get_segment(self):
-        return self.pp_obj.get_segment()
+        return self.synapse_neuron_obj.get_segment()
 
 #TODO: Rationalize existence
 class MultiSynCurrent:
