@@ -6,6 +6,9 @@ __pycache__/
 # Mac
 .DS_Store
 
+# neuron
+x86_64/
+
 # C extensions
 *.so
 
