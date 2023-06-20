@@ -145,25 +145,25 @@ class SpikeGenerator:
 
 		return fr_profile
 	
-	#TODO: fix typing, potentially won't work with spike_train_to_delay.shape[0] != 1
-	def delay_modulation(self, spike_train_to_delay, fr_time_shift: int, spike_train_t: int, 
+	#TODO: fix typing, potentially won't work with spike_trains_to_delay.shape[0] != 1
+	def delay_modulation(self, spike_trains_to_delay, fr_time_shift: int, spike_train_t: int, 
 		      			 spike_train_dt: float = 1e-3, bounds = (0, 2)) -> np.ndarray:
 		'''
 		Compute a firing rate profile from a target spike train and shift it to create a new profile.
 
 		Parameters:
 		----------
-		spike_train_to_delay: #TODO: add type
+		spike_trains_to_delay: #TODO: add type
 			Target spike train.
 
 		fr_time_shift: int
 			Shift of the target spike train's rate profile.
 
 		spike_train_t: int
-			Time length that was used to generate spike_train_to_delay.
+			Time length that was used to generate spike_trains_to_delay.
 
 		spike_train_dt: float
-			Time discretization that was used to generate spike_train_to_delay.
+			Time discretization that was used to generate spike_trains_to_delay.
 
 		bounds: tuple
 			The profile bounds: [min, max]. 
@@ -176,10 +176,10 @@ class SpikeGenerator:
 		'''
 
 		# Compute the firing rate profile from the histogram
-		hist, _ = np.histogram(spike_train_to_delay, bins = spike_train_t)
+		hist, _ = np.histogram(spike_trains_to_delay, bins = spike_train_t)
 
 		#TODO: check if redundant, and can just use hist
-		fr_profile = hist / (spike_train_dt * (len(spike_train_to_delay) + 1))
+		fr_profile = hist / (spike_train_dt * (len(spike_trains_to_delay) + 1))
 
 		# Shift by time_shift
 		wrap = fr_profile[-fr_time_shift:]
