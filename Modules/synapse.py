@@ -98,7 +98,7 @@ class Synapse:
     '''
     def __init__(self, segment, syn_mod: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False):
         self.segment = segment
-        self.syn_type = syn_type
+        self.syn_type = syn_mod
         self.gmax = gmax
         self.gmax_var = None # Variable name of maximum conductance (uS)
         self.syn_params = None
