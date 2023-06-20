@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.signal import lfilter
 from neuron import h
+import warnings
 
 def minmax(x):
 	return (x - np.min(x)) / (np.max(x) - np.min(x))
@@ -87,6 +88,9 @@ class SpikeGenerator:
 			fr_profile = self.rhythmic_modulation(fr_profile, rhythmic_f, rhythmic_mod, t)
 		
 		#TODO: check if fr_profile can even be negative
+		if np.sum(fr_profile < 0) == 0:
+			warnings.warn("Found zeros in fr_profile.")
+			
 		fr_profile[fr_profile < 0] = 0 # Can't have negative firing rates.
 		
 		return fr_profile
@@ -238,15 +242,14 @@ class SpikeGenerator:
 		return nc
 	
 	#TODO: add rationale for exp
-	def get_mean_fr(self, mean_firing_rate: object, exp = False) -> float:
+	def get_mean_fr(self, mean_firing_rate: object) -> float:
+		if mean_firing_rate <= 0:
+			raise ValueError("mean_firing_rate <= 0.")
 		if callable(mean_firing_rate): # mean_firing_rate is a distribution
 			 # Sample from the distribution
 			mean_fr = mean_firing_rate(size = 1)
 		else: # mean_firing_rate is a float
 			mean_fr = mean_firing_rate
-		
-		if exp:
-			mean_fr = np.exp(mean_fr)
 
 		return mean_fr
 
