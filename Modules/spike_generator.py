@@ -49,7 +49,7 @@ class SpikeGenerator:
 		if origin == "same_presynaptic_cell": # same fr profile # same spike train # same mean fr
 			# Ensure the firing rate is a float
 			mean_fr = self.get_mean_fr(mean_firing_rate)
-			fr_profile = self.get_firing_rate_profile(method, t = t, mean_firing_rate = mean_fr,
+			fr_profile = self.get_firing_rate_profile(method, t = t,
 					     							  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
 												      rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
 													  fr_time_shift = fr_time_shift)
@@ -58,7 +58,7 @@ class SpikeGenerator:
 				self.set_spike_train(synapse, spikes)
 		  
 		elif origin == "same_presynaptic_region": # same fr profile # unique spike train # unique mean fr
-			fr_profile = self.get_firing_rate_profile(method, t = t, mean_firing_rate = mean_fr,
+			fr_profile = self.get_firing_rate_profile(method, t = t,
 					     							  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
 												      rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
 													  fr_time_shift = fr_time_shift)
@@ -69,7 +69,7 @@ class SpikeGenerator:
 			
 		else: # unique fr profile # unique spike train # unqiue mean fr
 			for synapse in synapses:
-				fr_profile = self.get_firing_rate_profile(method, t = t, mean_firing_rate = mean_fr,
+				fr_profile = self.get_firing_rate_profile(method, t = t,
 														  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
 														  rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
 														  fr_time_shift = fr_time_shift)
@@ -80,7 +80,7 @@ class SpikeGenerator:
 	
 	#TODO: check definition of t
 	#TODO: add docstring
-	def get_firing_rate_profile(self, t, mean_firing_rate: float, method: str, 
+	def get_firing_rate_profile(self, t, method: str, 
 								rhythmicity: bool = False, rhythmic_f = None, rhythmic_mod = None,
 								spike_trains_to_delay = None, fr_time_shift = None, spike_train_dt: float = 1e-3):
 
