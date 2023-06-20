@@ -49,13 +49,19 @@ class SpikeGenerator:
 		if origin == "same_presynaptic_cell": # same fr profile # same spike train # same mean fr
 			# Ensure the firing rate is a float
 			mean_fr = self.get_mean_fr(mean_firing_rate)
-			fr_profile = self.get_firing_rate_profile(method, t, rhythmicity, spike_trains_to_delay)
+			fr_profile = self.get_firing_rate_profile(method, t = t, mean_firing_rate = mean_fr,
+					     							  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
+												      rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
+													  time_shift = time_shift)
 			spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
 			for synapse in synapses:
 				self.set_spike_train(synapse, spikes)
 		  
 		elif origin == "same_presynaptic_region": # same fr profile # unique spike train # unique mean fr
-			fr_profile = self.firing_rate_profile(method, t, rhythmicity, spike_trains_to_delay)
+			fr_profile = self.get_firing_rate_profile(method, t = t, mean_firing_rate = mean_fr,
+					     							  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
+												      rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
+													  time_shift = time_shift)
 			for synapse in synapses:
 				mean_fr = self.get_mean_fr(mean_firing_rate)
 				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
@@ -63,7 +69,10 @@ class SpikeGenerator:
 			
 		else: # unique fr profile # unique spike train # unqiue mean fr
 			for synapse in synapses:
-				fr_profile = self.firing_rate_profile(method, t, rhythmicity, spike_trains_to_delay)
+				fr_profile = self.get_firing_rate_profile(method, t = t, mean_firing_rate = mean_fr,
+														  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
+														  rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
+														  time_shift = time_shift)
 				mean_fr = self.get_mean_fr(mean_firing_rate)
 				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
 				self.set_spike_train(synapse, spikes)
@@ -90,7 +99,7 @@ class SpikeGenerator:
 		#TODO: check if fr_profile can even be negative
 		if np.sum(fr_profile < 0) == 0:
 			warnings.warn("Found zeros in fr_profile.")
-			
+
 		fr_profile[fr_profile < 0] = 0 # Can't have negative firing rates.
 		
 		return fr_profile
