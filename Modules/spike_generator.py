@@ -17,7 +17,7 @@ class SpikeGenerator:
 		     			origin: str, 
 					  	rhythmicity: bool = False, 
 						rhythmic_mod = None, rhythmic_f = None,
-					  	spike_trains_to_delay = None, time_shift = None, spike_train_dt: float = 1e-3) -> None:
+					  	spike_trains_to_delay = None, fr_time_shift = None, spike_train_dt: float = 1e-3) -> None:
 		'''
 		Generate spike trains.
 
@@ -52,7 +52,7 @@ class SpikeGenerator:
 			fr_profile = self.get_firing_rate_profile(method, t = t, mean_firing_rate = mean_fr,
 					     							  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
 												      rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
-													  time_shift = time_shift)
+													  fr_time_shift = fr_time_shift)
 			spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
 			for synapse in synapses:
 				self.set_spike_train(synapse, spikes)
@@ -61,7 +61,7 @@ class SpikeGenerator:
 			fr_profile = self.get_firing_rate_profile(method, t = t, mean_firing_rate = mean_fr,
 					     							  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
 												      rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
-													  time_shift = time_shift)
+													  fr_time_shift = fr_time_shift)
 			for synapse in synapses:
 				mean_fr = self.get_mean_fr(mean_firing_rate)
 				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
@@ -72,7 +72,7 @@ class SpikeGenerator:
 				fr_profile = self.get_firing_rate_profile(method, t = t, mean_firing_rate = mean_fr,
 														  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
 														  rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
-														  time_shift = time_shift)
+														  fr_time_shift = fr_time_shift)
 				mean_fr = self.get_mean_fr(mean_firing_rate)
 				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
 				self.set_spike_train(synapse, spikes)
@@ -82,14 +82,14 @@ class SpikeGenerator:
 	#TODO: add docstring
 	def get_firing_rate_profile(self, t, mean_firing_rate: float, method: str, 
 								rhythmicity: bool = False, rhythmic_f = None, rhythmic_mod = None,
-								spike_trains_to_delay = None, time_shift = None, spike_train_dt: float = 1e-3):
+								spike_trains_to_delay = None, fr_time_shift = None, spike_train_dt: float = 1e-3):
 
 		# Create the firing rate profile
 		#TODO: add bounds, etc.
 		if method == '1f_noise':
 			fr_profile = self.noise_modulation(num_obs = len(t))
 		elif method == 'delay':
-			fr_profile = self.delay_modulation(spike_trains_to_delay=spike_trains_to_delay, time_shift=time_shift, spike_train_t=t, spike_train_dt=spike_train_dt)
+			fr_profile = self.delay_modulation(spike_trains_to_delay=spike_trains_to_delay, fr_time_shift=fr_time_shift, spike_train_t=t, spike_train_dt=spike_train_dt)
 		else:
 			raise NotImplementedError
 		
@@ -181,7 +181,7 @@ class SpikeGenerator:
 		#TODO: check if redundant, and can just use hist
 		fr_profile = hist / (spike_train_dt * (len(spike_trains_to_delay) + 1))
 
-		# Shift by time_shift
+		# Shift by fr_time_shift
 		wrap = fr_profile[-fr_time_shift:]
 		fr_profile[fr_time_shift:] = fr_profile[0:-fr_time_shift]
 		fr_profile[0:fr_time_shift] = wrap
