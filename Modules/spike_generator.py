@@ -52,27 +52,22 @@ class SpikeGenerator:
 			fr_profile = self.get_firing_rate_profile(method, t, rhythmicity, spike_trains_to_delay)
 			spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
 			for synapse in synapses:
-				netcons_list.append(self.set_spike_train(synapse, spikes))
-				spike_trains.append(spikes)
+				self.set_spike_train(synapse, spikes)
 		  
 		elif origin == "same_presynaptic_region": # same fr profile # unique spike train # unique mean fr
 			fr_profile = self.firing_rate_profile(method, t, rhythmicity, spike_trains_to_delay)
 			for synapse in synapses:
 				mean_fr = self.get_mean_fr(mean_firing_rate)
 				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
-				netcons_list.append(self.set_spike_train(synapse, spikes))
-				spike_trains.append(spikes)
+				self.set_spike_train(synapse, spikes)
 			
 		else: # unique fr profile # unique spike train # unqiue mean fr
 			for synapse in synapses:
 				fr_profile = self.firing_rate_profile(method, t, rhythmicity, spike_trains_to_delay)
 				mean_fr = self.get_mean_fr(mean_firing_rate)
 				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
-				netcons_list.append(self.set_spike_train(synapse, spikes))
-				spike_trains.append(spikes)
+				self.set_spike_train(synapse, spikes)
 			
-		self.netcons.append(netcons_list)
-		self.spike_trains.append(spike_trains)
 	
 	#TODO: check definition of t
 	#TODO: add docstring
@@ -226,6 +221,7 @@ class SpikeGenerator:
 		return spike_times
 	
 	def set_spike_train(self, synapse, spikes):
+		self.spikes_trains.append(spikes)
 		stim = self.set_vecstim(spikes)
 		nc = self.set_netcon(synapse, stim)
 		return nc
