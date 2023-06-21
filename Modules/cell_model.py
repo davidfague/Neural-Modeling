@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import warnings
 from typing import Union, Tuple, List, Optional, Any, TYPE_CHECKING
 from neuron import h
