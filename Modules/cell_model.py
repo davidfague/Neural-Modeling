@@ -453,7 +453,7 @@ class CellModel:
     
       return self.output_folder_name
     
-    def get_recorder_data(self):
+    def get_recorder_data(self): # TODO: add check for synapse.current_type
       '''
       Method for calculating net synaptic currents and getting data after simulation
       '''
