@@ -95,12 +95,12 @@ class Synapse:
     '''
     class for adding synapses
     '''
-    def __init__(self, segment, syn_mod: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False):
+    def __init__(self, segment, syn_mod: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False, syn_params: dict = None):
         self.segment = segment
         self.syn_type = syn_mod
         self.gmax = gmax
         self.gmax_var = None # Variable name of maximum conductance (uS)
-        self.syn_params = None
+        self.syn_params = syn_params
         self.synapse_neuron_obj = None
         self.rec_vec = None  # vector for recording
 
@@ -113,7 +113,7 @@ class Synapse:
     def set_params_based_on_synapse_mod(self, syn_mod: str) -> None:
         if syn_mod == 'AlphaSynapse1': # i
             # Reversal potential (mV); Synapse time constant (ms)
-            self.syn_params = {'e': 0., 'tau': 2.0}
+            #self.syn_params = {'e': 0., 'tau': 2.0}
             self.gmax_var = 'gmax'
         elif syn_mod == 'Exp2Syn': # i
             self.syn_params = {'e': 0., 'tau1': 1.0, 'tau2': 3.0}
@@ -137,8 +137,12 @@ class Synapse:
             self.setup_recorder()
 
     def setup_synapse(self):
-        for key, value in self.syn_params.items():
-            setattr(self.synapse_neuron_obj, key, value)
+        if self.syn_params is not None:
+            for key, value in self.syn_params.items():
+                if callable(value):
+                    setattr(self.synapse_neuron_obj, key, value(size=1))
+                else:
+                    setattr(self.synapse_neuron_obj, key, value)
         self.set_gmax()
 
     def set_gmax(self, gmax: float = None) -> None:

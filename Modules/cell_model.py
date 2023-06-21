@@ -1,8 +1,12 @@
 import numpy as np
+import pandas as pd
 import warnings
 from typing import Union, Tuple, List, Optional, Any, TYPE_CHECKING
 from neuron import h
 from Modules.recorder import Recorder
+import os
+import h5py
+import csv
 
 # Typing
 from typing import TypeVar
@@ -230,14 +234,13 @@ class CellModel:
                       setattr(getattr(seg, channel), conductance, 0)
                   # print(channel, sec) # empty sections
 
-    def __setup_recorders(self):
-        self.gNaTa_T = Recorder(obj_list=self.segments, var_name='gNaTa_t_NaTa_t')
-        self.ina = Recorder(obj_list=self.segments, var_name='ina_NaTa_t')
-        self.ical = Recorder(obj_list=self.segments, var_name='ica_Ca_LVAst')
-        self.icah = Recorder(obj_list=self.segments, var_name='ica_Ca_HVA')
-        self.ih = Recorder(obj_list=self.segments, var_name='ihcn_Ih')
-        self.Vm = Recorder(obj_list=self.segments)
-
+    def write_seg_info_to_csv(self):
+      with open(self.output_folder_name+'/seg_info.csv', mode='w') as file:
+          writer = csv.DictWriter(file, fieldnames=self.seg_info[0].keys())
+          writer.writeheader()
+          for row in self.seg_info:
+              writer.writerow(row)
+    
     def __get_segment_info__(self):
           self.seg_info = []
           k = 0
@@ -272,6 +275,7 @@ class CellModel:
                   j += 1
               k += 1
           return self.__get_parent_segment_ids()
+        
     def __get_parent_segment_ids(self):
           for seg in self.seg_info:
               seg['parent_seg_id'] = None
@@ -418,3 +422,94 @@ class CellModel:
             raise TypeError
 
         return new_section_list
+
+    # PRAGMA MARK: Data manipulation
+
+    # TODO: CHECK
+
+    def __setup_recorders(self):
+      self.gNaTa_T = Recorder(obj_list=self.segments, var_name='gNaTa_t_NaTa_t')
+      self.ina = Recorder(obj_list=self.segments, var_name='ina_NaTa_t')
+      self.ical = Recorder(obj_list=self.segments, var_name='ica_Ca_LVAst')
+      self.icah = Recorder(obj_list=self.segments, var_name='ica_Ca_HVA')
+      self.ih = Recorder(obj_list=self.segments, var_name='ihcn_Ih')
+      self.Vm = Recorder(obj_list=self.segments)
+    
+    def __create_output_folder(self):
+      nbranches = len(self.apic)-1
+      nc_count = len(self.netcons)
+      syn_count = len(self.synapses)
+      seg_count = len(self.segments)
+    
+      self.output_folder_name = (
+          str(h.tstop)+
+          "outputcontrol_" +
+          str(nbranches) + "nbranch_" +
+          str(nc_count) + "NCs_" +
+          str(syn_count) + "nsyn_" +
+          str(seg_count) + "nseg"
+      )
+    
+      if not os.path.exists(self.output_folder_name):
+          print('Outputting data to ', self.output_folder_name)
+          os.makedirs(self.output_folder_name)
+    
+      return self.output_folder_name
+    
+    def get_recorder_data(self): # TODO: add check for synapse.current_type
+      '''
+      Method for calculating net synaptic currents and getting data after simulation
+      '''
+      numTstep = int(h.tstop/h.dt)
+      i_NMDA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
+      i_AMPA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
+      # i_bySeg = [[0] * (numTstep+1)] * len(self.segments)
+    
+      for synapse in self.synapses:
+          try:
+              i_NMDA = np.array(synapse.rec_vec.vec_list[1])
+              i_AMPA = np.array(synapse.rec_vec.vec_list[0])
+              seg = synapse.get_segment_id()
+    
+              try:
+                  i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
+                  i_AMPA_bySeg[seg] = i_AMPA_bySeg[seg] + i_AMPA
+              except:
+                  pass
+          except:
+              continue
+    
+      i_NMDA_df = pd.DataFrame(i_NMDA_bySeg) * 1000
+      i_AMPA_df = pd.DataFrame(i_AMPA_bySeg) * 1000
+    
+    
+      self.data_dict = {}
+      self.data_dict['spikes']=self.get_spike_time()
+      self.data_dict['ih_data'] = self.ih.as_numpy()
+      self.data_dict['gNaTa_T_data'] = self.gNaTa_T.as_numpy()
+      self.data_dict['ina_data'] = self.ina.as_numpy()
+      self.data_dict['icah_data'] = self.icah.as_numpy()
+      self.data_dict['ical_data'] = self.ical.as_numpy()
+      self.data_dict['Vm'] = self.Vm.as_numpy()
+      self.data_dict['i_NMDA'] = i_NMDA_df
+      self.data_dict['i_AMPA'] = i_AMPA_df
+      # self.data_dict['i'] = i_bySeg
+      self.__create_output_files(self.__create_output_folder())
+    
+      return self.data_dict
+    
+    def __create_output_files(self,output_folder_name):
+      for name, data in self.data_dict.items():
+        try:
+          self.__report_data(f"{output_folder_name}/{name}_report.h5", data.T)
+        except:
+          self.__report_data(f"{output_folder_name}/{name}_report.h5", data)
+    
+    def __report_data(self,reportname, dataname):
+      try:
+          os.remove(reportname)
+      except FileNotFoundError:
+          pass
+    
+      with h5py.File(reportname, 'w') as f:
+          f.create_dataset("report/biophysical/data", data=dataname)
