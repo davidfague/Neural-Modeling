@@ -249,6 +249,7 @@ class SpikeGenerator:
 		vec = h.Vector(stim_spikes)
 		stim = h.VecStim()
 		stim.play(vec)
+		return stim
 	
 	#TODO: check relation to synapse
 	def set_netcon(self, synapse, stim):
