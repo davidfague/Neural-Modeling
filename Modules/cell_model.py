@@ -24,7 +24,7 @@ class CellModel:
         self.synapses = synapses
         self.netcons = netcons
         self.spike_threshold = spike_threshold
-        self.injections = []
+        self.injection = []
         
         # Angles and rotations that were used to branch the cell
         # Store to use for geometry file generation
