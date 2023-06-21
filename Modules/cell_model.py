@@ -207,9 +207,15 @@ class CellModel:
 
     def __store_segments(self):
         self.segments = []
+        self.sec_id_in_seg = []
+        nseg = 0
         for sec in self.all:
+            self.sec_id_in_seg.append(nseg)
+            nseg += sec.nseg
             for seg in sec:
                 self.segments.append(seg)
+    #             self.__store_point_processes(seg) #may be outdated (was storing netcons from netcons list into self.injection
+        self._nseg = nseg
     
     def __insert_unused_channels(self):
       channels = [('NaTa_t', 'gNaTa_t_NaTa_t', 'gNaTa_tbar'),
