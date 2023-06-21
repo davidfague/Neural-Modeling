@@ -9,8 +9,9 @@ def minmax(x):
 class SpikeGenerator:
   
 	def __init__(self):
-		self.netcons = []
 		self.spike_trains = []
+		self.vecstims = []
+		self.netcons = []
 	
 	#TODO: add docstring, check typing
 	def generate_inputs(self, synapses: list, t: np.ndarray, mean_firing_rate: object, method: str, 
@@ -249,6 +250,7 @@ class SpikeGenerator:
 		vec = h.Vector(stim_spikes)
 		stim = h.VecStim()
 		stim.play(vec)
+		self.vecstims.append(stim)
 		return stim
 	
 	#TODO: check relation to synapse
