@@ -138,11 +138,12 @@ class Synapse:
             self.setup_recorder()
 
     def setup_synapse(self):
-        for key, value in self.syn_params.items():
-            if callable(value):
-                setattr(self.synapse_neuron_obj, key, value(size=1))
-            else:
-                setattr(self.synapse_neuron_obj, key, value)
+        if self.syn_params is not None:
+            for key, value in self.syn_params.items():
+                if callable(value):
+                    setattr(self.synapse_neuron_obj, key, value(size=1))
+                else:
+                    setattr(self.synapse_neuron_obj, key, value)
         self.set_gmax()
 
     def set_gmax(self, gmax: float = None) -> None:
