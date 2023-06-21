@@ -425,10 +425,9 @@ class CellModel:
     
     def __create_output_folder(self):
       nbranches = len(self.apic)-1
-      nc_count = len(self.netcons_list)
-      syn_count = len(self.synapses_list)
+      nc_count = len(self.netcons)
+      syn_count = len(self.synapses)
       seg_count = len(self.segments)
-    
     
       self.output_folder_name = (
           str(h.tstop)+
@@ -454,7 +453,7 @@ class CellModel:
       i_AMPA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
       # i_bySeg = [[0] * (numTstep+1)] * len(self.segments)
     
-      for synapse in self.synapses_list:
+      for synapse in self.synapses:
           try:
               i_NMDA = np.array(synapse.rec_vec.vec_list[1])
               i_AMPA = np.array(synapse.rec_vec.vec_list[0])
