@@ -5,6 +5,7 @@ from typing import Union, Tuple, List, Optional, Any, TYPE_CHECKING
 from neuron import h
 from Modules.recorder import Recorder
 import os
+import h5py
 
 # Typing
 from typing import TypeVar
