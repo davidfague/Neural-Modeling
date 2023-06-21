@@ -64,13 +64,13 @@ class SynapseGenerator:
 			for _ in range(number_of_synapses):
 				segment = random.choices(segments, probs)[0]
 				new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax(size = 1), record = record, syn_params = syn_params)
-				self.random_generator(syn_mod, new_syn)
+				self.random_generator(syn_mod, new_syn.synapse_neuron_obj)
 				synapses.append(new_syn)
 		else: # gmax is float
 			for _ in range(number_of_synapses):
 				segment = random.choices(segments, probs)[0]
 				new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record, syn_params = syn_params)
-				self.random_generator(syn_mod, new_syn)
+				self.random_generator(syn_mod, new_syn.synapse_neuron_obj)
 				synapses.append(new_syn)
 
 
