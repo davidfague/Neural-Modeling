@@ -7,6 +7,7 @@ class SynapseGenerator:
 
 		# List of lists of synapses that were generated using this class
 		self.synapses = []
+		self.randomgenerators = []
 
 	#TODO: check typing
 	def add_synapses(self, segments: list, gmax: object, syn_mod: str, density: float = None, 
@@ -61,18 +62,24 @@ class SynapseGenerator:
 		if callable(gmax): # gmax is distribution
 			for _ in range(number_of_synapses):
 				segment = random.choices(segments, probs)[0]
-				synapses.append(Synapse(segment, syn_mod = syn_mod, gmax = gmax(size = 1), record = record, syn_params = syn_params))
+				new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax(size = 1), record = record, syn_params = syn_params)
+				self.random_generator(syn_mod, new_syn)
+				synapses.append(new_syn)
 		else: # gmax is float
 			for _ in range(number_of_synapses):
 				segment = random.choices(segments, probs)[0]
-				synapses.append(Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record, syn_params = syn_params))
-							 
+				new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record, syn_params = syn_params)
+				self.random_generator(syn_mod, new_syn)
+				synapses.append(new_syn)
+
+
+					 
 		self.synapses.append(synapses)
 		return synapses	
 	
 	#TODO: add docstring
 	def add_synapses_to_cell(self, cell, segments: list, gmax: object, syn_mod: str, density: float = None, 
-					 number_of_synapses: int = None, probs: list = None, record: bool = False) -> None:
+					 number_of_synapses: int = None, probs: list = None, record: bool = False, syn_params: dict = None) -> None:
 		'''
 		Add synapses to cell after cell python object has already been initialized.
 
@@ -87,6 +94,18 @@ class SynapseGenerator:
 
 		'''
 		#TODO:
-		synapses = self.add_synapses(segments = segments, syn_mod = syn_mod, density = density, number_of_synapses = number_of_synapses, probs = probs, record = record, )
+		synapses = self.add_synapses(segments = segments, syn_mod = syn_mod, density = density, number_of_synapses = number_of_synapses, probs = probs, record = record, syn_params=syn_params)
 		for syn in synapses:
 			cell.synapses.append(syn)
+			
+		
+	def random_generator(self, syn_mod, synapse):				 
+		if syn_mod in ['pyr2pyr', 'int2pyr']:
+			#Assigns random generator of release probability.
+			r = h.Random()
+			r.MCellRan4()
+			r.uniform(0,1)
+			synapse.setRandObjRef(r)
+			
+			#A list of random generators is kept so that they are not automatically garbaged.
+			self.randomgenerators.append(r)
