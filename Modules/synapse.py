@@ -1,16 +1,15 @@
 import numpy as np
 from neuron import h
+from neuron import nrn
 
-#TODO: update syn_params
 class CurrentInjection:
     
-    #TODO: fix typing
-    def __init__(self, segment, pulse: bool = True, pulse_params: dict = None, 
+    def __init__(self, segment: nrn.Segment, pulse: bool = True, pulse_params: dict = None, 
                  current: np.ndarray = None, dt: np.ndarray = None, record: bool = False):
         """
         Parameters:
         ----------
-        segment: 
+        segment: nrn.Segment
             Target segment.
 
         pulse: bool
@@ -18,7 +17,7 @@ class CurrentInjection:
             If False, use waveform resources in vector 'current' as injection
 
         current: np.ndarray
-            ...
+            ..
 
         dt: np.ndarray
             Array of time steps.
@@ -112,17 +111,17 @@ class Synapse:
     #PRAGMA MARK: Synapse Parameter Setup
 
     def set_params_based_on_synapse_mod(self, syn_mod: str) -> None:
-        if syn_mod == 'AlphaSynapse1':
+        if syn_mod == 'AlphaSynapse1': # i
             # Reversal potential (mV); Synapse time constant (ms)
             self.syn_params = {'e': 0., 'tau': 2.0}
             self.gmax_var = 'gmax'
-        elif syn_mod == 'Exp2Syn':
+        elif syn_mod == 'Exp2Syn': # i
             self.syn_params = {'e': 0., 'tau1': 1.0, 'tau2': 3.0}
             self.gmax_var = '_nc_weight'
-        elif syn_mod in ['pyr2pyr', 'int2pyr']:
+        elif syn_mod in ['pyr2pyr', 'int2pyr']: # ampanmda, gaba
             self.syn_params = {}
             self.gmax_var = 'initW'
-        elif any(ext in syn_mod for ext in ['AMPA_NMDA', 'GABA_AB']):
+        elif any(ext in syn_mod for ext in ['AMPA_NMDA', 'GABA_AB']): # ampanmda, gaba
             self.syn_params = {}
             self.gmax_var = 'initW'
         else:
@@ -150,7 +149,6 @@ class Synapse:
         else:
             setattr(self.synapse_neuron_obj, self.gmax_var, self.gmax)
     
-    #TODO: rationalize try-except
     def setup_recorder(self):
       size = [round(h.tstop / h.dt) + 1]
       try:
