@@ -10,7 +10,7 @@ class SynapseGenerator:
 
 	#TODO: check typing
 	def add_synapses(self, segments: list, gmax: object, syn_mod: str, density: float = None, 
-					 number_of_synapses: int = None, probs: list = None, record: bool = False) -> None:
+					 number_of_synapses: int = None, probs: list = None, record: bool = False, syn_params: dict = None) -> None:
 		'''
 		Creates a list of synapses by specifying density or number of synapses.
 
@@ -37,6 +37,9 @@ class SynapseGenerator:
 
 		record: bool = False
 		  Whether or not to record synapse currents.
+
+    		syn_params: dict = None
+		  dictionary of key: synapse attributes, and values: attribute values
 		'''
 		synapses = []
 	  
@@ -58,11 +61,11 @@ class SynapseGenerator:
 		if callable(gmax): # gmax is distribution
 			for _ in range(number_of_synapses):
 				segment = random.choices(segments, probs)[0]
-				synapses.append(Synapse(segment, syn_mod = syn_mod, gmax = gmax(size = 1), record = record))
+				synapses.append(Synapse(segment, syn_mod = syn_mod, gmax = gmax(size = 1), record = record, syn_params = syn_params))
 		else: # gmax is float
 			for _ in range(number_of_synapses):
 				segment = random.choices(segments, probs)[0]
-				synapses.append(Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record))
+				synapses.append(Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record, syn_params = syn_params))
 							 
 		self.synapses.append(synapses)
 		return synapses	
