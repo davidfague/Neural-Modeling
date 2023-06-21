@@ -230,6 +230,13 @@ class CellModel:
                       setattr(getattr(seg, channel), conductance, 0)
                   # print(channel, sec) # empty sections
 
+    def write_seg_info_to_csv(self):
+      with open(self.output_folder_name+'/seg_info.csv', mode='w') as file:
+          writer = csv.DictWriter(file, fieldnames=self.seg_info[0].keys())
+          writer.writeheader()
+          for row in self.seg_info:
+              writer.writerow(row)
+    
     def __get_segment_info__(self):
           self.seg_info = []
           k = 0
@@ -264,6 +271,7 @@ class CellModel:
                   j += 1
               k += 1
           return self.__get_parent_segment_ids()
+        
     def __get_parent_segment_ids(self):
           for seg in self.seg_info:
               seg['parent_seg_id'] = None
