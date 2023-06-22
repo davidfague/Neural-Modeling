@@ -46,9 +46,10 @@ def generate_functional_groups(all_segments: list, all_segments_centers: list, a
 
 	rnd = np.random.RandomState(10)
 
+	center_segs=rnd.choice(all_segments, p = all_len_per_segment / sum(all_len_per_segment), replace=False, size = number_of_groups)
 	for group_id in range(number_of_groups):
 		# Create a functional group
-		center_seg = rnd.choice(all_segments, p = all_len_per_segment / sum(all_len_per_segment), replace=False)
+		center_seg = center_segs[group_id]
 		func_grp = FunctionalGroup(center_seg = center_seg, segments = all_segments, segment_centers = all_segments_centers, radius = functional_group_span, 
 			     				   name = 'exc_' + str(group_id))
 		functional_groups.append(func_grp)
