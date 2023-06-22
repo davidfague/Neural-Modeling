@@ -2,6 +2,7 @@ import numpy as np
 from scipy.signal import lfilter
 from neuron import h
 import warnings
+from Modules.cell_model import CellModel
 
 def minmax(x):
 	return (x - np.min(x)) / (np.max(x) - np.min(x))
@@ -41,10 +42,12 @@ class SpikeGenerator:
 
 		origin: str
 			..., one of ['same_presynaptic_cell', 'same_presynaptic_region']
+
+		returns: temporary lists for this go around. Mainly for appending objects to cell
 		'''
 	
 		spike_trains = []
-		netcons_list = []
+		netcons_list = [] # returned temporary list for this go around
 
 		#TODO: check the order of arguments in each function
 		if origin == "same_presynaptic_cell": # same fr profile # same spike train # same mean fr
@@ -56,7 +59,9 @@ class SpikeGenerator:
 													  fr_time_shift = fr_time_shift)
 			spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
 			for synapse in synapses:
-				self.set_spike_train(synapse, spikes)
+				spike_trains.append(spikes)
+				netcon = self.set_spike_train(synapse, spikes)
+				netcons_list.append(netcon)
 		  
 		elif origin == "same_presynaptic_region": # same fr profile # unique spike train # unique mean fr
 			fr_profile = self.get_firing_rate_profile(method, t = t,
@@ -66,7 +71,9 @@ class SpikeGenerator:
 			for synapse in synapses:
 				mean_fr = self.get_mean_fr(mean_firing_rate)
 				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
-				self.set_spike_train(synapse, spikes)
+				spike_trains.append(spikes)
+				netcon = self.set_spike_train(synapse, spikes)
+				netcons_list.append(netcon)
 			
 		else: # unique fr profile # unique spike train # unqiue mean fr
 			for synapse in synapses:
@@ -76,9 +83,11 @@ class SpikeGenerator:
 														  fr_time_shift = fr_time_shift)
 				mean_fr = self.get_mean_fr(mean_firing_rate)
 				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
-				self.set_spike_train(synapse, spikes)
+				netcon = self.set_spike_train(synapse, spikes)
+				spike_trains.append(spikes)
+				netcons_list.append(netcon)
 			
-	
+		return netcons_list, spike_trains
 	#TODO: check definition of t
 	#TODO: add docstring
 	def get_firing_rate_profile(self, t, method: str, 
@@ -291,3 +300,46 @@ class SpikeGenerator:
 		if netcons:
 			for netcon in netcons:
 				netcon.active(False)
+	def generate_inputs_to_cell(self, cell: CellModel, synapses: list, t: np.ndarray, mean_firing_rate: object, method: str, 
+				 			origin: str, 
+						  	rhythmicity: bool = False, 
+							rhythmic_mod = None, rhythmic_f = None,
+						  	spike_trains_to_delay = None, fr_time_shift = None, spike_train_dt: float = 1e-3) -> None:
+		'''
+		Generate spike trains on an existing cell object
+
+		Parameters:
+		----------
+  		cell: CellModel
+			Cell to add to.
+   
+		synapses: list
+			List of synapse objects.
+
+		t: np.ndarray
+			Time aray.
+
+		mean_firing_rate: float or distribution
+			Mean firing rate of the spike train.
+		
+		method: str
+			How to vary the profile over time. One of ['1f_noise', 'delay'].
+
+		mean_firing_rate:  of mean firing rate of spike train
+		spike_trains_to_delay: list of time stamps where spikes occured for delay modulation
+
+		origin: str
+			..., one of ['same_presynaptic_cell', 'same_presynaptic_region']
+
+		returns: temporary lists for this go around. Mainly for appending objects to cell
+		'''
+		
+		netcons, spike_trains = generate_inputs(self, synapses=synapses, t=t mean_firing_rate=mean_firing_rate, method=method, 
+			 			origin=origin, 
+					  	rhythmicity=rhythmicity, 
+						rhythmic_mod = rhythmic_mod, rhythmic_f = rhythmic_f,
+					  	spike_trains_to_delay = spike_trains_to_delay, fr_time_shift = fr_time_shift, spike_train_dt = spike_train_dt)
+		for netcon in netcons:
+			cell.netcons.append(netcon)
+		for spike_train in spike_trains:
+			cell.spike_trains.append(spike_trains)
