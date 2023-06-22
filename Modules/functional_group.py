@@ -111,7 +111,7 @@ class FunctionalGroup:
 	      # get segments within this cluster
 	      self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius)
 	      # get segment lengths
-	      for segment in self.segments:
+	      for seg in self.segments:
 	        self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
 	      self.len_per_segment = np.array(self.len_per_segment)
 
@@ -146,6 +146,6 @@ class Cluster:
 	      # get segments within this cluster
 	      self.segments = make_seg_sphere(center = center, segments = segments, segments_centers = segment_centers, radius = radius)
 	      # get segment lengths
-	      for segment in self.segments:
+	      for seg in self.segments:
 	        self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
 	      self.len_per_segment = np.array(self.len_per_segment)
