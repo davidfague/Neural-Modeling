@@ -21,7 +21,7 @@ def make_seg_sphere(center: list, segments: list, segment_centers: list, radius:
     segments: list
         list of all segments to consider
     segment_centers: list
-        list of 3D coordinates according to segments list
+        list of 3D coordinates corresponding to segments list
     radius: float
         radius of sphere for which to return possible_segs
 
@@ -31,7 +31,7 @@ def make_seg_sphere(center: list, segments: list, segment_centers: list, radius:
     '''
     possible_segs=[]
     for i,seg in enumerate(segments):
-      dist=calc_dist(center, coord3d_centers[i])
+      dist=calc_dist(center, segment_centers[i])
       if dist <= radius:
         possible_segs.append(seg)
     return possible_segs
