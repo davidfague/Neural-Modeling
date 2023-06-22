@@ -15,6 +15,7 @@ def get_segments_and_len_per_segment(cell):
             all_SA_per_segment.append(np.pi*seg.diam*(seg.sec.L/seg.sec.nseg))
     
     all_len_per_segment = np.array(all_len_per_segment)
+    all_SA_per_segment = np.array(all_SA_per_segment)
 
     return all_segments, all_len_per_segment, all_SA_per_segment
 
