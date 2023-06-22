@@ -148,10 +148,14 @@ class Synapse:
         
         if syn_mod in ['AlphaSynapse1', 'Exp2Syn']:
             self.current_type = "i"
-        elif syn_mod in ['pyr2pyr', 'AMPA_NMDA']:
+        elif syn_mod == 'pyr2pyr':
             self.current_type = "iampa_inmda"
-        elif syn_mod in ['int2pyr', 'GABA_AB']:
+        elif syn_mod == 'AMPA_NMDA'
+            self.current_type = 'i_AMPA_i_NMDA'
+        elif syn_mod =='int2pyr':
             self.current_type = 'igaba'
+        elif syn_mod == 'GABA_AB':
+            self.current_type = 'i_GABAA_i_GABAB'
         else:
             raise ValueError
         
@@ -190,11 +194,26 @@ class Synapse:
         elif self.current_type == "igaba":
             self.rec_vec.append(h.Vector(*size).record(self.synapse_neuron_obj._ref_igaba))
 
+        elif self.current_type == "i_AMPA_i_NMDA":
+            vec_inmda = h.Vector(*size).record(self.synapse_neuron_obj._ref_i_NMDA)
+            vec_iampa = h.Vector(*size).record(self.synapse_neuron_obj._ref_i_AMPA)
+            self.rec_vec.append(vec_inmda)
+            self.rec_vec.append(vec_iampa)
+            
+        elif self.current_type == "i_GABAA_i_GABAB":
+            vec_inmda = h.Vector(*size).record(self.synapse_neuron_obj._ref_i_GABAA)
+            vec_iampa = h.Vector(*size).record(self.synapse_neuron_obj._ref_i_GABAB)
+            self.rec_vec.append(vec_inmda)
+            self.rec_vec.append(vec_iampa)
+        
         elif self.current_type == "iampa_inmda":
             vec_inmda = h.Vector(*size).record(self.synapse_neuron_obj._ref_inmda)
             vec_iampa = h.Vector(*size).record(self.synapse_neuron_obj._ref_iampa)
             self.rec_vec.append(vec_inmda)
             self.rec_vec.append(vec_iampa)
+
+        else:
+            raise(ValueError('current_type not defined')
 
     #PRAGMA MARK: Utility
 
