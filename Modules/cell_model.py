@@ -18,7 +18,7 @@ NeuronAnyNumber = TypeVar("NeuronAnyNumber")
 
 class CellModel:
 
-    def __init__(self, hoc_model: NeuronHocTemplate, synapses: list, netcons: list, spike_trains: list, spike_threshold: Optional[float] = None) -> None:
+    def __init__(self, hoc_model: NeuronHocTemplate, synapses: list = [], netcons: list = [], spike_trains: list = [], spike_threshold: Optional[float] = None) -> None:
 
         # Parse the hoc model
         self.all, self.soma, self.apic, self.dend, self.axon = None, None, None, None, None
