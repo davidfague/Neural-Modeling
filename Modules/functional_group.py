@@ -105,15 +105,16 @@ class FunctionalGroup:
 	      self.clusters = []
 	      self.spike_trains = []
 	      self.netcons_list = []
-	
-	      # get 3D coordinates of center_seg
-	      center = segment_centers[segments.index(center_seg)]
-	      # get segments within this cluster
-	      self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius)
-	      # get segment lengths
-	      for seg in self.segments:
-	        self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
-	      self.len_per_segment = np.array(self.len_per_segment)
+
+	      if center_seg is not None:
+		      # get 3D coordinates of center_seg
+		      center = segment_centers[segments.index(center_seg)]
+		      # get segments within this cluster
+		      self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius)
+		      # get segment lengths
+		      for seg in self.segments:
+		        self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
+		      self.len_per_segment = np.array(self.len_per_segment)
 
 class Cluster:
 
