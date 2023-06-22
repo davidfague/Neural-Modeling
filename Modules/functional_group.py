@@ -1,9 +1,17 @@
 from neuron import h
 import numpy as np
+from cell_model import CellModel
+from spike_generator import SpikeGenerator
+from synapse_generator import SynapseGenerator
 
-def generate_functional_groups(cell, all_segments, all_len_per_segment, number_of_groups, cells_per_group, synapses_per_cluster,
-							   functional_group_span, cluster_span, gmax_dist, mean_fr_dist, spike_generator, synapse_generator,
-							   t, record):
+# TODO: update to use spherical radius around center_seg instead of path length.
+
+def generate_functional_groups(cell: CellModel, all_segments: list, all_len_per_segment: list,
+			       number_of_groups: int, cells_per_group: int, synapses_per_cluster: int,
+			       functional_group_span: float, cluster_span: float, 
+			       gmax_dist, mean_fr_dist, 
+			       spike_generator: SpikeGenerator, synapse_generator: SynapseGenerator,
+				t, record: bool = False):
 	functional_groups = []
 
 	rnd = np.random.RandomState(10)
