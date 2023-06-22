@@ -3,7 +3,7 @@ import numpy as np
 
 def generate_functional_groups(cell, all_segments, all_len_per_segment, number_of_groups, cells_per_group, synapses_per_cluster,
 							   functional_group_span, cluster_span, gmax_dist, mean_fr_dist, spike_generator, synapse_generator,
-							   t):
+							   t, record):
 	functional_groups = []
 
 	rnd = np.random.RandomState(10)
@@ -28,7 +28,7 @@ def generate_functional_groups(cell, all_segments, all_len_per_segment, number_o
 			# Add synapses to to the cluster
 			cluster.synapses = synapse_generator.add_synapses(segments = cluster.segments, probs = cluster.len_per_segment,
 						     								  gmax = gmax_dist, syn_mod = 'AMPA_NMDA',
-															  number_of_synapses = synapses_per_cluster)
+															  number_of_synapses = synapses_per_cluster, record = record)
 
 			# Generate spikes common to each synapse within synaptic cluster
 			mean_fr = spike_generator.get_mean_fr(mean_fr_dist)
