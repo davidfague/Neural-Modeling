@@ -92,30 +92,49 @@ class CurrentInjection:
         return self.neuron_iclamp_object.get_segment()
 
 class Synapse:
-    '''
-    class for adding synapses
-    '''
-    def __init__(self, segment, syn_mod: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False, syn_params: dict = None):
+
+    def __init__(self, segment: nrn.Segment, syn_mod: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False, 
+                 syn_params: dict = None):
+        '''
+        Parameters:
+        ----------
+        segment: nrn.Segment
+            Segment to add synapse to.
+
+        syn_mod: str = "Exp2Syn"
+            Type of synapse.
+
+        gmax: float = 0.01
+            Maximum conductance.
+
+        record: bool = False
+            Whether to setup a recorder.
+
+        syn_params: dict = None
+            Additional parameter for the synapse.
+
+        '''
         self.segment = segment
         self.syn_type = syn_mod
         self.gmax = gmax
         self.gmax_var = None # Variable name of maximum conductance (uS)
         self.syn_params = syn_params
         self.synapse_neuron_obj = None
-        self.rec_vec = None  # vector for recording
+        self.rec_vec = []  # List of vectors for recording
 
         self.set_params_based_on_synapse_mod(syn_mod)
         self.setup(record)
-        self.ncs = [] #TODO: Check if redundant
+        self.ncs = []
 
     #PRAGMA MARK: Synapse Parameter Setup
 
     def set_params_based_on_synapse_mod(self, syn_mod: str) -> None:
-        if syn_mod == 'AlphaSynapse1': # i
+        if syn_mod == 'AlphaSynapse1':
             # Reversal potential (mV); Synapse time constant (ms)
-            #self.syn_params = {'e': 0., 'tau': 2.0}
+            #TODO: old? # self.syn_params = {'e': 0., 'tau': 2.0}
+            self.syn_params = {}
             self.gmax_var = 'gmax'
-        elif syn_mod == 'Exp2Syn': # i
+        elif syn_mod == 'Exp2Syn':
             self.syn_params = {'e': 0., 'tau1': 1.0, 'tau2': 3.0}
             self.gmax_var = '_nc_weight'
         elif syn_mod in ['pyr2pyr', 'int2pyr']: # ampanmda, gaba
@@ -127,6 +146,15 @@ class Synapse:
         else:
             raise ValueError("Synpase type not defined.")
         
+        if syn_mod in ['AlphaSynapse1', 'Exp2Syn']:
+            self.current_type = "i"
+        elif syn_mod in ['pyr2pyr', 'AMPA_NMDA']:
+            self.current_type = "iampa_inmda"
+        elif syn_mod in ['int2pyr', 'GABA_AB']:
+            self.current_type = 'igaba'
+        else:
+            raise ValueError
+        
         self.synapse_neuron_obj = getattr(h, self.syn_type)(self.segment)
 
     #PRAGMA MARK: Synapse Value Setup
@@ -136,7 +164,7 @@ class Synapse:
         if record:
             self.setup_recorder()
 
-    def setup_synapse(self):
+    def setup_synapse(self) -> None:
         if self.syn_params is not None:
             for key, value in self.syn_params.items():
                 if callable(value):
@@ -153,40 +181,25 @@ class Synapse:
         else:
             setattr(self.synapse_neuron_obj, self.gmax_var, self.gmax)
     
-    def setup_recorder(self):
-      size = [round(h.tstop / h.dt) + 1]
-      try:
-          self.rec_vec = h.Vector(*size).record(self.synapse_neuron_obj._ref_igaba)
-          self.current_type = "igaba"
-      except:
-          try:
-            self.rec_vec = MultiSynCurrent() #TODO: not an h.Vector!
+    def setup_recorder(self) -> None:
+        size = [round(h.tstop / h.dt) + 1]
+        
+        if self.current_type == "i":
+            self.rec_vec.append(h.Vector(*size).record(self.synapse_neuron_obj._ref_i))
+            
+        elif self.current_type == "igaba":
+            self.rec_vec.append(h.Vector(*size).record(self.synapse_neuron_obj._ref_igaba))
+
+        elif self.current_type == "iampa_inmda":
             vec_inmda = h.Vector(*size).record(self.synapse_neuron_obj._ref_inmda)
             vec_iampa = h.Vector(*size).record(self.synapse_neuron_obj._ref_iampa)
-            self.rec_vec.add_vec(vec_inmda)
-            self.rec_vec.add_vec(vec_iampa)
-            self.current_type = "iampa_inmda"
-          except:
-            self.rec_vec = h.Vector(*size).record(self.synapse_neuron_obj._ref_i)
-            self.current_type = "i"
+            self.rec_vec.append(vec_inmda)
+            self.rec_vec.append(vec_iampa)
 
-    # PRAGMA MARK: Utility
+    #PRAGMA MARK: Utility
+
     def get_section(self) -> h.Section:
         return self.synapse_neuron_obj.get_segment().sec
 
-    def get_segment(self):
+    def get_segment(self) -> nrn.Segment:
         return self.synapse_neuron_obj.get_segment()
-
-#TODO: Rationalize existence
-class MultiSynCurrent:
-    '''
-    Class for storing inmda and iampa
-    '''
-    def __init__(self):
-        self.vec_list = []
-
-    def add_vec(self, vec):
-        self.vec_list.append(vec)
-
-    def as_numpy(self):
-        return np.sum(np.array([vec.as_numpy() for vec in self.vec_list]), axis=0)

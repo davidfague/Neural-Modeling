@@ -15,7 +15,7 @@ class SpikeGenerator:
 	
 	#TODO: add docstring, check typing
 	def generate_inputs(self, synapses: list, t: np.ndarray, mean_firing_rate: object, method: str, 
-		     			origin: str, 
+			 			origin: str, 
 					  	rhythmicity: bool = False, 
 						rhythmic_mod = None, rhythmic_f = None,
 					  	spike_trains_to_delay = None, fr_time_shift = None, spike_train_dt: float = 1e-3) -> None:
@@ -51,8 +51,8 @@ class SpikeGenerator:
 			# Ensure the firing rate is a float
 			mean_fr = self.get_mean_fr(mean_firing_rate)
 			fr_profile = self.get_firing_rate_profile(method, t = t,
-					     							  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
-												      rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
+						 							  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
+													  rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
 													  fr_time_shift = fr_time_shift)
 			spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
 			for synapse in synapses:
@@ -60,8 +60,8 @@ class SpikeGenerator:
 		  
 		elif origin == "same_presynaptic_region": # same fr profile # unique spike train # unique mean fr
 			fr_profile = self.get_firing_rate_profile(method, t = t,
-					     							  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
-												      rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
+						 							  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
+													  rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
 													  fr_time_shift = fr_time_shift)
 			for synapse in synapses:
 				mean_fr = self.get_mean_fr(mean_firing_rate)
@@ -90,7 +90,8 @@ class SpikeGenerator:
 		if method == '1f_noise':
 			fr_profile = self.noise_modulation(num_obs = len(t))
 		elif method == 'delay':
-			fr_profile = self.delay_modulation(spike_trains_to_delay=spike_trains_to_delay, fr_time_shift=fr_time_shift, spike_train_t=t, spike_train_dt=spike_train_dt)
+			fr_profile = self.delay_modulation(spike_trains_to_delay = spike_trains_to_delay, fr_time_shift = fr_time_shift, 
+				      						  spike_train_t = t, spike_train_dt = spike_train_dt)
 		else:
 			raise NotImplementedError
 		
@@ -148,7 +149,7 @@ class SpikeGenerator:
 	
 	#TODO: fix typing, potentially won't work with spike_trains_to_delay.shape[0] != 1
 	def delay_modulation(self, spike_trains_to_delay, fr_time_shift: int, spike_train_t: int, 
-		      			 spike_train_dt: float = 1e-3, bounds = (0, 2)) -> np.ndarray:
+			  			 spike_train_dt: float = 1e-3, bounds = (0, 2)) -> np.ndarray:
 		'''
 		Compute a firing rate profile from a target spike train and shift it to create a new profile.
 
@@ -176,14 +177,13 @@ class SpikeGenerator:
 
 		'''
 		if fr_time_shift is None:
-			raise(TypeError('fr_time_shift must be integar not None'))
-		times_where_spikes=[] 
-		for spike_train in spike_trains_to_delay:
-		  if len(spike_train)>0: #equivalent to if there is a spike
-		    for time_where_spike in spike_train:
-		      times_where_spikes.append(time_where_spike)
-			    
-				# Compute the firing rate profile from the histogram
+			raise TypeError('fr_time_shift must be an integer.')
+		
+		# Flatten all the spike trains, because otherwise np.histogram doesn't work
+		# Ignore spike trains without spikes
+		times_where_spikes = [sp_time for sp_train in spike_trains_to_delay for sp_time in sp_train if len(sp_train) > 0]
+				
+		# Compute the firing rate profile from the histogram
 		hist, _ = np.histogram(times_where_spikes, bins = spike_train_t)
 
 		#TODO: check if redundant, and can just use hist
@@ -240,35 +240,35 @@ class SpikeGenerator:
 		spike_times = np.where(sample_values > 0)[0]
 		return spike_times
 	
-	def set_spike_train(self, synapse, spikes):
+	def set_spike_train(self, synapse, spikes) -> h.NetCon:
 		self.spike_trains.append(spikes)
 		stim = self.set_vecstim(spikes)
 		nc = self.set_netcon(synapse, stim)
 		return nc
 	
-	def set_vecstim(self, stim_spikes):
+	def set_vecstim(self, stim_spikes) -> h.Vector:
 		vec = h.Vector(stim_spikes)
 		stim = h.VecStim()
 		stim.play(vec)
 		self.vecstims.append(stim)
 		return stim
 	
-	#TODO: check relation to synapse
-	def set_netcon(self, synapse, stim):
+	def set_netcon(self, synapse, stim) -> h.NetCon:
 		nc = h.NetCon(stim, synapse.synapse_neuron_obj, 1, 0, 1)
 		self.netcons.append(nc)
 		synapse.ncs.append(nc)
 		return nc
 	
-	#TODO: add rationale for exp
 	def get_mean_fr(self, mean_firing_rate: object) -> float:
 		if callable(mean_firing_rate): # mean_firing_rate is a distribution
 			 # Sample from the distribution
 			mean_fr = mean_firing_rate(size = 1)
 		else: # mean_firing_rate is a float
 			mean_fr = mean_firing_rate
+
 		if mean_fr <= 0:
 			raise ValueError("mean_fr <= 0.")
+		
 		return mean_fr
 
 	@staticmethod
