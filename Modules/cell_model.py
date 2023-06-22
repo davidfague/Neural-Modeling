@@ -465,8 +465,8 @@ class CellModel:
     
       for synapse in self.synapses: # record nmda and ampa synapse currents
           if ('nmda' in synapse.current_type) or ('NMDA' in synapse.current_type):
-              i_NMDA = np.array(synapse.rec_vec.vec_list[0])
-              i_AMPA = np.array(synapse.rec_vec.vec_list[1])
+              i_NMDA = np.array(synapse.rec_vec[0])
+              i_AMPA = np.array(synapse.rec_vec[1])
               seg = synapse.get_segment_id()
 
               i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
