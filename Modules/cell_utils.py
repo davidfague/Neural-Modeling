@@ -23,7 +23,7 @@ def calc_seg_coords(cell) -> dict:
     r = np.zeros(nseg_total)
 
     seg_idx = 0
-    for sec in self.all:
+    for sec in cell.all:
 
         seg_length = sec.L / sec.nseg
 
