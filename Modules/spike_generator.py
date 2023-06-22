@@ -334,7 +334,7 @@ class SpikeGenerator:
 		returns: temporary lists for this go around. Mainly for appending objects to cell
 		'''
 		
-		netcons, spike_trains = generate_inputs(self, synapses=synapses, t=t mean_firing_rate=mean_firing_rate, method=method, 
+		netcons, spike_trains = generate_inputs(self, synapses=synapses, t=t, mean_firing_rate=mean_firing_rate, method=method, 
 			 			origin=origin, 
 					  	rhythmicity=rhythmicity, 
 						rhythmic_mod = rhythmic_mod, rhythmic_f = rhythmic_f,
