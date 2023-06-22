@@ -365,27 +365,24 @@ class CellModel:
           for netcon in self.netcons:
               syn = netcon.syn()
               syn_type=syn.hname().split('[')[0]
-              if syn in self.synapses:
-                  syn_seg_id = self.seg_info.index(next((s for s in self.seg_info if s['seg'] == syn.get_segment()), None))
-                  seg_dict = self.seg_info[syn_seg_id]
-                  if syn in seg_dict['seg'].point_processes():
-                      NetCon_per_seg[syn_seg_id] += 1 # get synapses per segment
-                      if syn_type == 'pyr2pyr':
-                          exc_NetCon_per_seg[syn_seg_id] += 1
-                      elif syn_type == 'int2pyr':
-                          inh_NetCon_per_seg[syn_seg_id] += 1
-                      elif 'AMPA_NMDA' in syn_type:
-                          exc_NetCon_per_seg[syn_seg_id] += 1
-                      elif 'GABA_AB' in syn_type:
-                          inh_NetCon_per_seg[syn_seg_id] += 1
-                      elif syn.e > v_rest:
-                          exc_NetCon_per_seg[syn_seg_id] += 1
-                      else:
-                          inh_NetCon_per_seg[syn_seg_id] += 1
+              syn_seg_id = self.seg_info.index(next((s for s in self.seg_info if s['seg'] == syn.get_segment()), None))
+              seg_dict = self.seg_info[syn_seg_id]
+              if syn in seg_dict['seg'].point_processes():
+                  NetCon_per_seg[syn_seg_id] += 1 # get synapses per segment
+                  if syn_type == 'pyr2pyr':
+                      exc_NetCon_per_seg[syn_seg_id] += 1
+                  elif syn_type == 'int2pyr':
+                      inh_NetCon_per_seg[syn_seg_id] += 1
+                  elif 'AMPA_NMDA' in syn_type:
+                      exc_NetCon_per_seg[syn_seg_id] += 1
+                  elif 'GABA_AB' in syn_type:
+                      inh_NetCon_per_seg[syn_seg_id] += 1
+                  elif syn.e > v_rest:
+                      exc_NetCon_per_seg[syn_seg_id] += 1
                   else:
-                      print("Warning: synapse not in designated segment's point processes")
+                      inh_NetCon_per_seg[syn_seg_id] += 1
               else:
-                  print("Warning: potentially deleted synapse:","|NetCon obj:",netcon,"|Synapse obj:",syn,"the NetCon's synapse is not in synapses_list. Check corresponding original cell's NetCon for location, etc.")
+                  raise(ValueError("synapse not in designated segment's point processes"))
     
           for i, seg in enumerate(self.seg_info):
               seg['netcons_per_seg'] = {
