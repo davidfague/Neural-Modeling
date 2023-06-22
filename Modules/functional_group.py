@@ -109,7 +109,7 @@ class FunctionalGroup:
 	      # get 3D coordinates of center_seg
 	      center = segment_centers[segments.index(center_seg)]
 	      # get segments within this cluster
-	      self.segments = make_seg_sphere(center = center, segments = segments, segments_centers = segment_centers, radius = radius)
+	      self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius)
 	      # get segment lengths
 	      for segment in self.segments:
 	        self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
