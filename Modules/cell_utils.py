@@ -6,15 +6,17 @@ def get_segments_and_len_per_segment(cell):
 
     # List of segment lengths
     all_len_per_segment = []
+    all_SA_per_segment = []
 
     for sec in cell.all:
         for seg in sec:
             all_segments.append(seg)
             all_len_per_segment.append(seg.sec.L / seg.sec.nseg)
+            all_SA_per_segment.append(np.pi*seg.diam*(seg.sec.L/seg.sec.nseg))
     
     all_len_per_segment = np.array(all_len_per_segment)
 
-    return all_segments, all_len_per_segment
+    return all_segments, all_len_per_segment, all_SA_per_segment
 
 def calc_seg_coords(cell) -> dict:
 
