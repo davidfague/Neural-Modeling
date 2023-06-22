@@ -150,7 +150,7 @@ class Synapse:
             self.current_type = "i"
         elif syn_mod == 'pyr2pyr':
             self.current_type = "iampa_inmda"
-        elif syn_mod == 'AMPA_NMDA'
+        elif syn_mod == 'AMPA_NMDA':
             self.current_type = 'i_AMPA_i_NMDA'
         elif syn_mod =='int2pyr':
             self.current_type = 'igaba'
