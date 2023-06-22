@@ -83,7 +83,7 @@ def generate_functional_groups(all_segments: list, all_segments_centers: list, a
 
 class FunctionalGroup:
   
-	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 100, name: str):
+	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 100, name: str = None):
 	      '''
 	      Parameters:
 	      ----------
