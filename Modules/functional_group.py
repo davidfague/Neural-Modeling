@@ -1,4 +1,4 @@
-from neuron import h
+from neuron import h, nrn
 import numpy as np
 from Modules.cell_model import CellModel
 from Modules.spike_generator import SpikeGenerator
