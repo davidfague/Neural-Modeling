@@ -53,15 +53,15 @@ def generate_functional_groups(cell: CellModel, all_segments: list, all_len_per_
 
 class FunctionalGroup:
   
-	def __init__(self, cell: object, center_seg: float, span: float, name: str):
+	def __init__(self, cell: object, center_seg: nrn.Segment, span: float, name: str):
 		'''
 		Parameters:
 		----------
 		cell: HocObject
 			Cell to process.
 
-		center_seg: float
-			Center of the segment.
+		center_seg: nrn.Segment
+			Segment at the center of the functional group
 
 		span: float
 			Length of the functional group.
@@ -87,15 +87,15 @@ class FunctionalGroup:
 
 class Cluster:
   
-	def __init__(self, cell, center_seg, span):
+	def __init__(self, cell, center_seg: nrn.Segment, span):
 		'''
 		Parameters:
 		----------
 		cell: HocObject
 			Cell to process.
 
-		center_seg: float
-			Center of the segment.
+		center_seg: nrn.Segment
+			Segment at the center of the Cluster.
 
 		span: float
 			Length of the functional group.
