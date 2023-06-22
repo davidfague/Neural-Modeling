@@ -1,6 +1,6 @@
 from neuron import h
 import numpy as np
-from cell_model import CellModel
+from Modules.cell_model import CellModel
 from spike_generator import SpikeGenerator
 from synapse_generator import SynapseGenerator
 
