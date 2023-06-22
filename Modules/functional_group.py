@@ -105,6 +105,7 @@ class FunctionalGroup:
 	      self.clusters = []
 	      self.spike_trains = []
 	      self.netcons_list = []
+	      self.name = name
 
 	      if center_seg is not None:
 		      # get 3D coordinates of center_seg
