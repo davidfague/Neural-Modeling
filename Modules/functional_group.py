@@ -1,8 +1,8 @@
 from neuron import h
 import numpy as np
 from Modules.cell_model import CellModel
-from spike_generator import SpikeGenerator
-from synapse_generator import SynapseGenerator
+from Modules.spike_generator import SpikeGenerator
+from Modules.synapse_generator import SynapseGenerator
 
 # TODO: update to use spherical radius around center_seg instead of path length.
 
