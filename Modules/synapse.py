@@ -213,7 +213,7 @@ class Synapse:
             self.rec_vec.append(vec_iampa)
 
         else:
-            raise(ValueError('current_type not defined')
+            raise(ValueError('current_type not defined'))
 
     #PRAGMA MARK: Utility
 
