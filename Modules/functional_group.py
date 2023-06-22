@@ -1,12 +1,42 @@
 from neuron import h, nrn
 import numpy as np
-from Modules.cell_model import CellModel
 from Modules.spike_generator import SpikeGenerator
 from Modules.synapse_generator import SynapseGenerator
 
 # TODO: update to use spherical radius around center_seg instead of path length.
 
-def generate_functional_groups(cell: CellModel, all_segments: list, all_len_per_segment: list,
+def calc_dist(p1, p2):
+	'''
+ 	calculates the distance between two 3D coordinates
+  	p1, p2 : list
+   		list of x, y, z 3D coordinates
+ 	'''
+	return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
+
+def make_seg_sphere(center: list, segments: list, segment_centers: list, radius: float = 50):
+    '''
+    returns a list of segments within spherical radius of the center
+    center: list
+        3D coordinates of the center of the sphere (usually 3D coordinates of a segment)
+    segments: list
+        list of all segments to consider
+    segment_centers: list
+        list of 3D coordinates according to segments list
+    radius: float
+        radius of sphere for which to return possible_segs
+
+    returns:
+        possible_segs: list
+            segments within radius of the center segment
+    '''
+    possible_segs=[]
+    for i,seg in enumerate(segments):
+      dist=calc_dist(center, coord3d_centers[i])
+      if dist <= radius:
+        possible_segs.append(seg)
+    return possible_segs
+
+def generate_functional_groups(all_segments: list, all_segments_centers: list, all_len_per_segment: list,
 			       number_of_groups: int, cells_per_group: int, synapses_per_cluster: int,
 			       functional_group_span: float, cluster_span: float, 
 			       gmax_dist, mean_fr_dist, 
@@ -18,8 +48,8 @@ def generate_functional_groups(cell: CellModel, all_segments: list, all_len_per_
 
 	for group_id in range(number_of_groups):
 		# Create a functional group
-		center_seg = rnd.choice(all_segments, p = all_len_per_segment / sum(all_len_per_segment))
-		func_grp = FunctionalGroup(cell = cell, center_seg = center_seg, span = functional_group_span, 
+		center_seg = rnd.choice(all_segments, p = all_len_per_segment / sum(all_len_per_segment), replace=False)
+		func_grp = FunctionalGroup(center_seg = center_seg, segments = all_segments, segment_centers = all_segments_centers, radius = functional_group_span, 
 			     				   name = 'exc_' + str(group_id))
 		functional_groups.append(func_grp)
 
@@ -31,7 +61,7 @@ def generate_functional_groups(cell: CellModel, all_segments: list, all_len_per_
 			cluster_seg = rnd.choice(func_grp.segments, p=func_grp.len_per_segment / sum(func_grp.len_per_segment))
 
 			# Generate a cluster
-			cluster = Cluster(cell, cluster_seg, cluster_span)
+			cluster = Cluster(center_seg = cluster_seg, segments = all_segments, segment_centers = all_segments_centers, radius = cluster_span)
 
 			# Add synapses to to the cluster
 			cluster.synapses = synapse_generator.add_synapses(segments = cluster.segments, probs = cluster.len_per_segment,
@@ -53,68 +83,69 @@ def generate_functional_groups(cell: CellModel, all_segments: list, all_len_per_
 
 class FunctionalGroup:
   
-	def __init__(self, cell: object, center_seg: nrn.Segment, span: float, name: str):
-		'''
-		Parameters:
-		----------
-		cell: HocObject
-			Cell to process.
-
-		center_seg: nrn.Segment
-			Segment at the center of the functional group
-
-		span: float
-			Length of the functional group.
-
-		name: str
-			Name of the functional group.
-		'''
-		self.name = name
-		self.center_seg = center_seg
-		self.segments = []
-		self.len_per_segment = []
-		self.synapses = []
-		self.clusters = []
-
-		if center_seg is not None:
-			for sec in cell.all:
-				for seg in sec:
-					if h.distance(center_seg, seg) <= (span / 2):
-						self.segments.append(seg)
-						self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
-			
-		self.len_per_segment = np.array(self.len_per_segment)
+	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 100, name: str):
+	      '''
+	      Parameters:
+	      ----------
+	      center_seg: nrn.Segment
+	          segment at the center of this FunctionalGroup
+	      segments: list
+	          list of all segments to consider
+	      segment_centers: list
+	          list of 3D coordinates according to segments list
+	      radius: float
+	          radius of sphere for which to return possible_segs
+	      name: str
+	        Name of the functional group.
+	      '''
+	      self.center_seg = center_seg
+	      self.segments = [] # list of segments within this FunctionalGroup
+	      self.len_per_segment = [] # list of lengths of segments within this FunctionalGroup
+	      self.synapses = [] # list of synapses in this cluster
+	      self.clusters = []
+	      self.spike_trains = []
+	      self.netcons_list = []
+	
+	      # get 3D coordinates of center_seg
+	      center = segment_centers[segments.index(center_seg)]
+	      # get segments within this cluster
+	      self.segments = make_seg_sphere(center = center, segments = segments, segments_centers = segment_centers, radius = radius)
+	      # get segment lengths
+	      for segment in self.segments:
+	        self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
+	      self.len_per_segment = np.array(self.len_per_segment)
 
 class Cluster:
-  
-	def __init__(self, cell, center_seg: nrn.Segment, span):
-		'''
-		Parameters:
-		----------
-		cell: HocObject
-			Cell to process.
 
-		center_seg: nrn.Segment
-			Segment at the center of the Cluster.
-
-		span: float
-			Length of the functional group.
-
-		functional_group: str
-			Name of the functional group.
-		'''
-		self.center_seg = center_seg
-		self.segments = []
-		self.len_per_segment = []
-		self.synapses = []
-		self.clusters = []
-		self.spike_trains = []
-		self.netcons_list = []
-
-		for sec in cell.all:
-			for seg in sec:
-				if h.distance(center_seg, seg) <= (span / 2):
-					self.segments.append(seg)
-					self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
-
-		self.len_per_segment = np.array(self.len_per_segment)
+	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 10, functional_group: str = None):
+	      '''
+	      Parameters:
+	      ----------
+	      center_seg: nrn.Segment
+	          segment at the center of this Cluster
+	      segments: list
+	          list of all segments to consider
+	      segment_centers: list
+	          list of 3D coordinates according to segments list
+	      radius: float
+	          radius of sphere for which to return possible_segs
+	
+	      functional_group: str
+	        Name of the functional group.
+	      '''
+	      self.center_seg = center_seg
+	      self.segments = [] # list of segments within this cluster
+	      self.len_per_segment = [] # list of lengths of segments within this cluster
+	      self.synapses = [] # list of synapses in this cluster
+	      self.clusters = []
+	      self.spike_trains = []
+	      self.netcons_list = []
+	
+	      # get 3D coordinates of center_seg
+	      center = segment_centers[segments.index(center_seg)]
+	      # get segments within this cluster
+	      self.segments = make_seg_sphere(center = center, segments = segments, segments_centers = segment_centers, radius = radius)
+	      # get segment lengths
+	      for segment in self.segments:
+	        self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
+	      self.len_per_segment = np.array(self.len_per_segment)
