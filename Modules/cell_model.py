@@ -465,18 +465,15 @@ class CellModel:
       i_AMPA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
       # i_bySeg = [[0] * (numTstep+1)] * len(self.segments)
     
-      for synapse in self.synapses:
-          try:
-              i_NMDA = np.array(synapse.rec_vec.vec_list[1])
-              i_AMPA = np.array(synapse.rec_vec.vec_list[0])
+      for synapse in self.synapses: # record nmda and ampa synapse currents
+          if ('nmda' in synapse.current_type) or ('NMDA' in synapse.current_type):
+              i_NMDA = np.array(synapse.rec_vec.vec_list[0])
+              i_AMPA = np.array(synapse.rec_vec.vec_list[1])
               seg = synapse.get_segment_id()
-    
-              try:
-                  i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
-                  i_AMPA_bySeg[seg] = i_AMPA_bySeg[seg] + i_AMPA
-              except:
-                  pass
-          except:
+
+              i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
+              i_AMPA_bySeg[seg] = i_AMPA_bySeg[seg] + i_AMPA
+          else:
               continue
     
       i_NMDA_df = pd.DataFrame(i_NMDA_bySeg) * 1000
