@@ -1,7 +1,7 @@
 import numpy as np
 
 def get_segments_and_len_per_segment(cell):
-    seg_coords = calc_seg_coords(complex_cell)
+    seg_coords = calc_seg_coords(cell)
     # all = except axon
     # soma = only soma
     # no_soma = except soma, except axon
