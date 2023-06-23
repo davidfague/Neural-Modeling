@@ -39,7 +39,7 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 										  functional_group_span: float, cluster_span: float, 
 										  gmax_dist: object, mean_fr_dist: object, 
 										  spike_generator: SpikeGenerator, synapse_generator: SynapseGenerator,
-										  t: np.ndarray, record: bool = False, syn_params: dict = None) -> list:
+										  t: np.ndarray, record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB') -> list:
 
 	functional_groups = []
 
@@ -65,7 +65,7 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 
 			# Add synapses to to the cluster
 			cluster.synapses = synapse_generator.add_synapses(segments = cluster.segments, probs = cluster.len_per_segment,
-							 								  gmax = gmax_dist, syn_mod = 'AMPA_NMDA',
+							 								  gmax = gmax_dist, syn_mod = syn_mod,
 															  number_of_synapses = synapses_per_cluster, record = record,syn_params=syn_params)
 
 			# Generate spikes common to each synapse within synaptic cluster
@@ -88,7 +88,7 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 										  spike_generator: SpikeGenerator, synapse_generator: SynapseGenerator,
 										  t: np.ndarray, f_group_name_prefix: str, 
 										  spike_trains_to_delay: list, fr_time_shift: int,
-										  record: bool = False,syn_params: dict = None) -> list:
+										  record: bool = False,syn_params: dict = None, syn_mod: str = 'GABA_AB') -> list:
 	functional_groups = []
 
 	rnd = np.random.RandomState(10)
@@ -119,7 +119,7 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 
 			# Add synapses to to the cluster
 			cluster.synapses = synapse_generator.add_synapses(segments = cluster.segments, probs = cluster.len_per_segment,
-							 								  gmax = gmax_dist, syn_mod = 'GABA_AB',
+							 								  gmax = gmax_dist, syn_mod = syn_mod,
 															  number_of_synapses = synapses_per_cluster, record = record,syn_params=syn_params)
 
 			# Generate spikes common to each synapse within synaptic cluster
