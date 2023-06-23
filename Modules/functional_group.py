@@ -81,7 +81,7 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 
 	return functional_groups
 
-def generate_inhibitory_functional_groups(all_segments: list, all_segments_centers: list, all_len_per_segment: list,
+def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_segments_centers: list, all_len_per_segment: list,
 										  number_of_groups: int, cells_per_group: int, synapses_per_cluster: int,
 										  functional_group_span: float, cluster_span: float, 
 										  gmax_dist: object, proximal_inh_dist: object, distal_inh_dist: object,
