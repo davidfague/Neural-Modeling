@@ -71,7 +71,7 @@ class CellModel:
                 # Process and get the new length
                 new_length = self.process_non_soma_sec(sec, psec, pseg)
             
-            if int(new_length) != int(old_length):
+            if np.abs(new_length - old_length) >= 1: # Otherwise, it is a precision issue
                 warnings.warn(f"Generation of 3D coordinates resulted in change of section length for {sec} from {old_length} to {sec.L}",
                               RuntimeWarning)
 
