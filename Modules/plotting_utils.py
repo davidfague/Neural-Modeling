@@ -1,8 +1,29 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
-from cell_inference.utils.currents.ecp import move_position
-from cell_inference.cells.stylizedcell import StylizedCell
+#TODO CHECK
+def move_position(translate: Union[List[float],Tuple[float],np.ndarray],
+                  rotate: Union[List[float],Tuple[float],np.ndarray],
+                  old_position: Optional[Union[List[float], np.ndarray]] = None,
+                  move_frame: bool = False) -> np.ndarray:
+    """
+    Rotate and translate an object with old_position and calculate its new coordinates.
+    Rotate(alpha, h, phi): first rotate alpha about the y-axis (spin),
+    then rotate arccos(h) about the x-axis (elevation),
+    then rotate phi about the y-axis (azimuth).
+    Finally translate the object by translate(x, y, z).
+    If move_frame is True, use the object as reference frame and move the
+    old reference frame, calculate new coordinates of the old_position.
+    """
+    translate = np.asarray(translate)
+    if old_position is None:
+        old_position = [0., 0., 0.]
+    old_position = np.asarray(old_position)
+    rot = Rotation.from_euler('yxy', [rotate[0], np.arccos(rotate[1]), rotate[2]])
+    if move_frame:
+        new_position = rot.inv().apply(old_position - translate)
+    else:
+        new_position = rot.apply(old_position) + translate
+    return new_position
 
 #TODO: add docstirng
 def plot_morphology(sim = None, cellid: int = 0, cell: object = None,
@@ -23,7 +44,7 @@ def plot_morphology(sim = None, cellid: int = 0, cell: object = None,
 		Cell id in the simulation object.
 
 	cell: object = None
-		Stylized cell object. Ignore sim and cellid if specified.
+		cell object. Ignore sim and cellid if specified.
 
 	seg_coords: dict = None
 		If not using sim or cell, a dictionary that includes dl, pc, r.
