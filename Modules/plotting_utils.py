@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from typing import Union, Optional, List, Tuple
 #TODO CHECK
 def move_position(translate: Union[List[float],Tuple[float],np.ndarray],
                   rotate: Union[List[float],Tuple[float],np.ndarray],
