@@ -407,7 +407,7 @@ class CellModel:
       nc_count = len(self.netcons)
       syn_count = len(self.synapses)
       seg_count = len(self.segments)
-      firing_rate = len(cell.spikes)/(h.tstop/1000)
+      firing_rate = len(self.spikes)/(h.tstop/1000)
     
       self.output_folder_name = (str(self.hoc_model)+"_"+
           str(firing_rate) + "Hz_"
