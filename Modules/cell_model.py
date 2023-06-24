@@ -412,9 +412,9 @@ class CellModel:
       self.output_folder_name = (str(self.hoc_model)+"_"+
           str(firing_rate) + "Hz_"
           + str(seg_count) + "nseg_"
-          + str(h.tstop)+ "ms_
-          + str(nbranches) + "nbranch_" +
-          + str(nc_count) + "NCs_" +
+          + str(h.tstop)+ "ms_"
+          + str(nbranches) + "nbranch_"
+          + str(nc_count) + "NCs_"
           + str(syn_count) + "nsyn" #+ '_'
           # + str(self.runtime_in_minutes) + 'min' 
       )
