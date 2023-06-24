@@ -206,17 +206,18 @@ class CellModel:
                   # print(channel, sec) # empty sections
 
     def write_seg_info_to_csv(self):
-      if os.path.exists(self.output_folder_name):
-          print('Updating csv ', self.output_folder_name+'/seg_info.csv')
-          os.remove(self.output_folder_name)
-      else:
-          print('Creating csv ', self.output_folder_name+'/seg_info.csv')
-          
-      with open(self.output_folder_name+'/seg_info.csv', mode='w') as file:
-          writer = csv.DictWriter(file, fieldnames=self.seg_info[0].keys())
-          writer.writeheader()
-          for row in self.seg_info:
-              writer.writerow(row)
+        csv_file_path = os.path.join(self.output_folder_name, 'seg_info.csv')
+        if os.path.exists(csv_file_path):
+            print('Updating csv ', csv_file_path)
+            os.remove(csv_file_path)
+        else:
+            print('Creating csv ', csv_file_path)
+              
+        with open(csv_file_path, mode='w') as file:
+            writer = csv.DictWriter(file, fieldnames=self.seg_info[0].keys())
+            writer.writeheader()
+            for row in self.seg_info:
+                writer.writerow(row)
     
     def __get_segment_info__(self):
           self.seg_info = []
