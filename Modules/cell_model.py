@@ -250,7 +250,7 @@ class CellModel:
         
     def __get_parent_segment_ids(self):
           for seg in self.seg_info:
-              seg['parent_seg_id'] = None
+              seg['pseg index'] = None
           pseg_ids = []
           for i, seg in enumerate(self.seg_info):
               idx = int(np.floor(seg['x'] * seg['sec nseg']))
@@ -270,57 +270,34 @@ class CellModel:
                           pseg_id = next(idx for idx, info in enumerate(self.seg_info) if info['seg'] == psec((pidx + .5) / nseg))
                       except StopIteration:
                           pseg_id = "Segment not in segments"
-                  self.seg_info[i]['parent_seg_id'] = pseg_id
+                  self.seg_info[i]['pseg index'] = pseg_id
               # pseg_ids.append(pseg_id)
-          return self.__get_segment_elec_dist()
+          return self.__get_segment_elec_distance()
     
-    def __get_segment_elec_dist(self):
+    def __get_segment_elec_distance(self):
+        #TODO implement calculate nexus elec distance (need nexus seg)
           for seg in self.seg_info:
-              seg['seg_elec_info'] = {}
+              seg['seg elec distance'] = {}
           freqs = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
-    
+     
           soma_passive_imp = h.Impedance()
           soma_active_imp = h.Impedance()
           nexus_passive_imp = h.Impedance()
           nexus_active_imp = h.Impedance()
-          try:
-              soma_passive_imp.loc(self.hobj.soma[0](0.5))
-              soma_active_imp.loc(self.hobj.soma[0](0.5))
-          except:
-              try:
-                  soma_passive_imp.loc(self.soma[0](0.5))
-                  soma_active_imp.loc(self.soma[0](0.5))
-              except:
-                  try:
-                      soma_passive_imp.loc(self.soma(0.5))
-                      soma_active_imp.loc(self.soma(0.5))
-                  except:
-                      raise AttributeError("Could not locate soma for impedance calculation")
-          try:
-              nexus_passive_imp.loc(self.hobj.apic[0](0.99))
-              nexus_active_imp.loc(self.hobj.apic[0](0.99))
-          except:
-              try:
-                  nexus_passive_imp.loc(self.apic[0](0.99))
-                  nexus_active_imp.loc(self.apic[0](0.99))
-              except:
-                  try:
-                      nexus_passive_imp.loc(self.apic(0.99))
-                      nexus_active_imp.loc(self.apic(0.99))
-                  except:
-                      raise AttributeError("Could not locate the nexus for impedance calculation")
-    
+          soma_passive_imp.loc(self.soma[0](0.5))
+          soma_active_imp.loc(self.soma[0](0.5))
+
           for freq_name, freq_hz in freqs.items():
               soma_passive_imp.compute(freq_hz + 1 / 9e9, 0) #passive from soma
               soma_active_imp.compute(freq_hz + 1 / 9e9, 1) #active from soma
-              nexus_passive_imp.compute(freq_hz + 1 / 9e9, 0) #passive from nexus
-              nexus_active_imp.compute(freq_hz + 1 / 9e9, 1) #active from nexus
+              # nexus_passive_imp.compute(freq_hz + 1 / 9e9, 0) #passive from nexus
+              # nexus_active_imp.compute(freq_hz + 1 / 9e9, 1) #active from nexus
               for i, seg in enumerate(self.segments):
                   elec_dist_info = {
                       'active_soma': soma_active_imp.ratio(seg.sec(seg.x)),
-                      'active_nexus': nexus_active_imp.ratio(seg.sec(seg.x)),
-                      'passive_soma': soma_passive_imp.ratio(seg.sec(seg.x)),
-                      'passive_nexus': nexus_passive_imp.ratio(seg.sec(seg.x))
+                      # 'active_nexus': nexus_active_imp.ratio(seg.sec(seg.x)),
+                      'passive_soma': soma_passive_imp.ratio(seg.sec(seg.x)) #,
+                      # 'passive_nexus': nexus_passive_imp.ratio(seg.sec(seg.x))
                   }
                   self.seg_info[i]['seg_elec_info'][freq_name] = elec_dist_info
           return self.__calculate_netcons_per_seg()
