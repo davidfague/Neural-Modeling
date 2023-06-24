@@ -230,7 +230,7 @@ class CellModel:
                       'End X Coord': self.seg_coords['p1'][i][0],
                       'End Y Coord': self.seg_coords['p1'][i][1],
                       'End Z Coord': self.seg_coords['p1'][i][2],
-                      'seg diam': seg.diam,
+                      'Diam': seg.diam,
                       'bmtk_id': k,
                       'x': seg.x,
                       'sec': seg.sec,
@@ -241,6 +241,7 @@ class CellModel:
                       'Ra': seg.sec.Ra,
                       'seg_L': sec.L/sec.nseg,
                       'seg_SA': (sec.L/sec.nseg)*(np.pi*seg.diam),
+                      'Distance': h.distance(self.soma[0](0.5), seg))
                   })
                   j += 1
               k += 1
