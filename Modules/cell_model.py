@@ -5,6 +5,7 @@ from typing import Union, Tuple, List, Optional, Any, TYPE_CHECKING
 from neuron import h
 from Modules.recorder import Recorder
 from Modules.cell_utils import calc_seg_coords
+import shutil
 import os
 import h5py
 import csv
@@ -205,6 +206,12 @@ class CellModel:
                   # print(channel, sec) # empty sections
 
     def write_seg_info_to_csv(self):
+      if os.path.exists(self.output_folder_name):
+          print('Updating csv ', self.output_folder_name+'/seg_info.csv')
+          os.remove(self.output_folder_name)
+      else:
+          print('Creating csv ', self.output_folder_name+'/seg_info.csv')
+          
       with open(self.output_folder_name+'/seg_info.csv', mode='w') as file:
           writer = csv.DictWriter(file, fieldnames=self.seg_info[0].keys())
           writer.writeheader()
@@ -398,13 +405,14 @@ class CellModel:
           # + str(self.runtime_in_minutes) + 'min' 
       )
     
-      if not os.path.exists(self.output_folder_name):
-          print('Outputting data to ', self.output_folder_name)
-          os.makedirs(self.output_folder_name)
+
+      if os.path.exists(self.output_folder_name):
+        print('Updating data folder ', self.output_folder_name)
+        shutil.rmtree(self.output_folder_name)
+        os.makedirs(self.output_folder_name)
       else:
-          print('Updating data folder ', self.output_folder_name)
-          os.remove(self.output_folder_name)
-          os.makedirs(self.output_folder_name)
+        print('Outputting data to ', self.output_folder_name)
+        os.makedirs(self.output_folder_name)
           
       return self.output_folder_name
     
