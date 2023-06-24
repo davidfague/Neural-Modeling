@@ -422,7 +422,11 @@ class CellModel:
       if not os.path.exists(self.output_folder_name):
           print('Outputting data to ', self.output_folder_name)
           os.makedirs(self.output_folder_name)
-    
+      else:
+          print('Updating data folder ', self.output_folder_name)
+          os.remove(self.output_folder_name)
+          os.makedirs(self.output_folder_name)
+          
       return self.output_folder_name
     
     def get_recorder_data(self): # TODO: add check for synapse.current_type
@@ -474,6 +478,7 @@ class CellModel:
     def __report_data(self,reportname, dataname):
       try:
           os.remove(reportname)
+          print("removed old", reportname)
       except FileNotFoundError:
           pass
     
