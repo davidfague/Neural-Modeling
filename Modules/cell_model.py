@@ -410,9 +410,9 @@ class CellModel:
       firing_rate = len(self.spikes)/(h.tstop/1000)
     
       self.output_folder_name = (str(self.hoc_model)+"_"+
-          str(firing_rate) + "Hz_"
+          str(int(firing_rate*10)) + "e-1Hz_"
           + str(seg_count) + "nseg_"
-          + str(h.tstop)+ "ms_"
+          + str(int(h.tstop))+ "ms_"
           + str(nbranches) + "nbranch_"
           + str(nc_count) + "NCs_"
           + str(syn_count) + "nsyn" #+ '_'
