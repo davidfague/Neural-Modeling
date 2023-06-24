@@ -25,7 +25,7 @@ class CellModel:
         self.all, self.soma, self.apic, self.dend, self.axon = None, None, None, None, None
         for model_part in ["all", "soma", "apic", "dend", "axon"]:
             setattr(self, model_part, self.convert_section_list(getattr(hoc_model, model_part)))
-        
+        self.hoc_model = hoc_model
         self.synapses = synapses
         self.netcons = netcons
         self.spike_trains = spike_trains
@@ -407,14 +407,16 @@ class CellModel:
       nc_count = len(self.netcons)
       syn_count = len(self.synapses)
       seg_count = len(self.segments)
+      firing_rate = len(cell.spikes)/(h.tstop/1000)
     
-      self.output_folder_name = (
-          str(h.tstop)+
-          "outputcontrol_" +
-          str(nbranches) + "nbranch_" +
-          str(nc_count) + "NCs_" +
-          str(syn_count) + "nsyn_" +
-          str(seg_count) + "nseg"
+      self.output_folder_name = (str(self.hoc_model)+"_"+
+          str(firing_rate) + "Hz_"
+          + str(seg_count) + "nseg_"
+          + str(h.tstop)+ "ms_
+          + str(nbranches) + "nbranch_" +
+          + str(nc_count) + "NCs_" +
+          + str(syn_count) + "nsyn" #+ '_'
+          # + str(self.runtime_in_minutes) + 'min' 
       )
     
       if not os.path.exists(self.output_folder_name):
