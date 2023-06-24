@@ -220,18 +220,18 @@ class CellModel:
               for i, seg in enumerate(sec):
                   self.seg_info.append({ #update to have consistent naming scheme (will then need to debug plotting functions too, but should be easy)
                       'seg': seg,
-                      'seg_id': j,
-                      'Beginning X Coord': self.seg_coords['p0'][i][0],
-                      'Beginning Y Coord': self.seg_coords['p0'][i][1],
-                      'Beginning Z Coord': self.seg_coords['p0'][i][2],
-                      'Center X Coord': self.seg_coords['pc'][i][0],
-                      'Center Y Coord': self.seg_coords['pc'][i][1],
-                      'Center Z Coord': self.seg_coords['pc'][i][2],
-                      'End X Coord': self.seg_coords['p1'][i][0],
-                      'End Y Coord': self.seg_coords['p1'][i][1],
-                      'End Z Coord': self.seg_coords['p1'][i][2],
+                      'seg index': j,
+                      'p0 x3d': self.seg_coords['p0'][i][0],
+                      'p0 y3d': self.seg_coords['p0'][i][1],
+                      'p0 z3d': self.seg_coords['p0'][i][2],
+                      'p0.5 x3d': self.seg_coords['pc'][i][0],
+                      'p0.5 y3d': self.seg_coords['pc'][i][1],
+                      'p0.5 z3d': self.seg_coords['pc'][i][2],
+                      'p1 x3d': self.seg_coords['p1'][i][0],
+                      'p1 y3d': self.seg_coords['p1'][i][1],
+                      'p1 z3d': self.seg_coords['p1'][i][2],
                       'seg diam': seg.diam,
-                      'bmtk_id': k,
+                      'bmtk index': k,
                       'x': seg.x,
                       'sec': seg.sec,
                       'Type': sec_type,
@@ -339,14 +339,14 @@ class CellModel:
                   'total': NetCon_per_seg[i]
               }
               seg['netcon_density_per_seg'] = {
-                  'exc': exc_NetCon_per_seg[i]/seg['seg_L'],
-                  'inh': inh_NetCon_per_seg[i]/seg['seg_L'],
-                  'total': NetCon_per_seg[i]/seg['seg_L']
+                  'exc': exc_NetCon_per_seg[i]/seg['seg L'],
+                  'inh': inh_NetCon_per_seg[i]/seg['seg L'],
+                  'total': NetCon_per_seg[i]/seg['seg L']
               }
               seg['netcon_SA_density_per_seg'] = {
-                  'exc': exc_NetCon_per_seg[i]/seg['seg_SA'],
-                  'inh': inh_NetCon_per_seg[i]/seg['seg_SA'],
-                  'total': NetCon_per_seg[i]/seg['seg_SA']
+                  'exc': exc_NetCon_per_seg[i]/seg['seg SA'],
+                  'inh': inh_NetCon_per_seg[i]/seg['seg SA'],
+                  'total': NetCon_per_seg[i]/seg['seg SA']
               }
     
           return
