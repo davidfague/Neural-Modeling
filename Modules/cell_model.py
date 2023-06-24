@@ -299,7 +299,7 @@ class CellModel:
                       'passive_soma': soma_passive_imp.ratio(seg.sec(seg.x)) #,
                       # 'passive_nexus': nexus_passive_imp.ratio(seg.sec(seg.x))
                   }
-                  self.seg_info[i]['seg_elec_info'][freq_name] = elec_dist_info
+                  self.seg_info[i]['seg elec distance'][freq_name] = elec_dist_info
           return self.__calculate_netcons_per_seg()
     
     def __calculate_netcons_per_seg(self):
