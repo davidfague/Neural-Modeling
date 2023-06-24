@@ -240,7 +240,7 @@ class CellModel:
                       'sec nseg': seg.sec.nseg,
                       'sec Ra': seg.sec.Ra,
                       'seg L': sec.L/sec.nseg,
-                      'sec L': sec.L
+                      'sec L': sec.L,
                       'seg SA': (sec.L/sec.nseg)*(np.pi*seg.diam),
                       'seg h.distance': h.distance(self.soma[0](0.5), seg)
                   })
