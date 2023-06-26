@@ -218,9 +218,8 @@ class CellModel:
           seg_index_global = 0
           for sec in self.all:
               sec_type = sec.name().split('.')[1][:4]
-              for seg_index_within_section, seg in enumerate(sec):
-                  self.seg_info.append(self.genreate_seg_info(seg, sec, sec_type, seg_index_within_section, 
-                                                              seg_index_global, bmtk_index))
+              for seg in sec:
+                  self.seg_info.append(self.genreate_seg_info(seg, sec, sec_type, seg_index_global, bmtk_index))
                   seg_index_global += 1
               bmtk_index += 1
         
@@ -420,19 +419,19 @@ class CellModel:
         with h5py.File(dataname, 'w') as file:
             file.create_dataset("report/biophysical/data", data = dataname)
 
-    def genreate_seg_info(self, seg, sec, sec_type, seg_index_within_section, seg_index_global, bmtk_index) -> dict:
+    def genreate_seg_info(self, seg, sec, sec_type, seg_index_global, bmtk_index) -> dict:
         info = {
             'seg': seg,
             'seg_index_global': seg_index_global,
-            'p0_x3d': self.seg_coords['p0'][seg_index_within_section][0],
-            'p0_y3d': self.seg_coords['p0'][seg_index_within_section][1],
-            'p0_z3d': self.seg_coords['p0'][seg_index_within_section][2],
-            'p0.5_x3d': self.seg_coords['pc'][seg_index_within_section][0],
-            'p0.5_y3d': self.seg_coords['pc'][seg_index_within_section][1],
-            'p0.5_z3d': self.seg_coords['pc'][seg_index_within_section][2],
-            'p1_x3d': self.seg_coords['p1'][seg_index_within_section][0],
-            'p1_y3d': self.seg_coords['p1'][seg_index_within_section][1],
-            'p1_z3d': self.seg_coords['p1'][seg_index_within_section][2],
+            'p0_x3d': self.seg_coords['p0'][seg_index_global][0],
+            'p0_y3d': self.seg_coords['p0'][seg_index_global][1],
+            'p0_z3d': self.seg_coords['p0'][seg_index_global][2],
+            'p0.5_x3d': self.seg_coords['pc'][seg_index_global][0],
+            'p0.5_y3d': self.seg_coords['pc'][seg_index_global][1],
+            'p0.5_z3d': self.seg_coords['pc'][seg_index_global][2],
+            'p1_x3d': self.seg_coords['p1'][seg_index_global][0],
+            'p1_y3d': self.seg_coords['p1'][seg_index_global][1],
+            'p1_z3d': self.seg_coords['p1'][seg_index_global][2],
             'seg_diam': seg.diam,
             'bmtk_index': bmtk_index,
             'x': seg.x,
