@@ -12,7 +12,7 @@ def calc_dist(p1, p2):
  	'''
 	return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
 
-def make_seg_sphere(center: list, segments: list, segment_centers: list, radius: float = 50):
+def make_seg_sphere(center: list, segments: list, segment_centers: list, radius: float = 50, segments_to_ignore: list = None):
 	'''
 	returns a list of segments within spherical radius of the center
 	center: list
@@ -30,16 +30,17 @@ def make_seg_sphere(center: list, segments: list, segment_centers: list, radius:
 	'''
 	possible_segs = []
 	for i, seg in enumerate(segments):
-		dist = calc_dist(center, segment_centers[i])
-		if dist <= radius: possible_segs.append(seg)
+		if seg not in segments_to_ignore:
+			dist = calc_dist(center, segment_centers[i])
+			if dist <= radius: possible_segs.append(seg)
 	return possible_segs
 
-def generate_excitatory_functional_groups(all_segments: list, all_segments_centers: list, all_len_per_segment: list,
+def generate_excitatory_functional_groups(all_segments: list, all_segments_centers: list, all_len_per_segment: list, segments_to_ignore: list,
 										  number_of_groups: int, cells_per_group: int, synapses_per_cluster: int,
 										  functional_group_span: float, cluster_span: float, 
 										  gmax_dist: object, mean_fr_dist: object, 
 										  spike_generator: SpikeGenerator, synapse_generator: SynapseGenerator,
-										  t: np.ndarray, record: bool = False) -> list:
+										  t: np.ndarray, record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB') -> list:
 
 	functional_groups = []
 
@@ -50,7 +51,7 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 		# Create a functional group
 		center_seg = center_segs[group_id]
 		func_grp = FunctionalGroup(center_seg = center_seg, segments = all_segments, segment_centers = all_segments_centers, radius = functional_group_span, 
-				 				   name = 'exc_' + str(group_id))
+				 				   name = 'exc_' + str(group_id), segments_to_ignore=segments_to_ignore)
 		functional_groups.append(func_grp)
 
 		# Generate trace common to all cells within each functional group
@@ -61,12 +62,12 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 			cluster_seg = rnd.choice(func_grp.segments, p=func_grp.len_per_segment / sum(func_grp.len_per_segment))
 
 			# Generate a cluster
-			cluster = Cluster(center_seg = cluster_seg, segments = all_segments, segment_centers = all_segments_centers, radius = cluster_span)
+			cluster = Cluster(center_seg = cluster_seg, segments = all_segments, segment_centers = all_segments_centers, radius = cluster_span, segments_to_ignore=segments_to_ignore)
 
 			# Add synapses to to the cluster
 			cluster.synapses = synapse_generator.add_synapses(segments = cluster.segments, probs = cluster.len_per_segment,
-							 								  gmax = gmax_dist, syn_mod = 'AMPA_NMDA',
-															  number_of_synapses = synapses_per_cluster, record = record)
+							 								  gmax = gmax_dist, syn_mod = syn_mod,
+															  number_of_synapses = synapses_per_cluster, record = record,syn_params=syn_params)
 
 			# Generate spikes common to each synapse within synaptic cluster
 			mean_fr = spike_generator.get_mean_fr(mean_fr_dist)
@@ -81,14 +82,14 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 
 	return functional_groups
 
-def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_segments_centers: list, all_len_per_segment: list,
+def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_segments_centers: list, all_len_per_segment: list, segments_to_ignore: list,
 										  number_of_groups: int, cells_per_group: int, synapses_per_cluster: int,
 										  functional_group_span: float, cluster_span: float, 
 										  gmax_dist: object, proximal_inh_dist: object, distal_inh_dist: object,
 										  spike_generator: SpikeGenerator, synapse_generator: SynapseGenerator,
 										  t: np.ndarray, f_group_name_prefix: str, 
 										  spike_trains_to_delay: list, fr_time_shift: int,
-										  record: bool = False) -> list:
+										  record: bool = False,syn_params: dict = None, syn_mod: str = 'GABA_AB') -> list:
 	functional_groups = []
 
 	rnd = np.random.RandomState(10)
@@ -97,7 +98,7 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 		# Create a functional group
 		center_seg = None
 		func_grp = FunctionalGroup(center_seg = center_seg, segments = all_segments, segment_centers = all_segments_centers, 
-			     				   radius = functional_group_span, name = f_group_name_prefix + str(group_id))
+			     				   radius = functional_group_span, name = f_group_name_prefix + str(group_id), segments_to_ignore=segments_to_ignore)
 		functional_groups.append(func_grp)
 
 		# Generate trace common to all cells within each functional group
@@ -110,7 +111,7 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 			cluster_seg = rnd.choice(all_segments, p = all_len_per_segment / sum(all_len_per_segment))
 
 			# Generate a cluster
-			cluster = Cluster(center_seg = cluster_seg, segments = all_segments, segment_centers = all_segments_centers, radius = cluster_span)
+			cluster = Cluster(center_seg = cluster_seg, segments = all_segments, segment_centers = all_segments_centers, radius = cluster_span, segments_to_ignore=segments_to_ignore)
 
 			if h.distance(cluster.center_seg, cell.soma[0](0.5)) <= 100:
 				mean_fr_dist = proximal_inh_dist
@@ -119,8 +120,8 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 
 			# Add synapses to to the cluster
 			cluster.synapses = synapse_generator.add_synapses(segments = cluster.segments, probs = cluster.len_per_segment,
-							 								  gmax = gmax_dist, syn_mod = 'GABA_AB',
-															  number_of_synapses = synapses_per_cluster, record = record)
+							 								  gmax = gmax_dist, syn_mod = syn_mod,
+															  number_of_synapses = synapses_per_cluster, record = record,syn_params=syn_params)
 
 			# Generate spikes common to each synapse within synaptic cluster
 			mean_fr = spike_generator.get_mean_fr(mean_fr_dist)
@@ -137,7 +138,7 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 
 class FunctionalGroup:
   
-	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 100, name: str = None):
+	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 100, name: str = None, segments_to_ignore: list = None):
 			'''
 			Parameters:
 			----------
@@ -165,7 +166,7 @@ class FunctionalGroup:
 				# Get 3D coordinates of center_seg
 				center = segment_centers[segments.index(center_seg)]
 				# Get segments within this cluster
-				self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius)
+				self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius, segments_to_ignore=segments_to_ignore)
 				# Get segment lengths
 				for seg in self.segments:
 					self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
@@ -173,7 +174,7 @@ class FunctionalGroup:
 
 class Cluster:
 
-	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 10):
+	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 10, segments_to_ignore: list = None):
 		'''
 		Parameters:
 		----------
@@ -200,7 +201,7 @@ class Cluster:
 		# Get 3D coordinates of center_seg
 		center = segment_centers[segments.index(center_seg)]
 		# Get segments within this cluster
-		self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius)
+		self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius, segments_to_ignore=segments_to_ignore)
 		# Get segment lengths
 		for seg in self.segments:
 			self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
