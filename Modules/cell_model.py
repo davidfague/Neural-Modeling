@@ -5,6 +5,7 @@ from typing import Union, Tuple, List, Optional, Any, TYPE_CHECKING
 from neuron import h
 from Modules.recorder import Recorder
 from Modules.cell_utils import calc_seg_coords
+import shutil
 import os
 import h5py
 import csv
@@ -25,7 +26,7 @@ class CellModel:
         self.all, self.soma, self.apic, self.dend, self.axon = None, None, None, None, None
         for model_part in ["all", "soma", "apic", "dend", "axon"]:
             setattr(self, model_part, self.convert_section_list(getattr(hoc_model, model_part)))
-        
+        self.hoc_model = hoc_model
         self.synapses = synapses
         self.netcons = netcons
         self.spike_trains = spike_trains
@@ -205,11 +206,18 @@ class CellModel:
                   # print(channel, sec) # empty sections
 
     def write_seg_info_to_csv(self):
-      with open(self.output_folder_name+'/seg_info.csv', mode='w') as file:
-          writer = csv.DictWriter(file, fieldnames=self.seg_info[0].keys())
-          writer.writeheader()
-          for row in self.seg_info:
-              writer.writerow(row)
+        csv_file_path = os.path.join(self.output_folder_name, 'seg_info.csv')
+        if os.path.exists(csv_file_path):
+            print('Updating csv ', csv_file_path)
+            os.remove(csv_file_path)
+        else:
+            print('Creating csv ', csv_file_path)
+              
+        with open(csv_file_path, mode='w') as file:
+            writer = csv.DictWriter(file, fieldnames=self.seg_info[0].keys())
+            writer.writeheader()
+            for row in self.seg_info:
+                writer.writerow(row)
     
     def __get_segment_info__(self):
           self.seg_info = []
@@ -220,27 +228,32 @@ class CellModel:
               for i, seg in enumerate(sec):
                   self.seg_info.append({ #update to have consistent naming scheme (will then need to debug plotting functions too, but should be easy)
                       'seg': seg,
-                      'seg_id': j,
-                      'Beginning X Coord': self.seg_coords['p0'][i][0],
-                      'Beginning Y Coord': self.seg_coords['p0'][i][1],
-                      'Beginning Z Coord': self.seg_coords['p0'][i][2],
-                      'Center X Coord': self.seg_coords['pc'][i][0],
-                      'Center Y Coord': self.seg_coords['pc'][i][1],
-                      'Center Z Coord': self.seg_coords['pc'][i][2],
-                      'End X Coord': self.seg_coords['p1'][i][0],
-                      'End Y Coord': self.seg_coords['p1'][i][1],
-                      'End Z Coord': self.seg_coords['p1'][i][2],
+                      'seg index': j,
+                      'p0 x3d': self.seg_coords['p0'][i][0],
+                      'p0 y3d': self.seg_coords['p0'][i][1],
+                      'p0 z3d': self.seg_coords['p0'][i][2],
+                      'p0.5 x3d': self.seg_coords['pc'][i][0],
+                      'p0.5 y3d': self.seg_coords['pc'][i][1],
+                      'p0.5 z3d': self.seg_coords['pc'][i][2],
+                      'p1 x3d': self.seg_coords['p1'][i][0],
+                      'p1 y3d': self.seg_coords['p1'][i][1],
+                      'p1 z3d': self.seg_coords['p1'][i][2],
                       'seg diam': seg.diam,
-                      'bmtk_id': k,
+                      'bmtk index': k,
                       'x': seg.x,
                       'sec': seg.sec,
                       'Type': sec_type,
-                      'Sec ID': int(sec.name().split('[')[2].split(']')[0]),
+                      'sec index': int(sec.name().split('[')[2].split(']')[0]),
                       'sec diam': sec.diam,
                       'sec nseg': seg.sec.nseg,
-                      'Ra': seg.sec.Ra,
-                      'seg_L': sec.L/sec.nseg,
-                      'seg_SA': (sec.L/sec.nseg)*(np.pi*seg.diam),
+                      'sec Ra': seg.sec.Ra,
+                      'seg L': sec.L/sec.nseg,
+                      'sec L': sec.L,
+                      'seg SA': (sec.L/sec.nseg)*(np.pi*seg.diam),
+                      'seg h.distance': h.distance(self.soma[0](0.5), seg),
+                      'seg half-seg RA': .01*seg.sec.Ra*(sec.L/2/seg.sec.nseg)/(np.pi*(seg.diam/2)**2),
+                      'pseg': seg.sec.parentseg()
+                      '
                   })
                   j += 1
               k += 1
@@ -248,7 +261,7 @@ class CellModel:
         
     def __get_parent_segment_ids(self):
           for seg in self.seg_info:
-              seg['parent_seg_id'] = None
+              seg['pseg index'] = None
           pseg_ids = []
           for i, seg in enumerate(self.seg_info):
               idx = int(np.floor(seg['x'] * seg['sec nseg']))
@@ -268,59 +281,36 @@ class CellModel:
                           pseg_id = next(idx for idx, info in enumerate(self.seg_info) if info['seg'] == psec((pidx + .5) / nseg))
                       except StopIteration:
                           pseg_id = "Segment not in segments"
-                  self.seg_info[i]['parent_seg_id'] = pseg_id
+                  self.seg_info[i]['pseg index'] = pseg_id
               # pseg_ids.append(pseg_id)
-          return self.__get_segment_elec_dist()
+          return self.__get_segment_elec_distance()
     
-    def __get_segment_elec_dist(self):
+    def __get_segment_elec_distance(self):
+        #TODO implement calculate nexus elec distance (need nexus seg)
           for seg in self.seg_info:
-              seg['seg_elec_info'] = {}
+              seg['seg elec distance'] = {}
           freqs = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
-    
+     
           soma_passive_imp = h.Impedance()
           soma_active_imp = h.Impedance()
           nexus_passive_imp = h.Impedance()
           nexus_active_imp = h.Impedance()
-          try:
-              soma_passive_imp.loc(self.hobj.soma[0](0.5))
-              soma_active_imp.loc(self.hobj.soma[0](0.5))
-          except:
-              try:
-                  soma_passive_imp.loc(self.soma[0](0.5))
-                  soma_active_imp.loc(self.soma[0](0.5))
-              except:
-                  try:
-                      soma_passive_imp.loc(self.soma(0.5))
-                      soma_active_imp.loc(self.soma(0.5))
-                  except:
-                      raise AttributeError("Could not locate soma for impedance calculation")
-          try:
-              nexus_passive_imp.loc(self.hobj.apic[0](0.99))
-              nexus_active_imp.loc(self.hobj.apic[0](0.99))
-          except:
-              try:
-                  nexus_passive_imp.loc(self.apic[0](0.99))
-                  nexus_active_imp.loc(self.apic[0](0.99))
-              except:
-                  try:
-                      nexus_passive_imp.loc(self.apic(0.99))
-                      nexus_active_imp.loc(self.apic(0.99))
-                  except:
-                      raise AttributeError("Could not locate the nexus for impedance calculation")
-    
+          soma_passive_imp.loc(self.soma[0](0.5))
+          soma_active_imp.loc(self.soma[0](0.5))
+
           for freq_name, freq_hz in freqs.items():
               soma_passive_imp.compute(freq_hz + 1 / 9e9, 0) #passive from soma
               soma_active_imp.compute(freq_hz + 1 / 9e9, 1) #active from soma
-              nexus_passive_imp.compute(freq_hz + 1 / 9e9, 0) #passive from nexus
-              nexus_active_imp.compute(freq_hz + 1 / 9e9, 1) #active from nexus
+              # nexus_passive_imp.compute(freq_hz + 1 / 9e9, 0) #passive from nexus
+              # nexus_active_imp.compute(freq_hz + 1 / 9e9, 1) #active from nexus
               for i, seg in enumerate(self.segments):
                   elec_dist_info = {
                       'active_soma': soma_active_imp.ratio(seg.sec(seg.x)),
-                      'active_nexus': nexus_active_imp.ratio(seg.sec(seg.x)),
-                      'passive_soma': soma_passive_imp.ratio(seg.sec(seg.x)),
-                      'passive_nexus': nexus_passive_imp.ratio(seg.sec(seg.x))
+                      # 'active_nexus': nexus_active_imp.ratio(seg.sec(seg.x)),
+                      'passive_soma': soma_passive_imp.ratio(seg.sec(seg.x)) #,
+                      # 'passive_nexus': nexus_passive_imp.ratio(seg.sec(seg.x))
                   }
-                  self.seg_info[i]['seg_elec_info'][freq_name] = elec_dist_info
+                  self.seg_info[i]['seg elec distance'][freq_name] = elec_dist_info
           return self.__calculate_netcons_per_seg()
     
     def __calculate_netcons_per_seg(self):
@@ -360,14 +350,14 @@ class CellModel:
                   'total': NetCon_per_seg[i]
               }
               seg['netcon_density_per_seg'] = {
-                  'exc': exc_NetCon_per_seg[i]/seg['seg_L'],
-                  'inh': inh_NetCon_per_seg[i]/seg['seg_L'],
-                  'total': NetCon_per_seg[i]/seg['seg_L']
+                  'exc': exc_NetCon_per_seg[i]/seg['seg L'],
+                  'inh': inh_NetCon_per_seg[i]/seg['seg L'],
+                  'total': NetCon_per_seg[i]/seg['seg L']
               }
               seg['netcon_SA_density_per_seg'] = {
-                  'exc': exc_NetCon_per_seg[i]/seg['seg_SA'],
-                  'inh': inh_NetCon_per_seg[i]/seg['seg_SA'],
-                  'total': NetCon_per_seg[i]/seg['seg_SA']
+                  'exc': exc_NetCon_per_seg[i]/seg['seg SA'],
+                  'inh': inh_NetCon_per_seg[i]/seg['seg SA'],
+                  'total': NetCon_per_seg[i]/seg['seg SA']
               }
     
           return
@@ -407,20 +397,27 @@ class CellModel:
       nc_count = len(self.netcons)
       syn_count = len(self.synapses)
       seg_count = len(self.segments)
+      firing_rate = len(self.spikes)/(h.tstop/1000)
     
-      self.output_folder_name = (
-          str(h.tstop)+
-          "outputcontrol_" +
-          str(nbranches) + "nbranch_" +
-          str(nc_count) + "NCs_" +
-          str(syn_count) + "nsyn_" +
-          str(seg_count) + "nseg"
+      self.output_folder_name = (str(self.hoc_model)+"_"+
+          str(int(firing_rate*10)) + "e-1Hz_"
+          + str(seg_count) + "nseg_"
+          + str(int(h.tstop))+ "ms_"
+          + str(nbranches) + "nbranch_"
+          + str(nc_count) + "NCs_"
+          + str(syn_count) + "nsyn" #+ '_'
+          # + str(self.runtime_in_minutes) + 'min' 
       )
     
-      if not os.path.exists(self.output_folder_name):
-          print('Outputting data to ', self.output_folder_name)
-          os.makedirs(self.output_folder_name)
-    
+
+      if os.path.exists(self.output_folder_name):
+        print('Updating data folder ', self.output_folder_name)
+        shutil.rmtree(self.output_folder_name)
+        os.makedirs(self.output_folder_name)
+      else:
+        print('Outputting data to ', self.output_folder_name)
+        os.makedirs(self.output_folder_name)
+          
       return self.output_folder_name
     
     def get_recorder_data(self): # TODO: add check for synapse.current_type
@@ -472,6 +469,7 @@ class CellModel:
     def __report_data(self,reportname, dataname):
       try:
           os.remove(reportname)
+          print("removed old", reportname)
       except FileNotFoundError:
           pass
     
