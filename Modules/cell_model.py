@@ -251,7 +251,7 @@ class CellModel:
                       'sec L': sec.L,
                       'seg SA': (sec.L/sec.nseg)*(np.pi*seg.diam),
                       'seg h.distance': h.distance(self.soma[0](0.5), seg),
-                      'seg half-seg RA': .01*seg.sec.Ra*(sec.L/2/seg.sec.nseg)/(np.pi*(seg.diam/2)**2),
+                      'seg half seg Ra': .01*seg.sec.Ra*(sec.L/2/seg.sec.nseg)/(np.pi*(seg.diam/2)**2),
                       'pseg': seg.sec.parentseg()
                       '
                   })
