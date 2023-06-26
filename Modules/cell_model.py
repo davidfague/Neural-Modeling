@@ -253,7 +253,6 @@ class CellModel:
                       'seg h.distance': h.distance(self.soma[0](0.5), seg),
                       'seg half seg Ra': .01*seg.sec.Ra*(sec.L/2/seg.sec.nseg)/(np.pi*(seg.diam/2)**2),
                       'pseg': seg.sec.parentseg()
-                      '
                   })
                   j += 1
               k += 1
