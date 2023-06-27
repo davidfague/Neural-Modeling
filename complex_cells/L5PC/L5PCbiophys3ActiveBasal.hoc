@@ -15,7 +15,6 @@ proc biophys() {
 		cm = 1
 		Ra = 100
 		e_pas = -90
-          insert extracellular
 	}
 
   forsec $o1.somatic {
