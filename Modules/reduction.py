@@ -6,7 +6,7 @@ class Reductor():
 
 	def __init__(self, cell = None, method = None, synapses_list = None, 
 			   netcons_list = None, reduction_frequency = 0, sections_to_expand = None, 
-			   furcations_x = None, nbranches = None, return_seg_to_seg: bool = False) -> None:
+			   furcations_x = None, nbranches = None, segs_per_lambda: int = 10, return_seg_to_seg: bool = False) -> None:
 		'''
 		Paramters:
 		----------
@@ -31,7 +31,7 @@ class Reductor():
 													  reduction_frequency = reduction_frequency, 
 													  return_seg_to_seg = True)
 			elif method == 'lambda':
-					self.update_model_nseg_using_lambda(cell)
+					self.update_model_nseg_using_lambda(cell, segs_per_lambda)
 			else:
 				raise NotImplementedError
 	
@@ -99,7 +99,7 @@ class Reductor():
 		nseg = int((float(section.L) / space_const_in_micron) * segs_per_lambda / 2) * 2 + 1
 		return nseg
   
-	def update_model_nseg_using_lambda(self, cell, segs_per_lambda=10):
+	def update_model_nseg_using_lambda(self, cell, segs_per_lambda: int = 10):
 		'''
 		Optimizes number of segments using length constant
 		'''
