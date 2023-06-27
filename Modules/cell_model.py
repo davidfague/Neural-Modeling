@@ -426,6 +426,7 @@ class CellModel:
       numTstep = int(h.tstop/h.dt)
       i_NMDA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
       i_AMPA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
+      i_GABA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
       # i_bySeg = [[0] * (numTstep+1)] * len(self.segments)
     
       for synapse in self.synapses: # record nmda and ampa synapse currents
@@ -436,11 +437,18 @@ class CellModel:
 
               i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
               i_AMPA_bySeg[seg] = i_AMPA_bySeg[seg] + i_AMPA
+          elif:
+              ('gaba' in synapse.syn_mod) or ('GABA' in synapse.syn_mod) # GABA_AB current is 'i' so use syn_mod
+              i_GABA = np.array(synapse.rec_vec[0])
+              seg = self.segments.index(synapse.segment)
+
+              i_GABA_bySeg[seg] = i_GABA_bySeg[seg] + i_GABA
           else:
               continue
     
       i_NMDA_df = pd.DataFrame(i_NMDA_bySeg) * 1000
       i_AMPA_df = pd.DataFrame(i_AMPA_bySeg) * 1000
+      i_GABA_df = pd.DataFrame(i_GABA_bySeg) * 1000
     
     
       self.data_dict = {}
@@ -453,6 +461,7 @@ class CellModel:
       self.data_dict['Vm'] = self.Vm.as_numpy()
       self.data_dict['i_NMDA'] = i_NMDA_df
       self.data_dict['i_AMPA'] = i_AMPA_df
+      self.data_dict['i_GABA'] = i_GABA_df
       # self.data_dict['i'] = i_bySeg
       self.__create_output_files(self.__create_output_folder())
     
