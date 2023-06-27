@@ -90,16 +90,16 @@ class Reductor():
 		space_const = np.sqrt(rm / ri)  # r0 is negligible
 		return space_const
 
-	def calculate_nseg_from_lambda(self, section):
+	def calculate_nseg_from_lambda(self, section, segs_per_lambda):
 		rm = 1.0 / section.g_pas  # in ohm * cm^2
 		ra = section.Ra  # in ohm * cm
 		diam_in_cm = section.L / 10000
 		space_const_in_cm = self.find_space_const_in_cm(diam_in_cm, rm, ra)
 		space_const_in_micron = 10000 * space_const_in_cm
-		nseg = int((float(section.L) / space_const_in_micron) * 10 / 2) * 2 + 1
+		nseg = int((float(section.L) / space_const_in_micron) * segs_per_lambda / 2) * 2 + 1
 		return nseg
   
-	def update_model_nseg_using_lambda(self, cell):
+	def update_model_nseg_using_lambda(self, cell, segs_per_lambda=10):
 		'''
 		Optimizes number of segments using length constant
 		'''
@@ -107,7 +107,7 @@ class Reductor():
 
 		for sec in cell.all:
 			initial_nseg += sec.nseg
-			sec.nseg = self.calculate_nseg_from_lambda(sec)
+			sec.nseg = self.calculate_nseg_from_lambda(sec, segs_per_lambda)
 			new_nseg += sec.nseg
 
 		#TODO: potentially change to warnings.warn()
