@@ -437,8 +437,8 @@ class CellModel:
 
               i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
               i_AMPA_bySeg[seg] = i_AMPA_bySeg[seg] + i_AMPA
-          elif:
-              ('gaba' in synapse.syn_mod) or ('GABA' in synapse.syn_mod) # GABA_AB current is 'i' so use syn_mod
+              
+          elif ('gaba' in synapse.syn_mod) or ('GABA' in synapse.syn_mod): # GABA_AB current is 'i' so use syn_mod
               i_GABA = np.array(synapse.rec_vec[0])
               seg = self.segments.index(synapse.segment)
 
