@@ -177,10 +177,9 @@ def plot_morphology(sim = None, cellid: int = 0, cell: object = None,
 
 
 def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
-			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, figsize: tuple =None):
+			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, figsize: tuple = None, vlim = 'auto'):
 	if xlim is None:
 		xlim=t[[0, -1]]
-		
 	v_soma = Vm[soma_seg_index]
 	v_tfut = Vm[tuft_seg_index]
 	v_nexus = Vm[nexus_seg_index]
@@ -224,7 +223,7 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 		plt.figure(figsize=figsize)
 	_ = plot_lfp_heatmap(t=t, elec_d=elec_pos[e_idx, 1], lfp=lfp[:, e_idx],
 											fontsize=fontsize, labelpad=labelpad, ticksize=ticksize, tick_length=tick_length,
-											nbins=nbins, vlim = "auto", axes=plt.gca()) #vlim='auto';normal range seems to be ~ [-.00722,.00722]
+											nbins=nbins, vlim = vlim, axes=plt.gca()) #vlim='auto';normal range seems to be ~ [-.00722,.00722]
 	#plt.hlines(0,xmin=min(t),xmax=max(t),linestyles='dashed') # create a horizontal line
 	plt.title('Extracellular potential heatmap')
 	plt.xlim(xlim)
