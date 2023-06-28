@@ -90,17 +90,17 @@ class SpikeGenerator:
 		return netcons_list, spike_trains
 	#TODO: check definition of t
 	#TODO: add docstring
-	def get_firing_rate_profile(self, t, method: str, 
+	def get_firing_rate_profile(self, t, method: str, random_state: np.random.RandomState,
 								rhythmicity: bool = False, rhythmic_f = None, rhythmic_mod = None,
 								spike_trains_to_delay = None, fr_time_shift = None, spike_train_dt: float = 1e-3):
 
 		# Create the firing rate profile
 		#TODO: add bounds, etc.
 		if method == '1f_noise':
-			fr_profile = self.noise_modulation(num_obs = len(t))
+			fr_profile = self.noise_modulation(num_obs = len(t), random_state = random_state)
 		elif method == 'delay':
 			fr_profile = self.delay_modulation(spike_trains_to_delay = spike_trains_to_delay, fr_time_shift = fr_time_shift, 
-				      						  spike_train_t = t, spike_train_dt = spike_train_dt)
+				      						   spike_train_t = t, spike_train_dt = spike_train_dt)
 		else:
 			raise NotImplementedError
 		
@@ -115,8 +115,9 @@ class SpikeGenerator:
 		
 		return fr_profile
 	
-	def noise_modulation(self, num_obs: int, A: list = None, B: list = None, bounds: tuple = (0.5, 1.5), 
-		      			 random_state: np.random.RandomState = None) -> np.ndarray:
+	def noise_modulation(self, random_state: np.random.RandomState, 
+		      			 num_obs: int, A: list = None, B: list = None, 
+						 bounds: tuple = (0.5, 1.5)) -> np.ndarray:
 		'''
 		Produce pink ("1/f") noise out of the white noise.
 		The idea is to generate a white noise and then filter it to impose autocovariance structure with

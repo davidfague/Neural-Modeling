@@ -39,7 +39,7 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 										  functional_group_span: float, cluster_span: float, 
 										  gmax_dist: object, mean_fr_dist: object, 
 										  spike_generator: SpikeGenerator, synapse_generator: SynapseGenerator,
-										  t: np.ndarray, random_state: np.random.RandomState,
+										  t: np.ndarray, random_state: np.random.RandomState, neuron_r: h.Random,
 										  record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB') -> list:
 
 	functional_groups = []
@@ -53,7 +53,7 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 		functional_groups.append(func_grp)
 
 		# Generate trace common to all cells within each functional group
-		fr_profile = spike_generator.get_firing_rate_profile(t, method = '1f_noise')
+		fr_profile = spike_generator.get_firing_rate_profile(t, method = '1f_noise', random_state = random_state)
 
 		# Iterate through cells which each have a cluster of synapses
 		for _ in range(cells_per_group):
@@ -63,13 +63,16 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 			cluster = Cluster(center_seg = cluster_seg, segments = all_segments, segment_centers = all_segments_centers, radius = cluster_span)
 
 			# Add synapses to to the cluster
-			cluster.synapses = synapse_generator.add_synapses(segments = cluster.segments, probs = cluster.len_per_segment,
+			cluster.synapses = synapse_generator.add_synapses(segments = cluster.segments, 
+						     								  probs = cluster.len_per_segment / np.sum(cluster.len_per_segment),
 							 								  gmax = gmax_dist, syn_mod = syn_mod,
-															  number_of_synapses = synapses_per_cluster, record = record,syn_params=syn_params)
+															  number_of_synapses = synapses_per_cluster, record = record, 
+															  syn_params = syn_params, random_state = random_state,
+															  neuron_r = neuron_r)
 
 			# Generate spikes common to each synapse within synaptic cluster
 			mean_fr = spike_generator.get_mean_fr(mean_fr_dist)
-			spikes = spike_generator.generate_spikes_from_profile(fr_profile, mean_fr)
+			spikes = spike_generator.generate_spikes_from_profile(fr_profile, mean_fr, random_state)
 
 			for synapse in cluster.synapses:
 				cluster.netcons_list.append(spike_generator.set_spike_train(synapse, spikes))
@@ -86,7 +89,8 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 										  gmax_dist: object, proximal_inh_dist: object, distal_inh_dist: object,
 										  spike_generator: SpikeGenerator, synapse_generator: SynapseGenerator,
 										  t: np.ndarray, f_group_name_prefix: str, 
-										  spike_trains_to_delay: list, fr_time_shift: int, random_state: np.random.RandomState,
+										  spike_trains_to_delay: list, fr_time_shift: int, 
+										  random_state: np.random.RandomState, neuron_r: h.Random,
 										  record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB') -> list:
 	functional_groups = []
 
@@ -100,7 +104,8 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 		# Generate trace common to all cells within each functional group
 		fr_profile = spike_generator.get_firing_rate_profile(t, method = 'delay', 
 							   								 spike_trains_to_delay = spike_trains_to_delay, 
-															 fr_time_shift = fr_time_shift)
+															 fr_time_shift = fr_time_shift,
+															 random_state = random_state)
 
 		# Iterate through cells which each have a cluster of synapses
 		for _ in range(cells_per_group):
@@ -117,11 +122,13 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 			# Add synapses to to the cluster
 			cluster.synapses = synapse_generator.add_synapses(segments = cluster.segments, probs = cluster.len_per_segment,
 							 								  gmax = gmax_dist, syn_mod = syn_mod,
-															  number_of_synapses = synapses_per_cluster, record = record,syn_params=syn_params)
+															  number_of_synapses = synapses_per_cluster, record = record,
+															  syn_params = syn_params, random_state = random_state, 
+															  neuron_r = neuron_r)
 
 			# Generate spikes common to each synapse within synaptic cluster
 			mean_fr = spike_generator.get_mean_fr(mean_fr_dist)
-			spikes = spike_generator.generate_spikes_from_profile(fr_profile, mean_fr)
+			spikes = spike_generator.generate_spikes_from_profile(fr_profile, mean_fr, random_state)
 
 			for synapse in cluster.synapses:
 				cluster.netcons_list.append(spike_generator.set_spike_train(synapse, spikes))

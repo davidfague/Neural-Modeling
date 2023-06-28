@@ -16,7 +16,8 @@ CHANNELS = [('NaTa_t', 'gNaTa_t_NaTa_t', 'gNaTa_tbar'),
 
 class CellModel:
 
-    def __init__(self, hoc_model: object, synapses: list = [], netcons: list = [], spike_trains: list = [], 
+    def __init__(self, hoc_model: object, random_state: np.random.RandomState, 
+                 synapses: list = [], netcons: list = [], spike_trains: list = [], 
                  spike_threshold: list = None):
 
         # Parse the hoc model
@@ -44,7 +45,7 @@ class CellModel:
         # Spikes
         self.spikes = None
 
-        self.generate_sec_coords()
+        self.generate_sec_coords(random_state)
         self.seg_coords = calc_seg_coords(self)
 
         self.init_segments()
@@ -62,7 +63,7 @@ class CellModel:
     # PRAGMA MARK: Section Generation
 
     # TODO: CHECK
-    def generate_sec_coords(self, verbose = True) -> None:
+    def generate_sec_coords(self, random_state: np.random.RandomState, verbose = True) -> None:
 
         for sec in self.all:
             # Do only for sections without already having 3D coordinates
@@ -82,7 +83,7 @@ class CellModel:
                 psec = pseg.sec
 
                 # Process and get the new length
-                new_length = self.process_non_soma_sec(sec, psec, pseg)
+                new_length = self.process_non_soma_sec(sec, psec, pseg, random_state)
             
             if np.abs(new_length - old_length) >= 1: # Otherwise, it is a precision issue
                 warnings.warn(f"Generation of 3D coordinates resulted in change of section length for {sec} from {old_length} to {sec.L}",
@@ -103,9 +104,10 @@ class CellModel:
 
         return sec.L
 
-    def process_non_soma_sec(self, sec: h.Section, psec: h.Section, pseg: nrn.Segment) -> float:
+    def process_non_soma_sec(self, sec: h.Section, psec: h.Section, 
+                             pseg: nrn.Segment, random_state: np.random.RandomState) -> float:
         # Get random theta and phi values for apical tuft and basal dendrites
-        theta, phi = self.generate_phi_theta_for_apical_tuft_and_basal_dendrites(sec)
+        theta, phi = self.generate_phi_theta_for_apical_tuft_and_basal_dendrites(sec, random_state)
 
         # Find starting position using parent segment coordinates
         pt0 = self.find_starting_position_for_a_non_soma_sec(psec, pseg)

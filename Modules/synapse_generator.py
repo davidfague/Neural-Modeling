@@ -13,9 +13,10 @@ class SynapseGenerator:
 		# Random generators for release probability
 		self.randomgenerators = []
 
-	def add_synapses(self, segments: list, gmax: object, syn_mod: str, density: float = None, 
+	def add_synapses(self, segments: list, gmax: object, syn_mod: str, 
+		  			random_state: np.random.RandomState, neuron_r: h.Random, density: float = None, 
 					 number_of_synapses: int = None, probs: list = None, record: bool = False, 
-					 syn_params: dict = None, random_state: np.random.RandomState = None) -> list:
+					 syn_params: dict = None) -> list:
 		'''
 		Creates a list of synapses by specifying density or number of synapses.
 
@@ -71,23 +72,25 @@ class SynapseGenerator:
 		# Add synapses
 		if callable(gmax): # gmax is distribution
 			for _ in range(number_of_synapses):
-				segment = random_state.choice(segments, 1, True, probs)[0]
+				segment = random_state.choice(segments, 1, True, probs / np.sum(probs))[0]
 				new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax(size = 1), record = record, syn_params = syn_params)
-				self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj)
+				self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj, neuron_r)
 				synapses.append(new_syn)
 		else: # gmax is float
 			for _ in range(number_of_synapses):
-				segment = random_state.choices(segments, 1, True, probs)[0]
+				segment = random_state.choice(segments, 1, True, probs / np.sum(probs))[0]
 				new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record, syn_params = syn_params)
-				self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj)
+				self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj, neuron_r)
 				synapses.append(new_syn)
 
 		self.synapses.append(synapses)
 		
 		return synapses
 	
-	def add_synapses_to_cell(self, cell: CellModel, segments: list, gmax: object, syn_mod: str, density: float = None, 
-					 number_of_synapses: int = None, probs: list = None, record: bool = False, syn_params: dict = None) -> None:
+	def add_synapses_to_cell(self, cell: CellModel, segments: list, gmax: object, syn_mod: str,
+			  				random_state: np.random.RandomState, neuron_r: h.Random, density: float = None, 
+					 		number_of_synapses: int = None, probs: list = None, record: bool = False, 
+							syn_params: dict = None) -> None:
 		'''
 		Add synapses to cell after cell python object has already been initialized.
 
@@ -124,7 +127,7 @@ class SynapseGenerator:
 		'''
 		synapses = self.add_synapses(segments = segments, gmax = gmax, syn_mod = syn_mod, density = density, 
 			       					 number_of_synapses = number_of_synapses, probs = probs, record = record,
-									 syn_params = syn_params)
+									 syn_params = syn_params, random_state = random_state, neuron_r = neuron_r)
 		for syn in synapses:
 			cell.synapses.append(syn)
 			
