@@ -421,13 +421,13 @@ class CellModel:
         for name, data in self.data_dict.items():
             self.write_datafile(f"{output_folder_name}/{name}_report.h5", data)
     
-    def write_datafile(self, reportname, dataname):
+    def write_datafile(self, reportname, data):
         if os.path.isfile(reportname):
             os.remove(reportname)
             print(f"Removed old {reportname}")
     
-        with h5py.File(dataname, 'w') as file:
-            file.create_dataset("report/biophysical/data", data = dataname)
+        with h5py.File(reportname, 'w') as file:
+            file.create_dataset("report/biophysical/data", data = data)
 
     def genreate_seg_info(self, seg, sec, sec_type, seg_index_global, bmtk_index) -> dict:
         info = {
