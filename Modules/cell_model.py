@@ -351,7 +351,7 @@ class CellModel:
         seg_count = len(self.segments)
         firing_rate = len(self.spikes) / (h.tstop / 1000)
     
-        output_folder_name = (
+        self.output_folder_name = (
             str(self.hoc_model) + "_" + 
             str(int(firing_rate*10)) + "e-1Hz_" + 
             str(seg_count) + "nseg_" + 
@@ -362,15 +362,15 @@ class CellModel:
           # + str(self.runtime_in_minutes) + 'min'
         )
     
-        if os.path.exists(output_folder_name):
-            print(f'Updating data folder {output_folder_name}')
+        if os.path.exists(self.output_folder_name):
+            print(f'Updating data folder {self.output_folder_name}')
             shutil.rmtree(self.output_folder_name)
         else:
-            print(f'Outputting data to {output_folder_name}')
+            print(f'Outputting data to {self.output_folder_name}')
         
-        os.makedirs(output_folder_name)
+        os.makedirs(self.output_folder_name)
 
-        return output_folder_name
+        return self.output_folder_name
     
     def get_recorder_data(self) -> dict: # TODO: add check for synapse.current_type
       '''
