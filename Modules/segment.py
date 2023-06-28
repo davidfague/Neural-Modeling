@@ -169,7 +169,7 @@ class SegmentManager:
 
         return np.array(na_spks)
 
-    def get_ca_lower_bounds_durations_and_peaks(self, lowery, uppery):
+    def get_ca_lower_bounds_durations_and_peaks(self, lowery, uppery, random_state: np.random.RandomState):
         # Filter Ca and get bounds
         CAsegIDs, ca_lower_bounds, ca_upper_bounds, ca_mag, ca_segments_for_condition = [], [], [], [], []
         for i, seg in enumerate(self.segments):
@@ -186,7 +186,7 @@ class SegmentManager:
             else:
                 ca_lower_bounds.append([]), ca_upper_bounds.append([]), ca_mag.append([])
 
-        random_segments_ids = np.random.choice(ca_segments_for_condition, 100)
+        random_segments_ids = random_state.choice(ca_segments_for_condition, 100)
 
         duration_low, duration_high, peak_values = [], [], []
         for rand_seg_id in random_segments_ids:

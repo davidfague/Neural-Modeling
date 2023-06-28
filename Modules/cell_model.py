@@ -123,14 +123,15 @@ class CellModel:
 
         return sec.L
 
-    def generate_phi_theta_for_apical_tuft_and_basal_dendrites(self, sec: h.Section) -> tuple:
+    def generate_phi_theta_for_apical_tuft_and_basal_dendrites(self, sec: h.Section, 
+                                                               random_state: np.random.RandomState) -> tuple:
         if sec in self.apic:
             if sec != self.apic[0]: # Trunk
-                theta, phi = np.random.uniform(0, np.pi / 2), np.random.uniform(0, 2 * np.pi)
+                theta, phi = random_state.uniform(0, np.pi / 2), random_state.uniform(0, 2 * np.pi)
             else:
                 theta, phi = 0, np.pi/2
         elif sec in self.dend:
-            theta, phi = np.random.uniform(np.pi / 2, np.pi), np.random.uniform(0, 2 * np.pi)
+            theta, phi = random_state.uniform(np.pi / 2, np.pi), random_state.uniform(0, 2 * np.pi)
         else:
             theta, phi = 0, 0
         

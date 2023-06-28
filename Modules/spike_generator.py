@@ -115,7 +115,8 @@ class SpikeGenerator:
 		
 		return fr_profile
 	
-	def noise_modulation(self, num_obs: int, A: list = None, B: list = None, bounds: tuple = (0.5, 1.5)) -> np.ndarray:
+	def noise_modulation(self, num_obs: int, A: list = None, B: list = None, bounds: tuple = (0.5, 1.5), 
+		      			 random_state: np.random.RandomState = None) -> np.ndarray:
 		'''
 		Produce pink ("1/f") noise out of the white noise.
 		The idea is to generate a white noise and then filter it to impose autocovariance structure with
@@ -149,7 +150,7 @@ class SpikeGenerator:
 		if B is None:
 			B = [0.049922035, -0.095993537, 0.050612699, -0.004408786]
 		
-		white_noise = np.random.normal(loc = 1, scale = 0.5, size = num_obs + 2000)
+		white_noise = random_state.normal(loc = 1, scale = 0.5, size = num_obs + 2000)
 
 		# Apply the FIR/IIR filter to create the 1/f noise, minmax and shift to bounds
 		fr_profile = minmax(lfilter(B, A, white_noise)[2000:]) * (bounds[1] - bounds[0]) + bounds[0]
@@ -242,10 +243,10 @@ class SpikeGenerator:
 	
 	#TODO: fix call
 	#TODO: check division by 1000
-	def generate_spikes_from_profile(self, fr_profile, mean_fr):
+	def generate_spikes_from_profile(self, fr_profile, mean_fr, random_state):
 		''' sample spikes '''
 		fr_profile = fr_profile * mean_fr
-		sample_values = np.random.poisson(fr_profile / 1000)
+		sample_values = random_state.poisson(fr_profile / 1000)
 		spike_times = np.where(sample_values > 0)[0]
 		return spike_times
 	

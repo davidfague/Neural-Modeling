@@ -1,7 +1,7 @@
-import random
 from Modules.synapse import Synapse
 from Modules.cell_model import CellModel
 from neuron import h
+import numpy as np
 
 class SynapseGenerator:
 
@@ -15,7 +15,7 @@ class SynapseGenerator:
 
 	def add_synapses(self, segments: list, gmax: object, syn_mod: str, density: float = None, 
 					 number_of_synapses: int = None, probs: list = None, record: bool = False, 
-					 syn_params: dict = None) -> list:
+					 syn_params: dict = None, random_state: np.random.RandomState = None) -> list:
 		'''
 		Creates a list of synapses by specifying density or number of synapses.
 
@@ -71,13 +71,13 @@ class SynapseGenerator:
 		# Add synapses
 		if callable(gmax): # gmax is distribution
 			for _ in range(number_of_synapses):
-				segment = random.choices(segments, probs)[0]
+				segment = random_state.choice(segments, 1, True, probs)[0]
 				new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax(size = 1), record = record, syn_params = syn_params)
 				self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj)
 				synapses.append(new_syn)
 		else: # gmax is float
 			for _ in range(number_of_synapses):
-				segment = random.choices(segments, probs)[0]
+				segment = random_state.choices(segments, 1, True, probs)[0]
 				new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record, syn_params = syn_params)
 				self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj)
 				synapses.append(new_syn)
@@ -129,11 +129,11 @@ class SynapseGenerator:
 			cell.synapses.append(syn)
 			
 			
-	def add_random_generator(self, syn_mod, synapse):				 
+	def add_random_generator(self, syn_mod, synapse, r: h.Random):				 
 		if syn_mod in ['pyr2pyr', 'int2pyr']:
 			# Assigns random generator of release probability
-			r = h.Random()
-			r.MCellRan4()
+			# r = h.Random()
+			# r.MCellRan4()
 			r.uniform(0, 1)
 			synapse.setRandObjRef(r)
 			

@@ -39,13 +39,12 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 										  functional_group_span: float, cluster_span: float, 
 										  gmax_dist: object, mean_fr_dist: object, 
 										  spike_generator: SpikeGenerator, synapse_generator: SynapseGenerator,
-										  t: np.ndarray, record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB') -> list:
+										  t: np.ndarray, random_state: np.random.RandomState,
+										  record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB') -> list:
 
 	functional_groups = []
 
-	rnd = np.random.RandomState(10)
-
-	center_segs = rnd.choice(all_segments, p = all_len_per_segment / sum(all_len_per_segment), replace=False, size = number_of_groups)
+	center_segs = random_state.choice(all_segments, p = all_len_per_segment / sum(all_len_per_segment), replace = False, size = number_of_groups)
 	for group_id in range(number_of_groups):
 		# Create a functional group
 		center_seg = center_segs[group_id]
@@ -58,7 +57,7 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 
 		# Iterate through cells which each have a cluster of synapses
 		for _ in range(cells_per_group):
-			cluster_seg = rnd.choice(func_grp.segments, p=func_grp.len_per_segment / sum(func_grp.len_per_segment))
+			cluster_seg = random_state.choice(func_grp.segments, p=func_grp.len_per_segment / sum(func_grp.len_per_segment))
 
 			# Generate a cluster
 			cluster = Cluster(center_seg = cluster_seg, segments = all_segments, segment_centers = all_segments_centers, radius = cluster_span)
@@ -87,11 +86,9 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 										  gmax_dist: object, proximal_inh_dist: object, distal_inh_dist: object,
 										  spike_generator: SpikeGenerator, synapse_generator: SynapseGenerator,
 										  t: np.ndarray, f_group_name_prefix: str, 
-										  spike_trains_to_delay: list, fr_time_shift: int,
-										  record: bool = False,syn_params: dict = None, syn_mod: str = 'GABA_AB') -> list:
+										  spike_trains_to_delay: list, fr_time_shift: int, random_state: np.random.RandomState,
+										  record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB') -> list:
 	functional_groups = []
-
-	rnd = np.random.RandomState(10)
 
 	for group_id in range(number_of_groups):
 		# Create a functional group
@@ -107,7 +104,7 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 
 		# Iterate through cells which each have a cluster of synapses
 		for _ in range(cells_per_group):
-			cluster_seg = rnd.choice(all_segments, p = all_len_per_segment / sum(all_len_per_segment))
+			cluster_seg = random_state.choice(all_segments, p = all_len_per_segment / sum(all_len_per_segment))
 
 			# Generate a cluster
 			cluster = Cluster(center_seg = cluster_seg, segments = all_segments, segment_centers = all_segments_centers, radius = cluster_span)

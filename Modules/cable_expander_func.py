@@ -1089,12 +1089,12 @@ def get_syn_to_netcons(netcons_list):
     return syn_to_netcon
        
             
-def redistribute_netcons(synapse,target_synapses,syn_to_netcon):
+def redistribute_netcons(synapse, target_synapses, syn_to_netcon, random_state):
     '''randomly chooses a new synapse among the original and new choices to point the netcon to
     target_synapses: list of new synapses
     '''
     for netcon in syn_to_netcon[synapse]: # redistribute netcons
-      rand_index = np.random.randint(0, len(target_synapses)+1) #choose random branch to move point netcon to
+      rand_index = random_state.randint(0, len(target_synapses)+1) #choose random branch to move point netcon to
       if rand_index==0: #if 0, keep netcon on original synapse
         continue
       else:
