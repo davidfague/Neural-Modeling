@@ -422,7 +422,7 @@ class CellModel:
             self.write_datafile(f"{output_folder_name}/{name}_report.h5", data)
     
     def write_datafile(self, reportname, dataname):
-        if os.path.exists(reportname):
+        if os.path.isfile(reportname):
             os.remove(reportname)
             print(f"Removed old {reportname}")
     
