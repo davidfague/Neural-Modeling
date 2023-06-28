@@ -427,6 +427,9 @@ class CellModel:
             print(f"Removed old {reportname}")
     
         with h5py.File(reportname, 'w') as file:
+            # Check if the data is a DataFrame, and convert to numpy array if true
+            if isinstance(data, pd.DataFrame):
+                        data = data.values
             file.create_dataset("report/biophysical/data", data = data)
 
     def genreate_seg_info(self, seg, sec, sec_type, seg_index_global, bmtk_index) -> dict:
