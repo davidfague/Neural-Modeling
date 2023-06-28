@@ -187,7 +187,7 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	v_axon = Vm[axon_seg_index]
 	v_basal = Vm[basal_seg_index]
 
-	if figsizeis None:
+	if figsize is None:
 		plt.figure(figsize=(10, 4))
 	else:
 		plt.figure(figsize=figsize)
@@ -218,7 +218,7 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	ticksize = 12
 	tick_length = 5
 	nbins = 5
-	if figsizeis None:
+	if figsize is None:
 		plt.figure(figsize=(12, 5))
 	else:
 		plt.figure(figsize=figsize)
@@ -229,7 +229,7 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	plt.title('Extracellular potential heatmap')
 	plt.xlim(xlim)
 	plt.savefig('ECP heatmap')
-	if figsizeis None:
+	if figsize is None:
 		plt.figure(figsize=(8, 5))
 	else:
 		plt.figure(figsize=figsize)
