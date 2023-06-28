@@ -402,7 +402,7 @@ class CellModel:
       i_GABA_df = pd.DataFrame(i_GABA_bySeg) * 1000
     
       data_dict = {}
-      data_dict['spikes']=self.get_spike_time()
+      data_dict['spikes'] = self.get_spike_time()
       data_dict['ih_data'] = self.ih.as_numpy()
       data_dict['gNaTa_T_data'] = self.gNaTa_T.as_numpy()
       data_dict['ina_data'] = self.ina.as_numpy()
@@ -415,7 +415,7 @@ class CellModel:
       self.write_data(self.create_output_folder())
     
       self.data_dict = {}
-      self.data_dict['spikes']=self.get_spike_time()
+      self.data_dict['spikes'] = self.get_spike_time()
       self.data_dict['ih_data'] = self.ih.as_numpy()
       self.data_dict['gNaTa_T_data'] = self.gNaTa_T.as_numpy()
       self.data_dict['ina_data'] = self.ina.as_numpy()

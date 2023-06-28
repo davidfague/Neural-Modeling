@@ -12,6 +12,9 @@ x86_64/
 # libs
 cell_inference/
 
+# output
+*.png
+
 # C extensions
 *.so
 
