@@ -87,7 +87,7 @@ class Segment:
         elif self.type == 'axon':
             self.color = 'green'
         else:
-            raise ValueError("Section type not implemented", self.Type)
+            raise ValueError("Section type not implemented", self.type)
 
         # initialize lists for later
         self.axial_currents = []
@@ -173,8 +173,8 @@ class SegmentManager:
         # Filter Ca and get bounds
         CAsegIDs, ca_lower_bounds, ca_upper_bounds, ca_mag, ca_segments_for_condition = [], [], [], [], []
         for i, seg in enumerate(self.segments):
-            #if (seg.Type == "apic") & (seg.p0_5_y3d > lowery) & (seg.p0_5_y3d < uppery):
-            if (seg.Type == "dend") | (seg.Type == "apic"):
+            #if (seg.type == "apic") & (seg.p0_5_y3d > lowery) & (seg.p0_5_y3d < uppery):
+            if (seg.type == "dend") | (seg.type == "apic"):
                 CAsegIDs.append(i)
                 bounds = self.get_ca_lower_bounds_for_seg(seg, i)
                 ca_lower_bounds.append(bounds[0]), ca_upper_bounds.append(bounds[1]), ca_mag.append(bounds[2])
