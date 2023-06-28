@@ -177,7 +177,7 @@ def plot_morphology(sim = None, cellid: int = 0, cell: object = None,
 
 
 def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
-			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None):
+			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, figsize: tuple =None):
 	if xlim is None:
 		xlim=t[[0, -1]]
 		
@@ -187,7 +187,10 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	v_axon = Vm[axon_seg_index]
 	v_basal = Vm[basal_seg_index]
 
-	plt.figure(figsize=(10, 4))
+	if figsizeis None:
+		plt.figure(figsize=(10, 4))
+	else:
+		plt.figure(figsize=figsize)
 	plt.plot(t, v_soma, label='Soma')
 	plt.plot(t, v_tfut, label='Tuft')
 	plt.plot(t, v_nexus, label='Nexus')
@@ -215,7 +218,10 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	ticksize = 12
 	tick_length = 5
 	nbins = 5
-	plt.figure(figsize=(12, 5))
+	if figsizeis None:
+		plt.figure(figsize=(12, 5))
+	else:
+		plt.figure(figsize=figsize)
 	_ = plot_lfp_heatmap(t=t, elec_d=elec_pos[e_idx, 1], lfp=lfp[:, e_idx],
 											fontsize=fontsize, labelpad=labelpad, ticksize=ticksize, tick_length=tick_length,
 											nbins=nbins, vlim = "auto", axes=plt.gca()) #vlim='auto';normal range seems to be ~ [-.00722,.00722]
@@ -223,7 +229,10 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	plt.title('Extracellular potential heatmap')
 	plt.xlim(xlim)
 	plt.savefig('ECP heatmap')
-	plt.figure(figsize=(8, 5))
+	if figsizeis None:
+		plt.figure(figsize=(8, 5))
+	else:
+		plt.figure(figsize=figsize)
 	_ = plot_lfp_traces(t, lfp[:, e_idx][:,1::3], electrodes=elec_pos[e_idx][1::3],
 											fontsize=fontsize, labelpad=labelpad, ticksize=ticksize, tick_length=tick_length,
 											nbins=nbins, axes=plt.gca())
