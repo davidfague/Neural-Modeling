@@ -12,7 +12,7 @@ def calc_dist(p1, p2):
  	'''
 	return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
 
-def make_seg_sphere(center: list, segments: list, segment_centers: list, radius: float = 50, segments_to_ignore: list = None):
+def make_seg_sphere(center: list, segments: list, segment_centers: list, radius: float = 50):
 	'''
 	returns a list of segments within spherical radius of the center
 	center: list
@@ -30,12 +30,11 @@ def make_seg_sphere(center: list, segments: list, segment_centers: list, radius:
 	'''
 	possible_segs = []
 	for i, seg in enumerate(segments):
-		if seg not in segments_to_ignore:
-			dist = calc_dist(center, segment_centers[i])
-			if dist <= radius: possible_segs.append(seg)
+		dist = calc_dist(center, segment_centers[i])
+		if dist <= radius: possible_segs.append(seg)
 	return possible_segs
 
-def generate_excitatory_functional_groups(all_segments: list, all_segments_centers: list, all_len_per_segment: list, segments_to_ignore: list,
+def generate_excitatory_functional_groups(all_segments: list, all_segments_centers: list, all_len_per_segment: list,
 										  number_of_groups: int, cells_per_group: int, synapses_per_cluster: int,
 										  functional_group_span: float, cluster_span: float, 
 										  gmax_dist: object, mean_fr_dist: object, 
@@ -51,7 +50,7 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 		# Create a functional group
 		center_seg = center_segs[group_id]
 		func_grp = FunctionalGroup(center_seg = center_seg, segments = all_segments, segment_centers = all_segments_centers, radius = functional_group_span, 
-				 				   name = 'exc_' + str(group_id), segments_to_ignore=segments_to_ignore)
+				 				   name = 'exc_' + str(group_id))
 		functional_groups.append(func_grp)
 
 		# Generate trace common to all cells within each functional group
@@ -62,7 +61,7 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 			cluster_seg = rnd.choice(func_grp.segments, p=func_grp.len_per_segment / sum(func_grp.len_per_segment))
 
 			# Generate a cluster
-			cluster = Cluster(center_seg = cluster_seg, segments = all_segments, segment_centers = all_segments_centers, radius = cluster_span, segments_to_ignore=segments_to_ignore)
+			cluster = Cluster(center_seg = cluster_seg, segments = all_segments, segment_centers = all_segments_centers, radius = cluster_span)
 
 			# Add synapses to to the cluster
 			cluster.synapses = synapse_generator.add_synapses(segments = cluster.segments, probs = cluster.len_per_segment,
@@ -82,7 +81,7 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 
 	return functional_groups
 
-def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_segments_centers: list, all_len_per_segment: list, segments_to_ignore: list,
+def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_segments_centers: list, all_len_per_segment: list,
 										  number_of_groups: int, cells_per_group: int, synapses_per_cluster: int,
 										  functional_group_span: float, cluster_span: float, 
 										  gmax_dist: object, proximal_inh_dist: object, distal_inh_dist: object,
@@ -98,7 +97,7 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 		# Create a functional group
 		center_seg = None
 		func_grp = FunctionalGroup(center_seg = center_seg, segments = all_segments, segment_centers = all_segments_centers, 
-			     				   radius = functional_group_span, name = f_group_name_prefix + str(group_id), segments_to_ignore=segments_to_ignore)
+			     				   radius = functional_group_span, name = f_group_name_prefix + str(group_id))
 		functional_groups.append(func_grp)
 
 		# Generate trace common to all cells within each functional group
@@ -111,7 +110,7 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 			cluster_seg = rnd.choice(all_segments, p = all_len_per_segment / sum(all_len_per_segment))
 
 			# Generate a cluster
-			cluster = Cluster(center_seg = cluster_seg, segments = all_segments, segment_centers = all_segments_centers, radius = cluster_span, segments_to_ignore=segments_to_ignore)
+			cluster = Cluster(center_seg = cluster_seg, segments = all_segments, segment_centers = all_segments_centers, radius = cluster_span)
 
 			if h.distance(cluster.center_seg, cell.soma[0](0.5)) <= 100:
 				mean_fr_dist = proximal_inh_dist
@@ -138,7 +137,7 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 
 class FunctionalGroup:
   
-	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 100, name: str = None, segments_to_ignore: list = None):
+	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 100, name: str = None):
 			'''
 			Parameters:
 			----------
@@ -166,7 +165,7 @@ class FunctionalGroup:
 				# Get 3D coordinates of center_seg
 				center = segment_centers[segments.index(center_seg)]
 				# Get segments within this cluster
-				self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius, segments_to_ignore=segments_to_ignore)
+				self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius)
 				# Get segment lengths
 				for seg in self.segments:
 					self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
@@ -174,7 +173,7 @@ class FunctionalGroup:
 
 class Cluster:
 
-	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 10, segments_to_ignore: list = None):
+	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 10):
 		'''
 		Parameters:
 		----------
@@ -201,7 +200,7 @@ class Cluster:
 		# Get 3D coordinates of center_seg
 		center = segment_centers[segments.index(center_seg)]
 		# Get segments within this cluster
-		self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius, segments_to_ignore=segments_to_ignore)
+		self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius)
 		# Get segment lengths
 		for seg in self.segments:
 			self.len_per_segment.append(seg.sec.L / seg.sec.nseg)

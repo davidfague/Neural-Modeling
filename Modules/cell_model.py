@@ -38,7 +38,7 @@ class CellModel:
         # Segments
         self.segments = []
         self.sec_id_in_seg = []
-        self.nseg = None
+        self.nseg = self._nceg = None # _nceg is for compatibility and staged for deprecation
         self.seg_info = []
 
         # Spikes
@@ -189,7 +189,7 @@ class CellModel:
             self.sec_id_in_seg.append(nseg)
             nseg += sec.nseg
             for seg in sec: self.segments.append(seg)
-        self.nseg = nseg
+        self.nseg = self._nseg = nseg
     
     def insert_unused_channels(self):
         for channel, attr, conductance in CHANNELS:
@@ -236,7 +236,8 @@ class CellModel:
                 if pseg is None:
                     pseg_id = None
                 else:
-                    psec, nseg = pseg.sec, psec.nseg
+                    psec = pseg.sec
+                    nseg = psec.nseg
 
                     pidx = int(np.floor(pseg.x * nseg))
                     if pseg.x == 1: pidx -= 1
@@ -288,7 +289,7 @@ class CellModel:
             seg_dict = self.seg_info[syn_seg_id]
             if syn in seg_dict['seg'].point_processes():
                 NetCon_per_seg[syn_seg_id] += 1 # Get synapses per segment
-                if (syn_type == 'pyr2pyr') | ('AMPA_NMDA' in syn_type) | (syn.e > v_rest):
+                if (syn_type == 'pyr2pyr') | ('AMPA_NMDA' in syn_type): # | (syn.e > v_rest): TODO: check syn.e
                     exc_NetCon_per_seg[syn_seg_id] += 1
                 elif (syn_type == 'int2pyr') | ('GABA_AB' in syn_type):
                     inh_NetCon_per_seg[syn_seg_id] += 1

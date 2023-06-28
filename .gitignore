@@ -9,6 +9,9 @@ __pycache__/
 # neuron
 x86_64/
 
+# libs
+cell_inference/
+
 # C extensions
 *.so
 
