@@ -78,13 +78,13 @@ class Segment:
             setattr(self, str(data_type), seg_data[data_type])
 
         # set segment color based on the type
-        if self.Type == 'soma':
+        if self.type == 'soma':
             self.color = 'purple'
-        elif self.Type == 'dend':
+        elif self.type == 'dend':
             self.color = 'red'
-        elif self.Type == 'apic':
+        elif self.type == 'apic':
             self.color = 'blue'
-        elif self.Type == 'axon':
+        elif self.type == 'axon':
             self.color = 'green'
         else:
             raise ValueError("Section type not implemented", self.Type)
