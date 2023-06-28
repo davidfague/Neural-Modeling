@@ -376,10 +376,11 @@ class CellModel:
       '''
       Method for calculating net synaptic currents and getting data after simulation
       '''
-      numTstep = int(h.tstop / h.dt)
-      i_NMDA_bySeg = [[0] * (numTstep + 1)] * len(self.segments)
-      i_AMPA_bySeg = [[0] * (numTstep + 1)] * len(self.segments)
-      #i_bySeg = [[0] * (numTstep+1)] * len(self.segments)
+      numTstep = int(h.tstop/h.dt)
+      i_NMDA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
+      i_AMPA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
+      i_GABA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
+      # i_bySeg = [[0] * (numTstep+1)] * len(self.segments)
     
       for synapse in self.synapses: # Record nmda and ampa synapse currents
           if ('nmda' in synapse.current_type) or ('NMDA' in synapse.current_type):
@@ -389,9 +390,16 @@ class CellModel:
 
               i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
               i_AMPA_bySeg[seg] = i_AMPA_bySeg[seg] + i_AMPA
+              
+          elif ('gaba' in synapse.syn_type) or ('GABA' in synapse.syn_type): # GABA_AB current is 'i' so use syn_mod
+              i_GABA = np.array(synapse.rec_vec[0])
+              seg = self.segments.index(synapse.segment)
+
+              i_GABA_bySeg[seg] = i_GABA_bySeg[seg] + i_GABA
     
       i_NMDA_df = pd.DataFrame(i_NMDA_bySeg) * 1000
       i_AMPA_df = pd.DataFrame(i_AMPA_bySeg) * 1000
+      i_GABA_df = pd.DataFrame(i_GABA_bySeg) * 1000
     
       data_dict = {}
       data_dict['spikes']=self.get_spike_time()
@@ -406,6 +414,19 @@ class CellModel:
       #self.data_dict['i'] = i_bySeg
       self.write_data(self.create_output_folder())
     
+      self.data_dict = {}
+      self.data_dict['spikes']=self.get_spike_time()
+      self.data_dict['ih_data'] = self.ih.as_numpy()
+      self.data_dict['gNaTa_T_data'] = self.gNaTa_T.as_numpy()
+      self.data_dict['ina_data'] = self.ina.as_numpy()
+      self.data_dict['icah_data'] = self.icah.as_numpy()
+      self.data_dict['ical_data'] = self.ical.as_numpy()
+      self.data_dict['Vm'] = self.Vm.as_numpy()
+      self.data_dict['i_NMDA'] = i_NMDA_df
+      self.data_dict['i_AMPA'] = i_AMPA_df
+      self.data_dict['i_GABA'] = i_GABA_df
+      # self.data_dict['i'] = i_bySeg
+      
       return data_dict
     
     def write_data(self, output_folder_name):

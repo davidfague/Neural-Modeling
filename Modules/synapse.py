@@ -146,7 +146,7 @@ class Synapse:
         else:
             raise ValueError("Synpase type not defined.")
         
-        if syn_mod in ['AlphaSynapse1', 'Exp2Syn']:
+        if syn_mod in ['AlphaSynapse1', 'Exp2Syn', 'GABA_AB']:
             self.current_type = "i"
         elif syn_mod == 'pyr2pyr':
             self.current_type = "iampa_inmda"
@@ -154,8 +154,6 @@ class Synapse:
             self.current_type = 'i_AMPA_i_NMDA'
         elif syn_mod =='int2pyr':
             self.current_type = 'igaba'
-        elif syn_mod == 'GABA_AB':
-            self.current_type = 'i_GABAA_i_GABAB'
         else:
             raise ValueError
         
@@ -197,12 +195,6 @@ class Synapse:
         elif self.current_type == "i_AMPA_i_NMDA":
             vec_inmda = h.Vector(*size).record(self.synapse_neuron_obj._ref_i_NMDA)
             vec_iampa = h.Vector(*size).record(self.synapse_neuron_obj._ref_i_AMPA)
-            self.rec_vec.append(vec_inmda)
-            self.rec_vec.append(vec_iampa)
-            
-        elif self.current_type == "i_GABAA_i_GABAB":
-            vec_inmda = h.Vector(*size).record(self.synapse_neuron_obj._ref_i_GABAA)
-            vec_iampa = h.Vector(*size).record(self.synapse_neuron_obj._ref_i_GABAB)
             self.rec_vec.append(vec_inmda)
             self.rec_vec.append(vec_iampa)
         

@@ -177,8 +177,10 @@ def plot_morphology(sim = None, cellid: int = 0, cell: object = None,
 
 
 def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
-			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces):
-
+			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None):
+	if xlim is None:
+		xlim=t[[0, -1]]
+		
 	v_soma = Vm[soma_seg_index]
 	v_tfut = Vm[tuft_seg_index]
 	v_nexus = Vm[nexus_seg_index]
@@ -193,12 +195,16 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	#plt.plot(t, v_axon, label='axon')
 	plt.ylabel('Membrane potential (mV)')
 	plt.xlabel('time (ms)')
-	plt.xlim(t[[0, -1]])
+	plt.xlim(xlim)
+
 	plt.legend()
 	plt.savefig('Vm')
 
 	# Extracellular potential along y-axis
-	y_window = [-1000, 2500]
+	if ylim is None:
+		y_window = [-1000, 2500]
+	else:
+		y_window = ylim
 	ylim = loc_param[1] + np.array(y_window)  # set range of y coordinate
 	max_idx = np.argmax(np.amax(np.abs(lfp), axis=0))  # find the electrode that records maximum magnitude
 	x_dist = elec_pos[max_idx, 0]  # x coordinate of the maximum magnitude electrode
@@ -215,12 +221,14 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 											nbins=nbins, vlim = "auto", axes=plt.gca()) #vlim='auto';normal range seems to be ~ [-.00722,.00722]
 	#plt.hlines(0,xmin=min(t),xmax=max(t),linestyles='dashed') # create a horizontal line
 	plt.title('Extracellular potential heatmap')
+	plt.xlim(xlim)
 	plt.savefig('ECP heatmap')
 	plt.figure(figsize=(8, 5))
 	_ = plot_lfp_traces(t, lfp[:, e_idx][:,1::3], electrodes=elec_pos[e_idx][1::3],
 											fontsize=fontsize, labelpad=labelpad, ticksize=ticksize, tick_length=tick_length,
 											nbins=nbins, axes=plt.gca())
 	plt.title('Extracellular potential timecourse')
+	plt.xlim(xlim)
 	plt.savefig('ECP timecourse')
 
 	plt.show()
