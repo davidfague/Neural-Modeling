@@ -401,19 +401,6 @@ class CellModel:
       i_AMPA_df = pd.DataFrame(i_AMPA_bySeg) * 1000
       i_GABA_df = pd.DataFrame(i_GABA_bySeg) * 1000
     
-      data_dict = {}
-      data_dict['spikes'] = self.get_spike_time()
-      data_dict['ih_data'] = self.ih.as_numpy()
-      data_dict['gNaTa_T_data'] = self.gNaTa_T.as_numpy()
-      data_dict['ina_data'] = self.ina.as_numpy()
-      data_dict['icah_data'] = self.icah.as_numpy()
-      data_dict['ical_data'] = self.ical.as_numpy()
-      data_dict['Vm'] = self.Vm.as_numpy()
-      data_dict['i_NMDA'] = i_NMDA_df
-      data_dict['i_AMPA'] = i_AMPA_df
-      #self.data_dict['i'] = i_bySeg
-      self.write_data(self.create_output_folder())
-    
       self.data_dict = {}
       self.data_dict['spikes'] = self.get_spike_time()
       self.data_dict['ih_data'] = self.ih.as_numpy()
@@ -426,8 +413,9 @@ class CellModel:
       self.data_dict['i_AMPA'] = i_AMPA_df
       self.data_dict['i_GABA'] = i_GABA_df
       # self.data_dict['i'] = i_bySeg
+      self.write_data(self.create_output_folder())
       
-      return data_dict
+      return self.data_dict
     
     def write_data(self, output_folder_name):
         for name, data in self.data_dict.items():
