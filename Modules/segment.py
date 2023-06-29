@@ -134,7 +134,7 @@ class SegmentManager:
 
         for name in file_names:
             file = h5py.File(f"{output_folder}/{name}.{ext}", 'r')
-            data.append(file["report"]["biophysical"]["data"])
+            data.append(np.array(file["report"]["biophysical"]["data"]))
 
         data.append(pd.read_csv(f"{output_folder}/seg_info.csv"))
 
