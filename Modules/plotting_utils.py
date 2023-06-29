@@ -272,7 +272,7 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
       				data_segment = data_dict[data_type][segment_index]
       				plt.plot(t, data_segment, label=str(data_type))
 	
-		plt.ylabel('Membrane Current (nA)')
+		plt.ylabel('Membrane Current (mA/cm2)')
 		plt.xlabel('time (ms)')
 		plt.xlim(xlim)
 		plt.title('Segment Currents - ' + segment_name)  # Use segment_name in the title
