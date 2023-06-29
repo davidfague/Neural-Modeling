@@ -9,10 +9,19 @@ import os, shutil, h5py, csv
 # Global Constants
 FREQS = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
 
-CHANNELS = [('NaTa_t', 'gNaTa_t_NaTa_t', 'gNaTa_tbar'),
-            ('Ca_LVAst', 'ica_Ca_LVAst', 'gCa_LVAstbar'),
-            ('Ca_HVA', 'ica_Ca_HVA', 'gCa_HVAbar'),
-            ('Ih', 'ihcn_Ih', 'gIhbar')]
+CHANNELS = [
+    ('NaTa_t', 'gNaTa_t_NaTa_t', 'gNaTa_tbar'),
+    ('Ca_LVAst', 'ica_Ca_LVAst', 'gCa_LVAstbar'),
+    ('Ca_HVA', 'ica_Ca_HVA', 'gCa_HVAbar'),
+    ('Ih', 'ihcn_Ih', 'gIhbar'),
+    ('Nap_Et2', 'gNap_Et2bar_Nap_Et2', 'gNap_Et2bar'),
+    ('K_Pst', 'gK_Pstbar_K_Pst', 'gK_Pstbar'),
+    ('K_Tst', 'gK_Tstbar_K_Tst', 'gK_Tstbar'),
+    ('SK_E2', 'gSK_E2bar_SK_E2', 'gSK_E2bar'),
+    ('SKv3_1', 'gSKv3_1bar_SKv3_1', 'gSKv3_1bar'),
+    ('Ca_HVA', 'gCa_HVAbar_Ca_HVA', 'gCa_HVAbar'),
+    ('Ca_LVAst', 'gCa_LVAstbar_Ca_LVAst', 'gCa_LVAstbar')]
+
 
 class CellModel:
 
