@@ -261,21 +261,21 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 	# Loop over segments
 	for segment_name, segment_index in segments_dict.items():
 	    # Create a new figure for each segment
-	    if figsize is None:
-	        plt.figure(figsize=(10, 4))
-	    else:
-	        plt.figure(figsize=figsize)
+		if figsize is None:
+			plt.figure(figsize=(10, 4))
+		else:
+			plt.figure(figsize=figsize)
 	
-	    # Loop over currents within each segment
-	    for data_type in data_dict:
-		if (str(data_type) != 'spikes') and ('i' in data_type): # if it is a current data
-		    data_segment = data_dict[data_type][segment_index]
-		    plt.plot(t, data_segment, label=str(data_type))
+		# Loop over currents within each segment
+		for data_type in data_dict:
+			if (str(data_type) != 'spikes') and ('i' in data_type): # if it is a current data
+      				data_segment = data_dict[data_type][segment_index]
+      				plt.plot(t, data_segment, label=str(data_type))
 	
-	    plt.ylabel('Membrane Current (nA)')
-	    plt.xlabel('time (ms)')
-	    plt.xlim(xlim)
-	    plt.title('Segment Currents - ' + segment_name)  # Use segment_name in the title
-	    plt.legend()
-	    plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
-	    plt.close()  # Close the figure after saving it
+		plt.ylabel('Membrane Current (nA)')
+		plt.xlabel('time (ms)')
+		plt.xlim(xlim)
+		plt.title('Segment Currents - ' + segment_name)  # Use segment_name in the title
+		plt.legend()
+		plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
+		plt.close()  # Close the figure after saving it
