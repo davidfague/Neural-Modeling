@@ -115,7 +115,7 @@ class SegmentManager:
             # Build seg_data
             seg_data = {}
             for ind, name in enumerate(["v", "gNaTa", "iampa", "icah", "ical", "ih", "ina"]):
-                seg_data[name] = data[ind][:, i]
+                seg_data[name] = data[ind][i, :]
 
             seg = Segment(seg_info = data[-1].iloc[i], seg_data = seg_data)
             self.segments.append(seg)
@@ -133,8 +133,8 @@ class SegmentManager:
         data = []
 
         for name in file_names:
-            file = h5py.File(f"{output_folder}/{name}.{ext}", 'r')
-            data.append(file["report"]["biophysical"]["data"])
+            with h5py.File(f"{output_folder}/{name}.{ext}", 'r') as file:
+                data.append(np.array(file["report"]["biophysical"]["data"]))
 
         data.append(pd.read_csv(f"{output_folder}/seg_info.csv"))
 
@@ -144,15 +144,24 @@ class SegmentManager:
         na_lower_bounds = []
         peak_values = []
         flattened_peak_values = []
-
+    
         for seg in self.segments:
             lb = self.get_na_lower_bounds_for_seg(seg, threshold, ms_within_somatic_spike)
             na_lower_bounds.append(lb)
-
-            peak = seg.gNaTa[(lb + 1 / self.dt).astype(int)]
-            peak_values.append(peak)
-            flattened_peak_values.extend(peak.astype(float).tolist())
-
+    
+            # Calculate the index for the peak
+            peak_indices = (lb + 1 / self.dt).astype(int)
+    
+            # Iterate over each index in peak_indices
+            for index in peak_indices:
+                # Check if the index is within the bounds of the data
+                if index < len(seg.gNaTa):
+                    peak = seg.gNaTa[index]
+                    peak_values.append(peak)
+                    flattened_peak_values.append(peak)
+                else:
+                    print(f"Warning: peak index {index} exceeds the size of the data. Skipping this index.")
+    
         return na_lower_bounds, peak_values, flattened_peak_values
 
     def get_na_lower_bounds_for_seg(self, seg, threshold: float, ms_within_somatic_spike: float) -> np.ndarray:
@@ -249,7 +258,7 @@ class SegmentManager:
             for s_times in np.sort(spiketimes):
                 # Exclude bursts
                 if s_times - c > 10:
-                    for e in np.arange(0, len(spiketimes)):
+                    for e in np.arange(0, len(edges)-1):
                         if len(lower_bounds[i]) > 0:
                             dist = eval(self.segments[i].seg_elec_distance)['beta']['passive_soma']
                             if (sec_indicator in self.segments[i].sec):

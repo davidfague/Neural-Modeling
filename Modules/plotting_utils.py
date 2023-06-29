@@ -240,3 +240,43 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	plt.savefig('ECP timecourse')
 
 	plt.show()
+							
+def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
+			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, figsize: tuple = None, vlim = 'auto', data_dict: dict = None):
+							
+	plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
+			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim, ylim, figsize, vlim)
+	if xlim is None:
+	    xlim = t[[0, -1]]
+	
+	# Define a dictionary to associate segment indices with their names
+	segments_dict = {
+	    "Soma": soma_seg_index,
+	    "Tuft": tuft_seg_index,
+	    "Nexus": nexus_seg_index,
+	    "Axon": axon_seg_index,
+	    "Basal": basal_seg_index
+	}
+	
+	# Loop over segments
+	for segment_name, segment_index in segments_dict.items():
+	
+	    # Create a new figure for each segment
+	    if figsize is None:
+	        plt.figure(figsize=(10, 4))
+	    else:
+	        plt.figure(figsize=figsize)
+	
+	    # Loop over currents within each segment
+	    for data_type in data_dict:
+	        if 'i' in data_type:  # if it is a current data
+	            data_segment = data_dict[data_type][:, segment_index]
+	            plt.plot(t, data_segment, label=str(data_type))
+	
+	    plt.ylabel('Membrane Current (nA)')
+	    plt.xlabel('time (ms)')
+	    plt.xlim(xlim)
+	    plt.title('Segment Currents - ' + segment_name)  # Use segment_name in the title
+	    plt.legend()
+	    plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
+	    plt.close()  # Close the figure after saving it
