@@ -213,7 +213,7 @@ class CellModel:
                 self.CHANNELS.append((channel_name, var_name, conductance_name))
         # check the result
         for channel in self.CHANNELS:
-        print(channel)
+            print(channel)
 
     def insert_unused_channels(self):
         '''
