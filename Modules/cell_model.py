@@ -208,9 +208,10 @@ class CellModel:
         self.CHANNELS = []
         for var_name in self.var_names:
             if var_name != 'i_pas':
-                channel_name = var_name.split('_')[1]
+                channel_name = var_name.split('_')[1] if var_name.startswith('i') else var_name.split('_', 2)[1]
                 conductance_name = f'g{channel_name}bar'
                 self.CHANNELS.append((channel_name, var_name, conductance_name))
+        
         # check the result
         for channel in self.CHANNELS:
             print(channel)
