@@ -210,9 +210,9 @@ class CellModel:
         for var_name in self.var_names:
             if var_name != 'i_pas':
                 if var_name.startswith('g'):
-                    channels_set.add(var_name.split('_', 2)[1])
+                    channels_set.add('_'.join(var_name.split('_')[1:]))
                 elif var_name.startswith('i'):
-                    channels_set.add(var_name.split('_')[1])
+                    channels_set.add(var_name.split('_', 1)[1])
         
         self.CHANNELS = [(channel, f'g{channel}_{channel}', f'g{channel}bar') for channel in channels_set]
 
