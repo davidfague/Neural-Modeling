@@ -258,7 +258,7 @@ class SegmentManager:
             for s_times in np.sort(spiketimes):
                 # Exclude bursts
                 if s_times - c > 10:
-                    for e in np.arange(0, len(edges)):
+                    for e in np.arange(0, len(edges)-1):
                         if len(lower_bounds[i]) > 0:
                             dist = eval(self.segments[i].seg_elec_distance)['beta']['passive_soma']
                             if (sec_indicator in self.segments[i].sec):
