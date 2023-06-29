@@ -144,15 +144,22 @@ class SegmentManager:
         na_lower_bounds = []
         peak_values = []
         flattened_peak_values = []
-
+    
         for seg in self.segments:
             lb = self.get_na_lower_bounds_for_seg(seg, threshold, ms_within_somatic_spike)
             na_lower_bounds.append(lb)
-
-            peak = seg.gNaTa[(lb + 1 / self.dt).astype(int)]
-            peak_values.append(peak)
-            flattened_peak_values.extend(peak.astype(float).tolist())
-
+    
+            # Calculate the index for the peak
+            peak_index = (lb + 1 / self.dt).astype(int)
+    
+            # Check if the index is within the bounds of the data
+            if peak_index < len(seg.gNaTa):
+                peak = seg.gNaTa[peak_index]
+                peak_values.append(peak)
+                flattened_peak_values.extend(peak.astype(float).tolist())
+            else:
+                print(f"Warning: peak index {peak_index} exceeds the size of the data. Skipping this index.")
+    
         return na_lower_bounds, peak_values, flattened_peak_values
 
     def get_na_lower_bounds_for_seg(self, seg, threshold: float, ms_within_somatic_spike: float) -> np.ndarray:
