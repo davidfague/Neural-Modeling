@@ -242,7 +242,9 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	plt.show()
 							
 def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
-			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, figsize: tuple = None, vlim = 'auto', data_dict: dict = None):
+			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, 
+			 			figsize: tuple = None, vlim = 'auto', data_dict: dict = None,
+						cmap: str = 'tab20'):
 							
 	plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
 			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim, ylim, figsize, vlim)
@@ -270,7 +272,7 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		for data_type in data_dict:
 			if (str(data_type) != 'spikes') and ('i' in data_type): # if it is a current data
       				data_segment = data_dict[data_type][segment_index]
-      				plt.plot(t, data_segment, label=str(data_type))
+      				plt.plot(t, data_segment, label=str(data_type), cmap=cmap)
 	
 		plt.ylabel('Membrane Current (mA/cm2)')
 		plt.xlabel('time (ms)')
