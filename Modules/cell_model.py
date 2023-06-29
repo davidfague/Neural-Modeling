@@ -204,7 +204,7 @@ class CellModel:
             for seg in sec: self.segments.append(seg)
         self.nseg = self._nseg = nseg
         
-    def get_channel_var_names(self):
+    def get_channels_from_var_names(self):
         self.CHANNELS = []
         for var_name in self.var_names:
             if var_name != 'i_pas':
