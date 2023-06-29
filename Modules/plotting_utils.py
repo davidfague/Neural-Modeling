@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from typing import Union, Optional, List, Tuple
 from scipy.spatial.transform import Rotation
+import matplotlib.cm as cm
 
 def plot_sta(data, edges, title, x_ticks, x_tick_labels, xlim, 
 			 norm_percentiles = (1, 99), save_to = None) -> None:
@@ -21,7 +22,6 @@ def plot_sta(data, edges, title, x_ticks, x_tick_labels, xlim,
 
 	if save_to:
 		fig.savefig(f'{save_to}', dpi = fig.dpi)
-
 
 #TODO CHECK
 def move_position(translate: Union[List[float],Tuple[float],np.ndarray],
@@ -263,7 +263,9 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	plt.show()
 							
 def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
-							loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, figsize: tuple = None, vlim = 'auto', data_dict: dict = None):
+			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, 
+			 			figsize: tuple = None, vlim = 'auto', data_dict: dict = None,
+						cmap: str = 'tab20'):
 							
 	plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
 							loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim, ylim, figsize, vlim)
@@ -280,24 +282,27 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 	}
 	
 	# Loop over segments
+	num_currents = len(data_dict)
+	colormap = cm.get_cmap(cmap)  # or any other colormap
 	for segment_name, segment_index in segments_dict.items():
-	
-		# Create a new figure for each segment
+	    # Create a new figure for each segment
 		if figsize is None:
 			plt.figure(figsize=(10, 4))
 		else:
 			plt.figure(figsize=figsize)
 	
 		# Loop over currents within each segment
-		for data_type in data_dict:
-			if 'i' in data_type:  # if it is a current data
-				data_segment = data_dict[data_type][:, segment_index]
-				plt.plot(t, data_segment, label=str(data_type))
+		for i,data_type in enumerate(data_dict):
+			if (str(data_type) != 'spikes') and ('i' in data_type): # if it is a current data
+				color = colormap(i / num_currents)  # get color from colormap
+				data_segment = data_dict[data_type][segment_index]
+				plt.plot(t, data_segment, label=str(data_type), color=color)
 	
-		plt.ylabel('Membrane Current (nA)')
+		plt.ylabel('Membrane Current (mA/cm2)')
 		plt.xlabel('time (ms)')
 		plt.xlim(xlim)
 		plt.title('Segment Currents - ' + segment_name)  # Use segment_name in the title
 		plt.legend()
+		plt.show()
 		plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
 		plt.close()  # Close the figure after saving it
