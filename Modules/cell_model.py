@@ -207,7 +207,7 @@ class CellModel:
     def get_channels_from_var_names(self):
         # Identifying unique channels
         channels_set = set()
-        for var_name in var_names:
+        for var_name in self.var_names:
             if var_name != 'i_pas':
                 if var_name.startswith('g'):
                     channels_set.add(var_name.split('_', 2)[1])
