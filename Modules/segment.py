@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import h5py
+import warnings
 
 def voltage_criterion(data = None, v_thresh: float = -40, time_thresh: int = 260):
     threshold_crossings = np.diff(data > v_thresh, prepend = False)
@@ -153,6 +154,7 @@ class SegmentManager:
             peak_indices = (lb + 1 / self.dt).astype(int)
     
             # Iterate over each index in peak_indices
+            failed_indices = []
             for index in peak_indices:
                 # Check if the index is within the bounds of the data
                 if index < len(seg.gNaTa):
@@ -160,7 +162,11 @@ class SegmentManager:
                     peak_values.append(peak)
                     flattened_peak_values.append(peak)
                 else:
-                    print(f"Warning: peak index {index} exceeds the size of the data. Skipping this index.")
+                    failed_indices.append(index)
+
+            if len(failed_indices) > 0:
+                warining_text = f"Skipped {len(failed_indices)} indicies, since they exceeded the data length."
+                warnings.warn(warining_text)
     
         return na_lower_bounds, peak_values, flattened_peak_values
 
@@ -178,32 +184,36 @@ class SegmentManager:
 
         return np.array(na_spks)
 
-    def get_ca_lower_bounds_durations_and_peaks(self, lowery, uppery, random_state: np.random.RandomState):
-        # Filter Ca and get bounds
-        CAsegIDs, ca_lower_bounds, ca_upper_bounds, ca_mag, ca_segments_for_condition = [], [], [], [], []
+    def get_ca_nmda_lower_bounds_durations_and_peaks(self, lowery, uppery, random_state: np.random.RandomState):
+        # Filter and get bounds
+        segIDs, lower_bounds, upper_bounds, mag, segments_for_condition = [], [], [], [], []
         for i, seg in enumerate(self.segments):
-            #if (seg.type == "apic") & (seg.p0_5_y3d > lowery) & (seg.p0_5_y3d < uppery):
-            if (seg.type == "dend") | (seg.type == "apic"):
-                CAsegIDs.append(i)
+            if (lowery is not None) & (uppery is not None):
+                cond = (seg.type == "apic") & (seg.p0_5_y3d > lowery) & (seg.p0_5_y3d < uppery)
+            else:
+                cond = (seg.type == "dend") | (seg.type == "apic")
+
+            if cond:
+                segIDs.append(i)
                 bounds = self.get_ca_lower_bounds_for_seg(seg, i)
-                ca_lower_bounds.append(bounds[0]), ca_upper_bounds.append(bounds[1]), ca_mag.append(bounds[2])
+                lower_bounds.append(bounds[0]), upper_bounds.append(bounds[1]), mag.append(bounds[2])
 
                 # Prepare for the next step, peak calculation
                 for bound in bounds[0]:
                     if (bound > 20) & (bound < 1400000): #TODO: ca_upper_bounds??
-                        ca_segments_for_condition.append(i) # (i) will be appended multiple times, that's intended
+                        segments_for_condition.append(i) # (i) will be appended multiple times, that's intended
             else:
-                ca_lower_bounds.append([]), ca_upper_bounds.append([]), ca_mag.append([])
+                lower_bounds.append([]), upper_bounds.append([]), mag.append([])
 
-        random_segments_ids = random_state.choice(ca_segments_for_condition, 100)
+        random_segments_ids = random_state.choice(segments_for_condition, 100)
 
         duration_low, duration_high, peak_values = [], [], []
         for rand_seg_id in random_segments_ids:
-            spike_times = ca_lower_bounds[rand_seg_id]
+            spike_times = lower_bounds[rand_seg_id]
             duration_low_seg, duration_high_seg, peak_values_seg = self.get_duration_and_peak_for_seg(self.segments[rand_seg_id], spike_times)
             duration_low.append(duration_low_seg), duration_high.append(duration_high_seg), peak_values.append(peak_values_seg)
 
-        return ca_lower_bounds, ca_upper_bounds, ca_mag, duration_low, duration_high, peak_values
+        return lower_bounds, upper_bounds, mag, duration_low, duration_high, peak_values
 
     def get_duration_and_peak_for_seg(self, seg, spike_times):
         duration_low, duration_high, peak_values = [], [], []
@@ -251,7 +261,7 @@ class SegmentManager:
         return edges
 
     def get_sta(self, spiketimes, lower_bounds, edges, sec_indicator):
-        sta = np.zeros((len(spiketimes), 39))
+        sta = np.zeros((len(edges), 39))
 
         c = 0
         for i in range(self.num_segments):
@@ -268,4 +278,4 @@ class SegmentManager:
                                     sta[e] += x2
                 c = s_times
 
-        return sta
+        return sta[:-1, :]

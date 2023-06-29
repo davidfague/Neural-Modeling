@@ -2,30 +2,51 @@ import matplotlib.pyplot as plt
 import numpy as np
 from typing import Union, Optional, List, Tuple
 from scipy.spatial.transform import Rotation
+
+def plot_sta(data, edges, title, x_ticks, x_tick_labels, xlim, 
+			 norm_percentiles = (1, 99), save_to = None) -> None:
+	# Adjust the data
+	lower, upper = np.percentile(data, norm_percentiles)
+	robust_norm = plt.Normalize(vmin = lower, vmax = upper)
+	fig = plt.figure(figsize = (10, 5))
+	plt.imshow(robust_norm(data), cmap = "jet")
+	plt.title(title)
+	plt.xticks(ticks = x_ticks - 0.5, 
+			   labels = x_tick_labels)
+	plt.xlabel('Time (ms)')
+	plt.xlim(*xlim)
+	plt.yticks(ticks = np.arange(11) - 0.5, labels = np.round(edges, 3))
+	plt.ylabel("Edge Quantile")
+	plt.colorbar(label = 'Additional Events per AP')
+
+	if save_to:
+		fig.savefig(f'{save_to}', dpi = fig.dpi)
+
+
 #TODO CHECK
 def move_position(translate: Union[List[float],Tuple[float],np.ndarray],
-                  rotate: Union[List[float],Tuple[float],np.ndarray],
-                  old_position: Optional[Union[List[float], np.ndarray]] = None,
-                  move_frame: bool = False) -> np.ndarray:
-    """
-    Rotate and translate an object with old_position and calculate its new coordinates.
-    Rotate(alpha, h, phi): first rotate alpha about the y-axis (spin),
-    then rotate arccos(h) about the x-axis (elevation),
-    then rotate phi about the y-axis (azimuth).
-    Finally translate the object by translate(x, y, z).
-    If move_frame is True, use the object as reference frame and move the
-    old reference frame, calculate new coordinates of the old_position.
-    """
-    translate = np.asarray(translate)
-    if old_position is None:
-        old_position = [0., 0., 0.]
-    old_position = np.asarray(old_position)
-    rot = Rotation.from_euler('yxy', [rotate[0], np.arccos(rotate[1]), rotate[2]])
-    if move_frame:
-        new_position = rot.inv().apply(old_position - translate)
-    else:
-        new_position = rot.apply(old_position) + translate
-    return new_position
+				  rotate: Union[List[float],Tuple[float],np.ndarray],
+				  old_position: Optional[Union[List[float], np.ndarray]] = None,
+				  move_frame: bool = False) -> np.ndarray:
+	"""
+	Rotate and translate an object with old_position and calculate its new coordinates.
+	Rotate(alpha, h, phi): first rotate alpha about the y-axis (spin),
+	then rotate arccos(h) about the x-axis (elevation),
+	then rotate phi about the y-axis (azimuth).
+	Finally translate the object by translate(x, y, z).
+	If move_frame is True, use the object as reference frame and move the
+	old reference frame, calculate new coordinates of the old_position.
+	"""
+	translate = np.asarray(translate)
+	if old_position is None:
+		old_position = [0., 0., 0.]
+	old_position = np.asarray(old_position)
+	rot = Rotation.from_euler('yxy', [rotate[0], np.arccos(rotate[1]), rotate[2]])
+	if move_frame:
+		new_position = rot.inv().apply(old_position - translate)
+	else:
+		new_position = rot.apply(old_position) + translate
+	return new_position
 
 #TODO: add docstirng
 def plot_morphology(sim = None, cellid: int = 0, cell: object = None,
@@ -177,7 +198,7 @@ def plot_morphology(sim = None, cellid: int = 0, cell: object = None,
 
 
 def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
-			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, figsize: tuple = None, vlim = 'auto'):
+							loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, figsize: tuple = None, vlim = 'auto'):
 	if xlim is None:
 		xlim=t[[0, -1]]
 	v_soma = Vm[soma_seg_index]
@@ -242,41 +263,41 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	plt.show()
 							
 def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
-			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, figsize: tuple = None, vlim = 'auto', data_dict: dict = None):
+							loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, figsize: tuple = None, vlim = 'auto', data_dict: dict = None):
 							
 	plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
-			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim, ylim, figsize, vlim)
+							loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim, ylim, figsize, vlim)
 	if xlim is None:
-	    xlim = t[[0, -1]]
+		xlim = t[[0, -1]]
 	
 	# Define a dictionary to associate segment indices with their names
 	segments_dict = {
-	    "Soma": soma_seg_index,
-	    "Tuft": tuft_seg_index,
-	    "Nexus": nexus_seg_index,
-	    "Axon": axon_seg_index,
-	    "Basal": basal_seg_index
+		"Soma": soma_seg_index,
+		"Tuft": tuft_seg_index,
+		"Nexus": nexus_seg_index,
+		"Axon": axon_seg_index,
+		"Basal": basal_seg_index
 	}
 	
 	# Loop over segments
 	for segment_name, segment_index in segments_dict.items():
 	
-	    # Create a new figure for each segment
-	    if figsize is None:
-	        plt.figure(figsize=(10, 4))
-	    else:
-	        plt.figure(figsize=figsize)
+		# Create a new figure for each segment
+		if figsize is None:
+			plt.figure(figsize=(10, 4))
+		else:
+			plt.figure(figsize=figsize)
 	
-	    # Loop over currents within each segment
-	    for data_type in data_dict:
-	        if 'i' in data_type:  # if it is a current data
-	            data_segment = data_dict[data_type][:, segment_index]
-	            plt.plot(t, data_segment, label=str(data_type))
+		# Loop over currents within each segment
+		for data_type in data_dict:
+			if 'i' in data_type:  # if it is a current data
+				data_segment = data_dict[data_type][:, segment_index]
+				plt.plot(t, data_segment, label=str(data_type))
 	
-	    plt.ylabel('Membrane Current (nA)')
-	    plt.xlabel('time (ms)')
-	    plt.xlim(xlim)
-	    plt.title('Segment Currents - ' + segment_name)  # Use segment_name in the title
-	    plt.legend()
-	    plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
-	    plt.close()  # Close the figure after saving it
+		plt.ylabel('Membrane Current (nA)')
+		plt.xlabel('time (ms)')
+		plt.xlim(xlim)
+		plt.title('Segment Currents - ' + segment_name)  # Use segment_name in the title
+		plt.legend()
+		plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
+		plt.close()  # Close the figure after saving it
