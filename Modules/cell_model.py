@@ -211,16 +211,13 @@ class CellModel:
                 channel_name = var_name.split('_', 2)[1] if var_name.count('_') > 1 else var_name.split('_')[1]
                 conductance_name = f'g{channel_name}bar'
                 self.CHANNELS.append((channel_name, var_name, conductance_name))
-        
-        # check the result
-        for channel in self.CHANNELS:
-            print(channel)
 
     def insert_unused_channels(self):
         '''
         Method for allowing recording of channels in sections that do not have the current.
         '''
         for channel, attr, conductance in self.CHANNELS:
+            print(channel, attr, conductance)
             for sec in self.all:
                 if not hasattr(sec(0.5), attr):
                     sec.insert(channel) # insert this channel into
