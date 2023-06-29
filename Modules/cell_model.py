@@ -66,7 +66,7 @@ class CellModel:
         self.recompute_segment_elec_distance()
         self.recompute_netcons_per_seg()
 
-        self.get_channel_var_names()
+        self.get_channels_from_var_names() # get channel and attribute names from recorded channel name
         self.insert_unused_channels()
         self.setup_recorders()
 
@@ -211,6 +211,9 @@ class CellModel:
                 channel_name = var_name.split('_')[1]
                 conductance_name = f'g{channel_name}bar'
                 self.CHANNELS.append((channel_name, var_name, conductance_name))
+        # check the result
+        for channel in self.CHANNELS:
+        print(channel)
 
     def insert_unused_channels(self):
         '''
