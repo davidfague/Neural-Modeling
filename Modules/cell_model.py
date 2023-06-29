@@ -209,6 +209,7 @@ class CellModel:
         channels_set = set()
         for var_name in self.var_names:
             if var_name != 'i_pas':
+                split_name = var_name.split('_')
                 if var_name.startswith('g'):
                     channels_set.add('_'.join(split_name[2:]))
                 elif var_name.startswith('i'):
