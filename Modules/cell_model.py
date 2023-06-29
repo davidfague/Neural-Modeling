@@ -9,18 +9,18 @@ import os, shutil, h5py, csv
 # Global Constants
 FREQS = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
 
-CHANNELS = [
-    ('NaTa_t', 'gNaTa_t_NaTa_t', 'gNaTa_tbar'),
-    ('Ca_LVAst', 'ica_Ca_LVAst', 'gCa_LVAstbar'),
-    ('Ca_HVA', 'ica_Ca_HVA', 'gCa_HVAbar'),
-    ('Ih', 'ihcn_Ih', 'gIhbar'),
-    ('Nap_Et2', 'gNap_Et2bar_Nap_Et2', 'gNap_Et2bar'),
-    ('K_Pst', 'gK_Pstbar_K_Pst', 'gK_Pstbar'),
-    ('K_Tst', 'gK_Tstbar_K_Tst', 'gK_Tstbar'),
-    ('SK_E2', 'gSK_E2bar_SK_E2', 'gSK_E2bar'),
-    ('SKv3_1', 'gSKv3_1bar_SKv3_1', 'gSKv3_1bar'),
-    ('Ca_HVA', 'gCa_HVAbar_Ca_HVA', 'gCa_HVAbar'),
-    ('Ca_LVAst', 'gCa_LVAstbar_Ca_LVAst', 'gCa_LVAstbar')]
+# CHANNELS = [
+#     ('NaTa_t', 'gNaTa_t_NaTa_t', 'gNaTa_tbar'),
+#     ('Ca_LVAst', 'ica_Ca_LVAst', 'gCa_LVAstbar'),
+#     ('Ca_HVA', 'ica_Ca_HVA', 'gCa_HVAbar'),
+#     ('Ih', 'ihcn_Ih', 'gIhbar'),
+#     ('Nap_Et2', 'gNap_Et2bar_Nap_Et2', 'gNap_Et2bar'),
+#     ('K_Pst', 'gK_Pstbar_K_Pst', 'gK_Pstbar'),
+#     ('K_Tst', 'gK_Tstbar_K_Tst', 'gK_Tstbar'),
+#     ('SK_E2', 'gSK_E2bar_SK_E2', 'gSK_E2bar'),
+#     ('SKv3_1', 'gSKv3_1bar_SKv3_1', 'gSKv3_1bar'),
+#     ('Ca_HVA', 'gCa_HVAbar_Ca_HVA', 'gCa_HVAbar'),
+#     ('Ca_LVAst', 'gCa_LVAstbar_Ca_LVAst', 'gCa_LVAstbar')]
 
 
 class CellModel:
@@ -66,7 +66,7 @@ class CellModel:
         self.recompute_segment_elec_distance()
         self.recompute_netcons_per_seg()
 
-
+        self.get_channel_var_names()
         self.insert_unused_channels()
         self.setup_recorders()
 
@@ -203,14 +203,25 @@ class CellModel:
             nseg += sec.nseg
             for seg in sec: self.segments.append(seg)
         self.nseg = self._nseg = nseg
-    
+        
+    def get_channel_var_names(self):
+        self.CHANNELS = []
+        for var_name in self.var_names:
+            if var_name != 'i_pas':
+                channel_name = var_name.split('_')[1]
+                conductance_name = f'g{channel_name}bar'
+                self.CHANNELS.append((channel_name, var_name, conductance_name))
+
     def insert_unused_channels(self):
-        for channel, attr, conductance in CHANNELS:
+        '''
+        Method for allowing recording of channels in sections that do not have the current.
+        '''
+        for channel, attr, conductance in self.CHANNELS:
             for sec in self.all:
                 if not hasattr(sec(0.5), attr):
-                    sec.insert(channel)
+                    sec.insert(channel) # insert this channel into
                     for seg in sec:
-                        setattr(getattr(seg, channel), conductance, 0)
+                        setattr(getattr(seg, channel), conductance, 0) # set the maximum conductance to zero
 
     def write_seg_info_to_csv(self):
         csv_file_path = os.path.join(self.output_folder_name, 'seg_info.csv')
