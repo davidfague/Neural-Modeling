@@ -274,7 +274,7 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		# Loop over currents within each segment
 		for i,data_type in enumerate(data_dict):
 			if (str(data_type) != 'spikes') and ('i' in data_type): # if it is a current data
-				color = cmap(i / num_currents)  # get color from colormap
+				color = colormap(i / num_currents)  # get color from colormap
 				data_segment = data_dict[data_type][segment_index]
 				plt.plot(t, data_segment, label=str(data_type), color=color)
 	
