@@ -205,12 +205,16 @@ class CellModel:
         self.nseg = self._nseg = nseg
         
     def get_channels_from_var_names(self):
-        self.CHANNELS = []
-        for var_name in self.var_names:
+        # Identifying unique channels
+        channels_set = set()
+        for var_name in var_names:
             if var_name != 'i_pas':
-                channel_name = var_name.split('_', 2)[1] if var_name.count('_') > 1 else var_name.split('_')[1]
-                conductance_name = f'g{channel_name}bar'
-                self.CHANNELS.append((channel_name, var_name, conductance_name))
+                if var_name.startswith('g'):
+                    channels_set.add(var_name.split('_', 2)[1])
+                elif var_name.startswith('i'):
+                    channels_set.add(var_name.split('_')[1])
+        
+        self.CHANNELS = [(channel, f'g{channel}_{channel}', f'g{channel}bar') for channel in channels_set]
 
     def insert_unused_channels(self):
         '''
