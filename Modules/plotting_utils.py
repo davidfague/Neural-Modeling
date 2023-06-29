@@ -261,6 +261,8 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 	}
 	
 	# Loop over segments
+	num_currents = len(data_dict)
+	colormap = cm.get_cmap(cmap)  # or any other colormap
 	for segment_name, segment_index in segments_dict.items():
 	    # Create a new figure for each segment
 		if figsize is None:
@@ -269,10 +271,11 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 			plt.figure(figsize=figsize)
 	
 		# Loop over currents within each segment
-		for data_type in data_dict:
+		for i,data_type in enumerate(data_dict):
 			if (str(data_type) != 'spikes') and ('i' in data_type): # if it is a current data
+				color = cmap(i / num_currents)  # get color from colormap
       				data_segment = data_dict[data_type][segment_index]
-      				plt.plot(t, data_segment, label=str(data_type), cmap=cmap)
+      				plt.plot(t, data_segment, label=str(data_type), color=color)
 	
 		plt.ylabel('Membrane Current (mA/cm2)')
 		plt.xlabel('time (ms)')
