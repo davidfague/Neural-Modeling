@@ -18,7 +18,7 @@ class CellModel:
 
     def __init__(self, hoc_model: object, random_state: np.random.RandomState, 
                  synapses: list = [], netcons: list = [], spike_trains: list = [], 
-                 spike_threshold: list = None):
+                 spike_threshold: list = None, var_names: list = []):
 
         # Parse the hoc model
         self.all, self.soma, self.apic, self.dend, self.axon = None, None, None, None, None
@@ -30,6 +30,7 @@ class CellModel:
         self.spike_trains = spike_trains
         self.spike_threshold = spike_threshold
         self.injection = []
+        self.var_names = var_names  # variables to be recorded
         
         # Angles and rotations that were used to branch the cell
         # Store to use for geometry file generation
@@ -340,12 +341,19 @@ class CellModel:
 
     # TODO: CHECK
     def setup_recorders(self):
-      self.gNaTa_T = Recorder(obj_list = self.segments, var_name = 'gNaTa_t_NaTa_t')
-      self.ina = Recorder(obj_list = self.segments, var_name = 'ina_NaTa_t')
-      self.ical = Recorder(obj_list = self.segments, var_name = 'ica_Ca_LVAst')
-      self.icah = Recorder(obj_list = self.segments, var_name = 'ica_Ca_HVA')
-      self.ih = Recorder(obj_list = self.segments, var_name = 'ihcn_Ih')
-      self.Vm = Recorder(obj_list = self.segments)
+                self.recorders = {var_name: Recorder(obj_list=self.segments, var_name=var_name) for var_name in self.var_names}
+                # self.gNaTa_T = Recorder(obj_list=self.segments, var_name='gNaTa_t_NaTa_t')
+                # self.ina_NaTa_t = Recorder(obj_list=self.segments, var_name='ina_NaTa_t')
+                # self.ina_Nap_Et2 = Recorder(obj_list=self.segments, var_name='ina_Nap_Et2')
+                # self.ik_K_Pst = Recorder(obj_list=self.segments, var_name='ik_K_Pst')
+                # self.ik_K_Tst = Recorder(obj_list=self.segments, var_name='ik_K_Tst')
+                # self.ik_SK_E2 = Recorder(obj_list=self.segments, var_name='ik_SK_E2')
+                # self.ik_SKv3_1 = Recorder(obj_list=self.segments, var_name='ik_SKv3_1')
+                # self.ica_Ca_HVA = Recorder(obj_list=self.segments, var_name='ica_Ca_HVA')
+                # self.ica_Ca_LVAst = Recorder(obj_list=self.segments, var_name='ica_Ca_LVAst')
+                # self.ihcn_Ih = Recorder(obj_list=self.segments, var_name='ihcn_Ih')
+                # self.i_pas = Recorder(obj_list=self.segments, var_name='i_pas')
+                # self.Vm = Recorder(obj_list=self.segments)
     
     def create_output_folder(self) -> str:
         nbranches = len(self.apic) - 1
@@ -405,13 +413,22 @@ class CellModel:
       i_GABA_df = pd.DataFrame(i_GABA_bySeg) * 1000
     
       self.data_dict = {}
+      # dynamically add recorded data to data_dict
+      for var_name, recorder in self.recorders.items():
+            self.data_dict[var_name + '_data'] = recorder.as_numpy()
       self.data_dict['spikes'] = self.get_spike_time()
-      self.data_dict['ih_data'] = self.ih.as_numpy()
-      self.data_dict['gNaTa_T_data'] = self.gNaTa_T.as_numpy()
-      self.data_dict['ina_data'] = self.ina.as_numpy()
-      self.data_dict['icah_data'] = self.icah.as_numpy()
-      self.data_dict['ical_data'] = self.ical.as_numpy()
-      self.data_dict['Vm'] = self.Vm.as_numpy()
+      # self.data_dict['ih_data'] = self.ihcn_Ih.as_numpy()
+      # self.data_dict['gNaTa_T_data'] = self.gNaTa_T.as_numpy()
+      # self.data_dict['ina_NaTa_t_data'] = self.ina_NaTa_t.as_numpy()
+      # self.data_dict['ina_Nap_Et2_data'] = self.ina_Nap_Et2.as_numpy()
+      # self.data_dict['ik_K_Pst_data'] = self.ik_K_Pst.as_numpy()
+      # self.data_dict['ik_K_Tst_data'] = self.ik_K_Tst.as_numpy()
+      # self.data_dict['ik_SK_E2_data'] = self.ik_SK_E2.as_numpy()
+      # self.data_dict['ik_SKv3_1_data'] = self.ik_SKv3_1.as_numpy()
+      # self.data_dict['ica_Ca_HVA_data'] = self.ica_Ca_HVA.as_numpy()
+      # self.data_dict['ica_Ca_LVAst_data'] = self.ica_Ca_LVAst.as_numpy()
+      # self.data_dict['i_pas_data'] = self.i_pas.as_numpy()
+      # self.data_dict['Vm'] = self.Vm.as_numpy()
       self.data_dict['i_NMDA'] = i_NMDA_df
       self.data_dict['i_AMPA'] = i_AMPA_df
       self.data_dict['i_GABA'] = i_GABA_df
