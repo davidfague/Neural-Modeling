@@ -277,5 +277,6 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		plt.xlim(xlim)
 		plt.title('Segment Currents - ' + segment_name)  # Use segment_name in the title
 		plt.legend()
+		plt.show()
 		plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
 		plt.close()  # Close the figure after saving it
