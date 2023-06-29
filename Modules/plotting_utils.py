@@ -269,9 +269,10 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 	
 	    # Loop over currents within each segment
 	    for data_type in data_dict:
-	        if 'i' in data_type:  # if it is a current data
-	            data_segment = data_dict[data_type][:, segment_index]
-	            plt.plot(t, data_segment, label=str(data_type))
+		if str(data_type) != 'spikes;:
+		        if 'i' in data_type:  # if it is a current data
+		            data_segment = data_dict[data_type][segment_index]
+		            plt.plot(t, data_segment, label=str(data_type))
 	
 	    plt.ylabel('Membrane Current (nA)')
 	    plt.xlabel('time (ms)')
