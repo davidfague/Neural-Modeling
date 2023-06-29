@@ -434,9 +434,9 @@ class CellModel:
 
               i_GABA_bySeg[seg] = i_GABA_bySeg[seg] + i_GABA
     
-      i_NMDA_df = pd.DataFrame(i_NMDA_bySeg) * 1000
-      i_AMPA_df = pd.DataFrame(i_AMPA_bySeg) * 1000
-      i_GABA_df = pd.DataFrame(i_GABA_bySeg) * 1000
+      i_NMDA_df = np.array(pd.DataFrame(i_NMDA_bySeg) * 1000)
+      i_AMPA_df = np.array(pd.DataFrame(i_AMPA_bySeg) * 1000)
+      i_GABA_df = np.array(pd.DataFrame(i_GABA_bySeg) * 1000)
     
       self.data_dict = {}
       # dynamically add recorded data to data_dict
