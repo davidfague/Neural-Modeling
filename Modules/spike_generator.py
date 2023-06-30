@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.signal import lfilter
 from neuron import h
-import warnings
 from Modules.cell_model import CellModel
+import warnings
 
 def minmax(x):
 	return (x - np.min(x)) / (np.max(x) - np.min(x))
@@ -14,14 +14,13 @@ class SpikeGenerator:
 		self.vecstims = []
 		self.netcons = []
 	
-	#TODO: add docstring, check typing
-	def generate_inputs(self, synapses: list, t: np.ndarray, mean_firing_rate: object, method: str, 
-			 			origin: str, 
-					  	rhythmicity: bool = False, 
-						rhythmic_mod = None, rhythmic_f = None,
-					  	spike_trains_to_delay = None, fr_time_shift = None, spike_train_dt: float = 1e-3) -> None:
+	def generate_inputs(self, synapses: list, t: np.ndarray, mean_firing_rate: object, method: str,
+			 			origin: str, random_state: np.random.RandomState, 
+						rhythmicity: bool = False, rhythmic_mod: float = None, 
+						rhythmic_f: int = None, spike_trains_to_delay: list = None, 
+						fr_time_shift: int = None, spike_train_dt: float = 1e-3) -> tuple:
 		'''
-		Generate spike trains.
+		Generate netcons and spike trains.
 
 		Parameters:
 		----------
@@ -29,7 +28,7 @@ class SpikeGenerator:
 			List of synapse objects.
 
 		t: np.ndarray
-			Time aray.
+			Time array.
 
 		mean_firing_rate: float or distribution
 			Mean firing rate of the spike train.
@@ -37,65 +36,118 @@ class SpikeGenerator:
 		method: str
 			How to vary the profile over time. One of ['1f_noise', 'delay'].
 
-		mean_firing_rate:  of mean firing rate of spike train
-		spike_trains_to_delay: list of time stamps where spikes occured for delay modulation
-
 		origin: str
-			..., one of ['same_presynaptic_cell', 'same_presynaptic_region']
+			Origin of input, one of ['same_presynaptic_cell', 'same_presynaptic_region'].
 
-		returns: temporary lists for this go around. Mainly for appending objects to cell
+		random_state: np.random.RandomState
+			RNG.
+
+		rhythmicity: bool = False
+			Whether to apply rhythmic modulation.
+
+		rhythmic_mod: float = None
+			For rhythmic modulation, modulation strength, a in a * sin(2 * pi * k + b).
+
+		rhythmic_f: int = None
+			For rhythmic modulation, the multiplicative period of the sin function, k in a * sin(2 * pi * k + b).
+
+		spike_trains_to_delay: list = None
+			For delay modulation, list of time stamps where spikes occured for delay modulation.
+
+		fr_time_shift: int
+			For delay modulation, shift of the target spike train's rate profile.
+
+		spike_train_dt: float = 1e-3
+			For delay modulation, step used to generate the spike train.
+
+		Returns:
+		----------
+		netcons_list: list
+		
+		spike_trains: list
 		'''
 	
 		spike_trains = []
 		netcons_list = [] # returned temporary list for this go around
 
-		#TODO: check the order of arguments in each function
-		if origin == "same_presynaptic_cell": # same fr profile # same spike train # same mean fr
+		if origin == "same_presynaptic_cell": # Same fr profile, Same spike train, Same mean fr
 			# Ensure the firing rate is a float
 			mean_fr = self.get_mean_fr(mean_firing_rate)
-			fr_profile = self.get_firing_rate_profile(method=method, t = t,
-						 							  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
-													  rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
-													  fr_time_shift = fr_time_shift)
-			spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
+			fr_profile = self.get_firing_rate_profile(t = t, method = method, random_state = random_state,
+													  rhythmicity = rhythmicity, rhythmic_mod = rhythmic_mod,
+					     							  rhythmic_f = rhythmic_f, 
+													  spike_trains_to_delay = spike_trains_to_delay,
+													  fr_time_shift = fr_time_shift, spike_train_dt = spike_train_dt)
+			spikes = self.generate_spikes_from_profile(fr_profile, mean_fr, random_state)
 			for synapse in synapses:
 				spike_trains.append(spikes)
 				netcon = self.set_spike_train(synapse, spikes)
 				netcons_list.append(netcon)
 		  
-		elif origin == "same_presynaptic_region": # same fr profile # unique spike train # unique mean fr
-			fr_profile = self.get_firing_rate_profile(method=method, t = t,
-						 							  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
-													  rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
-													  fr_time_shift = fr_time_shift)
+		elif origin == "same_presynaptic_region": # Same fr profile, Unique spike train, Unique mean fr
+			fr_profile = self.get_firing_rate_profile(t = t, method = method, random_state = random_state, rhythmicity = rhythmicity, 
+					     							  rhythmic_mod = rhythmic_mod, rhythmic_f = rhythmic_f, 
+													  spike_trains_to_delay = spike_trains_to_delay,
+													  fr_time_shift = fr_time_shift, spike_train_dt = spike_train_dt)
 			for synapse in synapses:
 				mean_fr = self.get_mean_fr(mean_firing_rate)
-				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
+				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr, random_state)
 				spike_trains.append(spikes)
 				netcon = self.set_spike_train(synapse, spikes)
 				netcons_list.append(netcon)
 			
-		else: # unique fr profile # unique spike train # unqiue mean fr
+		else: # Unique fr profile, Unique spike train, Unqiue mean fr
 			for synapse in synapses:
-				fr_profile = self.get_firing_rate_profile(method=method, t = t,
-														  rhythmicity = rhythmicity, rhythmic_f = rhythmic_f,
-														  rhythmic_mod = rhythmic_mod, spike_trains_to_delay = spike_trains_to_delay,
-														  fr_time_shift = fr_time_shift)
+				fr_profile = self.get_firing_rate_profile(t = t, method = method, random_state = random_state, 
+					      								  rhythmicity = rhythmicity,
+					      								  rhythmic_mod = rhythmic_mod, rhythmic_f = rhythmic_f,
+														  spike_trains_to_delay = spike_trains_to_delay,
+														  fr_time_shift = fr_time_shift, spike_train_dt = spike_train_dt)
 				mean_fr = self.get_mean_fr(mean_firing_rate)
-				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr)
+				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr, random_state)
 				netcon = self.set_spike_train(synapse, spikes)
 				spike_trains.append(spikes)
 				netcons_list.append(netcon)
 			
 		return netcons_list, spike_trains
-	#TODO: check definition of t
-	#TODO: add docstring
-	def get_firing_rate_profile(self, t, method: str, random_state: np.random.RandomState,
-								rhythmicity: bool = False, rhythmic_f = None, rhythmic_mod = None,
-								spike_trains_to_delay = None, fr_time_shift = None, spike_train_dt: float = 1e-3):
+
+	def get_firing_rate_profile(self, t: np.ndarray, method: str, random_state: np.random.RandomState,
+								rhythmicity: bool = False, rhythmic_mod = None, rhythmic_f = None,
+								spike_trains_to_delay = None, fr_time_shift = None, 
+								spike_train_dt: float = 1e-3) -> np.ndarray:
+		'''
+		Parameters:
+		----------
+		t: np.ndarray
+			Time array.
+		
+		method: str
+			How to vary the profile over time. One of ['1f_noise', 'delay'].
+		
+		random_state: np.random.RandomState
+			RNG.
+		
+		rhythmicity: bool = False
+			Whether to apply rhythmic modulation.
+
+		rhythmic_mod: float = None
+			For rhythmic modulation, modulation strength, a in a * sin(2 * pi * k + b).
+
+		rhythmic_f: int = None
+			For rhythmic modulation, the multiplicative period of the sin function, k in a * sin(2 * pi * k + b).
+
+		spike_trains_to_delay: list = None
+			For delay modulation, list of time stamps where spikes occured for delay modulation.
+
+		fr_time_shift: int
+			For delay modulation, shift of the target spike train's rate profile.
+
+		spike_train_dt: float = 1e-3
+			For delay modulation, step used to generate the spike train.
+			
+		'''
 
 		# Create the firing rate profile
-		#TODO: add bounds, etc.
 		if method == '1f_noise':
 			fr_profile = self.noise_modulation(num_obs = len(t), random_state = random_state)
 		elif method == 'delay':
@@ -107,11 +159,10 @@ class SpikeGenerator:
 		if rhythmicity:
 			fr_profile = self.rhythmic_modulation(fr_profile, rhythmic_f, rhythmic_mod, t)
 		
-		#TODO: check if fr_profile can even be negative
+		# Can't have negative firing rates (precision reasons)
 		if np.sum(fr_profile < 0) != 0:
 			warnings.warn("Found zeros in fr_profile.")
-
-		fr_profile[fr_profile < 0] = 0 # Can't have negative firing rates.
+		fr_profile[fr_profile < 0] = 0 
 		
 		return fr_profile
 	
@@ -158,16 +209,15 @@ class SpikeGenerator:
 
 		return fr_profile
 	
-	#TODO: fix typing, potentially won't work with spike_trains_to_delay.shape[0] != 1
-	def delay_modulation(self, spike_trains_to_delay, fr_time_shift: int, spike_train_t: int, 
+	def delay_modulation(self, spike_trains_to_delay: list, fr_time_shift: int, spike_train_t: int, 
 			  			 spike_train_dt: float = 1e-3, bounds = (0, 2)) -> np.ndarray:
 		'''
 		Compute a firing rate profile from a target spike train and shift it to create a new profile.
 
 		Parameters:
 		----------
-		spike_trains_to_delay: #TODO: add type
-			Target spike train.
+		spike_trains_to_delay: list
+			Target spike trains.
 
 		fr_time_shift: int
 			Shift of the target spike train's rate profile.
@@ -197,7 +247,6 @@ class SpikeGenerator:
 		# Compute the firing rate profile from the histogram
 		hist, _ = np.histogram(times_where_spikes, bins = spike_train_t)
 
-		#TODO: check if redundant, and can just use hist
 		fr_profile = hist / (spike_train_dt * (len(spike_trains_to_delay) + 1))
 
 		# Shift by fr_time_shift
@@ -210,7 +259,6 @@ class SpikeGenerator:
 
 		return fr_profile
 
-	#TODO: why this equation (source?)
 	def rhythmic_modulation(self, fr_profile: np.ndarray, rhythmic_f: int, P: int, rhythmic_mod: float, t: np.ndarray):
 		'''
 		
@@ -242,10 +290,8 @@ class SpikeGenerator:
 
 		return fr_profile
 	
-	#TODO: fix call
 	#TODO: check division by 1000
-	def generate_spikes_from_profile(self, fr_profile, mean_fr, random_state):
-		''' sample spikes '''
+	def generate_spikes_from_profile(self, fr_profile: np.ndarray, mean_fr: float, random_state: np.random.RandomState) -> np.ndarray:
 		fr_profile = fr_profile * mean_fr
 		sample_values = random_state.poisson(fr_profile / 1000)
 		spike_times = np.where(sample_values > 0)[0]
@@ -302,24 +348,23 @@ class SpikeGenerator:
 		if netcons:
 			for netcon in netcons:
 				netcon.active(False)
+
 	def generate_inputs_to_cell(self, cell: CellModel, synapses: list, t: np.ndarray, mean_firing_rate: object, method: str, 
-				 			origin: str, 
-						  	rhythmicity: bool = False, 
-							rhythmic_mod = None, rhythmic_f = None,
-						  	spike_trains_to_delay = None, fr_time_shift = None, spike_train_dt: float = 1e-3) -> None:
+				 				origin: str, random_state: np.random.RandomState, rhythmicity: bool = False, rhythmic_mod = None, 
+								rhythmic_f = None, spike_trains_to_delay = None, fr_time_shift = None, spike_train_dt: float = 1e-3) -> None:
 		'''
-		Generate spike trains on an existing cell object
+		Generate spike trains on an existing cell object.
 
 		Parameters:
 		----------
-  		cell: CellModel
-			Cell to add to.
-   
+		cell: CellModel
+			Cell to generate on.
+
 		synapses: list
 			List of synapse objects.
 
 		t: np.ndarray
-			Time aray.
+			Time array.
 
 		mean_firing_rate: float or distribution
 			Mean firing rate of the spike train.
@@ -327,21 +372,36 @@ class SpikeGenerator:
 		method: str
 			How to vary the profile over time. One of ['1f_noise', 'delay'].
 
-		mean_firing_rate:  of mean firing rate of spike train
-		spike_trains_to_delay: list of time stamps where spikes occured for delay modulation
-
 		origin: str
-			..., one of ['same_presynaptic_cell', 'same_presynaptic_region']
+			Origin of input, one of ['same_presynaptic_cell', 'same_presynaptic_region'].
 
-		returns: temporary lists for this go around. Mainly for appending objects to cell
+		random_state: np.random.RandomState
+			RNG.
+
+		rhythmicity: bool = False
+			Whether to apply rhythmic modulation.
+
+		rhythmic_mod: float = None
+			For rhythmic modulation, modulation strength, a in a * sin(2 * pi * k + b).
+
+		rhythmic_f: int = None
+			For rhythmic modulation, the multiplicative period of the sin function, k in a * sin(2 * pi * k + b).
+
+		spike_trains_to_delay: list = None
+			For delay modulation, list of time stamps where spikes occured for delay modulation.
+
+		fr_time_shift: int
+			For delay modulation, shift of the target spike train's rate profile.
+
+		spike_train_dt: float = 1e-3
+			For delay modulation, step used to generate the spike train.
 		'''
 		
-		netcons, spike_trains = self.generate_inputs(synapses=synapses, t=t, mean_firing_rate=mean_firing_rate, method=method, 
-			 			origin=origin, 
-					  	rhythmicity=rhythmicity, 
-						rhythmic_mod = rhythmic_mod, rhythmic_f = rhythmic_f,
-					  	spike_trains_to_delay = spike_trains_to_delay, fr_time_shift = fr_time_shift, spike_train_dt = spike_train_dt)
+		netcons, spike_trains = self.generate_inputs(synapses = synapses, t = t, mean_firing_rate = mean_firing_rate, method = method, 
+			 										 origin = origin, random_state = random_state, rhythmicity = rhythmicity, 
+													 rhythmic_mod = rhythmic_mod, rhythmic_f = rhythmic_f, spike_trains_to_delay = spike_trains_to_delay, 
+													 fr_time_shift = fr_time_shift, spike_train_dt = spike_train_dt)
 		for netcon in netcons:
 			cell.netcons.append(netcon)
 		for spike_train in spike_trains:
-			cell.spike_trains.append(spike_trains)
+			cell.spike_trains.append(spike_train)

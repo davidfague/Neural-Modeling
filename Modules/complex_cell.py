@@ -1,7 +1,6 @@
-import numpy as np
 from neuron import h
 
-def build_L5_cell(cell_folder, biophys='L5PCbiophys3.hoc'):
+def build_L5_cell(cell_folder, biophys = 'L5PCbiophys3.hoc'):
     # Load biophysics
     h.load_file(cell_folder + biophys)
 
