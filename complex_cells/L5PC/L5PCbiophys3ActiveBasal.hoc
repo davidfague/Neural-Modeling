@@ -38,7 +38,7 @@ proc biophys() {
   	gCa_HVAbar_Ca_HVA = 0.000992 
   	gSKv3_1bar_SKv3_1 = 0.693 
   	gSK_E2bar_SK_E2 = 0.0441 
-  	gK_Tstbar_K_Tst = 0.0812 
+  	gK_Tstbar_K_Tst = 0.0812 * 0
   	gK_Pstbar_K_Pst = 0.00223 * 0
   	gNap_Et2bar_Nap_Et2 = 0.00172 
   	gNaTa_tbar_NaTa_t = 2.04 
