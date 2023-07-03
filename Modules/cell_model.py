@@ -222,7 +222,7 @@ class CellModel:
         Method for allowing recording of channels in sections that do not have the current.
         '''
         for channel, attr, conductance in self.CHANNELS:
-            print(channel, attr, conductance)
+            # print(channel, attr, conductance)
             for sec in self.all:
                 if not hasattr(sec(0.5), attr):
                     sec.insert(channel) # insert this channel into
