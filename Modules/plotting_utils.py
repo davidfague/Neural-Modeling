@@ -280,7 +280,7 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		"Tuft": tuft_seg_index,
 		"Nexus": nexus_seg_index,
 		"Axon": axon_seg_index,
-		"Basal": basal_seg_index
+		"Basal": basal_seg_index,
 		"Trunk": trunk_seg_index
 	}
 	
