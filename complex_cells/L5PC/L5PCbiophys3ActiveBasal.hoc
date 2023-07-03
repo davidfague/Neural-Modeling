@@ -36,7 +36,7 @@ proc biophys() {
   	gamma_CaDynamics_E2 = 0.000501 
   	gCa_LVAstbar_Ca_LVAst = 0.00343 
   	gCa_HVAbar_Ca_HVA = 0.000992 
-  	gSKv3_1bar_SKv3_1 = 0.693 
+  	gSKv3_1bar_SKv3_1 = 0.693 * 0
   	gSK_E2bar_SK_E2 = 0.0441 * 0
   	gK_Tstbar_K_Tst = 0.0812 * 0
   	gK_Pstbar_K_Pst = 0.00223 * 0
@@ -84,8 +84,8 @@ proc biophys() {
 		ena = 50
     decay_CaDynamics_E2 = 122 
     gamma_CaDynamics_E2 = 0.000509 
-    gSK_E2bar_SK_E2 = 0.0012 
-  	gSKv3_1bar_SKv3_1 = 0.000261 
+    gSK_E2bar_SK_E2 = 0.0012 * 0
+  	gSKv3_1bar_SKv3_1 = 0.000261 * 0
   	gNaTa_tbar_NaTa_t = 3*0.0213 
   	gImbar_Im = 0.0000675 
 		insert Ih
