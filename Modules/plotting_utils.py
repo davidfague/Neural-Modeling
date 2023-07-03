@@ -197,7 +197,7 @@ def plot_morphology(sim = None, cellid: int = 0, cell: object = None,
 	return fig, ax
 
 
-def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
+def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index, trunk_seg_index,
 							loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, figsize: tuple = None, vlim = 'auto'):
 	if xlim is None:
 		xlim=t[[0, -1]]
@@ -206,6 +206,7 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	v_nexus = Vm[nexus_seg_index]
 	v_axon = Vm[axon_seg_index]
 	v_basal = Vm[basal_seg_index]
+	v_trunk = Vm[trunk_seg_index]
 
 	if figsize is None:
 		plt.figure(figsize=(10, 4))
@@ -215,7 +216,8 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	plt.plot(t, v_tfut, label='Tuft')
 	plt.plot(t, v_nexus, label='Nexus')
 	plt.plot(t, v_basal, label='Basal')
-	#plt.plot(t, v_axon, label='axon')
+	plt.plot(t, v_axon, label='Axon')
+	plt.plot(t, v_trunk, label='Trunk')
 	plt.ylabel('Membrane potential (mV)')
 	plt.xlabel('time (ms)')
 	plt.xlim(xlim)
@@ -262,12 +264,12 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 
 	plt.show()
 							
-def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
+def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index, trunk_seg_index,
 			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, 
 			 			figsize: tuple = None, vlim = 'auto', data_dict: dict = None,
 						cmap: str = 'tab20'):
 							
-	plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
+	plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index, trunk_seg_index,
 							loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim, ylim, figsize, vlim)
 	if xlim is None:
 		xlim = t[[0, -1]]
@@ -279,6 +281,7 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		"Nexus": nexus_seg_index,
 		"Axon": axon_seg_index,
 		"Basal": basal_seg_index
+		"Trunk": trunk_seg_index
 	}
 	
 	# Loop over segments
