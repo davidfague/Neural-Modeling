@@ -130,7 +130,7 @@ class SegmentManager:
         #print(self.soma_spikestimes, type(self.soma_spiketimes[0]))
         self.soma_spiketimes = np.array([(i-skip) for i in data[-2][:] if i >= skip])
         # Soma spikes (inds)
-        self.soma_spiketimestamps = np.sort(((self.soma_spiketimes - skip) / dt).astype(int))
+        self.soma_spiketimestamps = np.sort((self.soma_spiketimes / dt).astype(int))
 
     def read_data(self, output_folder: str) -> list:
         file_names = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
