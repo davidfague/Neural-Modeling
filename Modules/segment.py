@@ -218,7 +218,7 @@ class SegmentManager:
             if cond:
                 segIDs.append(i)
                 bounds = self.get_ca_lower_bounds_for_seg(seg, i, current_type)
-                lower_bounds.append(bounds[0]), upper_bounds.append(bounds[1]), mag.append(bounds[2])
+                lower_bounds.append(bounds[0]), upper_bounds.append(bounds[1]), mag.append(np.array(bounds[2]))
 
                 # Prepare for the next step, peak calculation
                 for bound in bounds[0]:
@@ -237,7 +237,7 @@ class SegmentManager:
                 duration_low_seg, duration_high_seg, peak_values_seg = self.get_duration_and_peak_for_seg(self.segments[rand_seg_id], spike_times)
                 duration_low.append(duration_low_seg), duration_high.append(duration_high_seg), peak_values.append(peak_values_seg)
 
-        return lower_bounds, upper_bounds, np.array(mag), duration_low, duration_high, peak_values
+        return lower_bounds, upper_bounds, mag, duration_low, duration_high, peak_values
 
     def get_duration_and_peak_for_seg(self, seg, spike_times):
         duration_low, duration_high, peak_values = [], [], []
@@ -286,7 +286,7 @@ class SegmentManager:
                 if mag is None:
                     edges.append(eval(self.segments[i].seg_elec_distance)['beta'][elec_dist_var])
                 else:
-                    if np.any(mag < mag_th):
+                    if np.any(mag[i] < mag_th):
                         edges.append(eval(self.segments[i].seg_elec_distance)['beta'][elec_dist_var])
 
         if len(edges) > 10:
