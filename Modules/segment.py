@@ -275,19 +275,26 @@ class SegmentManager:
 
         return ca_lower_bound, ca_upper_bound, ca_mag
 
-    def get_edges(self, lower_bounds, edge_type = "apic"):
+    def get_edges(self, lower_bounds, edge_type = "apic", elec_dist_var = 'soma_passive'):
         edges = []
         for i in range(self.num_segments):
             if (len(lower_bounds[i]) > 0) & (edge_type in self.segments[i].sec):
-                edges.append(eval(self.segments[i].seg_elec_distance)['beta']['soma_passive'])
+                edges.append(eval(self.segments[i].seg_elec_distance)['beta'][elec_dist_var])
 
         if len(edges) > 10:
             edges = np.quantile(edges, np.arange(0, 1.1, 0.1))
 
         return edges
 
-    def get_sta(self, spiketimes, lower_bounds, edges, sec_indicator):
+    def get_sta(self, spiketimes, lower_bounds, edges, sec_indicator, current_type, elec_dist_var = 'soma_passive'):
         sta = np.zeros((len(edges), 39))
+
+        if current_type == 'ina':
+            bin_start, bin_end, step_size = 2,2,1
+        elif current_type == 'ica':
+            bin_start, bin_end, step_size = 100,40,5
+        elif current_type =='inmda':
+            bin_start, bin_end, step_size = 100,40,5
 
         c = 0
         for i in range(self.num_segments):
@@ -296,11 +303,11 @@ class SegmentManager:
                 if s_times - c > 10:
                     for e in np.arange(0, len(edges)-1):
                         if len(lower_bounds[i]) > 0:
-                            dist = eval(self.segments[i].seg_elec_distance)['beta']['soma_passive']
+                            dist = eval(self.segments[i].seg_elec_distance)['beta'][elec_dist_var]
                             if (sec_indicator in self.segments[i].sec):
                                 if edges[e] < dist <= edges[e + 1]:
                                     na_inds = lower_bounds[i].astype(int)
-                                    x2, _ = np.histogram(na_inds * self.dt, bins = np.arange(np.floor(s_times) - 2 / self.dt, np.floor(s_times) + 2 / self.dt, 1))
+                                    x2, _ = np.histogram(na_inds * self.dt, bins = np.arange(np.floor(s_times) - bin_start / self.dt, np.floor(s_times) + bin_end / self.dt, step_size))
                                     sta[e] += x2
                 c = s_times
 
