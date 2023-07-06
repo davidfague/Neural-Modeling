@@ -237,7 +237,7 @@ class SegmentManager:
                 duration_low_seg, duration_high_seg, peak_values_seg = self.get_duration_and_peak_for_seg(self.segments[rand_seg_id], spike_times)
                 duration_low.append(duration_low_seg), duration_high.append(duration_high_seg), peak_values.append(peak_values_seg)
 
-        return lower_bounds, upper_bounds, mag, duration_low, duration_high, peak_values
+        return lower_bounds, upper_bounds, np.array(mag), duration_low, duration_high, peak_values
 
     def get_duration_and_peak_for_seg(self, seg, spike_times):
         duration_low, duration_high, peak_values = [], [], []
