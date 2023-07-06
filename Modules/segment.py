@@ -186,9 +186,14 @@ class SegmentManager:
         # Only count if within 2 ms after a somatic spike
         # na_spks = [int(i) for i in upward_crossings if ~np.any((np.abs(i - self.soma_spiketimestamps) < ms_within_somatic_spike / self.dt))]
         na_spks = []
-        for na_spikestamp in upward_crossings:
-            if np.any((na_spikestamp - self.soma_spiketimestamps < 0) | (na_spikestamp - self.soma_spiketimestamps > ms_within_somatic_spike / self.dt)):
+        for na_spikestamp in upward_crossings: # filter out na spikes right after 
+            soma_spikes_before_na_spike = self.soma_spiketimestamps[self.soma_spiketimestamps < na_spikestamp]
+            if len(soma_spikes_before_na_spike) == 0: # na spike has no AP before
                 na_spks.append(na_spikestamp)
+            elif (na_spikestamp - soma_spikes_before_na_spike[-1] > ms_within_somatic_spike / self.dt)): # na spike is more than x ms after AP latest
+                na_spks.append(na_spikestamp)
+            else: # na spike is within x ms after latest AP
+                continue
         
         if len(threshold_crossings) % 2 != 0:
             na_spks = na_spks[:-1]
