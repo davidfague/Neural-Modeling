@@ -279,7 +279,7 @@ class SegmentManager:
         edges = []
         for i in range(self.num_segments):
             if (len(lower_bounds[i]) > 0) & (edge_type in self.segments[i].sec):
-                edges.append(eval(self.segments[i].seg_elec_distance)['beta']['passive_soma'])
+                edges.append(eval(self.segments[i].seg_elec_distance)['beta']['soma_passive'])
 
         if len(edges) > 10:
             edges = np.quantile(edges, np.arange(0, 1.1, 0.1))
@@ -296,7 +296,7 @@ class SegmentManager:
                 if s_times - c > 10:
                     for e in np.arange(0, len(edges)-1):
                         if len(lower_bounds[i]) > 0:
-                            dist = eval(self.segments[i].seg_elec_distance)['beta']['passive_soma']
+                            dist = eval(self.segments[i].seg_elec_distance)['beta']['soma_passive']
                             if (sec_indicator in self.segments[i].sec):
                                 if edges[e] < dist <= edges[e + 1]:
                                     na_inds = lower_bounds[i].astype(int)
