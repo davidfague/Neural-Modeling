@@ -261,7 +261,7 @@ class SegmentManager:
             v_thresh, time_thresh = -40, 260
             trace = seg.inmda
         else:
-            raise ValueError
+            raise ValueError("current_type not defined")
 
         legit_uc_iso = voltage_criterion(seg.v, v_thresh = v_thresh, time_thresh = time_thresh)[1]
         legit_dc_iso = voltage_criterion(seg.v, v_thresh = v_thresh, time_thresh = time_thresh)[-1]
@@ -295,6 +295,8 @@ class SegmentManager:
             bin_start, bin_end, step_size = 100,40,5
         elif current_type =='inmda':
             bin_start, bin_end, step_size = 100,40,5
+        else:
+            raise ValueError("current_type not defined")
 
         c = 0
         for i in range(self.num_segments):
