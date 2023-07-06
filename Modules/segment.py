@@ -119,7 +119,7 @@ class SegmentManager:
             # Build seg_data
             seg_data = {}
             for ind, name in enumerate(["v", "gNaTa", "iampa", "inmda", "icah", "ical", "ih", "ina"]):
-                seg_data[name] = data[ind][i, skip/dt:]
+                seg_data[name] = data[ind][i, int(skip/dt):]
 
             seg = Segment(seg_info = data[-1].iloc[i], seg_data = seg_data)
             self.segments.append(seg)
