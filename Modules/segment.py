@@ -286,20 +286,22 @@ class SegmentManager:
 
         return edges
 
-    def get_sta(self, spiketimes, lower_bounds, edges, sec_indicator, current_type, elec_dist_var = 'soma_passive'):
+    def get_sta(self, spiketimes, lower_bounds, edges, sec_indicator, current_type, elec_dist_var = 'soma_passive', mag = None, mag_th = None):
         sta = np.zeros((len(edges), 39))
 
         if current_type == 'ina':
-            bin_start, bin_end, step_size = 2,2,1
+            bin_start, bin_end, step_size = 2, 2, 1
         elif current_type == 'ica':
-            bin_start, bin_end, step_size = 100,40,5
+            bin_start, bin_end, step_size = 10, 4, 5
         elif current_type =='inmda':
-            bin_start, bin_end, step_size = 100,40,5
+            bin_start, bin_end, step_size = 10, 4, 5
         else:
             raise ValueError("current_type not defined")
 
         c = 0
         for i in range(self.num_segments):
+            if current_type == 'inmda':
+                if mag[i] >= mag_th: continue
             for s_times in np.sort(spiketimes):
                 # Exclude bursts
                 if s_times - c > 10:
