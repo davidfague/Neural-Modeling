@@ -279,14 +279,20 @@ class SegmentManager:
 
         return ca_lower_bound, ca_upper_bound, ca_mag
 
-    def get_edges(self, lower_bounds, edge_type = "apic", elec_dist_var = 'soma_passive'):
+    def get_edges(self, lower_bounds, edge_type = "apic", elec_dist_var = 'soma_passive', mag = None, mag_th = None):
         edges = []
         for i in range(self.num_segments):
             if (len(lower_bounds[i]) > 0) & (edge_type in self.segments[i].sec):
-                edges.append(eval(self.segments[i].seg_elec_distance)['beta'][elec_dist_var])
+                if mag is None:
+                    edges.append(eval(self.segments[i].seg_elec_distance)['beta'][elec_dist_var])
+                else:
+                    if np.any(mag < mag_th):
+                        edges.append(eval(self.segments[i].seg_elec_distance)['beta'][elec_dist_var])
 
         if len(edges) > 10:
             edges = np.quantile(edges, np.arange(0, 1.1, 0.1))
+        else:
+            raise RuntimeError
 
         return edges
 
@@ -304,8 +310,6 @@ class SegmentManager:
         sta = np.zeros((len(edges), interval))
         c = 0
         for i in range(self.num_segments):
-            if current_type == 'inmda':
-                if mag[i] >= mag_th: continue
             for s_times in np.sort(spiketimes):
                 # Exclude bursts
                 if s_times - c > 10:
@@ -315,6 +319,7 @@ class SegmentManager:
                             if (sec_indicator in self.segments[i].sec):
                                 if edges[e] < dist <= edges[e + 1]:
                                     na_inds = lower_bounds[i].astype(int)
+                                    if current_type == "inmda": na_inds = na_inds[mag[i] < mag_th]
                                     x2, _ = np.histogram(na_inds * self.dt, bins = np.arange(np.floor(s_times) - bin_start / self.dt, np.floor(s_times) + bin_end / self.dt, step_size))
                                     sta[e] += x2
                 c = s_times
