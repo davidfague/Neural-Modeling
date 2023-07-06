@@ -187,7 +187,7 @@ class SegmentManager:
         # na_spks = [int(i) for i in upward_crossings if ~np.any((np.abs(i - self.soma_spiketimestamps) < ms_within_somatic_spike / self.dt))]
         na_spks = []
         for na_spikestamp in upward_crossings:
-            if np.any((upward_crossings - self.soma_spiketimestamps < 0) | (upward_crossings - self.soma_spiketimestamps > ms_within_somatic_spike / self.dt)):
+            if np.any((na_spikestamp - self.soma_spiketimestamps < 0) | (na_spikestamp - self.soma_spiketimestamps > ms_within_somatic_spike / self.dt)):
                 na_spks.append(na_spikestamp)
         
         if len(threshold_crossings) % 2 != 0:
