@@ -204,14 +204,17 @@ class SegmentManager:
         # Filter and get bounds
         segIDs, lower_bounds, upper_bounds, mag, segments_for_condition = [], [], [], [], []
         for i, seg in enumerate(self.segments):
+            current_type = None
             if (lowery is not None) & (uppery is not None):
                 cond = (seg.type == "apic") & (seg.p0_5_y3d > lowery) & (seg.p0_5_y3d < uppery)
+                current_type = "icah"
             else:
                 cond = (seg.type == "dend") | (seg.type == "apic")
+                current_type = "inmda"
 
             if cond:
                 segIDs.append(i)
-                bounds = self.get_ca_lower_bounds_for_seg(seg, i)
+                bounds = self.get_ca_lower_bounds_for_seg(seg, i, current_type)
                 lower_bounds.append(bounds[0]), upper_bounds.append(bounds[1]), mag.append(bounds[2])
 
                 # Prepare for the next step, peak calculation
@@ -223,6 +226,7 @@ class SegmentManager:
 
         random_segments_ids = random_state.choice(segments_for_condition, 100)
 
+        # Not used in notebooks @DEPRECATION
         duration_low, duration_high, peak_values = [], [], []
         for rand_seg_id in random_segments_ids:
             spike_times = lower_bounds[rand_seg_id]
@@ -246,19 +250,26 @@ class SegmentManager:
                     peak_values.append(peak_value)
         return duration_low, duration_high, peak_values
 
-    def get_ca_lower_bounds_for_seg(self, seg, seg_ind):
+    def get_ca_lower_bounds_for_seg(self, seg, seg_ind, current_type):
 
         ca_lower_bound, ca_upper_bound, ca_mag = [], [], []
 
         trace = seg.icah + seg.ical + seg.ih
         m, s = np.mean(trace), np.std(trace)
 
-        legit_uc_iso = voltage_criterion(seg.v, v_thresh = -40, time_thresh = 200)[1]
-        legit_dc_iso = voltage_criterion(seg.v, v_thresh = -40, time_thresh = 200)[-1]
+        if current_type == "icah":
+            v_thresh, time_thresh = -40, 200
+        elif current_type == "inmda":
+            v_thresh, time_thresh = -40, 260
+        else:
+            raise ValueError
+
+        legit_uc_iso = voltage_criterion(seg.v, v_thresh = v_thresh, time_thresh = time_thresh)[1]
+        legit_dc_iso = voltage_criterion(seg.v, v_thresh = v_thresh, time_thresh = time_thresh)[-1]
 
         if (len(legit_uc_iso) != 0) & (np.min(trace) != 0):
             bnds, sum_curr = current_criterion(legit_uc_iso = legit_uc_iso, legit_dc_iso = legit_dc_iso,
-                                               control_inmda = seg.icah)
+                                               control_inmda = getattr(seg, current_type))
             ca_lower_bound = np.array(bnds).reshape(-1, 2)[:, 0]
             ca_upper_bound = np.array(bnds).reshape(-1, 2)[:, 1]
             ca_mag = sum_curr
