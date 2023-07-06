@@ -180,8 +180,11 @@ class SegmentManager:
         # Find bounds (crossings)
         threshold_crossings = np.diff(seg.gNaTa > threshold)
 
-        # Assume the trace starts below threshold
-        upward_crossings = np.argwhere(threshold_crossings)[::2]
+        # Determine if the trace starts above or below threshold to get upward crossings
+        if seg.gNaTa[0] < threshold:
+            upward_crossings = np.argwhere(threshold_crossings)[::2]
+        else:
+            upward_crossings = np.argwhere(threshold_crossings)[1::2]
 
         # Only count if within 2 ms after a somatic spike
         # na_spks = [int(i) for i in upward_crossings if ~np.any((np.abs(i - self.soma_spiketimestamps) < ms_within_somatic_spike / self.dt))]
