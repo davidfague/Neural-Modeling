@@ -190,7 +190,7 @@ class SegmentManager:
             soma_spikes_before_na_spike = self.soma_spiketimestamps[self.soma_spiketimestamps < na_spikestamp]
             if len(soma_spikes_before_na_spike) == 0: # na spike has no AP before
                 na_spks.append(na_spikestamp)
-            elif (na_spikestamp - soma_spikes_before_na_spike[-1] > ms_within_somatic_spike / self.dt)): # na spike is more than x ms after AP latest
+            elif (na_spikestamp - soma_spikes_before_na_spike[-1] > ms_within_somatic_spike / self.dt): # na spike is more than x ms after AP latest
                 na_spks.append(na_spikestamp)
             else: # na spike is within x ms after latest AP
                 continue
