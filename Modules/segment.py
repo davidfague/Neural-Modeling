@@ -253,14 +253,13 @@ class SegmentManager:
     def get_ca_lower_bounds_for_seg(self, seg, seg_ind, current_type):
 
         ca_lower_bound, ca_upper_bound, ca_mag = [], [], []
-
-        trace = seg.icah + seg.ical + seg.ih
-        m, s = np.mean(trace), np.std(trace)
-
+        
         if current_type == "icah":
             v_thresh, time_thresh = -40, 200
+            trace = seg.icah + seg.ical + seg.ih
         elif current_type == "inmda":
             v_thresh, time_thresh = -40, 260
+            trace = seg.inmda
         else:
             raise ValueError
 
