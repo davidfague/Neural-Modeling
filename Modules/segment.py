@@ -128,7 +128,7 @@ class SegmentManager:
         # skip
         #self.soma_spiketimes = data[-2][:]
         #print(self.soma_spikestimes, type(self.soma_spiketimes[0]))
-        self.soma_spiketimes = [i for i in data[-2][:] if i >= skip / dt]
+        self.soma_spiketimes = np.array([i for i in data[-2][:] if i >= skip / dt])
         # Soma spikes (inds)
         self.soma_spiketimestamps = np.sort((self.soma_spiketimes / dt).astype(int))
 
