@@ -63,7 +63,7 @@ class CellModel:
 
         self.init_segment_info()
         self.recompute_parent_segment_ids()
-        self.recompute_segment_elec_distance()
+        self.recompute_segment_elec_distance(segment = self.soma[0](0.5), seg_name = "soma")
         self.recompute_netcons_per_seg()
 
         self.get_channels_from_var_names() # get channel and attribute names from recorded channel name
@@ -279,30 +279,29 @@ class CellModel:
                           
             self.seg_info[i]['pseg_index'] = pseg_id
     
-    #TODO: implement calculate nexus elec distance (need nexus seg)
-    def recompute_segment_elec_distance(self) -> None:
-        for seg in self.seg_info: seg['seg_elec_distance'] = {}
-     
-        soma_passive_imp = h.Impedance()
-        soma_active_imp = h.Impedance()
-        # nexus_passive_imp = h.Impedance()
-        # nexus_active_imp = h.Impedance()
-        soma_passive_imp.loc(self.soma[0](0.5))
-        soma_active_imp.loc(self.soma[0](0.5))
-
+    #TODO:
+    def recompute_segment_elec_distance(self, segment, seg_name) -> None:
+        if not all('seg_elec_distance' in seg for seg in self.seg_info):
+            for seg in self.seg_info:
+                seg['seg_elec_distance'] = {}
+        
+        passive_imp = h.Impedance()
+        active_imp = h.Impedance()
+        passive_imp.loc(segment)
+        active_imp.loc(segment)
+    
         for freq_name, freq_hz in FREQS.items():
-            soma_passive_imp.compute(freq_hz + 1 / 9e9, 0) # Passive from soma
-            soma_active_imp.compute(freq_hz + 1 / 9e9, 1) # Active from soma
-            # nexus_passive_imp.compute(freq_hz + 1 / 9e9, 0) # Passive from nexus
-            # nexus_active_imp.compute(freq_hz + 1 / 9e9, 1) # Active from nexus
+            passive_imp.compute(freq_hz + 1 / 9e9, 0) 
+            active_imp.compute(freq_hz + 1 / 9e9, 1) 
             for i, seg in enumerate(self.segments):
                 elec_dist_info = {
-                    'active_soma': soma_active_imp.ratio(seg.sec(seg.x)),
-                    # 'active_nexus': nexus_active_imp.ratio(seg.sec(seg.x)),
-                    'passive_soma': soma_passive_imp.ratio(seg.sec(seg.x)) #,
-                    # 'passive_nexus': nexus_passive_imp.ratio(seg.sec(seg.x))
+                    f'{seg_name}_active': active_imp.ratio(seg.sec(seg.x)),
+                    f'{seg_name}_passive': passive_imp.ratio(seg.sec(seg.x))
                 }
-                self.seg_info[i]['seg_elec_distance'][freq_name] = elec_dist_info
+                if freq_name in self.seg_info[i]['seg_elec_distance']:
+                    self.seg_info[i]['seg_elec_distance'][freq_name].update(elec_dist_info)
+                else:
+                    self.seg_info[i]['seg_elec_distance'][freq_name] = elec_dist_info
     
     def recompute_netcons_per_seg(self):
         NetCon_per_seg = [0] * len(self.seg_info)
