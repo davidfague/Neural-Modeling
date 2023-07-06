@@ -100,7 +100,7 @@ class Segment:
 
 class SegmentManager:
 
-    def __init__(self, output_folder: str, dt: float = 0.1):
+    def __init__(self, output_folder: str, dt: float = 0.1, skip: int = 0):
 
         self.segments = []
         self.dt = dt
@@ -116,13 +116,15 @@ class SegmentManager:
             # Build seg_data
             seg_data = {}
             for ind, name in enumerate(["v", "gNaTa", "iampa", "inmda", "icah", "ical", "ih", "ina"]):
-                seg_data[name] = data[ind][i, :]
+                seg_data[name] = data[ind][i, skip:]
 
             seg = Segment(seg_info = data[-1].iloc[i], seg_data = seg_data)
             self.segments.append(seg)
 
         # Soma spikes (ms)
-        self.soma_spiketimes = data[-1][:]
+        # skip
+        #self.soma_spiketimes = data[-1][:]
+        self.soma_spiketimes = [i for i in data[-1][:] if i >= skip * dt]
         # Soma spikes (inds)
         self.soma_spiketimestamps = np.sort((self.soma_spiketimes / dt).astype(int))
 
