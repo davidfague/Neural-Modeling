@@ -94,7 +94,7 @@ class CurrentInjection:
 class Synapse:
 
     def __init__(self, segment: nrn.Segment, syn_mod: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False, 
-                 syn_params: dict = None):
+                 syn_params: dict = None, syn_obj: object = None):
         '''
         Parameters:
         ----------
@@ -113,15 +113,17 @@ class Synapse:
         syn_params: dict = None
             Additional parameter for the synapse.
 
+        syn_obj: object = None
+            Optional existing neuron synapse point process object to store
+
         '''
         self.segment = segment
         self.syn_type = syn_mod
         self.gmax = gmax
         self.gmax_var = None # Variable name of maximum conductance (uS)
         self.syn_params = syn_params
-        self.synapse_neuron_obj = None
+        self.synapse_neuron_obj = syn_obj
         self.rec_vec = []  # List of vectors for recording
-
         self.set_params_based_on_synapse_mod(syn_mod)
         self.setup(record)
         self.ncs = []
@@ -156,8 +158,8 @@ class Synapse:
             self.current_type = 'igaba'
         else:
             raise ValueError
-        
-        self.synapse_neuron_obj = getattr(h, self.syn_type)(self.segment)
+        if self.synapse_neuron_obj is not None: # create new synapse hoc object if not provided one
+            self.synapse_neuron_obj = getattr(h, self.syn_type)(self.segment)
 
     #PRAGMA MARK: Synapse Value Setup
 
