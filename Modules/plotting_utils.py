@@ -12,11 +12,10 @@ def plot_sta(data, edges, title, x_ticks, x_tick_labels, xlim,
 	fig = plt.figure(figsize = (10, 5))
 	plt.imshow(robust_norm(data), cmap = "jet")
 	plt.title(title)
-	plt.xticks(ticks = x_ticks, 
-			   labels = x_tick_labels)
+	plt.xticks(ticks = x_ticks + 0.5, labels = x_tick_labels)
 	plt.xlabel('Time (ms)')
 	plt.xlim(*xlim)
-	plt.yticks(ticks = np.arange(11), labels = np.round(edges, 3))
+	plt.yticks(ticks = np.arange(11) - 0.5, labels = np.round(edges, 3))
 	plt.ylabel("Edge Quantile")
 	plt.colorbar(label = 'Additional Events per AP')
 
