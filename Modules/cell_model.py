@@ -379,7 +379,7 @@ class CellModel:
                 # self.ica_Ca_LVAst = Recorder(obj_list=self.segments, var_name='ica_Ca_LVAst')
                 # self.ihcn_Ih = Recorder(obj_list=self.segments, var_name='ihcn_Ih')
                 # self.i_pas = Recorder(obj_list=self.segments, var_name='i_pas')
-                # self.Vm = Recorder(obj_list=self.segments)
+                self.Vm = Recorder(obj_list=self.segments)
     
     def create_output_folder(self) -> str:
         nbranches = len(self.apic) - 1
@@ -454,7 +454,7 @@ class CellModel:
       # self.data_dict['ica_Ca_HVA_data'] = self.ica_Ca_HVA.as_numpy()
       # self.data_dict['ica_Ca_LVAst_data'] = self.ica_Ca_LVAst.as_numpy()
       # self.data_dict['i_pas_data'] = self.i_pas.as_numpy()
-      # self.data_dict['Vm'] = self.Vm.as_numpy()
+      self.data_dict['Vm'] = self.Vm.as_numpy()
       self.data_dict['i_NMDA'] = i_NMDA_df
       self.data_dict['i_AMPA'] = i_AMPA_df
       self.data_dict['i_GABA'] = i_GABA_df
