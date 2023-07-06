@@ -127,7 +127,7 @@ class SegmentManager:
         self.soma_spiketimestamps = np.sort((self.soma_spiketimes / dt).astype(int))
 
     def read_data(self, output_folder: str) -> list:
-        file_names = ["Vm_report", "gNaTa_T_data_report", "i_AMPA_report",
+        file_names = ["Vm_report", "gNaTa_T_gNaTa_T_data_report", "i_AMPA_report",
                       "i_NMDA_report", "icah_data_report", "ical_data_report",
                       "ih_data_report", "ina_data_report", "spikes_report"]
         ext = 'h5'
