@@ -158,7 +158,7 @@ class Synapse:
             self.current_type = 'igaba'
         else:
             raise ValueError
-        if self.synapse_neuron_obj is not None: # create new synapse hoc object if not provided one
+        if self.synapse_neuron_obj is None: # create new synapse hoc object if not provided one
             self.synapse_neuron_obj = getattr(h, self.syn_type)(self.segment)
 
     #PRAGMA MARK: Synapse Value Setup
