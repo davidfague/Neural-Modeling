@@ -184,7 +184,12 @@ class SegmentManager:
         upward_crossings = np.argwhere(threshold_crossings)[::2]
 
         # Only count if within 2 ms after a somatic spike
-        na_spks = [int(i) for i in upward_crossings if ~np.any((np.abs(i - self.soma_spiketimestamps) < ms_within_somatic_spike / self.dt))]
+        # na_spks = [int(i) for i in upward_crossings if ~np.any((np.abs(i - self.soma_spiketimestamps) < ms_within_somatic_spike / self.dt))]
+        na_spks = []
+        for na_spikestamp in upward_crossings:
+            if np.any((upward_crossings - self.soma_spiketimestamps < 0) | (upward_crossings - self.soma_spiketimestamps > ms_within_somatic_spike / self.dt)):
+                na_spks.append(na_spikestamp)
+        
         if len(threshold_crossings) % 2 != 0:
             na_spks = na_spks[:-1]
 
