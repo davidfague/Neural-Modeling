@@ -223,7 +223,7 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	plt.xlim(xlim)
 
 	plt.legend()
-	plt.savefig('Vm')
+	plt.savefig('Vm.png')
 
 	# Extracellular potential along y-axis
 	if ylim is None:
@@ -250,7 +250,7 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	#plt.hlines(0,xmin=min(t),xmax=max(t),linestyles='dashed') # create a horizontal line
 	plt.title('Extracellular potential heatmap')
 	plt.xlim(xlim)
-	plt.savefig('ECP heatmap')
+	plt.savefig('ECP heatmap.png')
 	if figsize is None:
 		plt.figure(figsize=(8, 5))
 	else:
@@ -260,9 +260,9 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 											nbins=nbins, axes=plt.gca())
 	plt.title('Extracellular potential timecourse')
 	plt.xlim(xlim)
-	plt.savefig('ECP timecourse')
+	plt.savefig('ECP timecourse.png')
 
-	plt.show()
+	#plt.show()
 							
 def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index, trunk_seg_index,
 			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, 
