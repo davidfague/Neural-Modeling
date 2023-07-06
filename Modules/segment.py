@@ -231,10 +231,11 @@ class SegmentManager:
 
         # Not used in notebooks @DEPRECATION
         duration_low, duration_high, peak_values = [], [], []
-        for rand_seg_id in random_segments_ids:
-            spike_times = lower_bounds[rand_seg_id]
-            duration_low_seg, duration_high_seg, peak_values_seg = self.get_duration_and_peak_for_seg(self.segments[rand_seg_id], spike_times)
-            duration_low.append(duration_low_seg), duration_high.append(duration_high_seg), peak_values.append(peak_values_seg)
+        if current_type == 'icah':
+            for rand_seg_id in random_segments_ids:
+                spike_times = lower_bounds[rand_seg_id]
+                duration_low_seg, duration_high_seg, peak_values_seg = self.get_duration_and_peak_for_seg(self.segments[rand_seg_id], spike_times)
+                duration_low.append(duration_low_seg), duration_high.append(duration_high_seg), peak_values.append(peak_values_seg)
 
         return lower_bounds, upper_bounds, mag, duration_low, duration_high, peak_values
 
