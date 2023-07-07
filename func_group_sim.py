@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     # Simulation params
     h_celcius = 37
-    h_tstop = 2000 # Sim runtime
+    h_tstop = 100 # Sim runtime
     h_dt = 0.1 # Timestep (ms)
 
     # Time vector for generating inputs
@@ -289,6 +289,24 @@ if __name__ == "__main__":
 
     print(len(cell.all))
     print(len(cell.segments))
+
+    # find segments of interest
+    soma_seg_index = cell.segments.index(cell.soma[0](0.5))
+    axon_seg_index = cell.segments.index(cell.axon[-1](0.9))
+    basal_seg_index = cell.segments.index(basals[0](0.5))
+    trunk_seg_index = cell.segments.index(cell.apic[0](0.999))
+    # find tuft and nexus
+    if (reduce_cell == True) and (expand_cable == True): # Dendritic reduced model
+        tuft_seg_index = tuft_seg_index=cell.segments.index(tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
+        nexus_seg_index = cell.segments.index(cell.apic[0](0.99))
+    elif (reduce_cell == True) and (expand_cable == False): # NR model
+        tuft_seg_index = cell.segments.index(tufts[0](0.9)) # tufts[0] will be the cable that is both trunk and tuft in this case, so we have to specify near end of cable
+        nexus_seg_index = cell.segments.index(cell.apic[0](0.289004))
+    else: # Complex cell
+        tuft_seg_index=cell.segments.index(tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
+        nexus_seg_index=cell.segments.index(cell.apic[36](0.961538))
+    # compute electrotonic distances from nexus
+    cell.recompute_segment_elec_distance(segment = cell.segments[nexus_seg_index], seg_name = "nexus")
 
     # Record time points
     t_vec = h.Vector(round(h.tstop / h.dt) + 1).record(h._ref_t)
