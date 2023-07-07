@@ -310,6 +310,10 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
 		plt.close()  # Close the figure after saving it
 		
+import numpy as np
+import matplotlib.pyplot as plt
+import inspect
+
 def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', title=None, filename=None):
     """
     This function creates a plot of segments, colored according to the edge group they belong to.
@@ -363,6 +367,9 @@ def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', tit
     for i, seg in enumerate(segments):
         plt.plot([seg.p0_x3d, seg.p0_5_x3d, seg.p1_x3d], [seg.p0_y3d, seg.p0_5_y3d, seg.p1_y3d], color=cmap(normalized_indices[i]))
 
+    # Invisible scatter plot for the colorbar
+    sc = plt.scatter([seg.p0_x3d for seg in segments], [seg.p0_y3d for seg in segments], c=normalized_indices, s=0, cmap=cmap)
+
     # Draw lines and labels
     plt.vlines(110,400,500)
     plt.text(0,450,'100 um')
@@ -378,7 +385,7 @@ def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', tit
     normalized_ticks = np.linspace(0, 1, len(adjusted_edges))
 
     # Create colorbar with ticks and labels matching adjusted edges
-    cbar = plt.colorbar(ticks=normalized_ticks, label='Edge index', cmap=cmap)
+    cbar = plt.colorbar(sc, ticks=normalized_ticks, label='Edge index')
     cbar.ax.set_yticklabels(["{:.3f}".format(val) for val in adjusted_edges])
     cbar.ax.set_ylabel('Percentage of Somatic signal', rotation=270)
 
