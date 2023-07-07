@@ -3,6 +3,7 @@ import numpy as np
 from typing import Union, Optional, List, Tuple
 from scipy.spatial.transform import Rotation
 import matplotlib.cm as cm
+import inspect
 
 def plot_sta(data, edges, title, x_ticks, x_tick_labels, xlim, 
 			 norm_percentiles = (1, 99), save_to = None) -> None:
@@ -309,7 +310,7 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
 		plt.close()  # Close the figure after saving it
 		
-def plot_edges(edges, segments, output_folder, elec_dist_var ='soma_passive'):
+def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', title=None, filename=None):
     """
     This function creates a plot of segments, colored according to the edge group they belong to.
     
@@ -317,8 +318,19 @@ def plot_edges(edges, segments, output_folder, elec_dist_var ='soma_passive'):
     edges (array): An array of edge values.
     segments (list): A list of segments.
     output_folder (str): Path to the output folder where the plot will be saved.
+    title (str): The title of the plot. If None, the title will be the name of the 'edges' variable.
+    filename (str): The filename for the saved plot. If None, the filename will be the title + '_Elec_distance.png'.
 
     """
+    
+    # If title is not provided, set title as the name of 'edges' argument
+    if title is None:
+        callers_local_vars = inspect.currentframe().f_back.f_locals.items()
+        title = [var_name for var_name, var_val in callers_local_vars if var_val is edges][0]
+    
+    # If filename is not provided, set filename as title + '_Elec_distance.png'
+    if filename is None:
+        filename = title + '_Elec_distance.png'
     
     # Array to store edge indices
     edge_indices = []
@@ -348,7 +360,8 @@ def plot_edges(edges, segments, output_folder, elec_dist_var ='soma_passive'):
     plt.figure(figsize=(4,10))
 
     # Plot segments colored by normalized edge index
-    plt.scatter([seg.p0_5_x3d for seg in segments], [seg.p0_5_y3d for seg in segments], c=normalized_indices, s=4, cmap=cmap)
+    for i, seg in enumerate(segments):
+        plt.plot([seg.p0_x3d, seg.p0_5_x3d, seg.p1_x3d], [seg.p0_y3d, seg.p0_5_y3d, seg.p1_y3d], color=cmap(normalized_indices[i]))
 
     # Draw lines and labels
     plt.vlines(110,400,500)
@@ -358,13 +371,16 @@ def plot_edges(edges, segments, output_folder, elec_dist_var ='soma_passive'):
     plt.xticks([])
     plt.yticks([])
 
+    # Set title
+    plt.title(title)
+
     # Normalize adjusted_edges for colorbar ticks
     normalized_ticks = np.linspace(0, 1, len(adjusted_edges))
 
     # Create colorbar with ticks and labels matching adjusted edges
-    cbar = plt.colorbar(ticks=normalized_ticks, label='Edge index')
+    cbar = plt.colorbar(ticks=normalized_ticks, label='Edge index', cmap=cmap)
     cbar.ax.set_yticklabels(["{:.3f}".format(val) for val in adjusted_edges])
     cbar.ax.set_ylabel('Percentage of Somatic signal', rotation=270)
 
     plt.box(False)
-    plt.savefig(f'{output_folder}/Elec_distance.png')
+    plt.savefig(f'{output_folder}/{filename}')
