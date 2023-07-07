@@ -308,3 +308,63 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		plt.show()
 		plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
 		plt.close()  # Close the figure after saving it
+		
+def plot_edges(edges: array, segments: list, output_folder: str, elec_dist_var: str ='soma_passive'):
+    """
+    This function creates a plot of segments, colored according to the edge group they belong to.
+    
+    Parameters:
+    edges (array): An array of edge values.
+    segments (list): A list of segments.
+    output_folder (str): Path to the output folder where the plot will be saved.
+
+    """
+    
+    # Array to store edge indices
+    edge_indices = []
+
+    # Adjust edges array to include 0 and 1
+    adjusted_edges = np.concatenate(([0], edges, [1]))
+
+    # Iterate over each segment
+    for seg in segments:
+        seg_elec_distance = eval(seg.seg_elec_distance)['beta'][elec_dist_var]
+        
+        # Find the edge this segment is between
+        for i in range(len(adjusted_edges) - 1):
+            if adjusted_edges[i] <= seg_elec_distance <= adjusted_edges[i + 1]:  # include segments exactly at edge values
+                edge_indices.append(i)
+                break
+        else:
+            # if segment doesn't fall within any range, assign it to the last group
+            edge_indices.append(len(adjusted_edges) - 2)
+
+    # Normalize the edge_indices to range 0-1
+    normalized_indices = np.array(edge_indices) / (len(adjusted_edges) - 2)  
+
+    # Create colormap
+    cmap = plt.get_cmap('jet', len(adjusted_edges) - 1)
+
+    plt.figure(figsize=(4,10))
+
+    # Plot segments colored by normalized edge index
+    plt.scatter([seg.p0_5_x3d for seg in segments], [seg.p0_5_y3d for seg in segments], c=normalized_indices, s=4, cmap=cmap)
+
+    # Draw lines and labels
+    plt.vlines(110,400,500)
+    plt.text(0,450,'100 um')
+    plt.hlines(400,110,210)
+    plt.text(110,350,'100 um')
+    plt.xticks([])
+    plt.yticks([])
+
+    # Normalize adjusted_edges for colorbar ticks
+    normalized_ticks = np.linspace(0, 1, len(adjusted_edges))
+
+    # Create colorbar with ticks and labels matching adjusted edges
+    cbar = plt.colorbar(ticks=normalized_ticks, label='Edge index')
+    cbar.ax.set_yticklabels(["{:.3f}".format(val) for val in adjusted_edges])
+    cbar.ax.set_ylabel('Percentage of Somatic signal', rotation=270)
+
+    plt.box(False)
+    plt.savefig(f'{output_folder}/Elec_distance.png')
