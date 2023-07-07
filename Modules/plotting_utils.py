@@ -309,7 +309,7 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
 		plt.close()  # Close the figure after saving it
 		
-def plot_edges(edges: array, segments: list, output_folder: str, elec_dist_var: str ='soma_passive'):
+def plot_edges(edges, segments, output_folder, elec_dist_var ='soma_passive'):
     """
     This function creates a plot of segments, colored according to the edge group they belong to.
     
