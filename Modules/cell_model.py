@@ -229,16 +229,10 @@ class CellModel:
                     for seg in sec:
                         setattr(getattr(seg, channel), conductance, 0) # set the maximum conductance to zero
 
-    def write_seg_info_to_csv(self):
-        csv_file_path = os.path.join(self.output_folder_name, 'seg_info.csv')
-        if os.path.exists(csv_file_path):
-            print('Updating csv ', csv_file_path)
-            os.remove(csv_file_path)
-        else:
-            print('Creating csv ', csv_file_path)
-              
-        with open(csv_file_path, mode='w') as file:
-            writer = csv.DictWriter(file, fieldnames=self.seg_info[0].keys())
+    def write_seg_info_to_csv(self, path):
+        csv_file_path = os.path.join(path, 'seg_info.csv')
+        with open(csv_file_path, mode = 'w') as file:
+            writer = csv.DictWriter(file, fieldnames = self.seg_info[0].keys())
             writer.writeheader()
             for row in self.seg_info:
                 writer.writerow(row)
@@ -279,7 +273,6 @@ class CellModel:
                           
             self.seg_info[i]['pseg_index'] = pseg_id
     
-    #TODO:
     def recompute_segment_elec_distance(self, segment, seg_name) -> None:
         if not all('seg_elec_distance' in seg for seg in self.seg_info):
             for seg in self.seg_info:
@@ -380,35 +373,26 @@ class CellModel:
                 # self.i_pas = Recorder(obj_list=self.segments, var_name='i_pas')
                 self.Vm = Recorder(obj_list=self.segments)
     
-    def create_output_folder(self) -> str:
+    def get_output_folder_name(self) -> str:
         nbranches = len(self.apic) - 1
         nc_count = len(self.netcons)
         syn_count = len(self.synapses)
         seg_count = len(self.segments)
         firing_rate = len(self.spikes) / (h.tstop / 1000)
     
-        self.output_folder_name = (
+        output_folder_name = (
             str(self.hoc_model) + "_" + 
-            str(int(firing_rate*10)) + "e-1Hz_" + 
+            str(int(firing_rate * 10)) + "e-1Hz_" + 
             str(seg_count) + "nseg_" + 
             str(int(h.tstop))+ "ms_" +
             str(nbranches) + "nbranch_" + 
             str(nc_count) + "NCs_" + 
-            str(syn_count) + "nsyn" #+ '_'
-          # + str(self.runtime_in_minutes) + 'min'
+            str(syn_count) + "nsyn"
         )
     
-        if os.path.exists(self.output_folder_name):
-            print(f'Updating data folder {self.output_folder_name}')
-            shutil.rmtree(self.output_folder_name)
-        else:
-            print(f'Outputting data to {self.output_folder_name}')
-        
-        os.makedirs(self.output_folder_name)
-
-        return self.output_folder_name
+        return output_folder_name
     
-    def get_recorder_data(self) -> dict: # TODO: add check for synapse.current_type
+    def generate_recorder_data(self) -> None: # TODO: add check for synapse.current_type
       '''
       Method for calculating net synaptic currents and getting data after simulation
       '''
@@ -438,7 +422,7 @@ class CellModel:
       i_GABA_df = np.array(pd.DataFrame(i_GABA_bySeg) * 1000)
     
       self.data_dict = {}
-      # dynamically add recorded data to data_dict
+      # Dynamically add recorded data to data_dict
       for var_name, recorder in self.recorders.items():
             self.data_dict[var_name + '_data'] = recorder.as_numpy()
       self.data_dict['spikes'] = self.get_spike_time()
@@ -458,19 +442,19 @@ class CellModel:
       self.data_dict['i_AMPA'] = i_AMPA_df
       self.data_dict['i_GABA'] = i_GABA_df
       # self.data_dict['i'] = i_bySeg
-      self.write_data(self.create_output_folder())
-      
-      return self.data_dict
     
-    def write_data(self, output_folder_name):
+    def write_data(self, path):
+
+        output_folder_name = self.get_output_folder_name()
+        full_path = os.path.join(path, output_folder_name)
+
+        os.makedirs(full_path)
         for name, data in self.data_dict.items():
-            self.write_datafile(f"{output_folder_name}/{name}_report.h5", data)
+            self.write_datafile(os.path.join(full_path, f"{name}_report.h5"), data)
+
+        self.write_seg_info_to_csv(full_path)
     
     def write_datafile(self, reportname, data):
-        if os.path.isfile(reportname):
-            os.remove(reportname)
-            print(f"Removed old {reportname}")
-    
         with h5py.File(reportname, 'w') as file:
             # Check if the data is a DataFrame, and convert to numpy array if true
             if isinstance(data, pd.DataFrame):

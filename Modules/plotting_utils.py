@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Union, Optional, List, Tuple
 from scipy.spatial.transform import Rotation
 import matplotlib.cm as cm
 import inspect
+import os
 
 def plot_sta(data, edges, title, x_ticks, x_tick_labels, xlim, 
 			 norm_percentiles = (1, 99), save_to = None) -> None:
@@ -24,10 +24,7 @@ def plot_sta(data, edges, title, x_ticks, x_tick_labels, xlim,
 		fig.savefig(f'{save_to}', dpi = fig.dpi)
 
 #TODO CHECK
-def move_position(translate: Union[List[float],Tuple[float],np.ndarray],
-				  rotate: Union[List[float],Tuple[float],np.ndarray],
-				  old_position: Optional[Union[List[float], np.ndarray]] = None,
-				  move_frame: bool = False) -> np.ndarray:
+def move_position(translate: list, rotate: list, old_position: list = None, move_frame: bool = False) -> np.ndarray:
 	"""
 	Rotate and translate an object with old_position and calculate its new coordinates.
 	Rotate(alpha, h, phi): first rotate alpha about the y-axis (spin),
@@ -197,8 +194,10 @@ def plot_morphology(sim = None, cellid: int = 0, cell: object = None,
 	return fig, ax
 
 
-def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index, trunk_seg_index,
-							loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, figsize: tuple = None, vlim = 'auto'):
+def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, 
+			    			nexus_seg_index, trunk_seg_index, loc_param, lfp, elec_pos, plot_lfp_heatmap, 
+							plot_lfp_traces, xlim = None, ylim = None, figsize: tuple = None, vlim = 'auto',
+							show = True, save_dir = None):
 	if xlim is None:
 		xlim=t[[0, -1]]
 	v_soma = Vm[soma_seg_index]
@@ -223,7 +222,8 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	plt.xlim(xlim)
 
 	plt.legend()
-	plt.savefig('Vm.png')
+	if save_dir is not None:
+		plt.savefig(os.path.join(save_dir, "Vm.png"))
 
 	# Extracellular potential along y-axis
 	if ylim is None:
@@ -250,7 +250,10 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 	#plt.hlines(0,xmin=min(t),xmax=max(t),linestyles='dashed') # create a horizontal line
 	plt.title('Extracellular potential heatmap')
 	plt.xlim(xlim)
-	plt.savefig('ECP heatmap.png')
+	
+	if save_dir is not None:
+		plt.savefig(os.path.join(save_dir, "ecp_heatmap.png"))
+
 	if figsize is None:
 		plt.figure(figsize=(8, 5))
 	else:
@@ -260,9 +263,11 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 											nbins=nbins, axes=plt.gca())
 	plt.title('Extracellular potential timecourse')
 	plt.xlim(xlim)
-	plt.savefig('ECP timecourse.png')
+	if save_dir is not None:
+		plt.savefig(os.path.join(save_dir, "ecp_timecourse.png"))
 
-	#plt.show()
+	if show:
+		plt.show()
 							
 def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index, trunk_seg_index,
 			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, 
@@ -309,10 +314,6 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		plt.show()
 		plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
 		plt.close()  # Close the figure after saving it
-		
-import numpy as np
-import matplotlib.pyplot as plt
-import inspect
 
 def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', title=None, filename=None):
     """
