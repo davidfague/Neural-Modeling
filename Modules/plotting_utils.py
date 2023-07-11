@@ -315,7 +315,7 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
 		plt.close()  # Close the figure after saving it
 
-def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', title=None, filename=None):
+def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', title = None, filename = None):
     """
     This function creates a plot of segments, colored according to the edge group they belong to.
     
@@ -391,4 +391,4 @@ def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', tit
     cbar.ax.set_ylabel('Percentage of Somatic signal', rotation=270)
 
     plt.box(False)
-    plt.savefig(f'{output_folder}/{filename}')
+    plt.savefig(os.path.join(output_folder, filename))
