@@ -392,3 +392,68 @@ def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', tit
 
     plt.box(False)
     plt.savefig(os.path.join(output_folder, filename))
+
+def plot_spikes(sm, seg=None, seg_index=None, dendritic_spike_times=[], spike_labels=[], start_time=0, end_time=None, output_folder="", title=None):
+    """
+    This function plots the membrane potential of a given segment along with the spike times for different dendritic spikes. 
+    It provides an option to specify a time range for the plot.
+
+    Args:
+    sm : Segment Manager object that holds all segments.
+    seg : A Segment object that contains the membrane potential data to be plotted. Either seg or seg_index must be specified.
+    seg_index : Index of the segment in the sm.segments list. Either seg or seg_index must be specified.
+    dendritic_spike_times : A list of lists, each containing spike times for a type of dendritic spike (e.g. NMDA, CA, NA).
+    spike_labels : A list of labels for the dendritic_spike_times.
+    start_time : The start of the time range for the plot, in milliseconds. Default is 0.
+    end_time : The end of the time range for the plot, in milliseconds. If not specified, the plot goes till the end of the segment.
+    output_folder : The folder where to save the plot. If it does not exist, it will be created. Default is the current directory.
+    title: The title for the plot. If not specified, the name of the segment will be used.
+
+    Returns:
+    None
+    """
+    if seg is None and seg_index is None:
+        raise ValueError("Either seg or seg_index must be provided")
+    elif seg is None:
+        seg = sm.segments[seg_index]
+    elif seg_index is None:
+        seg_index = sm.segments.index(seg)
+
+    start_index = int(start_time * 10)
+    if end_time is not None:
+        end_index = int(end_time * 10)
+    else:
+        end_index = len(seg.v)
+
+    time_range = np.arange(start_time, start_time + (end_index-start_index)*0.1, 0.1)
+    plt.plot(time_range, seg.v[start_index:end_index], color='grey', label='Voltage')
+
+    colors = ['red', 'green', 'blue', 'yellow', 'magenta', 'cyan', 'black', 'white']
+
+    if len(spike_labels) != len(dendritic_spike_times):
+        raise ValueError("dendritic_spike_times and spike_labels must have the same length")
+
+    for i, spike in enumerate(dendritic_spike_times):
+        x_values = np.array([x for x in spike[seg_index] if start_index <= x < end_index]) * 0.1
+        y_values = np.array([seg.v[x] for x in spike[seg_index] if start_index <= x < end_index])
+        plt.scatter(x_values, y_values, marker='*', color=colors[i % len(colors)], s=50, label=spike_labels[i])
+
+    # If no title is provided, use seg.name
+    if title is None:
+        title = seg.name
+
+    plt.title(title)
+    plt.legend()
+
+    # Create output folder if it doesn't exist
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    # Saving the plot as a .png file. The file name includes the title of the plot.
+    safe_title = title.replace(' ', '_')
+    file_name = f"Dendritic_Spikes_{safe_title}.png"
+    full_path = os.path.join(output_folder, file_name)
+
+    plt.savefig(full_path, dpi=300)
+
+    plt.show()
