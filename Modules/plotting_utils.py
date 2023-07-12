@@ -442,6 +442,8 @@ def plot_spikes(sm, seg=None, seg_index=None, dendritic_spike_times=[], spike_la
     if title is None:
         title = seg.name
 
+    plt.ylabel('Vm (mv)')
+    plt.xlabel('Time (ms)')
     plt.title(title)
     plt.legend()
 
