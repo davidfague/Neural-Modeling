@@ -149,6 +149,7 @@ class SegmentManager:
 
     def get_na_lower_bounds_and_peaks(self, threshold: float, ms_within_somatic_spike: float) -> tuple:
         na_lower_bounds = []
+        bAP_lower_bounds = []
         peak_values = []
         flattened_peak_values = []
     
