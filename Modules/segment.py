@@ -153,8 +153,9 @@ class SegmentManager:
         flattened_peak_values = []
     
         for seg in self.segments:
-            lb = self.get_na_lower_bounds_for_seg(seg, threshold, ms_within_somatic_spike)
+            lb, bAPs = self.get_na_lower_bounds_for_seg(seg, threshold, ms_within_somatic_spike)
             na_lower_bounds.append(lb)
+            bAP_lower_bounds.append(bAPs)
     
             # Calculate the index for the peak
             peak_indices = (lb + 1 / self.dt).astype(int)
@@ -174,7 +175,7 @@ class SegmentManager:
                 warining_text = f"Skipped {len(failed_indices)} indicies, since they exceeded the data length."
                 warnings.warn(warining_text)
     
-        return na_lower_bounds, peak_values, flattened_peak_values
+        return na_lower_bounds, peak_values, flattened_peak_values, bAP_lower_bounds
 
     def get_na_lower_bounds_for_seg(self, seg, threshold: float, ms_within_somatic_spike: float) -> np.ndarray:
         # Find bounds (crossings)
@@ -189,6 +190,7 @@ class SegmentManager:
         # Only count if within 2 ms after a somatic spike
         # na_spks = [int(i) for i in upward_crossings if ~np.any((np.abs(i - self.soma_spiketimestamps) < ms_within_somatic_spike / self.dt))]
         na_spks = []
+        bAPs = [] # list of na spikes classified as action potentials
         for na_spikestamp in upward_crossings: # filter out na spikes right after 
             soma_spikes_before_na_spike = self.soma_spiketimestamps[self.soma_spiketimestamps < na_spikestamp]
             if len(soma_spikes_before_na_spike) == 0: # na spike has no AP before
@@ -196,12 +198,9 @@ class SegmentManager:
             elif (na_spikestamp - soma_spikes_before_na_spike[-1] > ms_within_somatic_spike / self.dt): # na spike is more than x ms after AP latest
                 na_spks.append(na_spikestamp)
             else: # na spike is within x ms after latest AP
-                continue
-        
-        if len(threshold_crossings) % 2 != 0:
-            na_spks = na_spks[:-1]
+                bAPs.append(na_spikestamp)
 
-        return np.array(na_spks)
+        return np.array(na_spks), np.array(bAPs)
 
     def get_ca_nmda_lower_bounds_durations_and_peaks(self, lowery, uppery, random_state: np.random.RandomState):
         # Filter and get bounds
