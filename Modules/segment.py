@@ -193,12 +193,12 @@ class SegmentManager:
         na_spks = []
         bAPs = [] # list of na spikes classified as action potentials
         for na_spikestamp in upward_crossings: # filter out na spikes right after 
-            soma_spikes_before_na_spike = self.soma_spiketimestamps[self.soma_spiketimestamps < na_spikestamp]
+            soma_spikes_before_na_spike = self.soma_spiketimestamps[self.soma_spiketimestamps < na_spikestamp] # time of APs before this na spike
             if len(soma_spikes_before_na_spike) == 0: # na spike has no AP before
                 na_spks.append(na_spikestamp)
-            elif (na_spikestamp - soma_spikes_before_na_spike[-1] > ms_within_somatic_spike / self.dt): # na spike is more than x ms after AP latest
+            elif (na_spikestamp - soma_spikes_before_na_spike[-1] > ms_within_somatic_spike / self.dt): # na spike is more than x ms after last AP
                 na_spks.append(na_spikestamp)
-            else: # na spike is within x ms after latest AP
+            else: # na spike is within x ms after latest AP # na spike is less than x ms after latest AP and counted as a back propagating AP
                 bAPs.append(na_spikestamp)
 
         return np.array(na_spks), np.array(bAPs)
