@@ -426,7 +426,7 @@ def plot_spikes(sm, seg=None, seg_index=None, dendritic_spike_times=[], spike_la
         end_index = len(seg.v)
 
     time_range = np.arange(start_time, start_time + (end_index-start_index)*0.1, 0.1)
-    plt.plot(time_range, seg.v[start_index:end_index], color='grey', label='Voltage')
+    plt.plot(time_range, seg.v[start_index:end_index], color='grey')
 
     colors = ['red', 'green', 'blue', 'yellow', 'magenta', 'cyan', 'black', 'white']
 
