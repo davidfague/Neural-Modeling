@@ -2,6 +2,7 @@ from typing import List
 import numpy as np
 from Modules.spike_generator import SpikeGenerator
 from Modules.synapse_generator import SynapseGenerator
+from neuron import h as nrn
 
 def calc_dist(p1: List[float], p2: List[float]) -> float:
     '''Calculate euclidean distance between two 3D coordinates.'''
