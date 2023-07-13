@@ -46,12 +46,6 @@ def calc_elec_distance(seg1, seg2, frequency):
                 visited.add(adj_seg)
     raise ValueError("No path between seg1 and seg2")
 
-
-# calculate the electrotonic length of the cable
-cm, rm, ra, e_pas, q = _get_subtree_biophysical_properties(h.SectionRef(sec=section_to_expand), frequency)
-cable_space_const_in_cm = find_space_const_in_cm(section_to_expand(0.5).diam/10000, rm, ra)
-cable_elec_L = section_to_expand.L/(cable_space_const_in_cm*10000)
-
 # Group synapses into clusters based on their segment's electrotonic distances
 def cluster_synapses(synapses, n_clusters):
     segments = list(set([synapse.seg for synapse in synapses]))
