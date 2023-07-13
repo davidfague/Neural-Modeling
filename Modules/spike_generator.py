@@ -259,6 +259,62 @@ class SpikeGenerator:
 
 		return fr_profile
 
+	def gaussian_density(self, x: np.ndarray, mu: float, sigma: float):
+		return (1 / (np.sqrt(2 * np.pi * sigma**2))) * np.exp(-((x - mu)**2) / (2 * sigma**2))
+	
+	def gaussian_modulation(self, random_state: np.random.RandomState, train_length: float, 
+			 				dt: float, a_iv: int, P: float, CV_t: float, sigma_iv: float, 
+							bounds: tuple) -> np.ndarray:
+		'''
+		Paramters:
+		----------
+
+		random_state: np.random.RandomState
+			RNG to use.
+
+		train_length: float
+			Train length in ms.
+		
+		dt: float
+			Time step to discretize with.
+
+		a_iv: int
+			Number of spike trains to generate.
+
+		P: float
+			Mean of distance between volleys in ms.
+
+		CV_t: float
+			Coefficient of variation of distance between volleys in ms.
+
+		sigma_iv: float
+			Volley's std.
+
+		bounds: tuple
+			The profile bounds: [min, max].
+
+		Returns:
+		----------
+		fr_profile: np.ndarray
+			Firing rate profile.
+		'''
+		num_timestamps = int(train_length / dt)
+
+		fr_profile = np.zeros((a_iv, num_timestamps)) # In timestamps
+
+		timestamp = P
+		while timestamp < num_timestamps:
+			# Place a Gaussian at stamp centered at a_iv // 2 with std = sigma_iv
+			gaus = self.gaussian_density(np.arange(a_iv), int(a_iv // 2), sigma_iv)
+
+			# Normalize to get probability and place
+			prob = gaus / np.max(gaus)
+			fr_profile[:, timestamp] = minmax(prob) * (bounds[1] - bounds[0]) + bounds[0]
+			timestamp += random_state.normal(int(P / dt), int(CV_t * P / dt))
+
+		return fr_profile
+
+
 	def rhythmic_modulation(self, fr_profile: np.ndarray, rhythmic_f: int, P: int, rhythmic_mod: float, t: np.ndarray):
 		'''
 		
