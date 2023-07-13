@@ -9,7 +9,9 @@ from neuron import h,nrn
 def create_graph(segments):
     G = nx.Graph()
     for segment in segments:
-        G.add_edge(segment)
+        for adj_segment in segment.adj_segs:
+            if adj_segment in segments:  # make sure we only add edges between segments in our list
+                G.add_edge(segment, adj_segment)
     return G
 
 def calc_elec_distance(seg1, seg2, frequency):
