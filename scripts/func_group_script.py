@@ -8,6 +8,7 @@ from Modules.complex_cell import build_L5_cell
 from Modules.functional_group import generate_excitatory_functional_groups, generate_inhibitory_functional_groups
 from Modules.cell_utils import get_segments_and_len_per_segment
 from Modules.plotting_utils import plot_simulation_results
+from Modules.logger import Logger
 
 from neuron import h
 
@@ -26,18 +27,24 @@ import func_group_sim_constants as constants
 
 def main(numpy_random_state, neuron_random_state):
 
+    logger = Logger(output_dir = "./", active = True)
+
     # Random seed
+    logger.log_section_start(f"Setting random states ({numpy_random_state}, {neuron_random_state})")
     random_state = np.random.RandomState(numpy_random_state)
     neuron_r = h.Random()
 
     for _ in range(neuron_random_state):
         neuron_r.MCellRan4()
+    logger.log_section_end("Setting random states")
 
     # Time vector for generating inputs
     t = np.arange(0, constants.h_tstop, 1)
 
     # Build cell
+    logger.log_section_start("Building complex cell")
     complex_cell = build_L5_cell(constants.complex_cell_folder, constants.complex_cell_biophys_hoc_name)
+    logger.log_section_end("Building complex cell")
 
     h.celsius = constants.h_celcius
     h.v_init = complex_cell.soma[0].e_pas
@@ -53,14 +60,17 @@ def main(numpy_random_state, neuron_random_state):
     runtime_start_time = time.time()
 
     # Get segments and lengths
+    logger.log_section_start("Getting segments and lengths")
     all_segments, all_len_per_segment, all_SA_per_segment,\
     all_segments_center, soma_segments, soma_len_per_segment,\
     soma_SA_per_segment, soma_segments_center, no_soma_segments,\
     no_soma_len_per_segment, no_soma_SA_per_segment, no_soma_segments_center =\
     get_segments_and_len_per_segment(complex_cell)
+    logger.log_section_end("Getting segments and lengths")
 
     # ---- Excitatory
 
+    logger.log_section_start("Generating Excitatory func groups")
     # Excitatory gmax distribution
     exc_gmax_mean_0 = constants.exc_gmax_mean_0
     exc_gmax_std_0 = constants.exc_gmax_std_0
@@ -99,7 +109,7 @@ def main(numpy_random_state, neuron_random_state):
             adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
         else:
             adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
-
+    logger.log_memory()
     exc_functional_groups = generate_excitatory_functional_groups(all_segments = no_soma_segments,
                                                                   all_len_per_segment = no_soma_len_per_segment,
                                                                   all_segments_centers = no_soma_segments_center,
@@ -117,9 +127,12 @@ def main(numpy_random_state, neuron_random_state):
                                                                   record = True, syn_mod = 'AMPA_NMDA')
     
     exc_spikes = spike_generator.spike_trains
+    logger.log_memory()
+    logger.log_section_end("Generating Excitatory func groups")
 
     # ---- Inhibitory
 
+    logger.log_section_start("Generating inhibitory func groups for dendrites")
     inh_number_of_clusters = int(sum(all_len_per_segment) / constants.inh_cluster_span)
     inh_synapses_per_cluster = int(constants.inh_cluster_span * constants.inh_synaptic_density)
 
@@ -133,6 +146,7 @@ def main(numpy_random_state, neuron_random_state):
     a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
     distal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
 
+    logger.log_memory()
     inhibitory_functional_groups = generate_inhibitory_functional_groups(cell = complex_cell,
                                                                          all_segments = all_segments,
                                                                          all_len_per_segment = all_len_per_segment,
@@ -152,9 +166,13 @@ def main(numpy_random_state, neuron_random_state):
                                                                          spike_trains_to_delay = exc_spikes, 
                                                                          fr_time_shift = constants.inh_firing_rate_time_shift,
                                                                          record = True, syn_mod = 'GABA_AB')
-
+    
+    logger.log_memory()
+    logger.log_section_end("Generating inhibitory func groups for dendrites")
     # ---- Soma
 
+    logger.log_section_start("Generating inhibitory func groups for soma")
+    logger.log_memory()
     soma_inhibitory_functional_groups = generate_inhibitory_functional_groups(cell = complex_cell,
                                                                               all_segments = soma_segments,
                                                                               all_len_per_segment = soma_SA_per_segment,
@@ -174,18 +192,29 @@ def main(numpy_random_state, neuron_random_state):
                                                                               spike_trains_to_delay = exc_spikes, 
                                                                               fr_time_shift = constants.inh_firing_rate_time_shift,
                                                                               record = True, syn_mod = 'GABA_AB')
+    
+    logger.log_memory()
+    logger.log_section_end("Generating inhibitory func groups for soma")
+
     # ---- Set up a cell model
+
+    logger.log_section_start("Adding all synapses")
 
     # Get all synapses
     all_syns = []
     for synapse_list in synapse_generator.synapses: # synapse_generator.synapses is a list of synapse lists
         for synapse in synapse_list:
             all_syns.append(synapse)
+    logger.log_section_end("Adding all synapses")
 
+    logger.log_section_start("Initializing cell model")
+    logger.log_memory()
     cell = CellModel(hoc_model = complex_cell, synapses = all_syns,
                     netcons = spike_generator.netcons, spike_trains = spike_generator.spike_trains,
                     spike_threshold = constants.spike_threshold, random_state = random_state,
                     var_names = constants.channel_names)
+    logger.log_memory()
+    logger.log_section_end("Initializing cell model")
     
     # Reduce cell and store new things: can update CellModel module to do this stuff
 
@@ -214,8 +243,10 @@ def main(numpy_random_state, neuron_random_state):
         return terminal_sections
 
     # ---- Prepare simulation
+    logger.log_section_start("Finding distal sections")
     basals = find_distal_sections(cell, 'dend')
     tufts = find_distal_sections(cell, 'apic')
+    logger.log_section_end("Finding distal sections")
 
     # Find segments of interest
     soma_seg_index = cell.segments.index(cell.soma[0](0.5))
@@ -228,44 +259,68 @@ def main(numpy_random_state, neuron_random_state):
     nexus_seg_index = cell.segments.index(cell.apic[36](0.961538))
 
     # Compute electrotonic distances from nexus
+    logger.log_section_start("Recomputing elec distance")
     cell.recompute_segment_elec_distance(segment = cell.segments[nexus_seg_index], seg_name = "nexus")
+    logger.log_section_end("Recomputing elec distance")
 
+    logger.log_section_start("Initializing recorder")
     # Record time points
     t_vec = h.Vector(round(h.tstop / h.dt) + 1).record(h._ref_t)
 
     # Record membrane voltage of all segments
     V_rec = Recorder(cell.segments)
+    logger.log_section_end("Initializing recorder")
 
+    logger.log_section_start("Creating ecp object")
     elec_pos = params.ELECTRODE_POSITION
     ecp = EcpMod(cell, elec_pos, min_distance=params.MIN_DISTANCE)  # create an ECP object for extracellular potential
+    logger.log_section_end("Creating ecp object")
 
     # ---- Run simulation
     sim_duration = h.tstop / 1000 # Convert from ms to s
-    print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-          f"Running Simulation, duration: {sim_duration} sec.")
+    #print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    #      f"Running Simulation, duration: {sim_duration} sec.")
 
+    logger.log_section_start(f"Running sim for {sim_duration} sec")
     sim_start_time = time.time()
-    h.run()
+
+   #h.run()
+    logger.log_memory()
+    h.finitialize(h.v_init)
+    time_step = 0
+    while h.t < h.tstop:
+        if time_step % 100 / constants.h_dt == 0:
+            logger.log(f"Running simulation step {time_step}")
+            logger.log_memory()
+        h.fadvance()
+        time_step += 1
+
     sim_end_time = time.time()
+    logger.log_section_end("Running simulation")
 
     elapsedtime = sim_end_time - sim_start_time
     print(f'Simulation time: {round(elapsedtime)} sec.')
     total_runtime = sim_end_time - runtime_start_time
     print(f'Total runtime: {round(total_runtime)} sec.')
 
+    logger.log_section_start("Transforming results to numpy")
     # Time array (ms)
     t = t_vec.as_numpy().copy()  
 
     # Soma membrane potential
     Vm = V_rec.as_numpy()
+    logger.log_section_end("Transforming results to numpy")
 
     loc_param = [0., 0., 45., 0., 1., 0.]
 
+    logger.log_section_start("Computing LFP")
     # LFP array
     lfp = ecp.calc_ecp(move_cell=loc_param).T  # unit: mV
+    logger.log_section_end("Computing LFP")
 
 
     # Save data
+    logger.log_section_start("Saving")
     random_seed_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_seeds_" +\
                        str(numpy_random_state) + "_" + str(neuron_random_state)
     save_folder = os.path.join(constants.save_dir, random_seed_name)
@@ -288,6 +343,7 @@ def main(numpy_random_state, neuron_random_state):
     print(f'Save time: {round(elapsedtime)} sec.')
     total_runtime = save_end_time - runtime_start_time
     print(f'Total runtime incl. saving: {round(total_runtime)} sec.')
+    logger.log_section_end("Saving")
 
 if __name__ == "__main__":
 
