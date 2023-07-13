@@ -9,7 +9,7 @@ from neuron import h,nrn
 def create_graph(segments):
     G = nx.Graph()
     for segment in segments:
-        G.add_edge(*segment)
+        G.add_edge(segment)
     return G
 
 def calc_elec_distance(seg1, seg2, frequency):
