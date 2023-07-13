@@ -48,7 +48,7 @@ def calc_elec_distance(seg1, seg2, frequency):
 
 # Group synapses into clusters based on their segment's electrotonic distances
 def cluster_synapses(synapses, n_clusters):
-    segments = list(set([synapse.seg for synapse in synapses]))
+    segments = list(set([synapse.segment for synapse in synapses]))
     G = create_graph(segments)
     # Create a list of distances
     distances = [[calc_elec_distance(segment1, segment2, frequency) for segment2 in segments] for segment1 in segments]
@@ -57,7 +57,7 @@ def cluster_synapses(synapses, n_clusters):
     # Create a dictionary to map segments to clusters
     segment_cluster_map = {segment: cluster for segment, cluster in zip(segments, kmeans.labels_)}
     # Map each synapse to its segment's cluster
-    synapse_cluster_map = {synapse: segment_cluster_map[synapse.seg] for synapse in synapses}
+    synapse_cluster_map = {synapse: segment_cluster_map[synapse.segment] for synapse in synapses}
     return synapse_cluster_map
 
 def add_synapses(cell):
