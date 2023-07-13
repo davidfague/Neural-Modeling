@@ -1,6 +1,9 @@
 import networkx as nx
 from sklearn.cluster import KMeans
 from neuron_reduce.reducing_methods import (_get_subtree_biophysical_properties, find_space_const_in_cm)
+from Modules.spike_generator import SpikeGenerator
+from Modules.synapse_generator import SynapseGenerator
+from neuron import h,nrn
 
 # Create a graph from the segments
 def create_graph(segments):
@@ -62,3 +65,11 @@ def cluster_synapses(synapses, n_clusters):
     # Map each synapse to its segment's cluster
     synapse_cluster_map = {synapse: segment_cluster_map[synapse.seg] for synapse in synapses}
     return synapse_cluster_map
+
+def add_synapses(cell):
+    synapse_generator.add_synapses(segments=all_segments, 
+                                                              probs=all_len_per_segment / np.sum(all_len_per_segment),
+                                                              gmax=gmax_dist, syn_mod=syn_mod,
+                                                              number_of_synapses=synapses_per_cluster, record=record, 
+                                                              syn_params=syn_params, random_state=random_state,
+                                                              neuron_r=neuron_r)
