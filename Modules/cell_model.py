@@ -271,7 +271,10 @@ class CellModel:
                     except StopIteration:
                         pseg_id = None
                           
-            self.seg_info[i]['pseg_index'] = pseg_id.astype(int)
+            if pseg_id is not None:
+                self.seg_info[i]['pseg_index'] = pseg_id.astype(int)
+            else:
+                self.seg_info[i]['pseg_index'] = pseg_id
     
     def recompute_segment_elec_distance(self, segment, seg_name) -> None:
         if not all('seg_elec_distance' in seg for seg in self.seg_info):
