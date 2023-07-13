@@ -447,6 +447,7 @@ class CellModel:
 
         output_folder_name = self.get_output_folder_name()
         full_path = os.path.join(path, output_folder_name)
+        print('Outputting to:', output_folder_name)
 
         os.makedirs(full_path)
         for name, data in self.data_dict.items():
