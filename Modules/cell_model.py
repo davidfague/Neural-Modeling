@@ -447,6 +447,7 @@ class CellModel:
 
         output_folder_name = self.get_output_folder_name()
         full_path = os.path.join(path, output_folder_name)
+        print('Outputting to:', output_folder_name)
 
         os.makedirs(full_path)
         for name, data in self.data_dict.items():
@@ -486,9 +487,8 @@ class CellModel:
             'seg_L': sec.L / sec.nseg,
             'sec_L': sec.L,
             'seg_SA': (sec.L / sec.nseg) * (np.pi * seg.diam),
-            'seg_h.distance': h.distance(self.soma[0](0.5), seg),
-            'seg_half-seg RA': 0.01 * seg.sec.Ra * (sec.L / 2 / seg.sec.nseg) / (np.pi * (seg.diam / 2)**2),
-            'pseg': seg.sec.parentseg(),
+            'seg_h_distance': h.distance(self.soma[0](0.5), seg),
+            'seg_half_seg_RA': 0.01 * seg.sec.Ra * (sec.L / 2 / seg.sec.nseg) / (np.pi * (seg.diam / 2)**2),
             'pseg_index': None,
             'seg_elec_distance': {}
         }

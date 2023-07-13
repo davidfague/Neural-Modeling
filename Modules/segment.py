@@ -123,7 +123,9 @@ class SegmentManager:
 
             seg = Segment(seg_info = data[-1].iloc[i], seg_data = seg_data)
             self.segments.append(seg)
-
+            
+        self.compute_adj_segs_from_pseg_indices()
+        
         # Soma spikes (ms)
         # skip
         #self.soma_spiketimes = data[-2][:]
@@ -131,6 +133,19 @@ class SegmentManager:
         self.soma_spiketimes = np.array([(i-skip) for i in data[-2][:] if i >= skip])
         # Soma spikes (inds)
         self.soma_spiketimestamps = np.sort((self.soma_spiketimes / dt).astype(int))
+
+    def compute_adj_segs_from_pseg_indices(self):
+      '''
+      Uses parent segment indices to assign lists of adjacent segments to each segment
+      '''
+      for i,seg in enumerate(self.segments):  # iterate through segment index
+        psegid = seg.pseg_index
+        if not np.isnan(psegid):
+            psegid = int(psegid)
+            self.segments[psegid].adj_segs.append(seg)  # add child seg to this seg's adj_segs list
+            self.segments[psegid].child_segs.append(seg)  # add child seg to this seg's child_segs list
+            seg.parent_segs.append(self.segments[psegid])
+            seg.adj_segs.append(self.segments[psegid])
 
     def read_data(self, output_folder: str) -> list:
         file_names = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
