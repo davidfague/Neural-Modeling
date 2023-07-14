@@ -65,6 +65,7 @@ class CellModel:
         self.recompute_parent_segment_ids()
         self.recompute_segment_elec_distance(segment = self.soma[0](0.5), seg_name = "soma")
         self.recompute_netcons_per_seg()
+        self.compute_adjacent_segs()
 
         self.get_channels_from_var_names() # get channel and attribute names from recorded channel name
         self.insert_unused_channels()
@@ -243,7 +244,7 @@ class CellModel:
           for sec in self.all:
               sec_type = sec.name().split('.')[1][:4]
               for seg in sec:
-                  self.seg_info.append(self.genreate_seg_info(seg, sec, sec_type, seg_index_global, bmtk_index))
+                  self.seg_info.append(self.generate_seg_info(seg, sec, sec_type, seg_index_global, bmtk_index))
                   seg_index_global += 1
               bmtk_index += 1
         
@@ -272,6 +273,22 @@ class CellModel:
                         pseg_id = None
                           
             self.seg_info[i]['pseg_index'] = pseg_id
+            
+    def compute_adjacent_segs(self)
+        # getting adjacent segments using parent segment IDs
+        # getting children segments
+        segs = self.seg_info
+        for i in range(len(segs)):  # iterate through segment index
+          psegid = segs[i]['pseg_index']
+          if psegid is not None:# if not np.isnan(psegid):
+              psegid = int(psegid)
+              for seg_index,seg in enumerate(segs):  # check segIDs
+                  if psegid == seg_index:  # find parent seg from parent seg id
+                      segs[psegid]['adjacent_segments'].append(cell.segments[i])  # add child seg to this seg's adj_segs list
+                      # cell.segments[seg_index].child_segs.append(cell.segments[i])  # add child seg to this seg's child_segs list
+                      segs[i]['adjacent_segments'].append(cell.segments[psegid])  # add parent seg to this seg's adj_segs
+                      # cell.segments[i].parent_segs.append(cell.segments[psegid])  # add parent seg to thisparent probes
+
     
     def recompute_segment_elec_distance(self, segment, seg_name) -> None:
         if not all('seg_elec_distance' in seg for seg in self.seg_info):
@@ -461,7 +478,7 @@ class CellModel:
                         data = data.values
             file.create_dataset("report/biophysical/data", data = data)
 
-    def genreate_seg_info(self, seg, sec, sec_type, seg_index_global, bmtk_index) -> dict:
+    def generate_seg_info(self, seg, sec, sec_type, seg_index_global, bmtk_index) -> dict:
         info = {
             'seg': seg,
             'seg_index_global': seg_index_global,
