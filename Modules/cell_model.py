@@ -490,7 +490,7 @@ class CellModel:
             'seg_half-seg RA': 0.01 * seg.sec.Ra * (sec.L / 2 / seg.sec.nseg) / (np.pi * (seg.diam / 2)**2),
             'pseg': seg.sec.parentseg(),
             'pseg_index': None,
-            'seg_elec_distance': {}
-            'adjacent_segments': [] 
+            'seg_elec_distance': {},
+            'adjacent_segments': np.array()
         }
         return info
