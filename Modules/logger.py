@@ -4,13 +4,13 @@ import psutil
 
 class Logger:
 
-    def __init__(self, output_dir, active = True):
+    def __init__(self, output_dir, active = True, name = "General"):
         # Create the output file
-        log_file_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".txt"
+        log_file_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + f"_{name}.txt"
         self.output_file = os.path.join(output_dir, log_file_name)
 
         with open(self.output_file, "w") as file:
-            file.writelines(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: Logger started.\n")
+            file.writelines(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: Logger {name} started.\n")
 
         self.time_from_the_last_call = time.time()
         self.active = active

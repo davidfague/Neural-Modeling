@@ -4,14 +4,16 @@ from scipy.spatial.transform import Rotation
 import matplotlib.cm as cm
 import inspect
 import os
+import seaborn as sns
 
 def plot_sta(data, edges, title, x_ticks, x_tick_labels, xlim, 
 			 norm_percentiles = (1, 99), save_to = None) -> None:
 	# Adjust the data
 	lower, upper = np.percentile(data, norm_percentiles)
 	robust_norm = plt.Normalize(vmin = lower, vmax = upper)
+	normed_data = robust_norm(data) * 2 - 1 # Normalize to [-1, 1]
 	fig = plt.figure(figsize = (10, 5))
-	plt.imshow(robust_norm(data), cmap = "jet")
+	plt.imshow(normed_data, cmap = sns.color_palette("coolwarm", as_cmap=True))
 	plt.title(title)
 	plt.xticks(ticks = x_ticks + 0.5, labels = x_tick_labels)
 	plt.xlabel('Time (ms)')
