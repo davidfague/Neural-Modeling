@@ -6,66 +6,67 @@ from Modules.synapse_generator import SynapseGenerator
 from neuron import h,nrn
 
 # Create a graph from the segments
-def create_graph(segments):
+def create_graph(seg_infos):
     G = nx.Graph()
-    for segment in segments:
-        for adj_segment in segment.adj_segs:
-            if adj_segment in segments:  # make sure we only add edges between segments in our list
-                G.add_edge(segment, adj_segment)
+    for seg_info in seg_infos:
+        G.add_node(seg_info['seg_index_global'], attr_dict=seg_info)
+        for adj_segment in seg_info['adjacent_segments']:
+            adjacent_seg_info = next((info for info in cell.seg_info if info['seg'] == adj_segment), None)
+            if adjacent_seg_info:
+                G.add_edge(seg_info['seg_index_global'], adjacent_seg_info['seg_index_global'])
+            else:
+              print(adjacent_seg_info)
     return G
 
-def calc_elec_distance(seg1, seg2, frequency):
-    # Initialize a queue for BFS with the start segment
-    # Add half of the electrotonic length of seg1 to the starting distance
-    cm, rm, ra, e_pas, q = _get_subtree_biophysical_properties(h.SectionRef(sec=seg1), frequency)
-    cable_space_const_in_cm = find_space_const_in_cm(seg1.diam/10000, rm, ra)
-    cable_elec_L = seg1.L/(cable_space_const_in_cm*10000)
-    start_dist = cable_elec_L / 2
+def get_elec_length(seg, frequency):
+    # compute the electrotonic length of a segment
+    cm, rm, ra, e_pas, q = _get_subtree_biophysical_properties(h.SectionRef(sec=seg['sec']), frequency)
+    cable_space_const_in_cm = find_space_const_in_cm(seg['seg_diam']/10000, rm, ra)
+    return seg['seg_L']/(cable_space_const_in_cm*10000)
 
-    queue = [(seg1, start_dist)]  
-    visited = {seg1}
+def calc_elec_distance(G, seg1, seg2, frequency):
+    # Check if a path exists between seg1 and seg2
+    if not nx.has_path(G, seg1['seg_index_global'], seg2['seg_index_global']):
+        raise ValueError(f"No path between seg1 (ID {seg1['seg_index_global']}) and seg2 (ID {seg2['seg_index_global']})")
 
-    while queue:
-        current_seg, dist = queue.pop(0)
-        if current_seg == seg2:
-            # Subtract half of the electrotonic length of seg2 from the final distance
-            cm, rm, ra, e_pas, q = _get_subtree_biophysical_properties(h.SectionRef(sec=seg2), frequency)
-            cable_space_const_in_cm = find_space_const_in_cm(seg2.diam/10000, rm, ra)
-            cable_elec_L = seg2.L/(cable_space_const_in_cm*10000)
-            end_dist = cable_elec_L / 2
+    # Calculate the initial distance (half of seg1's electrotonic length)
+    start_dist = get_elec_length(seg1, frequency) / 2
 
-            return dist - end_dist
-        for adj_seg in current_seg.adj_segs:
-            if adj_seg not in visited:
-                # get biophysical properties
-                cm, rm, ra, e_pas, q = _get_subtree_biophysical_properties(h.SectionRef(sec=adj_seg), frequency)
-                # calculate the space constant
-                cable_space_const_in_cm = find_space_const_in_cm(adj_seg(0.5).diam/10000, rm, ra)
-                # calculate the electrotonic length of the segment
-                cable_elec_L = adj_seg.L/(cable_space_const_in_cm*10000)
-                # add the segment to the queue with the updated distance
-                queue.append((adj_seg, dist+cable_elec_L))
-                visited.add(adj_seg)
-    raise ValueError("No path between seg1 and seg2")
+    # Use NetworkX to get the shortest path between seg1 and seg2
+    path = nx.shortest_path(G, seg1['seg_index_global'], seg2['seg_index_global'])
 
-# Group synapses into clusters based on their segment's electrotonic distances
-def cluster_synapses(synapses, n_clusters):
-    segments = list(set([synapse.segment for synapse in synapses]))
-    G = create_graph(segments)
+    # Accumulate the electrotonic lengths along the path
+    for seg_index in path[1:-1]:  # Exclude the start and end segments
+        seg = next((info for info in cell.seg_info if info['seg_index_global'] == seg_index), None)
+        start_dist += get_elec_length(seg, frequency)
+
+    # Add half of the electrotonic length of seg2 to the final distance
+    end_dist = get_elec_length(seg2, frequency) / 2
+    final_dist = start_dist + end_dist
+
+    return final_dist
+
+def cluster_synapses(synapses, n_clusters, frequency=0):
+    # Use seg_info dictionaries instead of seg values
+    segment_infos = list([seg_info for synapse in synapses for seg_info in cell.seg_info if seg_info['seg'] == synapse.segment])
+    # print(segment_infos[0])
+
+    # Adjust the rest of your function to work with seg_info dictionaries
+    # G = create_graph([seg_info for seg_info in segment_infos])
+    G = create_graph(segment_infos)
+    print(G)
+    print(nx.is_connected(G))
+
     # Create a list of distances
-    distances = [[calc_elec_distance(segment1, segment2, frequency) for segment2 in segments] for segment1 in segments]
+    distances = [[calc_elec_distance(G, seg_info1, seg_info2, frequency) for seg_info2 in segment_infos] for seg_info1 in segment_infos]
     # Perform the clustering
     kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(distances)
     # Create a dictionary to map segments to clusters
-    segment_cluster_map = {segment: cluster for segment, cluster in zip(segments, kmeans.labels_)}
+    segment_cluster_map = {seg_info['seg']: cluster for seg_info, cluster in zip(segment_infos, kmeans.labels_)}
     # Map each synapse to its segment's cluster
     synapse_cluster_map = {synapse: segment_cluster_map[synapse.segment] for synapse in synapses}
-    return synapse_cluster_map
+    # Create a map of segment to seg_info to be used later
+    seg_info_map = {seg_info['seg']: seg_info for seg_info in segment_infos}
 
-def add_synapses(cell):
-    synapse_generator.add_synapses(segments=all_segments, 
-                                                              probs=all_len_per_segment / np.sum(all_len_per_segment),
-                                                              gmax=gmax_dist, syn_mod=syn_mod,
-                                                              number_of_synapses=synapses_per_cluster, record=record, 
-                                                              syn_params=syn_params, random_state=random_state,
-                                                              neuron_r=neuron_r)
+    # Return both the synapse_cluster_map and the seg_info_map
+    return synapse_cluster_map, seg_info_map
