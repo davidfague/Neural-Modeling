@@ -11,7 +11,7 @@ def build_L5_cell(cell_folder, biophys = 'L5PCbiophys3.hoc', morph = 'cell1.asc'
     h.load_file(cell_folder + template)
 
     # Build complex_cell object
-    eval("complex_cell = h." + template.split('.')[0] + '(cell_folder + morph)')
+    complex_cell = eval("h." + template.split('.')[0] + '(cell_folder + morph)')
     #complex_cell = h.L5PCtemplate(cell_folder + morph)
 
     return complex_cell
