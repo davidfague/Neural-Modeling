@@ -15,8 +15,8 @@ def create_graph(seg_infos):
                 G.add_edge(seg_info['seg_index_global'], adjacent_seg_info['seg_index_global'])
     return G
 
-def find_segment_info(segment):
-    return next((info for info in cell.seg_info if info['seg'] == segment), None)
+def find_segment_info(segment, seg_info_list):
+    return next((info for info in seg_info_list if info['seg'] == segment), None)
 
 def get_elec_length(seg, frequency):
     cm, rm, ra, e_pas, q = _get_subtree_biophysical_properties(h.SectionRef(sec=seg['sec']), frequency)
@@ -47,8 +47,8 @@ def calc_distance(G, seg1, seg2, frequency, use_euclidean):
     #     raise ValueError(f"No path between seg1 (ID {seg1['seg_index_global']}) and seg2 (ID {seg2['seg_index_global']})")
     return get_euclidean_distance(seg1, seg2) if use_euclidean else compute_electrotonic_distance(G, seg1, seg2, frequency)
 
-def cluster_synapses(synapses, n_clusters, frequency=0, use_euclidean=False):
-    segment_infos = [find_segment_info(synapse.segment) for synapse in synapses]
+def cluster_synapses(synapses, n_clusters, seg_info_list, frequency=0, use_euclidean=False):
+    segment_infos = [find_segment_info(synapse.segment, seg_info_list) for synapse in synapses]
     G = create_graph(segment_infos)
     distances = [[calc_distance(G, seg_info1, seg_info2, frequency, use_euclidean) for seg_info2 in segment_infos] for seg_info1 in segment_infos]
     kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(distances)
