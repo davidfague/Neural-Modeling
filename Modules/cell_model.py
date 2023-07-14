@@ -65,7 +65,7 @@ class CellModel:
         self.recompute_parent_segment_ids()
         self.recompute_segment_elec_distance(segment = self.soma[0](0.5), seg_name = "soma")
         self.recompute_netcons_per_seg()
-        self.compute_adjacent_segs()
+        self.compute_adjacent_segments()
 
         self.get_channels_from_var_names() # get channel and attribute names from recorded channel name
         self.insert_unused_channels()
@@ -274,7 +274,7 @@ class CellModel:
                           
             self.seg_info[i]['pseg_index'] = pseg_id
             
-    def compute_adjacent_segs(self)
+    def compute_adjacent_segmentss(self):
         # getting adjacent segments using parent segment IDs
         # getting children segments
         segs = self.seg_info
