@@ -491,5 +491,6 @@ class CellModel:
             'pseg': seg.sec.parentseg(),
             'pseg_index': None,
             'seg_elec_distance': {}
+            'adjacent_segments': [] 
         }
         return info
