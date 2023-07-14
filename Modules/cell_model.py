@@ -284,10 +284,10 @@ class CellModel:
               psegid = int(psegid)
               for seg_index,seg in enumerate(segs):  # check segIDs
                   if psegid == seg_index:  # find parent seg from parent seg id
-                      segs[psegid]['adjacent_segments'].append(cell.segments[i])  # add child seg to this seg's adj_segs list
-                      # cell.segments[seg_index].child_segs.append(cell.segments[i])  # add child seg to this seg's child_segs list
-                      segs[i]['adjacent_segments'].append(cell.segments[psegid])  # add parent seg to this seg's adj_segs
-                      # cell.segments[i].parent_segs.append(cell.segments[psegid])  # add parent seg to thisparent probes
+                      segs[psegid]['adjacent_segments'].append(self.segments[i])  # add child seg to this seg's adj_segs list
+                      # cell.segments[seg_index].child_segs.append(self.segments[i])  # add child seg to this seg's child_segs list
+                      segs[i]['adjacent_segments'].append(self.segments[psegid])  # add parent seg to this seg's adj_segs
+                      # cell.segments[i].parent_segs.append(self.segments[psegid])  # add parent seg to thisparent probes
 
     
     def recompute_segment_elec_distance(self, segment, seg_name) -> None:
