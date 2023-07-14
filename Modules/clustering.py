@@ -5,12 +5,12 @@ from Modules.spike_generator import SpikeGenerator
 from Modules.synapse_generator import SynapseGenerator
 from neuron import h,nrn
 
-def create_graph(seg_infos):
+def create_graph(seg_infos, seg_info_list):
     G = nx.Graph()
     for seg_info in seg_infos:
         G.add_node(seg_info['seg_index_global'], attr_dict=seg_info)
         for adj_segment in seg_info['adjacent_segments']:
-            adjacent_seg_info = find_segment_info(adj_segment)
+            adjacent_seg_info = find_segment_info(adj_segment, seg_info_list)
             if adjacent_seg_info:
                 G.add_edge(seg_info['seg_index_global'], adjacent_seg_info['seg_index_global'])
     return G
@@ -48,8 +48,8 @@ def calc_distance(G, seg1, seg2, frequency, use_euclidean):
     return get_euclidean_distance(seg1, seg2) if use_euclidean else compute_electrotonic_distance(G, seg1, seg2, frequency)
 
 def cluster_synapses(synapses, n_clusters, seg_info_list, frequency=0, use_euclidean=False):
-    segment_infos = [find_segment_info(synapse.segment, seg_info_list) for synapse in synapses]
-    G = create_graph(segment_infos)
+    segment_infos = [find_segment_info(synapse.segment, seg_info_list) for synapse in synapses] # list for synapses
+    G = create_graph(segment_infos, seg_info_list)
     distances = [[calc_distance(G, seg_info1, seg_info2, frequency, use_euclidean) for seg_info2 in segment_infos] for seg_info1 in segment_infos]
     kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(distances)
     segment_cluster_map = {seg_info['seg']: cluster for seg_info, cluster in zip(segment_infos, kmeans.labels_)}
