@@ -274,7 +274,7 @@ class CellModel:
                           
             self.seg_info[i]['pseg_index'] = pseg_id
             
-    def compute_adjacent_segmentss(self):
+    def compute_adjacent_segments(self):
         # getting adjacent segments using parent segment IDs
         # getting children segments
         segs = self.seg_info
