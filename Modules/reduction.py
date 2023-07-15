@@ -64,6 +64,12 @@ class Reductor():
 	            self.reduced_cell.all = []
 	            for sec in [self.reduced_cell.soma, self.reduced_cell.apic] + self.reduced_cell.dend + self.reduced_cell.axon:
 	                self.reduced_cell.all.append(sec)
+		    # Convert nrn.Synapse objects back to your Synapse class and append netcons
+	            synapses_list = []
+	            for nrn_syn in nrn_synapses_list:
+	                syn = Synapse(syn_obj=nrn_syn)
+	                syn.ncs = syn_to_netcon[nrn_syn]
+	                synapses_list.append(syn)
 	            cell = CellModel(hoc_model=self.reduced_cell, synapses=synapses_list, netcons=netcons_list, 
 	                             spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
 	                             var_names=var_names)
