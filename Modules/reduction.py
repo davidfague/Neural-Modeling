@@ -46,7 +46,7 @@ class Reductor():
 	            nbranches = [choose_branches]
 	            self.reduced_dendritic_cell, nrn_synapses_list, netcons_list, txt_ce = cable_expander(
 	                self.reduced_cell, sections_to_expand, furcations_x, nbranches,
-	                nrn_synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True)
+	                nrn_synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True, random_state=random_state)
 	            
 	            # Get the mapping of nrn.Synapse to NetCon
 	            syn_to_netcon = get_syn_to_netcons(netcons_list)
