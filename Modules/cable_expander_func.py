@@ -281,9 +281,12 @@ def cable_expander(original_cell,
     apics=[]
     all_sections=[]
     axons=[]
-    print(cell.soma)
-    for soma_sec in [cell.soma]:
-      print(soma_sec)
+    if not subscriptable(cell.soma):
+      soma_sections = [cell.soma]
+    else:
+      soma_sections = cell.soma
+    for soma_sec in soma_sections:
+      print(type(soma_sec)
       all_sections.append(soma_sec)
       if soma_sec.children() != []:
         for soma_child in soma_sec.children(): #takes care of sections attached to soma
