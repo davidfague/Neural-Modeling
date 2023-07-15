@@ -123,6 +123,8 @@ class Synapse:
         self.gmax_var = None # Variable name of maximum conductance (uS)
         self.syn_params = syn_params
         self.synapse_neuron_obj = syn_obj
+        if (self.synapse_neuron_obj is not None) and (self.syn_type is None):
+            self.syn_type = str(synapse.synapse_neuron_obj).split('[')[0]
         self.rec_vec = []  # List of vectors for recording
         self.set_params_based_on_synapse_mod(syn_mod)
         self.setup(record)
