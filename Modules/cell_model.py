@@ -28,11 +28,11 @@ class CellModel:
     def __init__(self, hoc_model: object, random_state: np.random.RandomState, 
                  synapses: list = [], netcons: list = [], spike_trains: list = [], 
                  spike_threshold: list = None, var_names: list = []):
-
-        # Parse the hoc model
-        self.all, self.soma, self.apic, self.dend, self.axon = None, None, None, None, None
-        for model_part in ["all", "soma", "apic", "dend", "axon"]:
-            setattr(self, model_part, self.convert_section_list(getattr(hoc_model, model_part)))
+	
+	# Parse the hoc model
+	self.all, self.soma, self.apic, self.dend, self.axon = None, None, None, None, None
+	for model_part in ["all", "soma", "apic", "dend", "axon"]:
+	    setattr(self, model_part, self.convert_section_list(getattr(hoc_model, model_part)))
 	self.hoc_model = hoc_model
 	self.synapses = synapses
 	self.netcons = netcons
