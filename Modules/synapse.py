@@ -93,7 +93,7 @@ class CurrentInjection:
 
 class Synapse:
 
-    def __init__(self, segment: nrn.Segment = None, syn_mod: str = None, gmax: float = 0.01, record: bool = False, 
+    def __init__(self, segment: nrn.Segment = None, syn_mod: str = None, gmax: float = None, record: bool = False, 
                  syn_params: dict = None, syn_obj: object = None):
         '''
         Parameters:
@@ -132,6 +132,8 @@ class Synapse:
             self.syn_type = str(synapse.synapse_neuron_obj).split('[')[0]
         self.rec_vec = []  # List of vectors for recording
         self.set_params_based_on_synapse_mod(syn_mod)
+        self.gmax = self.get_gmax()
+        self.record = record
         self.setup(record)
         self.ncs = []
 
@@ -191,7 +193,12 @@ class Synapse:
             self.nc.weight[0] = self.gmax
         else:
             setattr(self.synapse_neuron_obj, self.gmax_var, self.gmax)
-    
+            
+    def get_gmax(self) -> None:
+        gmax = getattr(self.synapse_neuron_obj, self.gmax_var)
+        self.gmax = gmax
+        return gmax
+        
     def setup_recorder(self) -> None:
         size = [round(h.tstop / h.dt) + 1]
         
