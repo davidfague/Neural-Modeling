@@ -25,7 +25,7 @@ FREQS = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
 
 class CellModel:
 
-    def __init__(self, hoc_model: object, random_state: np.random.RandomState, 
+	def __init__(self, hoc_model: object, random_state: np.random.RandomState, 
                  synapses: list = [], netcons: list = [], spike_trains: list = [], 
                  spike_threshold: list = None, var_names: list = []):
 	
