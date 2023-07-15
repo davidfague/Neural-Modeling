@@ -24,8 +24,7 @@ FREQS = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
 
 
 class CellModel:
-
-	def __init__(self, hoc_model: object, random_state: np.random.RandomState, 
+    def __init__(self, hoc_model: object, random_state: np.random.RandomState, 
                  synapses: list = [], netcons: list = [], spike_trains: list = [], 
                  spike_threshold: list = None, var_names: list = []):
 	
@@ -42,41 +41,41 @@ class CellModel:
 		self.var_names = var_names  # variables to be recorded
 		self.tufts=self.find_distal_sections(cell, 'apic')
 		self.basals=self.find_distal_sections(cell, 'dend')
-	        if len(tufts) == 1:
-	            self._nbranch = len(self.tufts) + len(self.basals) # trunk is branch
-	        else:
-	            self._nbranch = len(self.tufts) - 1 + len(self.basals) # trunk is not branch
+		if len(tufts) == 1:
+		    self._nbranch = len(self.tufts) + len(self.basals) # trunk is branch
+		else:
+		    self._nbranch = len(self.tufts) - 1 + len(self.basals) # trunk is not branch
 			cell._nbranch=len(tufts)
-	        
-	        # Angles and rotations that were used to branch the cell
-	        # Store to use for geometry file generation
-	        self.sec_angs = [] 
-	        self.sec_rots = []
-	
-	        # Segments
-	        self.segments = []
-	        self.sec_id_in_seg = []
-	        self.nseg = self._nceg = None # _nceg is for compatibility and staged for deprecation
-	        self.seg_info = []
-	
-	        # Spikes
-	        self.spikes = None
-	
-	        self.generate_sec_coords(random_state)
-	        self.seg_coords = calc_seg_coords(self)
-	
-	        self.init_segments()
-	        self.set_spike_recorder()
-	
-	        self.init_segment_info()
-	        self.recompute_parent_segment_ids()
-	        self.recompute_segment_elec_distance(segment = self.soma[0](0.5), seg_name = "soma")
-	        self.recompute_netcons_per_seg()
-	        self.compute_adjacent_segments()
-	
-	        self.get_channels_from_var_names() # get channel and attribute names from recorded channel name
-	        self.insert_unused_channels()
-	        self.setup_recorders()
+		
+		# Angles and rotations that were used to branch the cell
+		# Store to use for geometry file generation
+		self.sec_angs = [] 
+		self.sec_rots = []
+		
+		# Segments
+		self.segments = []
+		self.sec_id_in_seg = []
+		self.nseg = self._nceg = None # _nceg is for compatibility and staged for deprecation
+		self.seg_info = []
+		
+		# Spikes
+		self.spikes = None
+		
+		self.generate_sec_coords(random_state)
+		self.seg_coords = calc_seg_coords(self)
+		
+		self.init_segments()
+		self.set_spike_recorder()
+		
+		self.init_segment_info()
+		self.recompute_parent_segment_ids()
+		self.recompute_segment_elec_distance(segment = self.soma[0](0.5), seg_name = "soma")
+		self.recompute_netcons_per_seg()
+		self.compute_adjacent_segments()
+		
+		self.get_channels_from_var_names() # get channel and attribute names from recorded channel name
+		self.insert_unused_channels()
+		self.setup_recorders()
 
     # PRAGMA MARK: Section Generation
 
