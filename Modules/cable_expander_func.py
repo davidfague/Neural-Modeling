@@ -281,7 +281,7 @@ def cable_expander(original_cell,
     apics=[]
     all_sections=[]
     axons=[]
-    if not subscriptable(cell.soma):
+    if str(type(cell.soma)) == "<class 'nrn.Section'>":
       soma_sections = [cell.soma]
     else:
       soma_sections = cell.soma
