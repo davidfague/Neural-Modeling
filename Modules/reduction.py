@@ -1,5 +1,6 @@
 from neuron_reduce import subtree_reductor
-from Modules.cable_expander_func import cable_expander
+from Modules.cable_expander_func import (cable_expander, get_syn_to_netcons)
+from Modules.synapse import Synapse
 import numpy as np
 
 class Reductor():
@@ -26,35 +27,55 @@ class Reductor():
 				raise NotImplementedError
 
 	def reduce_cell_func(self, complex_cell, reduce_cell: bool=False, synapses_list:list=None, netcons_list: list=None, 
-		                     spike_trains=None, spike_threshold: int=10, random_state=None, var_names=None, 
-		                     reduction_frequency=0, expand_cable: bool =False, choose_branches: list=None):
-		    if reduce_cell:
-		        self.reduced_cell, synapses_list, netcons_list, txt_nr = subtree_reductor(complex_cell, synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True)
-		        if expand_cable:
-		            sections_to_expand = [self.reduced_cell.hoc_model.apic[0]]
-		            furcations_x = [0.289004]
-		            nbranches = [choose_branches]
-		            self.reduced_dendritic_cell, synapses_list, netcons_list, txt_ce = cable_expander(self.reduced_cell, sections_to_expand, furcations_x, nbranches,
-		                                                                                             synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True)
-		            cell = CellModel(hoc_model=self.reduced_dendritic_cell, synapses=synapses_list, netcons=netcons_list, 
-		                             spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
-		                             var_names=var_names)
-		            print(len(cell.tufts), "terminal tuft branches in reduced_dendritic_cell")
-		        else:
-		            self.reduced_cell.all = []
-		            for sec in [self.reduced_cell.soma, self.reduced_cell.apic] + self.reduced_cell.dend + self.reduced_cell.axon:
-		                self.reduced_cell.all.append(sec)
-		            cell = CellModel(hoc_model=self.reduced_cell, synapses=synapses_list, netcons=netcons_list, 
-		                             spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
-		                             var_names=var_names)
-		            print(len(cell.tufts), "terminal tuft branches in NR reduced_cell")
-		        return cell
-		    else:
-		        cell = CellModel(hoc_model=complex_cell, synapses=synapses_list, netcons=netcons_list, 
-		                         spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
-		                         var_names=var_names)
-		        print(len(cell.tufts), "terminal tuft branches in complex_cell")
-		        return cell
+	                     spike_trains=None, spike_threshold: int=10, random_state=None, var_names=None, 
+	                     reduction_frequency=0, expand_cable: bool =False, choose_branches: list=None):
+	    
+	    # Convert your Synapse objects to nrn.Synapse objects and keep a dictionary to reverse the process
+	    synapse_to_nrn = {syn: syn.synapse_neuron_obj for syn in synapses_list}
+	    nrn_synapses_list = list(synapse_to_nrn.values())
+	    
+	    if reduce_cell:
+	        self.reduced_cell, nrn_synapses_list, netcons_list, txt_nr = subtree_reductor(
+	            complex_cell, nrn_synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True)
+	        
+	        if expand_cable:
+	            sections_to_expand = [self.reduced_cell.hoc_model.apic[0]]
+	            furcations_x = [0.289004]
+	            nbranches = [choose_branches]
+	            self.reduced_dendritic_cell, nrn_synapses_list, netcons_list, txt_ce = cable_expander(
+	                self.reduced_cell, sections_to_expand, furcations_x, nbranches,
+	                nrn_synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True)
+	            
+	            # Get the mapping of nrn.Synapse to NetCon
+	            syn_to_netcon = get_syn_to_netcons(netcons_list)
+	
+	            # Convert nrn.Synapse objects back to your Synapse class and append netcons
+	            synapses_list = []
+	            for nrn_syn in nrn_synapses_list:
+	                syn = Synapse(syn_obj=nrn_syn)
+	                syn.ncs = syn_to_netcon[nrn_syn]
+	                synapses_list.append(syn)
+	            
+	            cell = CellModel(hoc_model=self.reduced_dendritic_cell, synapses=synapses_list, netcons=netcons_list, 
+	                             spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
+	                             var_names=var_names)
+	            print(len(cell.tufts), "terminal tuft branches in reduced_dendritic_cell")
+	        else:
+	            self.reduced_cell.all = []
+	            for sec in [self.reduced_cell.soma, self.reduced_cell.apic] + self.reduced_cell.dend + self.reduced_cell.axon:
+	                self.reduced_cell.all.append(sec)
+	            cell = CellModel(hoc_model=self.reduced_cell, synapses=synapses_list, netcons=netcons_list, 
+	                             spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
+	                             var_names=var_names)
+	            print(len(cell.tufts), "terminal tuft branches in NR reduced_cell")
+	        return cell
+	    else:
+	        cell = CellModel(hoc_model=complex_cell, synapses=synapses_list, netcons=netcons_list, 
+	                         spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
+	                         var_names=var_names)
+	        print(len(cell.tufts), "terminal tuft branches in complex_cell")
+	        return cell
+
 
 
 	def find_space_const_in_cm(self, diameter, rm, ra):
