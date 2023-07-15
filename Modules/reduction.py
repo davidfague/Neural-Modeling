@@ -78,7 +78,6 @@ class Reductor():
 	            print(len(cell.tufts), "terminal tuft branches in NR reduced_cell")
 	        return cell
 	    else:
-		synapses_list = merge_synapses(synapses=synapses_list) # takes in list Synapse objects
 	        cell = CellModel(hoc_model=complex_cell, synapses=synapses_list, netcons=netcons_list, 
 	                          spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
 	                          var_names=var_names)
