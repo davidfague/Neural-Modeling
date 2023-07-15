@@ -28,7 +28,6 @@ class Reductor():
 	def reduce_cell_func(self, complex_cell, reduce_cell: bool=False, synapses_list:list=None, netcons_list: list=None, reduction_frequency=0, expand_cable: bool =False, choose_branches: list=None):
 		if reduce_cell:
 			self.reduced_cell, synapses_list, netcons_list, txt_nr = subtree_reductor(complex_cell, synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True)
-			print("synapses_list after NR reduction:", synapses_list)
 			if expand_cable:
 				sections_to_expand = [self.reduced_cell.hoc_model.apic[0]]
 				furcations_x = [0.289004]
@@ -42,11 +41,11 @@ class Reductor():
 				for sec in [self.reduced_cell.soma, self.reduced_cell.apic] + self.reduced_cell.dend + self.reduced_cell.axon:
 					self.reduced_cell.all.append(sec)
 				cell = CellModel(self.reduced_cell, synapses_list=synapses_list, netcons_list=netcons_list, spike_threshold=10)
-				print(len(cell.tufts), "terminal tuft branches in reduced_cell")
+				print(len(cell.tufts), "terminal tuft branches in NR reduced_cell")
 			return cell
 		else:
 			cell = CellModel( complex_cell, synapses_list=synapses_list, netcons_list=netcons_list, spike_threshold=10)
-			print(len(cell.tufts), "terminal tuft branches in reduced_cell")
+			print(len(cell.tufts), "terminal tuft branches in complex_cell")
 			return cell
 
 	def find_space_const_in_cm(self, diameter, rm, ra):
