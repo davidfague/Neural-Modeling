@@ -138,7 +138,7 @@ class Reductor():
 	            for netcon in this_synapse.ncs:
 	                netcon.set_post(other_synapse.neuron_synapse_obj)
 	                other_synapse.ncs.append(netcon)
-		    del this_synapse
+	            del this_synapse
 	        else:
 	            # Otherwise, add to synapses_dict
 	            synapses_dict[synapse_key] = this_synapse
