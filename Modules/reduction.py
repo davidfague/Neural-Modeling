@@ -30,14 +30,16 @@ class Reductor():
 	                     spike_trains=None, spike_threshold: int=10, random_state=None, var_names=None, 
 	                     reduction_frequency=0, expand_cable: bool =False, choose_branches: list=None):
 	    
-	    # Convert your Synapse objects to nrn.Synapse objects and keep a dictionary to reverse the process
+	    # Convert Synapse objects to nrn.Synapse objects and keep a dictionary to reverse the process
 	    synapse_to_nrn = {syn: syn.synapse_neuron_obj for syn in synapses_list}
 	    nrn_synapses_list = list(synapse_to_nrn.values())
 	    
 	    if reduce_cell:
 	        self.reduced_cell, nrn_synapses_list, netcons_list, txt_nr = subtree_reductor(
 	            complex_cell, nrn_synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True)
-	        
+	        # Delete the old Synapse objects
+		for syn in synapses_list:
+		    del syn
 	        if expand_cable:
 	            sections_to_expand = [self.reduced_cell.hoc_model.apic[0]]
 	            furcations_x = [0.289004]
