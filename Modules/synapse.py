@@ -93,7 +93,7 @@ class CurrentInjection:
 
 class Synapse:
 
-    def __init__(self, segment: nrn.Segment, syn_mod: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False, 
+    def __init__(self, segment: nrn.Segment = None, syn_mod: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False, 
                  syn_params: dict = None, syn_obj: object = None):
         '''
         Parameters:
@@ -117,7 +117,12 @@ class Synapse:
             Optional existing neuron synapse point process object to store
 
         '''
-        self.segment = segment
+        if segment is not None:
+            self.segment = segment
+        elif syn_obj:
+            self.segment = syn_obj.get_segment()
+        else:
+            raise(ValueError("Need to pass either existing neuron synapse object or argument to create new synapse."))
         self.syn_type = syn_mod
         self.gmax = gmax
         self.gmax_var = None # Variable name of maximum conductance (uS)
