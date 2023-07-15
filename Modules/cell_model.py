@@ -41,7 +41,7 @@ class CellModel:
         self.injection = []
         self.var_names = var_names  # variables to be recorded
         self.tufts=self.find_distal_sections(cell, 'apic')
-		self.basals=self.find_distal_sections(cell, 'dend')
+	self.basals=self.find_distal_sections(cell, 'dend')
         if len(tufts) == 1:
             self._nbranch = len(self.tufts) + len(self.basals) # trunk is branch
         else:
