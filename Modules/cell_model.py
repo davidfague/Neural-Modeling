@@ -33,14 +33,14 @@ class CellModel:
         self.all, self.soma, self.apic, self.dend, self.axon = None, None, None, None, None
         for model_part in ["all", "soma", "apic", "dend", "axon"]:
             setattr(self, model_part, self.convert_section_list(getattr(hoc_model, model_part)))
-        self.hoc_model = hoc_model
-        self.synapses = synapses
-        self.netcons = netcons
-        self.spike_trains = spike_trains
-        self.spike_threshold = spike_threshold
-        self.injection = []
-        self.var_names = var_names  # variables to be recorded
-        self.tufts=self.find_distal_sections(cell, 'apic')
+	self.hoc_model = hoc_model
+	self.synapses = synapses
+	self.netcons = netcons
+	self.spike_trains = spike_trains
+	self.spike_threshold = spike_threshold
+	self.injection = []
+	self.var_names = var_names  # variables to be recorded
+	self.tufts=self.find_distal_sections(cell, 'apic')
 	self.basals=self.find_distal_sections(cell, 'dend')
         if len(tufts) == 1:
             self._nbranch = len(self.tufts) + len(self.basals) # trunk is branch
