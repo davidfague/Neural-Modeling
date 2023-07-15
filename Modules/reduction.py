@@ -27,8 +27,8 @@ class Reductor():
 				raise NotImplementedError
 
 	def reduce_cell_func(self, complex_cell, reduce_cell: bool=False, synapses_list:list=None, netcons_list: list=None, 
-	                     spike_trains=None, spike_threshold: int=10, random_state=None, var_names=None, 
-	                     reduction_frequency=0, expand_cable: bool =False, choose_branches: list=None):
+	                      spike_trains=None, spike_threshold: int=10, random_state=None, var_names=None, 
+	                      reduction_frequency=0, expand_cable: bool =False, choose_branches: list=None):
 	    
 	    # Convert Synapse objects to nrn.Synapse objects and keep a dictionary to reverse the process
 	    synapse_to_nrn = {syn: syn.synapse_neuron_obj for syn in synapses_list}
@@ -38,8 +38,8 @@ class Reductor():
 	        self.reduced_cell, nrn_synapses_list, netcons_list, txt_nr = subtree_reductor(
 	            complex_cell, nrn_synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True)
 	        # Delete the old Synapse objects
-		for syn in synapses_list:
-		    del syn
+	        for syn in synapses_list:
+	          del syn
 	        if expand_cable:
 	            sections_to_expand = [self.reduced_cell.hoc_model.apic[0]]
 	            furcations_x = [0.289004]
@@ -59,28 +59,28 @@ class Reductor():
 	                synapses_list.append(syn)
 	            
 	            cell = CellModel(hoc_model=self.reduced_dendritic_cell, synapses=synapses_list, netcons=netcons_list, 
-	                             spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
-	                             var_names=var_names)
+	                              spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
+	                              var_names=var_names)
 	            print(len(cell.tufts), "terminal tuft branches in reduced_dendritic_cell")
 	        else:
 	            self.reduced_cell.all = []
 	            for sec in [self.reduced_cell.soma, self.reduced_cell.apic] + self.reduced_cell.dend + self.reduced_cell.axon:
 	                self.reduced_cell.all.append(sec)
-		    # Convert nrn.Synapse objects back to your Synapse class and append netcons
+	      # Convert nrn.Synapse objects back to your Synapse class and append netcons
 	            synapses_list = []
 	            for nrn_syn in nrn_synapses_list:
 	                syn = Synapse(syn_obj=nrn_syn)
 	                syn.ncs = syn_to_netcon[nrn_syn]
 	                synapses_list.append(syn)
 	            cell = CellModel(hoc_model=self.reduced_cell, synapses=synapses_list, netcons=netcons_list, 
-	                             spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
-	                             var_names=var_names)
+	                              spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
+	                              var_names=var_names)
 	            print(len(cell.tufts), "terminal tuft branches in NR reduced_cell")
 	        return cell
 	    else:
 	        cell = CellModel(hoc_model=complex_cell, synapses=synapses_list, netcons=netcons_list, 
-	                         spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
-	                         var_names=var_names)
+	                          spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
+	                          var_names=var_names)
 	        print(len(cell.tufts), "terminal tuft branches in complex_cell")
 	        return cell
 
