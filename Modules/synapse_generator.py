@@ -16,7 +16,7 @@ class SynapseGenerator:
 	def add_synapses(self, segments: list, gmax: object, syn_mod: str, 
 		  			random_state: np.random.RandomState, neuron_r: h.Random, density: float = None, 
 					 number_of_synapses: int = None, probs: list = None, record: bool = False, 
-					 syn_params: dict = None) -> list:
+					 syn_params: dict = None, vector_length: int = None) -> list:
 		'''
 		Creates a list of synapses by specifying density or number of synapses.
 
@@ -73,13 +73,13 @@ class SynapseGenerator:
 		if callable(gmax): # gmax is distribution
 			for _ in range(number_of_synapses):
 				segment = random_state.choice(segments, 1, True, probs / np.sum(probs))[0]
-				new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax(size = 1), record = record, syn_params = syn_params)
+				new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax(size = 1), record = record, syn_params = syn_params, vector_length = vector_length)
 				self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj, neuron_r)
 				synapses.append(new_syn)
 		else: # gmax is float
 			for _ in range(number_of_synapses):
 				segment = random_state.choice(segments, 1, True, probs / np.sum(probs))[0]
-				new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record, syn_params = syn_params)
+				new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record, syn_params = syn_params, vector_length = vector_length)
 				self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj, neuron_r)
 				synapses.append(new_syn)
 
