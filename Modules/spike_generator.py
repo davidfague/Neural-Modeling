@@ -114,7 +114,8 @@ class SpikeGenerator:
 	def get_firing_rate_profile(self, t: np.ndarray, method: str, random_state: np.random.RandomState,
 								rhythmicity: bool = False, rhythmic_mod = None, rhythmic_f = None,
 								spike_trains_to_delay = None, fr_time_shift = None, 
-								spike_train_dt: float = 1e-3) -> np.ndarray:
+								spike_train_dt: float = 1e-3, bounds: tuple = (0.5, 1.5),
+								tiesinga_params: tuple = ()) -> np.ndarray:
 		'''
 		Parameters:
 		----------
@@ -122,7 +123,7 @@ class SpikeGenerator:
 			Time array.
 		
 		method: str
-			How to vary the profile over time. One of ['1f_noise', 'delay'].
+			How to vary the profile over time. One of ['1f_noise', 'delay', 'gaussian'].
 		
 		random_state: np.random.RandomState
 			RNG.
@@ -153,6 +154,10 @@ class SpikeGenerator:
 		elif method == 'delay':
 			fr_profile = self.delay_modulation(spike_trains_to_delay = spike_trains_to_delay, fr_time_shift = fr_time_shift, 
 				      						   spike_train_t = t, spike_train_dt = spike_train_dt)
+		elif method == "gaussian":
+			a_iv, P, CV_t, sigma_iv = tiesinga_params 
+			fr_profile = self.gaussian_modulation(random_state = random_state, train_length = len(t), dt = spike_train_dt,
+					 							  a_iv = a_iv, P = P, CV_t = CV_t, sigma_iv = sigma_iv, bounds = bounds)
 		else:
 			raise NotImplementedError
 		
@@ -310,7 +315,7 @@ class SpikeGenerator:
 			# Normalize to get probability and place
 			prob = gaus / np.max(gaus)
 			fr_profile[:, timestamp] = minmax(prob) * (bounds[1] - bounds[0]) + bounds[0]
-			timestamp += random_state.normal(int(P / dt), int(CV_t * P / dt))
+			timestamp += int(random_state.normal(int(P / dt), int(CV_t * P / dt)))
 
 		return fr_profile
 

@@ -108,7 +108,7 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 										  spike_trains_to_delay: list, fr_time_shift: int, 
 										  random_state: np.random.RandomState, neuron_r: h.Random,
 										  record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB',
-										  vector_length: int = None) -> list:
+										  vector_length: int = None, method: str = "delay", tiesinga_params: tuple = None) -> list:
 	functional_groups = []
 
 	for group_id in range(number_of_groups):
@@ -119,10 +119,11 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 		functional_groups.append(func_grp)
 
 		# Generate trace common to all cells within each functional group
-		fr_profile = spike_generator.get_firing_rate_profile(t, method = 'delay', 
+		fr_profile = spike_generator.get_firing_rate_profile(t, method = method, 
 							   								 spike_trains_to_delay = spike_trains_to_delay, 
 															 fr_time_shift = fr_time_shift,
-															 random_state = random_state)
+															 random_state = random_state,
+															 tiesinga_params = tiesinga_params)
 
 		# Iterate through cells which each have a cluster of synapses
 		for _ in range(cells_per_group):
