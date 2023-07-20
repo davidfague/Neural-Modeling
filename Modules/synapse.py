@@ -93,8 +93,8 @@ class CurrentInjection:
 
 class Synapse:
 
-    def __init__(self, segment: nrn.Segment = None, syn_mod: str = None, gmax: float = None, record: bool = False, 
-                 syn_params: dict = None, syn_obj: object = None):
+    def __init__(self, segment: nrn.Segment, syn_mod: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False, 
+                 syn_params: dict = None, syn_obj: object = None, vector_length: int = None):
         '''
         Parameters:
         ----------
@@ -133,8 +133,7 @@ class Synapse:
         self.rec_vec = []  # List of vectors for recording
         self.set_params_based_on_synapse_mod(syn_mod)
         self.gmax = self.get_gmax()
-        self.record = record
-        self.setup(record)
+        self.setup(record, vector_length)
         self.ncs = []
 
     #PRAGMA MARK: Synapse Parameter Setup
@@ -172,10 +171,10 @@ class Synapse:
 
     #PRAGMA MARK: Synapse Value Setup
 
-    def setup(self, record: bool = False) -> None:
+    def setup(self, record, vector_length) -> None:
         self.setup_synapse()
         if record:
-            self.setup_recorder()
+            self.setup_recorder(vector_length)
 
     def setup_synapse(self) -> None:
         if self.syn_params is not None:
@@ -193,30 +192,30 @@ class Synapse:
             self.nc.weight[0] = self.gmax
         else:
             setattr(self.synapse_neuron_obj, self.gmax_var, self.gmax)
-            
+
     def get_gmax(self) -> None:
         gmax = getattr(self.synapse_neuron_obj, self.gmax_var)
         self.gmax = gmax
         return gmax
-        
-    def setup_recorder(self) -> None:
-        size = [round(h.tstop / h.dt) + 1]
+    
+    def setup_recorder(self, vector_length) -> None:
+        size = round(vector_length / h.dt) + 1
         
         if self.current_type == "i":
-            self.rec_vec.append(h.Vector(*size).record(self.synapse_neuron_obj._ref_i))
+            self.rec_vec.append(h.Vector(size).record(self.synapse_neuron_obj._ref_i))
             
         elif self.current_type == "igaba":
-            self.rec_vec.append(h.Vector(*size).record(self.synapse_neuron_obj._ref_igaba))
+            self.rec_vec.append(h.Vector(size).record(self.synapse_neuron_obj._ref_igaba))
 
         elif self.current_type == "i_AMPA_i_NMDA":
-            vec_inmda = h.Vector(*size).record(self.synapse_neuron_obj._ref_i_NMDA)
-            vec_iampa = h.Vector(*size).record(self.synapse_neuron_obj._ref_i_AMPA)
+            vec_inmda = h.Vector(size).record(self.synapse_neuron_obj._ref_i_NMDA)
+            vec_iampa = h.Vector(size).record(self.synapse_neuron_obj._ref_i_AMPA)
             self.rec_vec.append(vec_inmda)
             self.rec_vec.append(vec_iampa)
         
         elif self.current_type == "iampa_inmda":
-            vec_inmda = h.Vector(*size).record(self.synapse_neuron_obj._ref_inmda)
-            vec_iampa = h.Vector(*size).record(self.synapse_neuron_obj._ref_iampa)
+            vec_inmda = h.Vector(size).record(self.synapse_neuron_obj._ref_inmda)
+            vec_iampa = h.Vector(size).record(self.synapse_neuron_obj._ref_iampa)
             self.rec_vec.append(vec_inmda)
             self.rec_vec.append(vec_iampa)
 

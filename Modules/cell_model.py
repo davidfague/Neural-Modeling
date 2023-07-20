@@ -74,12 +74,11 @@ class CellModel:
 
         self.get_channels_from_var_names() # get channel and attribute names from recorded channel name
         self.insert_unused_channels()
-        self.setup_recorders()
 
         # PRAGMA MARK: Section Generation
 
-        # TODO: CHECK
-    def generate_sec_coords(self, random_state: np.random.RandomState, verbose = True) -> None:
+    # TODO: CHECK
+    def generate_sec_coords(self, random_state: np.random.RandomState, verbose = False) -> None:
 
         for sec in self.all:
             # Do only for sections without already having 3D coordinates
@@ -380,8 +379,8 @@ class CellModel:
     # PRAGMA MARK: Data manipulation
 
     # TODO: CHECK
-    def setup_recorders(self):
-                self.recorders = {var_name: Recorder(obj_list=self.segments, var_name=var_name) for var_name in self.var_names}
+    def setup_recorders(self, vector_length: int = None):
+                self.recorders = {var_name: Recorder(obj_list=self.segments, var_name=var_name, vector_length = vector_length) for var_name in self.var_names}
                 # self.gNaTa_T = Recorder(obj_list=self.segments, var_name='gNaTa_t_NaTa_t')
                 # self.ina_NaTa_t = Recorder(obj_list=self.segments, var_name='ina_NaTa_t')
                 # self.ina_Nap_Et2 = Recorder(obj_list=self.segments, var_name='ina_Nap_Et2')
@@ -393,7 +392,7 @@ class CellModel:
                 # self.ica_Ca_LVAst = Recorder(obj_list=self.segments, var_name='ica_Ca_LVAst')
                 # self.ihcn_Ih = Recorder(obj_list=self.segments, var_name='ihcn_Ih')
                 # self.i_pas = Recorder(obj_list=self.segments, var_name='i_pas')
-                self.Vm = Recorder(obj_list=self.segments)
+                self.Vm = Recorder(obj_list=self.segments, vector_length = vector_length)
     
     def get_output_folder_name(self) -> str:
         nbranches = len(self.apic) - 1
@@ -412,16 +411,16 @@ class CellModel:
             str(syn_count) + "nsyn"
         )
     
-        return output_folder_name
+        return "res"#output_folder_name
     
-    def generate_recorder_data(self) -> None: # TODO: add check for synapse.current_type
+    def generate_recorder_data(self, vector_length: int = None) -> None: # TODO: add check for synapse.current_type
       '''
       Method for calculating net synaptic currents and getting data after simulation
       '''
-      numTstep = int(h.tstop/h.dt)
-      i_NMDA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
-      i_AMPA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
-      i_GABA_bySeg = [[0] * (numTstep+1)] * len(self.segments)
+      numTstep = int(vector_length / h.dt)
+      i_NMDA_bySeg = [[0] * (numTstep)] * len(self.segments)
+      i_AMPA_bySeg = [[0] * (numTstep)] * len(self.segments)
+      i_GABA_bySeg = [[0] * (numTstep)] * len(self.segments)
       # i_bySeg = [[0] * (numTstep+1)] * len(self.segments)
     
       for synapse in self.synapses: # Record nmda and ampa synapse currents
@@ -430,12 +429,21 @@ class CellModel:
               i_AMPA = np.array(synapse.rec_vec[1])
               seg = self.segments.index(synapse.segment)
 
+              # Match shapes
+              if len(i_NMDA) > len(i_NMDA_bySeg[seg]):
+                  i_NMDA = i_NMDA[:-1]
+              if len(i_AMPA) > len(i_AMPA_bySeg[seg]):
+                  i_AMPA = i_AMPA[:-1]  
+
               i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
               i_AMPA_bySeg[seg] = i_AMPA_bySeg[seg] + i_AMPA
               
           elif ('gaba' in synapse.syn_type) or ('GABA' in synapse.syn_type): # GABA_AB current is 'i' so use syn_mod
               i_GABA = np.array(synapse.rec_vec[0])
               seg = self.segments.index(synapse.segment)
+
+              if len(i_GABA) > len(i_GABA_bySeg[seg]):
+                  i_GABA = i_GABA[:-1]
 
               i_GABA_bySeg[seg] = i_GABA_bySeg[seg] + i_GABA
     

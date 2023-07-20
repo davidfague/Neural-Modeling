@@ -54,7 +54,8 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 										  gmax_dist: object, mean_fr_dist: object, 
 										  spike_generator: SpikeGenerator, synapse_generator: SynapseGenerator,
 										  t: np.ndarray, random_state: np.random.RandomState, neuron_r: h.Random,
-										  record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB') -> list:
+										  record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB',
+										  vector_length: int = None) -> list:
 
 	functional_groups = []
 
@@ -82,7 +83,8 @@ def generate_excitatory_functional_groups(all_segments: list, all_segments_cente
 							 								  gmax = gmax_dist, syn_mod = syn_mod,
 															  number_of_synapses = synapses_per_cluster, record = record, 
 															  syn_params = syn_params, random_state = random_state,
-															  neuron_r = neuron_r)
+															  neuron_r = neuron_r,
+															  vector_length = vector_length)
 
 			# Generate spikes common to each synapse within synaptic cluster
 			mean_fr = spike_generator.get_mean_fr(mean_fr_dist)
@@ -105,7 +107,8 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 										  t: np.ndarray, f_group_name_prefix: str, 
 										  spike_trains_to_delay: list, fr_time_shift: int, 
 										  random_state: np.random.RandomState, neuron_r: h.Random,
-										  record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB') -> list:
+										  record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB',
+										  vector_length: int = None, method: str = "delay", tiesinga_params: tuple = None) -> list:
 	functional_groups = []
 
 	for group_id in range(number_of_groups):
@@ -116,10 +119,11 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 		functional_groups.append(func_grp)
 
 		# Generate trace common to all cells within each functional group
-		fr_profile = spike_generator.get_firing_rate_profile(t, method = 'delay', 
+		fr_profile = spike_generator.get_firing_rate_profile(t, method = method, 
 							   								 spike_trains_to_delay = spike_trains_to_delay, 
 															 fr_time_shift = fr_time_shift,
-															 random_state = random_state)
+															 random_state = random_state,
+															 tiesinga_params = tiesinga_params)
 
 		# Iterate through cells which each have a cluster of synapses
 		for _ in range(cells_per_group):
@@ -138,7 +142,8 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 							 								  gmax = gmax_dist, syn_mod = syn_mod,
 															  number_of_synapses = synapses_per_cluster, record = record,
 															  syn_params = syn_params, random_state = random_state, 
-															  neuron_r = neuron_r)
+															  neuron_r = neuron_r,
+															  vector_length = vector_length)
 
 			# Generate spikes common to each synapse within synaptic cluster
 			mean_fr = spike_generator.get_mean_fr(mean_fr_dist)
