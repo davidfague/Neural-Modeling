@@ -24,11 +24,10 @@ FREQS = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
 
 
 class CellModel:
-
     def __init__(self, hoc_model: object, random_state: np.random.RandomState, 
                  synapses: list = [], netcons: list = [], spike_trains: list = [], 
                  spike_threshold: list = None, var_names: list = []):
-
+	
         # Parse the hoc model
         self.all, self.soma, self.apic, self.dend, self.axon = None, None, None, None, None
         for model_part in ["all", "soma", "apic", "dend", "axon"]:
@@ -40,7 +39,13 @@ class CellModel:
         self.spike_threshold = spike_threshold
         self.injection = []
         self.var_names = var_names  # variables to be recorded
-        
+        self.tufts=self.find_distal_sections(cell, 'apic')
+        self.basals=self.find_distal_sections(cell, 'dend')
+        if len(self.tufts) == 1:
+            self._nbranch = len(self.tufts) + len(self.basals) # trunk is branch
+        else:
+            self._nbranch = len(self.tufts) - 1 + len(self.basals) # trunk is not branch
+
         # Angles and rotations that were used to branch the cell
         # Store to use for geometry file generation
         self.sec_angs = [] 
@@ -70,7 +75,7 @@ class CellModel:
         self.get_channels_from_var_names() # get channel and attribute names from recorded channel name
         self.insert_unused_channels()
 
-    # PRAGMA MARK: Section Generation
+        # PRAGMA MARK: Section Generation
 
     # TODO: CHECK
     def generate_sec_coords(self, random_state: np.random.RandomState, verbose = False) -> None:
@@ -519,3 +524,27 @@ class CellModel:
             'adjacent_segments': []
         }
         return info
+        
+        def find_distal_sections(self, region=str):
+        	'''
+        	Finds all terminal sections then gathers terminal apical sections that are greater than 800 microns from the soma in path length
+        	'''
+        	# find distal tuft sections:
+        	parent_sections=[]
+        	for sec in cell.all: # find non-terminal sections
+        		if sec.parentseg() is not None:
+        			if sec.parentseg().sec not in parent_sections:
+        				parent_sections.append(sec.parentseg().sec)
+        	terminal_sections=[]
+        	for sec in getattr(cell,region):  # check if the section is a terminal section and if it is apical tuft
+        		# print(h.distance(sec(0.5)))
+        		if region=='apic':
+        			if (sec not in parent_sections) and (h.distance(cell.soma[0](0.5),sec(0.5)) > 800):
+        				terminal_sections.append(sec)
+        		else:
+        			if (sec not in parent_sections):
+        				terminal_sections.append(sec)
+        
+        			# print(sec, 'is a terminal section of the tuft'
+        
+        	return terminal_sections

@@ -117,14 +117,22 @@ class Synapse:
             Optional existing neuron synapse point process object to store
 
         '''
-        self.segment = segment
+        if segment is not None:
+            self.segment = segment
+        elif syn_obj:
+            self.segment = syn_obj.get_segment()
+        else:
+            raise(ValueError("Need to pass either existing neuron synapse object or argument to create new synapse."))
         self.syn_type = syn_mod
         self.gmax = gmax
         self.gmax_var = None # Variable name of maximum conductance (uS)
         self.syn_params = syn_params
         self.synapse_neuron_obj = syn_obj
+        if (self.synapse_neuron_obj is not None) and (self.syn_type is None):
+            self.syn_type = str(self.synapse_neuron_obj).split('[')[0]
         self.rec_vec = []  # List of vectors for recording
         self.set_params_based_on_synapse_mod(syn_mod)
+        self.gmax = self.get_gmax()
         self.setup(record, vector_length)
         self.ncs = []
 
@@ -184,6 +192,11 @@ class Synapse:
             self.nc.weight[0] = self.gmax
         else:
             setattr(self.synapse_neuron_obj, self.gmax_var, self.gmax)
+
+    def get_gmax(self) -> None:
+        gmax = getattr(self.synapse_neuron_obj, self.gmax_var)
+        self.gmax = gmax
+        return gmax
     
     def setup_recorder(self, vector_length) -> None:
         size = round(vector_length / h.dt) + 1

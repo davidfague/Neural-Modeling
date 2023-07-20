@@ -46,6 +46,7 @@ def cable_expander(original_cell,
                      PP_params_dict=None,
                      mapping_type='impedance',
                      return_seg_to_seg=False,
+                     random_state=None
                      ):
 
     '''
@@ -215,7 +216,7 @@ def cable_expander(original_cell,
     syn_to_netcon = get_syn_to_netcons(netcons_list) # dictionary mapping netcons to their synapse # re call to account for changes.. may need to adjust for efficiency
     print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"duplicating branch 1 synapses onto the other branches and randomly distributing Netcons")
     print("number of reduced synapses before duplicating synapses to branches:",len(new_synapses_list))
-    new_synapses_list=distribute_branch_synapses(branches,netcons_list,new_synapses_list,PP_params_dict,syn_to_netcon) #adjust synapses
+    new_synapses_list=distribute_branch_synapses(branches,netcons_list,new_synapses_list,PP_params_dict,syn_to_netcon, random_state) #adjust synapses
     print("number of reduced synapses after duplicating synapses to branches:",len(new_synapses_list))
     syn_to_netcon = get_syn_to_netcons(netcons_list) # dictionary mapping netcons to their synapse
     print("netcon mapping after expansion:",syn_to_netcon)
@@ -280,7 +281,12 @@ def cable_expander(original_cell,
     apics=[]
     all_sections=[]
     axons=[]
-    for soma_sec in [cell.soma]:
+    if str(type(cell.soma)) == "<class 'nrn.Section'>":
+      soma_sections = [cell.soma]
+    else:
+      soma_sections = cell.soma
+    for soma_sec in soma_sections:
+      # print(type(soma_sec))
       all_sections.append(soma_sec)
       if soma_sec.children() != []:
         for soma_child in soma_sec.children(): #takes care of sections attached to soma
@@ -1026,7 +1032,7 @@ def copy_dendritic_mech(original_seg_to_reduced_seg,
                                mech_names_per_segment)
         
         
-def distribute_branch_synapses(branch_sets,netcons_list,synapses_list,PP_params_dict,syn_to_netcon):
+def distribute_branch_synapses(branch_sets,netcons_list,synapses_list,PP_params_dict,syn_to_netcon, random_state):
   '''
   Works for after the synapses have been mapped to the first branch in the list.
   duplicates each synapse on the first branch onto each other branch then splits the original synapse's netcons among the synapses.
@@ -1048,7 +1054,7 @@ def distribute_branch_synapses(branch_sets,netcons_list,synapses_list,PP_params_
           new_syns.append(new_syn) # make new synapse an option for netcon to point to
           synapses_list.append(new_syn) #update total synapses_list to include new synapse object
           new_syn.loc(branch_set[i+1](x)) #place new synapse onto each branch
-        redistribute_netcons(synapse,new_syns,syn_to_netcon)
+        redistribute_netcons(synapse,new_syns,syn_to_netcon, random_state)
     print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"Finish YAY")
 
   return synapses_list
