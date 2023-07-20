@@ -526,25 +526,26 @@ class CellModel:
         return info
         
     def find_distal_sections(self, region=str):
-	'''
-	Finds all terminal sections then gathers terminal apical sections that are greater than 800 microns from the soma in path length
-	'''
-	# find distal tuft sections:
-	parent_sections=[]
-	for sec in cell.all: # find non-terminal sections
-		if sec.parentseg() is not None:
-			if sec.parentseg().sec not in parent_sections:
-				parent_sections.append(sec.parentseg().sec)
-	terminal_sections=[]
-	for sec in getattr(cell,region):  # check if the section is a terminal section and if it is apical tuft
-		# print(h.distance(sec(0.5)))
-		if region=='apic':
-			if (sec not in parent_sections) and (h.distance(cell.soma[0](0.5),sec(0.5)) > 800):
-				terminal_sections.append(sec)
-		else:
-			if (sec not in parent_sections):
-				terminal_sections.append(sec)
+        '''
+        Finds all terminal sections then gathers terminal apical sections that are greater than 800 microns from the soma in path length
+        '''
+        # find distal tuft sections:
+        parent_sections=[]
+        for sec in self.all: # find non-terminal sections
+          if sec.parentseg() is not None:
+            if sec.parentseg().sec not in parent_sections:
+              parent_sections.append(sec.parentseg().sec)
+        terminal_sections=[]
+        for sec in getattr(self, region):  # check if the section is a terminal section and if it is apical tuft
+          # print(h.distance(sec(0.5)))
+          if region=='apic':
+            if (sec not in parent_sections) and (h.distance(self.soma[0](0.5),sec(0.5)) > 800):
+              terminal_sections.append(sec)
+          else:
+            if (sec not in parent_sections):
+              terminal_sections.append(sec)
 
-			# print(sec, 'is a terminal section of the tuft'
+            # print(sec, 'is a terminal section of the tuft'
 
-	return terminal_sections
+        return terminal_sections
+
