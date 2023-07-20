@@ -93,7 +93,7 @@ class CurrentInjection:
 
 class Synapse:
 
-    def __init__(self, segment: nrn.Segment, syn_mod: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False, 
+    def __init__(self, segment: nrn.Segment = None, syn_mod: str = 'Exp2Syn', gmax: float = 0.01, record: bool = False, 
                  syn_params: dict = None, syn_obj: object = None, vector_length: int = None):
         '''
         Parameters:
