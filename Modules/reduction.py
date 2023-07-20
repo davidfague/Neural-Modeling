@@ -1,24 +1,15 @@
 from neuron_reduce import subtree_reductor
-from Modules.cable_expander_func import cable_expander
+from Modules.cable_expander_func import (cable_expander, get_syn_to_netcons)
+from Modules.synapse import Synapse
 import numpy as np
 
 class Reductor():
-
 	def __init__(self, cell = None, method = None, synapses_list = None, 
 			   netcons_list = None, reduction_frequency = 0, sections_to_expand = None, 
 			   furcations_x = None, nbranches = None, segs_per_lambda: int = 10, return_seg_to_seg: bool = False) -> None:
-		'''
-		Paramters:
-		----------
-		cell: hoc model cell object (TO DO: providing python cell_model object instead)
-		method: str for method to use ex. 'expand cable', 'neuron_reduce'
-		synapses_list: list of synapse objects
-		netcons_list: list of netcon objects
-		reduction_frequency: frequency used in calculated transfer impedance
-		return_seg_to_seg: bool for returning a dictionary mapping original segments to reduced.
-		'''
+		
 		self.original_cell = cell
-	
+
 		if self.original_cell is not None:
 			if method == 'expand cable':
 				self.check_sanity_in_expand_cable(sections_to_expand, furcations_x, nbranches)
@@ -32,54 +23,68 @@ class Reductor():
 													  return_seg_to_seg = True)
 			elif method == 'lambda':
 					self.update_model_nseg_using_lambda(cell, segs_per_lambda)
-			else:
+			elif method is not None:
 				raise NotImplementedError
-	
-	
-	def check_sanity_in_expand_cable(self, sections_to_expand = None, furcations_x = None, nbranches = None):
-		if not sections_to_expand:
-			raise ValueError('Must specify sections_to_expand for cable_expander().')
-		if not furcations_x:
-			raise ValueError('Must specify furcations_x list for cable_expander().')
-		if not nbranches:
-			raise ValueError('Must specify nbranches list for cable_expander().')
 
-	def get_other_seg_from_seg_to_seg(self, segments, seg: str, seg_to_seg: dict):
-		'''
-		WORK IN PROGRESS
-		segments: list of segments to search through
-		seg: str or nrn.segment for which you wish to return the mapped segments
-		works with find_seg_to_seg, get_str_from_dict, and get_seg_from_str to return segment objects from seg_to_seg
-		'''
-		seg_mapping = self.find_seg_to_seg(seg, seg_to_seg)
-		# seg_to_find=not_original_seg
-		seg_to_find_str = self.get_str_from_dict(seg_mapping, seg_to_find_str)
-		seg = self.get_seg_from_str(segments, seg_to_find_str)
-		return seg
+	def reduce_cell_func(self, complex_cell, reduce_cell: bool=False, synapses_list:list=None, netcons_list: list=None, 
+	                      spike_trains=None, spike_threshold: int=10, random_state=None, var_names=None, 
+	                      reduction_frequency=0, expand_cable: bool =False, choose_branches: list=None):
+	    
+	    # Convert Synapse objects to nrn.Synapse objects and keep a dictionary to reverse the process
+	    synapse_to_nrn = {syn: syn.synapse_neuron_obj for syn in synapses_list}
+	    nrn_synapses_list = list(synapse_to_nrn.values())
+	    
+	    if reduce_cell:
+	        self.reduced_cell, nrn_synapses_list, netcons_list, txt_nr = subtree_reductor(
+	            complex_cell, nrn_synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True)
+	        # Delete the old Synapse objects
+	        for syn in synapses_list:
+	          del syn
+	        if expand_cable:
+	            sections_to_expand = [self.reduced_cell.hoc_model.apic[0]]
+	            furcations_x = [0.289004]
+	            nbranches = [choose_branches]
+	            self.reduced_dendritic_cell, nrn_synapses_list, netcons_list, txt_ce = cable_expander(
+	                self.reduced_cell, sections_to_expand, furcations_x, nbranches,
+	                nrn_synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True, random_state=random_state)
+	            
+	            # Get the mapping of nrn.Synapse to NetCon
+	            syn_to_netcon = get_syn_to_netcons(netcons_list)
 	
-	def find_seg_to_seg(self, seg: str, seg_to_seg: dict):
-		'''
-		TO DO:
-		Finds and returns a str of the given segment's mapping where the segment could be either a key (original model seg) or item (reduced model seg)
-		in the case where the new seg is an item from a cable_expand model, the dictionary will have {original seg: reduced seg, reduced seg, ... } if seg is expanded section
-		can add a bool for if you specify reduced seg in this case to only return {original seg: desired reduced seg}
-		return mapping
-		'''
-		pass
+	            # Convert nrn.Synapse objects back to your Synapse class and append netcons
+	            synapses_list = []
+	            for nrn_syn in nrn_synapses_list:
+	                syn = Synapse(syn_obj=nrn_syn)
+	                syn.ncs = syn_to_netcon[nrn_syn]
+	                synapses_list.append(syn)
+	            
+	            cell = CellModel(hoc_model=self.reduced_dendritic_cell, synapses=synapses_list, netcons=netcons_list, 
+	                              spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
+	                              var_names=var_names)
+	            print(len(cell.tufts), "terminal tuft branches in reduced_dendritic_cell")
+	        else:
+	            self.reduced_cell.all = []
+	            for sec in [self.reduced_cell.soma, self.reduced_cell.apic] + self.reduced_cell.dend + self.reduced_cell.axon:
+	                self.reduced_cell.all.append(sec)
+	      # Convert nrn.Synapse objects back to your Synapse class and append netcons
+	            synapses_list = []
+	            for nrn_syn in nrn_synapses_list:
+	                syn = Synapse(syn_obj=nrn_syn)
+	                syn.ncs = syn_to_netcon[nrn_syn]
+	                synapses_list.append(syn)
+	            cell = CellModel(hoc_model=self.reduced_cell, synapses=synapses_list, netcons=netcons_list, 
+	                              spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
+	                              var_names=var_names)
+	            print(len(cell.tufts), "terminal tuft branches in NR reduced_cell")
+	        return cell
+	    else:
+	        cell = CellModel(hoc_model=complex_cell, synapses=synapses_list, netcons=netcons_list, 
+	                          spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
+	                          var_names=var_names)
+	        print(len(cell.tufts), "terminal tuft branches in complex_cell")
+	        return cell
 
-	#TODO: potentially a @staticmethod or an out-of-class function
-	def get_str_from_dict(self):
-		'''
-		separates a desired string from a dictionary (to use in combination
-		'''
-		pass
-  
-	def get_seg_from_str(self, segments, string: str):
-		'''
-		searches list of segments for segment corresponding to str
-		returns segment
-		'''
-		pass
+
 
 	def find_space_const_in_cm(self, diameter, rm, ra):
 		''' returns space constant (lambda) in cm, according to: space_const = sqrt(rm/(ri+r0)) '''
@@ -115,7 +120,35 @@ class Reductor():
 			print('Model nseg changed from', initial_nseg, 'to', new_nseg)
 		else:
 			print('Model nseg did not change')
-# TODO:			
+# TODO:	
+	def merge_synapses(cell=None, synapses_list=None):
+	    if cell is not None:
+	        synapses_list = cell.synapses
+	
+	    # Dictionary to store unique synapses
+	    synapses_dict = {}
+	
+	    for this_synapse in synapses_list:
+	        synapse_key = (this_synapse.syn_mod, this_synapse.gmax, this_synapse.neuron_synapse_obj.get_segment())
+	        
+	        # If this synapse is already present in synapses_dict, merge with existing synapse
+	        if synapse_key in synapses_dict:
+	            other_synapse = synapses_dict[synapse_key]
+	            # Move netcons to other_synapse
+	            for netcon in this_synapse.ncs:
+	                netcon.set_post(other_synapse.neuron_synapse_obj)
+	                other_synapse.ncs.append(netcon)
+	            del this_synapse
+	        else:
+	            # Otherwise, add to synapses_dict
+	            synapses_dict[synapse_key] = this_synapse
+	
+	    # Reassign cell's synapses to the list of unique synapses
+	    if cell is not None:
+	        cell.synapses = list(synapses_dict.values())
+
+					
+					
 	# def type_of_point_process(self,PP):
 	#     s = PP.hname()
 	#     ix = PP.hname().find("[")
@@ -158,7 +191,7 @@ class Reductor():
 	#             return False
 	#     return True
 	
-	# from decimal import Decimal
+	# # from decimal import Decimal
 	
 	# def merge_cell_synapses(self, cell):
 	#   '''WORK IN PROGRESS trouble is iterating through synapses while comparing with other synapses'''
