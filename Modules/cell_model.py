@@ -394,19 +394,16 @@ class CellModel:
         nc_count = len(self.netcons)
         syn_count = len(self.synapses)
         seg_count = len(self.segments)
-        firing_rate = len(self.spikes) / (h.tstop / 1000)
     
         output_folder_name = (
             str(self.hoc_model) + "_" + 
-            str(int(firing_rate * 10)) + "e-1Hz_" + 
             str(seg_count) + "nseg_" + 
-            str(int(h.tstop))+ "ms_" +
             str(nbranches) + "nbranch_" + 
             str(nc_count) + "NCs_" + 
             str(syn_count) + "nsyn"
         )
     
-        return "res"#output_folder_name
+        return output_folder_name
     
     def generate_recorder_data(self, vector_length: int = None) -> None: # TODO: add check for synapse.current_type
       '''
@@ -468,12 +465,7 @@ class CellModel:
       self.data_dict['i_GABA'] = i_GABA_df
       # self.data_dict['i'] = i_bySeg
     
-    def write_data(self, path):
-
-        output_folder_name = self.get_output_folder_name()
-        full_path = os.path.join(path, output_folder_name)
-        print('Outputting to:', output_folder_name)
-
+    def write_data(self, full_path):
         os.makedirs(full_path)
         for name, data in self.data_dict.items():
             self.write_datafile(os.path.join(full_path, f"{name}_report.h5"), data)

@@ -314,7 +314,7 @@ class SpikeGenerator:
 
 			# Normalize to get probability and place
 			prob = gaus / np.max(gaus)
-			fr_profile[:, timestamp] = minmax(prob) * (bounds[1] - bounds[0]) + bounds[0]
+			fr_profile[:, int(timestamp)] = minmax(prob) * (bounds[1] - bounds[0]) + bounds[0]
 			timestamp += int(random_state.normal(int(P / dt), int(CV_t * P / dt)))
 
 		return fr_profile

@@ -57,4 +57,4 @@ channel_names = ['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et
 # Log, plot and save
 save_dir = "output"
 log_every_ms = 500
-save_every_ms = 1000
+save_every_ms = 200

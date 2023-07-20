@@ -22,7 +22,7 @@ import numpy as np
 from functools import partial
 import scipy.stats as st
 import time, datetime
-import os, h5py
+import os, h5py, pickle
 
 import func_group_sim_constants as constants
 
@@ -281,6 +281,15 @@ def main(numpy_random_state, neuron_random_state):
     tuft_seg_index = cell.segments.index(tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
     nexus_seg_index = cell.segments.index(cell.apic[36](0.961538))
 
+    seg_indexes = {
+        "soma": soma_seg_index,
+        "axon": axon_seg_index,
+        "basal": basal_seg_index,
+        "trunk": trunk_seg_index,
+        "tuft": tuft_seg_index,
+        "nexus": nexus_seg_index
+    }
+
     # Compute electrotonic distances from nexus
     logger.log_section_start("Recomputing elec distance")
 
@@ -301,7 +310,7 @@ def main(numpy_random_state, neuron_random_state):
     logger.log_section_start("Creating ecp object")
 
     elec_pos = params.ELECTRODE_POSITION
-    ecp = EcpMod(cell, elec_pos, min_distance=params.MIN_DISTANCE)  # create an ECP object for extracellular potential
+    ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)  # create an ECP object for extracellular potential
 
     logger.log_section_end("Creating ecp object")
 
@@ -318,9 +327,13 @@ def main(numpy_random_state, neuron_random_state):
 
     # Create a folder to save to
     random_seed_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_seeds_" +\
-                       str(numpy_random_state) + "_" + str(neuron_random_state)
+                       str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
     save_folder = os.path.join(constants.save_dir, random_seed_name)
     os.mkdir(save_folder)
+
+    # Save indexes for plotting
+    with open(os.path.join(save_folder, "seg_indexes.pickle"), "wb") as file:
+        pickle.dump(seg_indexes, file)
 
     h.finitialize(h.v_init)
     while h.t <= h.tstop + 1:
@@ -334,15 +347,28 @@ def main(numpy_random_state, neuron_random_state):
             cell.generate_recorder_data(constants.save_every_ms)
             cell.write_data(os.path.join(save_folder, f"saved_at_step_{time_step}"))
 
+            # Save lfp
+            loc_param = [0., 0., 45., 0., 1., 0.]
+            lfp = ecp.calc_ecp(move_cell = loc_param).T  # Unit: mV
+
+            with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
+                file.create_dataset("report/biophysical/data", data = lfp)
+
+            logger.log(f"Saved at time step {time_step}")
+
             time_steps_saved_at.append(time_step)
 
             # Reinitialize vectors: https://www.neuron.yale.edu/phpBB/viewtopic.php?t=2579
             t_vec.resize(0)
             for vec in V_rec.vectors: vec.resize(0)
             for vec in cell.Vm.vectors: vec.resize(0)
+            for recorder in cell.recorders.items():
+                for vec in recorder[1].vectors: vec.resize(0)
 
             for syn in all_syns:
                 for vec in syn.rec_vec: vec.resize(0)
+            
+            for vec in ecp.im_rec.vectors: vec.resize(0)
 
         h.fadvance()
         time_step += 1
@@ -355,29 +381,6 @@ def main(numpy_random_state, neuron_random_state):
     total_runtime = sim_end_time - runtime_start_time
     logger.log(f'Simulation time: {round(elapsedtime)} sec.')
     logger.log(f'Total runtime: {round(total_runtime)} sec.')
-
-    # Generate and save plots
-    logger.log_section_start("Plotting")
-
-    # Time array (ms)
-    t = np.arange(int(constants.h_tstop / constants.h_dt))
-
-    Vm = np.zeros((6, int(constants.h_tstop / constants.h_dt)))
-    for step_index in range(1, len(time_steps_saved_at)):
-        with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_steps_saved_at[step_index]}", "res", "Vm_report.h5"), 'r') as file:
-                data = np.array(file["report"]["biophysical"]["data"])
-                for ind_num, ind_name in enumerate([soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index, trunk_seg_index]):
-                    Vm[ind_num, time_steps_saved_at[step_index - 1] : time_steps_saved_at[step_index]] = data[ind_name, :len(Vm[ind_num, time_steps_saved_at[step_index - 1] : time_steps_saved_at[step_index]])]
-
-    loc_param = [0., 0., 45., 0., 1., 0.]
-
-    # LFP array
-    lfp = ecp.calc_ecp(move_cell = loc_param).T[:len(t), :]  # Unit: mV
-
-    plot_simulation_results(t, Vm, 0, 1, 2, 3, 4, 5, loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, 
-                            vlim = [-0.023, 0.023], show = False, save_dir = save_folder)
-
-    logger.log_section_end("Plotting")
 
 if __name__ == "__main__":
 
