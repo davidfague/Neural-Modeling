@@ -372,7 +372,7 @@ class CellModel:
             new_section_list = [section_list]
 
         else:
-            raise TypeError
+            raise TypeError("Expected input 'section_list' to be either of type hoc.HocObject or nrn.Section, but received {}".format(type(section_list).__name__))
 
         return new_section_list
 
