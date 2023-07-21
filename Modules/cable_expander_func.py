@@ -1073,8 +1073,8 @@ def duplicate_synapse(synapse,seg,PP_params_dict):
     for param_name in PP_params_dict[syn_type]:
             param_value = getattr(synapse, param_name)
             if getattr(new_synapse, param_name) != param_value:
-              if param_name in params_were_same:
-                # print("Keep",param_name)
+              #if param_name in params_were_same:
+                #print("Keep",param_name)
               try:setattr(new_synapse, param_name, param_value)
               except: raise AttributeError('Cannot set',new_synapse,'attribute',param_name,'to',param_value,'may try including attribute in skipped_params for PP_params_dict')
             else:
