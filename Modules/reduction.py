@@ -51,17 +51,17 @@ class Reductor():
 	            # Get the mapping of nrn.Synapse to NetCon
 	            syn_to_netcon = get_syn_to_netcons(netcons_list)
 	
-	            # Convert nrn.Synapse objects back to your Synapse class and append netcons
-	            synapses_list = []
-	            synapses_without_netcons=[]
-	            for nrn_syn in nrn_synapses_list:
-			if nrn_syn in syn_to_netcon.keys():
-	                	syn = Synapse(syn_obj=nrn_syn)
-	                	syn.ncs = syn_to_netcon[nrn_syn]
-				synapses_list.append(syn)
-	                else: # synapse did not receive netcons during cable_expander.redistribute_netcons
-				synapses_without_netcons.append(nrn_syn)
-	            
+		    # Convert nrn.Synapse objects back to your Synapse class and append netcons
+		    synapses_list = []
+		    synapses_without_netcons=[]
+		    for nrn_syn in nrn_synapses_list:
+		      if nrn_syn in syn_to_netcon.keys():
+		          syn = Synapse(syn_obj=nrn_syn)
+		          syn.ncs = syn_to_netcon[nrn_syn]
+		          synapses_list.append(syn)
+		      else: # synapse did not receive netcons during cable_expander.redistribute_netcons
+		          synapses_without_netcons.append(nrn_syn)
+	            print(len(synapses_without_netcons), 'unused synapses after expansion')
 	            cell = CellModel(hoc_model=self.reduced_dendritic_cell, synapses=synapses_list, netcons=netcons_list, 
 	                              spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
 	                              var_names=var_names)
