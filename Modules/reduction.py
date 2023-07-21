@@ -53,11 +53,14 @@ class Reductor():
 	
 	            # Convert nrn.Synapse objects back to your Synapse class and append netcons
 	            synapses_list = []
+	            synapses_without_netcons=[]
 	            for nrn_syn in nrn_synapses_list:
-	                syn = Synapse(syn_obj=nrn_syn)
-	                try:syn.ncs = syn_to_netcon[nrn_syn]
-	                except: import pdb; pdb.set_trace()
-	                synapses_list.append(syn)
+			if nrn_syn in syn_to_netcon.keys():
+	                	syn = Synapse(syn_obj=nrn_syn)
+	                	syn.ncs = syn_to_netcon[nrn_syn]
+				synapses_list.append(syn)
+	                else: # synapse did not receive netcons during cable_expander.redistribute_netcons
+				synapses_without_netcons.append(nrn_syn)
 	            
 	            cell = CellModel(hoc_model=self.reduced_dendritic_cell, synapses=synapses_list, netcons=netcons_list, 
 	                              spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
