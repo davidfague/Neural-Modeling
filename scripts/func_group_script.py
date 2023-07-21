@@ -227,40 +227,21 @@ def main(numpy_random_state, neuron_random_state):
 
     logger.log_section_start("Initializing cell model")
     logger.log_memory()
-    cell = CellModel(hoc_model = complex_cell, synapses = all_syns,
-                    netcons = spike_generator.netcons, spike_trains = spike_generator.spike_trains,
-                    spike_threshold = constants.spike_threshold, random_state = random_state,
-                    var_names = constants.channel_names)
+    
+    reductor = Reductor()
+    cell = reductor.reduce_cell_func(complex_cell=complex_cell, reduce_cell=constants.reduce_cell, synapses_list=all_syns,
+                                 netcons_list=spike_generator.netcons, spike_trains=spike_generator.spike_trains,
+                                 spike_threshold=constants.spike_threshold, random_state=random_state,
+                                 var_names=constants.channel_names,
+                                 reduction_frequency=constants.reduction_frequency, expand_cable=constants.expand_cable, choose_branches=constants.choose_branches)
+    if constants.optimize_nseg_by_lambda:
+        reductor.update_model_nseg_using_lambda(cell, constants.segs_per_lambda)
+    if constants.merge_synapses:
+        reductor.merge_synapses(cell)
     cell.setup_recorders(vector_length = constants.save_every_ms)
     
     logger.log_memory()
     logger.log_section_end("Initializing cell model")
-    
-    # Reduce cell and store new things: can update CellModel module to do this stuff
-
-    def find_distal_sections(cell, region=str):
-        '''
-        Finds all terminal sections then gathers terminal apical sections that are greater than 800 microns from the soma in path length
-        '''
-        # find distal tuft sections:
-        parent_sections=[]
-        for sec in cell.all: # find non-terminal sections
-            if sec.parentseg() is not None:
-                if sec.parentseg().sec not in parent_sections:
-                    parent_sections.append(sec.parentseg().sec)
-        terminal_sections=[]
-        for sec in getattr(cell,region):  # check if the section is a terminal section and if it is apical tuft
-            # print(h.distance(sec(0.5)))
-            if region=='apic':
-                if (sec not in parent_sections) and (h.distance(cell.soma[0](0.5),sec(0.5)) > 800):
-                    terminal_sections.append(sec)
-            else:
-                if (sec not in parent_sections):
-                    terminal_sections.append(sec)
-
-                # print(sec, 'is a terminal section of the tuft'
-
-        return terminal_sections
 
     # ---- Prepare simulation
 
@@ -271,16 +252,21 @@ def main(numpy_random_state, neuron_random_state):
 
     logger.log_section_end("Finding distal sections")
 
-    # Find segments of interest
+    # find segments of interest
     soma_seg_index = cell.segments.index(cell.soma[0](0.5))
     axon_seg_index = cell.segments.index(cell.axon[-1](0.9))
-    basal_seg_index = cell.segments.index(basals[0](0.5))
+    basal_seg_index = cell.segments.index(cell.basals[0](0.5))
     trunk_seg_index = cell.segments.index(cell.apic[0](0.999))
-
-    # Find tuft and nexus
-    tuft_seg_index = cell.segments.index(tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
-    nexus_seg_index = cell.segments.index(cell.apic[36](0.961538))
-
+    # find tuft and nexus
+    if (constants.reduce_cell == True) and (constants.expand_cable == True): # Dendritic reduced model
+    	tuft_seg_index = tuft_seg_index=cell.segments.index(cell.tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
+    	nexus_seg_index = cell.segments.index(cell.apic[0](0.99))
+    elif (constants.reduce_cell == True) and (constants.expand_cable == False): # NR model
+    	tuft_seg_index = cell.segments.index(cell.tufts[0](0.9)) # tufts[0] will be the cable that is both trunk and tuft in this case, so we have to specify near end of cable
+    	nexus_seg_index = cell.segments.index(cell.apic[0](0.289004))
+    else: # Complex cell
+    	tuft_seg_index=cell.segments.index(cell.tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
+    	nexus_seg_index=cell.segments.index(cell.apic[36](0.961538))
     seg_indexes = {
         "soma": soma_seg_index,
         "axon": axon_seg_index,
