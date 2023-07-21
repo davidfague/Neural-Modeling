@@ -55,7 +55,7 @@ class Reductor():
 	            # Get the mapping of nrn.Synapse to NetCon
 	            syn_to_netcon = get_syn_to_netcons(netcons_list)
 	
-		    # Convert nrn.Synapse objects back to your Synapse class and append netcons
+		    # Convert nrn.Synapse objects back to Synapse class and append netcons
 	            synapses_list = []
 	            synapses_without_netcons=[]
 	            for nrn_syn in nrn_synapses_list:
@@ -76,6 +76,9 @@ class Reductor():
 				          setattr(self.reduced_cell, model_part, CellModel.convert_section_list(self.reduced_cell, getattr(self.reduced_cell, model_part)))
 	            for sec in self.reduced_cell.soma + self.reduced_cell.apic + self.reduced_cell.dend + self.reduced_cell.axon:
 				          self.reduced_cell.all.append(sec)
+
+	            # Get the mapping of nrn.Synapse to NetCon
+	            syn_to_netcon = get_syn_to_netcons(netcons_list)
 	            # Convert nrn.Synapse objects back to Synapse class and append netcons
 	            synapses_list = []
 	            for nrn_syn in nrn_synapses_list:
