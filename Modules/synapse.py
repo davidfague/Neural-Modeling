@@ -131,7 +131,7 @@ class Synapse:
         if (self.synapse_neuron_obj is not None) and (self.syn_type is None):
             self.syn_type = str(self.synapse_neuron_obj).split('[')[0]
         self.rec_vec = []  # List of vectors for recording
-        self.set_params_based_on_synapse_mod(syn_mod)
+        self.set_params_based_on_synapse_mod(self.syn_type)
         self.gmax = self.get_gmax()
         self.setup(record, vector_length)
         self.ncs = []

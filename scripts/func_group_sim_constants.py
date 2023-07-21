@@ -6,9 +6,13 @@ neuron_random_states = [1] # Number of calls to MCellRan4()
 modfiles_folder = "../modfiles"
 
 # Reduction
-# reduce_cell = False
-# expand_cable = False
-# choose_branches = 22
+reduce_cell = False
+expand_cable = False
+reduction_frequency = 0
+choose_branches = 22
+optimize_nseg_by_lambda = False # whether or not to optimize the number of segments by lambda after reduction (may need to add an update to the CellModel class instance's segments list and seg_info list.)
+merge_synapses = False # whether or not to merge synapses after optimizing nseg by lambda. (synapses should already be merged by the reduce_cell_func, but could be merged again if optimize_nseg_by_lambda lowers nseg.)
+segs_per_lambda = 10 # desired number of segs per length constant
 
 # Complex cell
 complex_cell_folder = '../complex_cells/L5PC/'

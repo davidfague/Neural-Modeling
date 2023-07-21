@@ -1,6 +1,7 @@
 from neuron_reduce import subtree_reductor
 from Modules.cable_expander_func import (cable_expander, get_syn_to_netcons)
 from Modules.synapse import Synapse
+from Modules.cell_model import CellModel
 import numpy as np
 
 class Reductor():
@@ -10,21 +11,21 @@ class Reductor():
 		
 		self.original_cell = cell
 
-		if self.original_cell is not None:
-			if method == 'expand cable':
-				self.check_sanity_in_expand_cable(sections_to_expand, furcations_x, nbranches)
-				self.reduced_cell, self.synapses_list, self.netcons_list, self.txt = cable_expander(cell, sections_to_expand, furcations_x, 
-												nbranches, synapses_list, netcons_list, 
-												reduction_frequency=reduction_frequency, 
-												return_seg_to_seg = True)
-			elif method == 'neuron_reduce':
-					self.reduced_cell, self.synapses_list, self.netcons_list, self.txt = subtree_reductor(cell, synapses_list, netcons_list, 
-													  reduction_frequency = reduction_frequency, 
-													  return_seg_to_seg = True)
-			elif method == 'lambda':
-					self.update_model_nseg_using_lambda(cell, segs_per_lambda)
-			elif method is not None:
-				raise NotImplementedError
+		# if self.original_cell is not None:
+		# 	if method == 'expand cable':
+		# 		self.check_sanity_in_expand_cable(sections_to_expand, furcations_x, nbranches)
+		# 		self.reduced_cell, self.synapses_list, self.netcons_list, self.txt = cable_expander(cell, sections_to_expand, furcations_x, 
+		# 										nbranches, synapses_list, netcons_list, 
+		# 										reduction_frequency=reduction_frequency, 
+		# 										return_seg_to_seg = True)
+		# 	elif method == 'neuron_reduce':
+		# 			self.reduced_cell, self.synapses_list, self.netcons_list, self.txt = subtree_reductor(cell, synapses_list, netcons_list, 
+		# 											  reduction_frequency = reduction_frequency, 
+		# 											  return_seg_to_seg = True)
+		# 	elif method == 'lambda':
+		# 			self.update_model_nseg_using_lambda(cell, segs_per_lambda)
+		# 	elif method is not None:
+		# 		raise NotImplementedError
 
 	def reduce_cell_func(self, complex_cell, reduce_cell: bool=False, synapses_list:list=None, netcons_list: list=None, 
 	                      spike_trains=None, spike_threshold: int=10, random_state=None, var_names=None, 
@@ -47,26 +48,38 @@ class Reductor():
 	            self.reduced_dendritic_cell, nrn_synapses_list, netcons_list, txt_ce = cable_expander(
 	                self.reduced_cell, sections_to_expand, furcations_x, nbranches,
 	                nrn_synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True, random_state=random_state)
-	            
+	            for sec in self.reduced_dendritic_cell.dend: # remove basal dend 3D coordinates because the point in the wrong direction for some reason.
+	                sec.pt3dclear()
+	            for sec in self.reduced_dendritic_cell.axon: # remove axon 3D coordinates because the point in the wrong direction for some reason.
+	                sec.pt3dclear()
 	            # Get the mapping of nrn.Synapse to NetCon
 	            syn_to_netcon = get_syn_to_netcons(netcons_list)
 	
-	            # Convert nrn.Synapse objects back to your Synapse class and append netcons
+		    # Convert nrn.Synapse objects back to Synapse class and append netcons
 	            synapses_list = []
+	            synapses_without_netcons=[]
 	            for nrn_syn in nrn_synapses_list:
-	                syn = Synapse(syn_obj=nrn_syn)
-	                syn.ncs = syn_to_netcon[nrn_syn]
-	                synapses_list.append(syn)
-	            
+	            	if nrn_syn in syn_to_netcon.keys():
+	            		syn = Synapse(syn_obj=nrn_syn)
+	            		syn.ncs = syn_to_netcon[nrn_syn]
+	            		synapses_list.append(syn)
+	            	else: # synapse did not receive netcons during cable_expander.redistribute_netcons
+	            		synapses_without_netcons.append(nrn_syn)
+	            print(len(synapses_without_netcons), 'unused synapses after expansion')
 	            cell = CellModel(hoc_model=self.reduced_dendritic_cell, synapses=synapses_list, netcons=netcons_list, 
 	                              spike_trains=spike_trains, spike_threshold=spike_threshold, random_state=random_state,
 	                              var_names=var_names)
 	            print(len(cell.tufts), "terminal tuft branches in reduced_dendritic_cell")
 	        else:
 	            self.reduced_cell.all = []
-	            for sec in [self.reduced_cell.soma, self.reduced_cell.apic] + self.reduced_cell.dend + self.reduced_cell.axon:
-	                self.reduced_cell.all.append(sec)
-	      # Convert nrn.Synapse objects back to your Synapse class and append netcons
+	            for model_part in ["soma", "apic", "dend", "axon"]:
+				          setattr(self.reduced_cell, model_part, CellModel.convert_section_list(self.reduced_cell, getattr(self.reduced_cell, model_part)))
+	            for sec in self.reduced_cell.soma + self.reduced_cell.apic + self.reduced_cell.dend + self.reduced_cell.axon:
+				          self.reduced_cell.all.append(sec)
+
+	            # Get the mapping of nrn.Synapse to NetCon
+	            syn_to_netcon = get_syn_to_netcons(netcons_list)
+	            # Convert nrn.Synapse objects back to Synapse class and append netcons
 	            synapses_list = []
 	            for nrn_syn in nrn_synapses_list:
 	                syn = Synapse(syn_obj=nrn_syn)
