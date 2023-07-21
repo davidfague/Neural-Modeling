@@ -1,6 +1,7 @@
 from neuron_reduce import subtree_reductor
 from Modules.cable_expander_func import (cable_expander, get_syn_to_netcons)
 from Modules.synapse import Synapse
+from Modules.cell_model import CellModel
 import numpy as np
 
 class Reductor():
