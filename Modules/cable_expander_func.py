@@ -203,9 +203,9 @@ def cable_expander(original_cell,
         cell,
         reduction_frequency)
     
-    print("PP_params_dict: ",PP_params_dict)
-    for synapse,params in PP_params_dict.items():
-      print(synapse,params)
+    # print("PP_params_dict: ",PP_params_dict)
+    # for synapse,params in PP_params_dict.items():
+    #   print(synapse,params)
 
     #check synapses_list with netcons_list
     for netcon in netcons_list:
@@ -867,7 +867,7 @@ def adjust_new_tree_synapses(num_of_subtrees, roots_of_subtrees,
             # If there's such a synapse link the original NetCon with this point processes
             # If not, move the synapse to this segment.
             for PP in section_for_synapse(x).point_processes():
-                print(PP_params_dict)
+                # print(PP_params_dict)
                 if type_of_point_process(PP) not in PP_params_dict:
                     print("adding",PP,"to PP_params_dict")
                     add_PP_properties_to_dict(PP, PP_params_dict)
@@ -1041,16 +1041,16 @@ def distribute_branch_synapses(branch_sets,netcons_list,synapses_list,PP_params_
   synapses_list: list of synapse objects
   '''
   for branch_set in branch_sets: #branch_sets variable is a list of lists of sections
-    print(branch_set)
+    # print(branch_set)
     branch_with_synapses=branch_set[0] #branch with synapses is the first section within the list
     for seg in branch_with_synapses:
-      print("branch's seg.point_processes:",seg.point_processes())
+      # print("branch's seg.point_processes:",seg.point_processes())
       for synapse in seg.point_processes():
         x=synapse.get_loc() # get loc of original synapse       
         new_syns=[] #list for redistributing netcons #make original synapse an option for netcon
         for i in range(len(branch_set)-1): # duplicate synapse onto each corresponding branch location
           new_syn=duplicate_synapse(synapse,seg,PP_params_dict) #generate new identical synapse
-          print("duplicate new_syn:", new_syn)
+          # print("duplicate new_syn:", new_syn)
           new_syns.append(new_syn) # make new synapse an option for netcon to point to
           synapses_list.append(new_syn) #update total synapses_list to include new synapse object
           new_syn.loc(branch_set[i+1](x)) #place new synapse onto each branch
@@ -1074,13 +1074,13 @@ def duplicate_synapse(synapse,seg,PP_params_dict):
             param_value = getattr(synapse, param_name)
             if getattr(new_synapse, param_name) != param_value:
               if param_name in params_were_same:
-                print("Keep",param_name)
+                # print("Keep",param_name)
               try:setattr(new_synapse, param_name, param_value)
               except: raise AttributeError('Cannot set',new_synapse,'attribute',param_name,'to',param_value,'may try including attribute in skipped_params for PP_params_dict')
             else:
               if param_name not in params_were_same:
                 params_were_same.append(param_name)
-                print("consider excluding PP_params:",param_name) #debugging for efficiency
+                # print("consider excluding PP_params:",param_name) #debugging for efficiency
     return new_synapse
            
 
@@ -1133,4 +1133,4 @@ def add_PP_properties_to_dict(PP, PP_params_dict):
 
 
     PP_params_dict[type_of_point_process(PP)] = syn_params
-    print(PP_params_dict)
+    # print(PP_params_dict)
