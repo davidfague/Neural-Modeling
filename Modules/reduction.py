@@ -48,7 +48,10 @@ class Reductor():
 	            self.reduced_dendritic_cell, nrn_synapses_list, netcons_list, txt_ce = cable_expander(
 	                self.reduced_cell, sections_to_expand, furcations_x, nbranches,
 	                nrn_synapses_list, netcons_list, reduction_frequency, return_seg_to_seg=True, random_state=random_state)
-	            
+	            for sec in reduced_dendritic_cell.dend: # remove basal dend 3D coordinates because the point in the wrong direction for some reason.
+	                sec.pt3dclear()
+	            for sec in reduced_dendritic_cell.axon: # remove axon 3D coordinates because the point in the wrong direction for some reason.
+	                sec.pt3dclear()
 	            # Get the mapping of nrn.Synapse to NetCon
 	            syn_to_netcon = get_syn_to_netcons(netcons_list)
 	
