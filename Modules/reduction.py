@@ -56,7 +56,7 @@ class Reductor():
 	            for nrn_syn in nrn_synapses_list:
 	                syn = Synapse(syn_obj=nrn_syn)
 	                try:syn.ncs = syn_to_netcon[nrn_syn]
-			except: import pdb; pdb.set_trace()
+	                except: import pdb; pdb.set_trace()
 	                synapses_list.append(syn)
 	            
 	            cell = CellModel(hoc_model=self.reduced_dendritic_cell, synapses=synapses_list, netcons=netcons_list, 
