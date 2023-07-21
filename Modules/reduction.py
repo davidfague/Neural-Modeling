@@ -71,9 +71,10 @@ class Reductor():
 	                              var_names=var_names)
 	            print(len(cell.tufts), "terminal tuft branches in reduced_dendritic_cell")
 	        else:
-	            self.reduced_cell.all = []
-	            for sec in [self.reduced_cell.soma, self.reduced_cell.apic] + self.reduced_cell.dend + self.reduced_cell.axon:
-	                self.reduced_cell.all.append(sec)
+	            import pdb; pdb.set_trace()
+	            # self.reduced_cell.all = []
+	            # for sec in [self.reduced_cell.soma, self.reduced_cell.apic] + self.reduced_cell.dend + self.reduced_cell.axon:
+	            #     self.reduced_cell.all.append(sec)
 	      # Convert nrn.Synapse objects back to your Synapse class and append netcons
 	            synapses_list = []
 	            for nrn_syn in nrn_synapses_list:
