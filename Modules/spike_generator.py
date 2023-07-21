@@ -155,9 +155,10 @@ class SpikeGenerator:
 			fr_profile = self.delay_modulation(spike_trains_to_delay = spike_trains_to_delay, fr_time_shift = fr_time_shift, 
 				      						   spike_train_t = t, spike_train_dt = spike_train_dt)
 		elif method == "gaussian":
-			a_iv, P, CV_t, sigma_iv = tiesinga_params 
+			a_iv, P, CV_t, sigma_iv, pad_aiv = tiesinga_params 
 			fr_profile = self.gaussian_modulation(random_state = random_state, train_length = len(t), dt = spike_train_dt,
-					 							  a_iv = a_iv, P = P, CV_t = CV_t, sigma_iv = sigma_iv, bounds = bounds)
+					 							  a_iv = a_iv, P = P, CV_t = CV_t, sigma_iv = sigma_iv, bounds = bounds,
+												  pad_aiv = pad_aiv)
 		else:
 			raise NotImplementedError
 		
@@ -268,8 +269,8 @@ class SpikeGenerator:
 		return (1 / (np.sqrt(2 * np.pi * sigma**2))) * np.exp(-((x - mu)**2) / (2 * sigma**2))
 	
 	def gaussian_modulation(self, random_state: np.random.RandomState, train_length: float, 
-			 				dt: float, a_iv: int, P: float, CV_t: float, sigma_iv: float, 
-							bounds: tuple) -> np.ndarray:
+			 				dt: float, a_iv: int, P: float, CV_t: float, sigma_iv: float,
+							bounds: tuple, pad_aiv: int = 0) -> np.ndarray:
 		'''
 		Paramters:
 		----------
@@ -304,13 +305,14 @@ class SpikeGenerator:
 			Firing rate profile.
 		'''
 		num_timestamps = int(train_length / dt)
+		num_trains = int(a_iv + pad_aiv * 2)
 
-		fr_profile = np.zeros((a_iv, num_timestamps)) # In timestamps
+		fr_profile = np.zeros((num_trains, num_timestamps)) # In timestamps
 
 		timestamp = P
 		while timestamp < num_timestamps:
 			# Place a Gaussian at stamp centered at a_iv // 2 with std = sigma_iv
-			gaus = self.gaussian_density(np.arange(a_iv), int(a_iv // 2), sigma_iv)
+			gaus = self.gaussian_density(np.arange(num_trains), int(num_trains // 2), sigma_iv)
 
 			# Normalize to get probability and place
 			prob = gaus / np.max(gaus)
