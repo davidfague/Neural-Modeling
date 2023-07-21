@@ -10,21 +10,21 @@ class Reductor():
 		
 		self.original_cell = cell
 
-		if self.original_cell is not None:
-			if method == 'expand cable':
-				self.check_sanity_in_expand_cable(sections_to_expand, furcations_x, nbranches)
-				self.reduced_cell, self.synapses_list, self.netcons_list, self.txt = cable_expander(cell, sections_to_expand, furcations_x, 
-												nbranches, synapses_list, netcons_list, 
-												reduction_frequency=reduction_frequency, 
-												return_seg_to_seg = True)
-			elif method == 'neuron_reduce':
-					self.reduced_cell, self.synapses_list, self.netcons_list, self.txt = subtree_reductor(cell, synapses_list, netcons_list, 
-													  reduction_frequency = reduction_frequency, 
-													  return_seg_to_seg = True)
-			elif method == 'lambda':
-					self.update_model_nseg_using_lambda(cell, segs_per_lambda)
-			elif method is not None:
-				raise NotImplementedError
+		# if self.original_cell is not None:
+		# 	if method == 'expand cable':
+		# 		self.check_sanity_in_expand_cable(sections_to_expand, furcations_x, nbranches)
+		# 		self.reduced_cell, self.synapses_list, self.netcons_list, self.txt = cable_expander(cell, sections_to_expand, furcations_x, 
+		# 										nbranches, synapses_list, netcons_list, 
+		# 										reduction_frequency=reduction_frequency, 
+		# 										return_seg_to_seg = True)
+		# 	elif method == 'neuron_reduce':
+		# 			self.reduced_cell, self.synapses_list, self.netcons_list, self.txt = subtree_reductor(cell, synapses_list, netcons_list, 
+		# 											  reduction_frequency = reduction_frequency, 
+		# 											  return_seg_to_seg = True)
+		# 	elif method == 'lambda':
+		# 			self.update_model_nseg_using_lambda(cell, segs_per_lambda)
+		# 	elif method is not None:
+		# 		raise NotImplementedError
 
 	def reduce_cell_func(self, complex_cell, reduce_cell: bool=False, synapses_list:list=None, netcons_list: list=None, 
 	                      spike_trains=None, spike_threshold: int=10, random_state=None, var_names=None, 
