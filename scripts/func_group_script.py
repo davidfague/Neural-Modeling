@@ -10,6 +10,7 @@ from Modules.cell_utils import get_segments_and_len_per_segment
 from Modules.plotting_utils import plot_simulation_results
 from Modules.logger import Logger
 from Modules.recorder import Recorder
+from Modules.reduction import Reductor
 
 from neuron import h
 
@@ -245,12 +246,7 @@ def main(numpy_random_state, neuron_random_state):
 
     # ---- Prepare simulation
 
-    logger.log_section_start("Finding distal sections")
-
-    basals = find_distal_sections(cell, 'dend')
-    tufts = find_distal_sections(cell, 'apic')
-
-    logger.log_section_end("Finding distal sections")
+    logger.log_section_start("Finding segments of interest")
 
     # find segments of interest
     soma_seg_index = cell.segments.index(cell.soma[0](0.5))
@@ -275,7 +271,8 @@ def main(numpy_random_state, neuron_random_state):
         "tuft": tuft_seg_index,
         "nexus": nexus_seg_index
     }
-
+    logger.log_section_end("Finding segments of interest")
+    
     # Compute electrotonic distances from nexus
     logger.log_section_start("Recomputing elec distance")
 
