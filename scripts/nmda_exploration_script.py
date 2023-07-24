@@ -8,9 +8,9 @@ from Modules.segment import SegmentManager
 from Modules.plotting_utils import plot_sta, plot_edges
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-07-21_14-14-32_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
-steps = [2000, 4000, 6000, 8000, 10000]
+output_folder = "output/2023-07-24_14-53-07_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
 step_size = 2000
+steps = range(2000, 40001, step_size)
 dt = 0.1
 what_to_plot = {
     "Na": True,
@@ -78,6 +78,9 @@ def main(random_state):
 
         # STA
         to_plot = np.clip((na_apic - na_apic_rand) / (np.abs(na_apic_rand) + 1e-10), -5, 5) * 100
+        print(na_apic)
+        print("----")
+        print(na_dend_rand)
         title = 'Na Spikes - Apical'
         x_ticks = np.arange(0, 40, 5)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-20, 20, 5)]
