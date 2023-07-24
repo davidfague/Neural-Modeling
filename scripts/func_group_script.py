@@ -255,14 +255,14 @@ def main(numpy_random_state, neuron_random_state):
     trunk_seg_index = cell.segments.index(cell.apic[0](0.999))
     # find tuft and nexus
     if (constants.reduce_cell == True) and (constants.expand_cable == True): # Dendritic reduced model
-    	tuft_seg_index = tuft_seg_index=cell.segments.index(cell.tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
-    	nexus_seg_index = cell.segments.index(cell.apic[0](0.99))
+        tuft_seg_index = tuft_seg_index=cell.segments.index(cell.tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
+        nexus_seg_index = cell.segments.index(cell.apic[0](0.99))
     elif (constants.reduce_cell == True) and (constants.expand_cable == False): # NR model
-    	tuft_seg_index = cell.segments.index(cell.tufts[0](0.9)) # tufts[0] will be the cable that is both trunk and tuft in this case, so we have to specify near end of cable
-    	nexus_seg_index = cell.segments.index(cell.apic[0](0.289004))
+        tuft_seg_index = cell.segments.index(cell.tufts[0](0.9)) # tufts[0] will be the cable that is both trunk and tuft in this case, so we have to specify near end of cable
+        nexus_seg_index = cell.segments.index(cell.apic[0](0.289004))
     else: # Complex cell
-    	tuft_seg_index=cell.segments.index(cell.tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
-    	nexus_seg_index=cell.segments.index(cell.apic[36](0.961538))
+        tuft_seg_index=cell.segments.index(cell.tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
+        nexus_seg_index=cell.segments.index(cell.apic[36](0.961538))
     seg_indexes = {
         "soma": soma_seg_index,
         "axon": axon_seg_index,
