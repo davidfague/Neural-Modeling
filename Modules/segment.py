@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import h5py
+import os, h5py
 import warnings
 
 def voltage_criterion(data = None, v_thresh: float = -40, time_thresh: int = 260):
@@ -100,37 +100,36 @@ class Segment:
 
 class SegmentManager:
 
-    def __init__(self, output_folder: str, dt: float = 0.1, skip: int = 0):
+    def __init__(self, output_folder: str, steps: list, dt: float = 0.1, skip: int = 0):
         '''
         skip: ms of simulation to skip
         '''
+        filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
+                     "i_NMDA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
+                     "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "spikes_report"]
+        current_names = ["v", "gNaTa", "iampa", "inmda", "icah", "ical", "ih", "ina"]
 
         self.segments = []
         self.dt = dt
 
         # Read datafiles
-        # The last element of data is always seg_info.csv
-        # The second-to-last element of data is always spikes_report.h5
-        data = self.read_data(output_folder)
+        data = self.read_data(filenames, output_folder, steps)
 
-        self.num_segments = len(data[-1])
+        self.num_segments = len(data["seg_info"])
 
         for i in range(self.num_segments):
             # Build seg_data
             seg_data = {}
-            for ind, name in enumerate(["v", "gNaTa", "iampa", "inmda", "icah", "ical", "ih", "ina"]):
-                seg_data[name] = data[ind][i, int(skip/dt):]
+            for filename, current_name in zip(filenames[:-1], current_names):
+                seg_data[current_name] = data[filename][i, int(skip / dt):]
 
-            seg = Segment(seg_info = data[-1].iloc[i], seg_data = seg_data)
+            seg = Segment(seg_info = data["seg_info"].iloc[i], seg_data = seg_data)
             self.segments.append(seg)
             
         self.compute_adj_segs_from_pseg_indices()
         
         # Soma spikes (ms)
-        # skip
-        #self.soma_spiketimes = data[-2][:]
-        #print(self.soma_spikestimes, type(self.soma_spiketimes[0]))
-        self.soma_spiketimes = np.array([(i-skip) for i in data[-2][:] if i >= skip])
+        self.soma_spiketimes = np.array([(i-skip) for i in data[filenames[-1]][:] if i >= skip])
         # Soma spikes (inds)
         self.soma_spiketimestamps = np.sort((self.soma_spiketimes / dt).astype(int))
 
@@ -138,7 +137,7 @@ class SegmentManager:
       '''
       Uses parent segment indices to assign lists of adjacent segments to each segment
       '''
-      for i,seg in enumerate(self.segments):  # iterate through segment index
+      for i, seg in enumerate(self.segments):  # iterate through segment index
         psegid = seg.pseg_index
         if not np.isnan(psegid):
             psegid = int(psegid)
@@ -147,18 +146,21 @@ class SegmentManager:
             seg.parent_segs.append(self.segments[psegid])
             seg.adj_segs.append(self.segments[psegid])
 
-    def read_data(self, output_folder: str) -> list:
-        file_names = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
-                      "i_NMDA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
-                      "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "spikes_report"]
-        ext = 'h5'
-        data = []
+    def read_data(self, filenames: list, output_folder: str, steps: list) -> list:
 
-        for name in file_names:
-            with h5py.File(f"{output_folder}/{name}.{ext}", 'r') as file:
-                data.append(np.array(file["report"]["biophysical"]["data"]))
+        data = {name : [] for name in filenames}
 
-        data.append(pd.read_csv(f"{output_folder}/seg_info.csv"))
+        for step in steps:
+            dirname = os.path.join(output_folder, f"saved_at_step_{step}")
+            for name in filenames:
+                with h5py.File(os.path.join(dirname, name + ".h5"), 'r') as file:
+                    data[name].append(np.array(file["report"]["biophysical"]["data"]))
+
+        # Merge data
+        for name in data.keys():
+            data[name] = np.hstack(data[name])
+
+        data["seg_info"] = pd.read_csv(os.path.join(output_folder, f"saved_at_step_{steps[0]}", "seg_info.csv"))
 
         return data
 

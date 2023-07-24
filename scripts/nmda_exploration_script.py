@@ -7,8 +7,10 @@ import os
 from Modules.segment import SegmentManager
 from Modules.plotting_utils import plot_sta, plot_edges
 
-# General
-output_folder = '../L5PCtemplate[0]_88e-1Hz_642nseg_10000ms_108nbranch_28918NCs_28918nsyn'
+# Output folder should store folders 'saved_at_step_xxxx'
+output_folder = "output/2023-07-21_14-14-32_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
+steps = [2000, 4000, 6000, 8000, 10000]
+step_size = 2000
 dt = 0.1
 what_to_plot = {
     "Na": True,
@@ -27,12 +29,12 @@ lowery, uppery = 500, 1500
 def main(random_state):
 
     random_state = np.random.RandomState(random_state)
-    sm = SegmentManager(output_folder, dt = dt)
+    sm = SegmentManager(output_folder, steps = steps, dt = dt)
 
     if what_to_plot["Na"]:
         # Get lower bounds for Na
         sm.get_na_lower_bounds_for_seg(sm.segments[0], threshold, ms_within_somatic_spike)
-        na_lower_bounds, _, flattened_peak_values = sm.get_na_lower_bounds_and_peaks(threshold, ms_within_somatic_spike)
+        na_lower_bounds, _, flattened_peak_values, _ = sm.get_na_lower_bounds_and_peaks(threshold, ms_within_somatic_spike)
 
         # Get edges for Na
         edges_dend = sm.get_edges(na_lower_bounds, "dend")
@@ -75,14 +77,14 @@ def main(random_state):
         plot_edges(edges_apic, sm.segments, na_path, elec_dist_var = 'soma_passive', filename = "na_edges_apic.png")
 
         # STA
-        to_plot = (na_apic - na_apic_rand) / len(sm.soma_spiketimes)
+        to_plot = np.clip((na_apic - na_apic_rand) / (np.abs(na_apic_rand) + 1e-10), -5, 5) * 100
         title = 'Na Spikes - Apical'
         x_ticks = np.arange(0, 40, 5)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-20, 20, 5)]
         xlim = (5, 35)
         plot_sta(to_plot, edges_apic, title, x_ticks, x_tick_labels, xlim, save_to = os.path.join(na_path, "na_spikes_apical.png"))
 
-        to_plot = (na_dend - na_dend_rand) / len(sm.soma_spiketimes)
+        to_plot = np.clip((na_dend - na_dend_rand) / (np.abs(na_dend_rand) + 1e-15), -5, 5) * 100
         title = 'Na Spikes - Basal'
         x_ticks = np.arange(0, 40, 5)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-20, 20, 5)]
@@ -105,7 +107,7 @@ def main(random_state):
         ca_path = os.path.join(output_folder, "Ca")
         os.mkdir(ca_path)
 
-        to_plot = (ca_apic - ca_apic_rand) / len(sm.soma_spiketimes)
+        to_plot = np.clip((ca_apic - ca_apic_rand) / (np.abs(ca_apic_rand) + 1e-15), -5, 5) * 100
         title = 'Ca2+ Spikes - Nexus'
         x_ticks = np.arange(0, 26, 4)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
@@ -132,13 +134,13 @@ def main(random_state):
         nmda_path = os.path.join(output_folder, "NMDA")
         os.mkdir(nmda_path)
 
-        to_plot = (nmda_apic - nmda_rand_apic) / len(sm.soma_spiketimes)
+        to_plot = np.clip((nmda_apic - nmda_rand_apic) / (np.abs(nmda_rand_apic) + 1e-15), -5, 5) * 100
         title = 'NMDA Spikes - Apical'
         x_ticks = np.arange(0, 26, 4)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
         plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, [], save_to = os.path.join(nmda_path, "nmda_spikes_apical.png"))
-
-        to_plot = (nmda_dend-nmda_rand_dend) / len(sm.soma_spiketimes)
+        
+        to_plot = np.clip((nmda_dend - nmda_rand_dend) / (np.abs(nmda_rand_dend) + 1e-15), -5, 5) * 100
         title = 'NMDA Spikes - Basal'
         x_ticks = np.arange(0, 26, 4)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
@@ -165,13 +167,13 @@ def main(random_state):
         ca_nmda_path = os.path.join(output_folder, "Ca_NMDA")
         os.mkdir(ca_nmda_path)
 
-        to_plot = (ca_nmda_apic - ca_nmda_rand_apic) / len(ca_spiketimes)
+        to_plot = np.clip((ca_nmda_apic - ca_nmda_rand_apic) / (np.abs(ca_nmda_rand_apic) + 1e-15), -5, 5) * 100
         title = 'Ca - NMDA Spikes - Apical'
         x_ticks = np.arange(0, 26, 4)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
         plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, [], save_to = os.path.join(ca_nmda_path, "ca_nmda_spikes_apical.png"))
 
-        to_plot = (ca_nmda_dend - ca_nmda_rand_dend) / len(ca_spiketimes)
+        to_plot = np.clip((ca_nmda_dend - ca_nmda_rand_dend) / (np.abs(ca_nmda_rand_dend) + 1e-15), -5, 5) * 100
         title = 'Ca - NMDA Spikes - Basal'
         x_ticks = np.arange(0, 26, 4)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]

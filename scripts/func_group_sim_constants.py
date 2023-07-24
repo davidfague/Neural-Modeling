@@ -20,7 +20,7 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 1000 # Sim runtime (ms)
+h_tstop = 2500 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Excitatory dend
