@@ -27,6 +27,24 @@ import os, h5py, pickle
 
 import func_group_sim_constants as constants
 
+constants.h_tstop = 5000
+# 150 soma inh synapses
+# ----------
+constants.soma_number_of_clusters = 15 # Number of presynaptic cells
+constants.a_iv = 10
+constants.P = 1
+constants.CV_t = 1
+constants.sigma_iv = 1
+constants.pad_aiv = 0
+# ----------
+constants.soma_functional_group_span = 100
+constants.soma_cluster_span = 10
+constants.soma_synapses_per_cluster = 10 # Number of synapses per presynaptic cell
+
+constants.I_const = constants.gmax_inh_dist * 150
+constants.gmax_inh_dist_soma = float(constants.I_const / (constants.soma_number_of_clusters * constants.soma_synapses_per_cluster))
+
+
 def main(numpy_random_state, neuron_random_state):
 
     logger = Logger(output_dir = "./", active = True)
@@ -192,25 +210,25 @@ def main(numpy_random_state, neuron_random_state):
     logger.log_memory()
 
     soma_inhibitory_functional_groups = generate_inhibitory_functional_groups(cell = complex_cell,
-                                                                              all_segments = soma_segments,
-                                                                              all_len_per_segment = soma_SA_per_segment,
-                                                                              all_segments_centers = soma_segments_center,
-                                                                              number_of_groups = constants.soma_number_of_groups,
-                                                                              cells_per_group = constants.soma_number_of_clusters,
-                                                                              synapses_per_cluster = constants.soma_synapses_per_cluster,
-                                                                              functional_group_span = constants.soma_functional_group_span,
-                                                                              cluster_span = constants.soma_cluster_span,
-                                                                              gmax_dist = constants.soma_gmax_dist,
-                                                                              proximal_inh_dist = proximal_inh_dist,
-                                                                              distal_inh_dist = distal_inh_dist,
-                                                                              spike_generator = spike_generator,
-                                                                              synapse_generator = synapse_generator,
-                                                                              t = t, f_group_name_prefix = "soma_inh_",
-                                                                              random_state = random_state, neuron_r = neuron_r,
-                                                                              spike_trains_to_delay = exc_spikes, 
-                                                                              fr_time_shift = constants.inh_firing_rate_time_shift,
-                                                                              record = True, syn_mod = 'GABA_AB',
-                                                                              vector_length = constants.save_every_ms)
+                                                                            all_segments = soma_segments,
+                                                                            all_len_per_segment = soma_SA_per_segment,
+                                                                            all_segments_centers = soma_segments_center,
+                                                                            number_of_groups = 1,
+                                                                            cells_per_group = constants.soma_number_of_clusters,
+                                                                            synapses_per_cluster = constants.soma_synapses_per_cluster,
+                                                                            functional_group_span = constants.soma_functional_group_span,
+                                                                            cluster_span = constants.soma_cluster_span,
+                                                                            gmax_dist = constants.gmax_inh_dist_soma,
+                                                                            proximal_inh_dist = proximal_inh_dist,
+                                                                            distal_inh_dist = distal_inh_dist,
+                                                                            spike_generator = spike_generator,
+                                                                            synapse_generator = synapse_generator,
+                                                                            t = t, f_group_name_prefix = "soma_inh_",
+                                                                            random_state = random_state, neuron_r = neuron_r,
+                                                                            spike_trains_to_delay = exc_spikes, fr_time_shift = 4,
+                                                                            record = True, syn_mod = 'GABA_AB',
+                                                                            vector_length = constants.h_tstop, method = "gaussian",
+                                                                            tiesinga_params = (constants.a_iv, constants.P, constants.CV_t, constants.sigma_iv, constants.pad_aiv))
     
     logger.log_memory()
     logger.log_section_end("Generating inhibitory func groups for soma")
@@ -272,7 +290,7 @@ def main(numpy_random_state, neuron_random_state):
         "nexus": nexus_seg_index
     }
     logger.log_section_end("Finding segments of interest")
-    
+
     # Compute electrotonic distances from nexus
     logger.log_section_start("Recomputing elec distance")
 
