@@ -337,6 +337,9 @@ def main(numpy_random_state, neuron_random_state):
             with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
                 file.create_dataset("report/biophysical/data", data = lfp)
 
+            with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "t.h5"), 'w') as file:
+                file.create_dataset("report/biophysical/data", data = t_vec.as_numpy())
+
             logger.log(f"Saved at time step {time_step}")
 
             time_steps_saved_at.append(time_step)
