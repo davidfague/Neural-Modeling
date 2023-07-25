@@ -124,19 +124,19 @@ class Synapse:
         else:
             raise(ValueError("Need to pass either existing neuron synapse object or segment to create new synapse."))
         self.syn_type = syn_mod
-        if (gmax is None) and (syn_obj is not None):
-          self.gmax = self.get_gmax_from_syn_obj()
-        elif gmax is not None:
-          self.gmax = gmax
-        else:
-          raise(ImplementationError("Need to pass either existing neuron synapse object or gmax to create new synapse."))
-        self.gmax_var = None # Variable name of maximum conductance (uS)
         self.syn_params = syn_params
         self.synapse_neuron_obj = syn_obj
+        self.gmax_var = None # Variable name of maximum conductance (uS)
         if (self.synapse_neuron_obj is not None) and (self.syn_type is None):
             self.syn_type = str(self.synapse_neuron_obj).split('[')[0]
         self.rec_vec = []  # List of vectors for recording
         self.set_params_based_on_synapse_mod(self.syn_type)
+        if (gmax is None) and (syn_obj is not None):
+          self.gmax = self.get_gmax_from_syn_obj()
+        if gmax is not None:
+          self.gmax = gmax
+        else:
+          raise(ImplementationError("Need to pass either existing neuron synapse object or gmax to create new synapse."))
         self.setup(record, vector_length)
         self.ncs = []
 
