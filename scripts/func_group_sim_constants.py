@@ -20,7 +20,7 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 2500 # Sim runtime (ms)
+h_tstop = 1000 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Excitatory dend
@@ -61,4 +61,4 @@ channel_names = ['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et
 # Log, plot and save
 save_dir = "output"
 log_every_ms = 500
-save_every_ms = 200
+save_every_ms = 1000

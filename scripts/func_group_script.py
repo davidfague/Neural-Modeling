@@ -348,6 +348,8 @@ def main(numpy_random_state, neuron_random_state):
             for recorder in cell.recorders.items():
                 for vec in recorder[1].vectors: vec.resize(0)
 
+            cell.spikes.resize(0)
+
             for syn in all_syns:
                 for vec in syn.rec_vec: vec.resize(0)
             

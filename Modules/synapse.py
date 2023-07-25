@@ -93,7 +93,7 @@ class CurrentInjection:
 
 class Synapse:
 
-    def __init__(self, segment: nrn.Segment = None, syn_mod: str = None, gmax: float = 0.01, record: bool = False, 
+    def __init__(self, segment: nrn.Segment = None, syn_mod: str = None, gmax: float = None, record: bool = False, 
                  syn_params: dict = None, syn_obj: object = None, vector_length: int = None):
         '''
         Parameters:
@@ -124,7 +124,6 @@ class Synapse:
         else:
             raise(ValueError("Need to pass either existing neuron synapse object or argument to create new synapse."))
         self.syn_type = syn_mod
-        self.gmax = gmax
         self.gmax_var = None # Variable name of maximum conductance (uS)
         self.syn_params = syn_params
         self.synapse_neuron_obj = syn_obj
@@ -132,7 +131,7 @@ class Synapse:
             self.syn_type = str(self.synapse_neuron_obj).split('[')[0]
         self.rec_vec = []  # List of vectors for recording
         self.set_params_based_on_synapse_mod(self.syn_type)
-        self.gmax = self.get_gmax()
+        self.gmax = self.set_gmax(gmax)
         self.setup(record, vector_length)
         self.ncs = []
 
@@ -190,12 +189,12 @@ class Synapse:
             self.gmax = gmax
         if self.gmax_var == '_nc_weight':
             self.nc.weight[0] = self.gmax
+        
         else:
             setattr(self.synapse_neuron_obj, self.gmax_var, self.gmax)
 
     def get_gmax(self) -> None:
         gmax = getattr(self.synapse_neuron_obj, self.gmax_var)
-        self.gmax = gmax
         return gmax
     
     def setup_recorder(self, vector_length) -> None:

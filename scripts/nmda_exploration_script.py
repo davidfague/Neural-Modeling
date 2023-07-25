@@ -8,9 +8,9 @@ from Modules.segment import SegmentManager
 from Modules.plotting_utils import plot_sta, plot_edges
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-07-24_14-53-07_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
+output_folder = "output/2023-07-24_17-02-55_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
 step_size = 2000
-steps = range(2000, 40001, step_size)
+steps = range(2000, 10001, step_size)
 dt = 0.1
 what_to_plot = {
     "Na": True,
@@ -30,6 +30,7 @@ def main(random_state):
 
     random_state = np.random.RandomState(random_state)
     sm = SegmentManager(output_folder, steps = steps, dt = dt)
+    
 
     if what_to_plot["Na"]:
         # Get lower bounds for Na
