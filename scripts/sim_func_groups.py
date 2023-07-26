@@ -232,11 +232,11 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_memory()
     
     reductor = Reductor()
-    cell = reductor.reduce_cell_func(complex_cell=complex_cell, reduce_cell=constants.reduce_cell, synapses_list=all_syns,
-                                 netcons_list=spike_generator.netcons, spike_trains=spike_generator.spike_trains,
-                                 spike_threshold=constants.spike_threshold, random_state=random_state,
-                                 var_names=constants.channel_names,
-                                 reduction_frequency=constants.reduction_frequency, expand_cable=constants.expand_cable, choose_branches=constants.choose_branches)
+    cell = reductor.reduce_cell(complex_cell = complex_cell, reduce_cell = constants.reduce_cell, synapses_list = all_syns,
+                                netcons_list = spike_generator.netcons, spike_trains = spike_generator.spike_trains,
+                                spike_threshold = constants.spike_threshold, random_state = random_state,
+                                var_names = constants.channel_names, reduction_frequency = constants.reduction_frequency, 
+                                expand_cable = constants.expand_cable, choose_branches = constants.choose_branches)
     if constants.optimize_nseg_by_lambda:
         reductor.update_model_nseg_using_lambda(cell, constants.segs_per_lambda)
     if constants.merge_synapses:
