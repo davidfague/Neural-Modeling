@@ -1,3 +1,3 @@
 # Neural-Modeling
 
-Server
+Server and local
