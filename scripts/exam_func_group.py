@@ -10,7 +10,7 @@ from cell_inference.config import params
 from cell_inference.utils.plotting.plot_results import plot_lfp_heatmap, plot_lfp_traces
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-07-26_15-26-33_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
+output_folder = "output/2023-07-26_15-43-26_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
 
 # Check shape of each saved file
 analyze = True

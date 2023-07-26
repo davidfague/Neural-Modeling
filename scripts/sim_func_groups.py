@@ -2,12 +2,10 @@ import sys
 sys.path.append("../")
 
 from Modules.synapse_generator import SynapseGenerator
-from Modules.cell_model import CellModel
 from Modules.spike_generator import SpikeGenerator
 from Modules.complex_cell import build_L5_cell
 from Modules.functional_group import generate_excitatory_functional_groups, generate_inhibitory_functional_groups
 from Modules.cell_utils import get_segments_and_len_per_segment
-from Modules.plotting_utils import plot_simulation_results
 from Modules.logger import Logger
 from Modules.recorder import Recorder
 from Modules.reduction import Reductor
@@ -16,8 +14,6 @@ from neuron import h
 
 from cell_inference.config import params
 from cell_inference.utils.currents.ecp import EcpMod
-#from cell_inference.utils.currents.recorder import Recorder
-from cell_inference.utils.plotting.plot_results import plot_lfp_heatmap, plot_lfp_traces
 
 import numpy as np
 from functools import partial

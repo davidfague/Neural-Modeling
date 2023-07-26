@@ -63,6 +63,13 @@ channel_names = ['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et
                  'ik_K_Pst', 'ik_K_Tst', 'ik_SK_E2', 'ik_SKv3_1', 'ica_Ca_HVA', 
                  'ica_Ca_LVAst', 'ihcn_Ih', 'i_pas']
 
+# Tiesinga
+ties_a_iv = 10
+ties_P = 1
+ties_CV_t = 1
+ties_sigma_iv = 1
+ties_pad_aiv = 0
+
 # Log, plot and save
 save_dir = "output"
 log_every_ms = 500

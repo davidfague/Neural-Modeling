@@ -2,12 +2,10 @@ import sys
 sys.path.append("../")
 
 from Modules.synapse_generator import SynapseGenerator
-from Modules.cell_model import CellModel
 from Modules.spike_generator import SpikeGenerator
 from Modules.complex_cell import build_L5_cell
 from Modules.functional_group import generate_excitatory_functional_groups, generate_inhibitory_functional_groups
 from Modules.cell_utils import get_segments_and_len_per_segment
-from Modules.plotting_utils import plot_simulation_results
 from Modules.logger import Logger
 from Modules.recorder import Recorder
 from Modules.reduction import Reductor
@@ -16,8 +14,6 @@ from neuron import h
 
 from cell_inference.config import params
 from cell_inference.utils.currents.ecp import EcpMod
-#from cell_inference.utils.currents.recorder import Recorder
-from cell_inference.utils.plotting.plot_results import plot_lfp_heatmap, plot_lfp_traces
 
 import numpy as np
 from functools import partial
@@ -25,27 +21,7 @@ import scipy.stats as st
 import time, datetime
 import os, h5py, pickle
 
-import func_group_sim_constants as constants
-
-# constants.h_tstop = 5000
-# 150 soma inh synapses
-# ----------
-constants.soma_number_of_clusters = 15 # Number of presynaptic cells
-constants.a_iv = 10
-constants.P = 1
-constants.CV_t = 1
-constants.sigma_iv = 1
-constants.pad_aiv = 0
-# ----------
-constants.soma_functional_group_span = 100
-constants.soma_cluster_span = 10
-constants.soma_synapses_per_cluster = 10 # Number of synapses per presynaptic cell
-
-constants.I_const = constants.inh_gmax_dist * 150
-constants.gmax_inh_dist_soma = float(constants.I_const / (constants.soma_number_of_clusters * constants.soma_synapses_per_cluster))
-
-i_duration = 1000
-i_delay = 10
+import constants
 
 def main(numpy_random_state, neuron_random_state, i_amplitude):
 
@@ -211,6 +187,9 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_section_start("Generating inhibitory func groups for soma")
     logger.log_memory()
 
+    I_const = constants.inh_gmax_dist * 150
+    gmax_inh_dist_soma = float(I_const / (constants.soma_number_of_clusters * constants.soma_synapses_per_cluster))
+
     soma_inhibitory_functional_groups = generate_inhibitory_functional_groups(cell = complex_cell,
                                                                             all_segments = soma_segments,
                                                                             all_len_per_segment = soma_SA_per_segment,
@@ -220,7 +199,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                                                             synapses_per_cluster = constants.soma_synapses_per_cluster,
                                                                             functional_group_span = constants.soma_functional_group_span,
                                                                             cluster_span = constants.soma_cluster_span,
-                                                                            gmax_dist = constants.gmax_inh_dist_soma,
+                                                                            gmax_dist = gmax_inh_dist_soma,
                                                                             proximal_inh_dist = proximal_inh_dist,
                                                                             distal_inh_dist = distal_inh_dist,
                                                                             spike_generator = spike_generator,
@@ -230,7 +209,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                                                             spike_trains_to_delay = exc_spikes, fr_time_shift = 4,
                                                                             record = True, syn_mod = 'GABA_AB',
                                                                             vector_length = constants.h_tstop, method = "gaussian",
-                                                                            tiesinga_params = (constants.a_iv, constants.P, constants.CV_t, constants.sigma_iv, constants.pad_aiv))
+                                                                            tiesinga_params = (constants.ties_a_iv, constants.ties_P, constants.ties_CV_t, constants.ties_sigma_iv, constants.ties_pad_aiv))
     
     logger.log_memory()
     logger.log_section_end("Generating inhibitory func groups for soma")
@@ -262,8 +241,8 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     cell.setup_recorders(vector_length = constants.save_every_ms)
 
     # Add injections for F/I curve
-    # Tune for proper action potential
-    cell.add_injection(sec_index = cell.all.index(cell.soma[0]), record = True, delay = i_delay, dur = i_duration, amp = i_amplitude)
+    if i_amplitude is not None:
+        cell.add_injection(sec_index = cell.all.index(cell.soma[0]), record = True, delay = constants.h_i_delay, dur = constants.h_i_delay, amp = i_amplitude)
     
     logger.log_memory()
     logger.log_section_end("Initializing cell model")
@@ -334,7 +313,9 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
 
     # Create a folder to save to
     random_seed_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_seeds_" +\
-                       str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name() + "_" + str(i_amplitude)
+                       str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
+    if i_amplitude is not None:
+        random_seed_name += f"_{int(i_amplitude * 1000)}"
     save_folder = os.path.join(constants.save_dir, random_seed_name)
     os.mkdir(save_folder)
 
@@ -361,6 +342,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
             with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
                 file.create_dataset("report/biophysical/data", data = lfp)
 
+            # Save time
             with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "t.h5"), 'w') as file:
                 file.create_dataset("report/biophysical/data", data = t_vec.as_numpy())
 
@@ -376,6 +358,8 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                 for vec in recorder[1].vectors: vec.resize(0)
             cell.spikes.resize(0)
 
+            for inj in cell.injection: inj.rec_vec.resize(0)
+
             for syn in all_syns:
                 for vec in syn.rec_vec: vec.resize(0)
             
@@ -383,10 +367,6 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
 
         h.fadvance()
         time_step += 1
-
-    with open(os.path.join(constants.save_dir, "firing_rates.csv"), "a") as file:
-        firing_rate = len(cell.spikes.as_numpy()[cell.spikes.as_numpy() > 300]) / (h.tstop / 1000)
-        file.writelines(f"{amp},{firing_rate}\n")
 
     sim_end_time = time.time()
 
@@ -398,8 +378,6 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log(f'Total runtime: {round(total_runtime)} sec.')
 
 if __name__ == "__main__":
-    
-    amps = [0.1, 0.8]
 
     # Sanity checks
     if os.path.exists('x86_64'):
@@ -415,8 +393,8 @@ if __name__ == "__main__":
 
     for np_state in constants.numpy_random_states:
         for neuron_state in constants.neuron_random_states:
-            for amp in amps:
-                print(f"Running for seeds ({np_state}, {neuron_state}) and amplitude {amp}...")
-                main(np_state, neuron_state, amp)
+            for i_amplitude in constants.h_i_amplitudes:
+                print(f"Running for seeds ({np_state}, {neuron_state}); CI = {i_amplitude}...")
+                main(np_state, neuron_state, i_amplitude)
 
     
