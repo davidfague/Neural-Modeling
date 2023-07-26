@@ -44,7 +44,10 @@ constants.soma_synapses_per_cluster = 10 # Number of synapses per presynaptic ce
 constants.I_const = constants.inh_gmax_dist * 150
 constants.gmax_inh_dist_soma = float(constants.I_const / (constants.soma_number_of_clusters * constants.soma_synapses_per_cluster))
 
-def main(numpy_random_state, neuron_random_state):
+i_duration = 1000
+i_delay = 10
+
+def main(numpy_random_state, neuron_random_state, i_amplitude):
 
     logger = Logger(output_dir = "./", active = True)
 
@@ -258,12 +261,9 @@ def main(numpy_random_state, neuron_random_state):
         reductor.merge_synapses(cell)
     cell.setup_recorders(vector_length = constants.save_every_ms)
 
-        # add injections for F/I curve
-    delays=[10]
-    durations=[2000]
-    amps=[0.85]
-    for i in range(len(delays)):
-      cell.add_injection(sec_index=cell.all.index(cell.soma),record=True,delay=delays[i],dur=durations[i],amp=amps[i]) # Tune for proper action potential
+    # Add injections for F/I curve
+    # Tune for proper action potential
+    cell.add_injection(sec_index = cell.all.index(cell.soma[0]), record = True, delay = i_delay, dur = i_duration, amp = i_amplitude)
     
     logger.log_memory()
     logger.log_section_end("Initializing cell model")
@@ -334,7 +334,7 @@ def main(numpy_random_state, neuron_random_state):
 
     # Create a folder to save to
     random_seed_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_seeds_" +\
-                       str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
+                       str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name() + "_" + str(i_amplitude)
     save_folder = os.path.join(constants.save_dir, random_seed_name)
     os.mkdir(save_folder)
 
@@ -374,7 +374,6 @@ def main(numpy_random_state, neuron_random_state):
             for vec in cell.Vm.vectors: vec.resize(0)
             for recorder in cell.recorders.items():
                 for vec in recorder[1].vectors: vec.resize(0)
-            print(cell.spikes.as_numpy())
             cell.spikes.resize(0)
 
             for syn in all_syns:
@@ -384,6 +383,10 @@ def main(numpy_random_state, neuron_random_state):
 
         h.fadvance()
         time_step += 1
+
+    with open(os.path.join(constants.save_dir, "firing_rates.csv"), "a") as file:
+        firing_rate = len(cell.spikes.as_numpy()[cell.spikes.as_numpy() > 300]) / (h.tstop / 1000)
+        file.writelines(f"{amp},{firing_rate}\n")
 
     sim_end_time = time.time()
 
@@ -395,6 +398,8 @@ def main(numpy_random_state, neuron_random_state):
     logger.log(f'Total runtime: {round(total_runtime)} sec.')
 
 if __name__ == "__main__":
+    
+    amps = [0.1, 0.8]
 
     # Sanity checks
     if os.path.exists('x86_64'):
@@ -410,7 +415,8 @@ if __name__ == "__main__":
 
     for np_state in constants.numpy_random_states:
         for neuron_state in constants.neuron_random_states:
-            print(f"Running for seeds ({np_state}, {neuron_state})...")
-            main(np_state, neuron_state)
+            for amp in amps:
+                print(f"Running for seeds ({np_state}, {neuron_state}) and amplitude {amp}...")
+                main(np_state, neuron_state, amp)
 
     
