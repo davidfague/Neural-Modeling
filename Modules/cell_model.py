@@ -6,6 +6,8 @@ from Modules.recorder import Recorder
 from Modules.cell_utils import calc_seg_coords
 import os, shutil, h5py, csv
 
+from cell_inference.utils.currents.currentinjection import CurrentInjection
+
 # Global Constants
 FREQS = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
 
@@ -544,3 +546,6 @@ class CellModel:
 
         return terminal_sections
 
+    def add_injection(self, sec_index, **kwargs):
+        """Add current injection to a section by its index"""
+        self.injection.append(CurrentInjection(self, sec_index, **kwargs))
