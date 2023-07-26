@@ -25,9 +25,9 @@ import scipy.stats as st
 import time, datetime
 import os, h5py, pickle
 
-import func_group_sim_constants as constants
+import constants
 
-def main(numpy_random_state, neuron_random_state):
+def main(numpy_random_state, neuron_random_state, i_amplitude):
 
     logger = Logger(output_dir = "./", active = True)
 
@@ -41,6 +41,8 @@ def main(numpy_random_state, neuron_random_state):
         neuron_r.MCellRan4()
 
     logger.log_section_end("Setting random states")
+
+    logger.log(f"Amplitude is set to {i_amplitude}")
 
     # Time vector for generating inputs
     t = np.arange(0, constants.h_tstop, 1)
@@ -240,6 +242,10 @@ def main(numpy_random_state, neuron_random_state):
     if constants.merge_synapses:
         reductor.merge_synapses(cell)
     cell.setup_recorders(vector_length = constants.save_every_ms)
+
+    # Add injections for F/I curve
+    if i_amplitude is not None:
+        cell.add_injection(sec_index = cell.all.index(cell.soma[0]), record = True, delay = constants.h_i_delay, dur = constants.h_i_delay, amp = i_amplitude)
     
     logger.log_memory()
     logger.log_section_end("Initializing cell model")
@@ -311,6 +317,8 @@ def main(numpy_random_state, neuron_random_state):
     # Create a folder to save to
     random_seed_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_seeds_" +\
                        str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
+    if i_amplitude is not None:
+        random_seed_name += f"_{int(i_amplitude * 1000)}"
     save_folder = os.path.join(constants.save_dir, random_seed_name)
     os.mkdir(save_folder)
 
@@ -337,6 +345,7 @@ def main(numpy_random_state, neuron_random_state):
             with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
                 file.create_dataset("report/biophysical/data", data = lfp)
 
+            # Save time
             with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "t.h5"), 'w') as file:
                 file.create_dataset("report/biophysical/data", data = t_vec.as_numpy())
 
@@ -350,8 +359,9 @@ def main(numpy_random_state, neuron_random_state):
             for vec in cell.Vm.vectors: vec.resize(0)
             for recorder in cell.recorders.items():
                 for vec in recorder[1].vectors: vec.resize(0)
-            print(cell.spikes.as_numpy())
             cell.spikes.resize(0)
+
+            for inj in cell.injection: inj.rec_vec.resize(0)
 
             for syn in all_syns:
                 for vec in syn.rec_vec: vec.resize(0)
@@ -386,7 +396,8 @@ if __name__ == "__main__":
 
     for np_state in constants.numpy_random_states:
         for neuron_state in constants.neuron_random_states:
-            print(f"Running for seeds ({np_state}, {neuron_state})...")
-            main(np_state, neuron_state)
+            for i_amplitude in constants.h_i_amplitudes:
+                print(f"Running for seeds ({np_state}, {neuron_state}); CI = {i_amplitude}...")
+                main(np_state, neuron_state, i_amplitude)
 
     

@@ -5,4 +5,4 @@
 #SBATCH --job-name=l5cell
 
 source /home/shared/L5env/bin/activate
-python func_group_script.py
+python sim_func_groups.py

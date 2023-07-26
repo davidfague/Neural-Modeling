@@ -10,9 +10,9 @@ reduce_cell = False
 expand_cable = False
 reduction_frequency = 0
 choose_branches = 22
-optimize_nseg_by_lambda = False # whether or not to optimize the number of segments by lambda after reduction (may need to add an update to the CellModel class instance's segments list and seg_info list.)
-merge_synapses = False # whether or not to merge synapses after optimizing nseg by lambda. (synapses should already be merged by the reduce_cell_func, but could be merged again if optimize_nseg_by_lambda lowers nseg.)
-segs_per_lambda = 10 # desired number of segs per length constant
+optimize_nseg_by_lambda = False # Whether or not to optimize the number of segments by lambda after reduction (may need to add an update to the CellModel class instance's segments list and seg_info list.)
+merge_synapses = False # Whether or not to merge synapses after optimizing nseg by lambda. (synapses should already be merged by the reduce_cell_func, but could be merged again if optimize_nseg_by_lambda lowers nseg.)
+segs_per_lambda = 10 # Desired number of segs per length constant
 
 # Complex cell
 complex_cell_folder = '../complex_cells/L5PC/'
@@ -22,6 +22,11 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 h_celcius = 37
 h_tstop = 1000 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
+
+# Current injection
+h_i_amplitudes = [None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
+h_i_duration = 900 # (ms)
+h_i_delay = 10 # (ms)
 
 # Excitatory dend
 exc_gmax_mean_0 = 0.2
@@ -61,4 +66,4 @@ channel_names = ['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et
 # Log, plot and save
 save_dir = "output"
 log_every_ms = 500
-save_every_ms = 1000
+save_every_ms = 200

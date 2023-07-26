@@ -3,16 +3,14 @@ sys.path.append("../")
 
 import numpy as np
 import h5py, pickle, os
-import func_group_sim_constants as constants
+import constants
 
 from Modules.plotting_utils import plot_simulation_results
 from cell_inference.config import params
 from cell_inference.utils.plotting.plot_results import plot_lfp_heatmap, plot_lfp_traces
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-07-25_16-36-17_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
-steps = range(2000, 10001, 2000)
-step_size = 2000
+output_folder = "output/2023-07-26_14-34-58_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
 
 # Check shape of each saved file
 analyze = True
@@ -21,6 +19,10 @@ analyze = True
 plot_voltage_lfp = True
 
 def main():
+
+    step_size = int(constants.save_every_ms / constants.h_dt) # Timestamps
+    steps = range(step_size, int(constants.h_tstop / constants.h_dt) + 1, step_size) # Timestamps
+
     if analyze:
         for step in steps:
             dirname = os.path.join(output_folder, f"saved_at_step_{step}")
@@ -45,7 +47,7 @@ def main():
 
         Vm = np.hstack(Vm)
         lfp = np.vstack(lfp)
-        t = np.hstack(t)
+        t = np.hstack(t) # (ms)
 
         with open(os.path.join(output_folder, "seg_indexes.pickle"), "rb") as file:
             seg_indexes = pickle.load(file)
