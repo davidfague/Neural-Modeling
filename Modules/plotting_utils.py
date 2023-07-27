@@ -367,10 +367,13 @@ def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', tit
     plt.figure(figsize=(4,10))
 
     # Filter segments to plot by segment type
-    new_segments = []
-    for seg in segments:
-        if (seg.type == seg_type) or (seg.type == 'soma'):
-		new_segments.append(seg)
+    if seg_type is not None:
+	    new_segments = []
+	    for seg in segments:
+	        if (seg.type == seg_type) or (seg.type == 'soma'):
+			new_segments.append(seg)
+    else:
+	    new_segments = segments
 		
 
     # Plot segments colored by normalized edge index
