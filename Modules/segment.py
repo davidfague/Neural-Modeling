@@ -161,7 +161,6 @@ class SegmentManager:
             data[name] = np.hstack(data[name])
 
         data["seg_info"] = pd.read_csv(os.path.join(output_folder, f"saved_at_step_{steps[0]}", "seg_info.csv"))
-        print(data["spikes_report"])
 
         return data
 
