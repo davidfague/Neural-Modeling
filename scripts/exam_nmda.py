@@ -22,9 +22,19 @@ what_to_plot = {
 # Na
 threshold = 0.003 / 1000
 ms_within_somatic_spike = 2
+na_apic_clip = (-3, 3)
+na_basal_clip = (-1, 1)
 
 # Ca
 lowery, uppery = 500, 1500
+ca_apic_clip = (-0.25, 1.5)
+
+# NMDA
+nmda_apic_clip = (-3, 3)
+nmda_basal_clip = (-1.5, 1.5)
+
+# NMDA Ca
+nmda_ca_apic_clip = (-2, 2)
 
 def main(random_state):
 
@@ -81,7 +91,7 @@ def main(random_state):
         plot_edges(edges_apic, sm.segments, na_path, elec_dist_var = 'soma_passive', filename = "na_edges_apic.png")
 
         # STA
-        to_plot = np.clip((na_apic - na_apic_rand) / (np.abs(na_apic_rand) + 1e-10), -5, 5) * 100
+        to_plot = np.clip((na_apic - na_apic_rand) / (np.abs(na_apic_rand) + 1e-10), na_apic_clip[0], na_apic_clip[1]) * 100
         print(na_apic)
         print("----")
         print(na_dend_rand)
@@ -91,7 +101,7 @@ def main(random_state):
         xlim = (5, 35)
         plot_sta(to_plot, edges_apic, title, x_ticks, x_tick_labels, xlim, save_to = os.path.join(na_path, "na_spikes_apical.png"))
 
-        to_plot = np.clip((na_dend - na_dend_rand) / (np.abs(na_dend_rand) + 1e-15), -5, 5) * 100
+        to_plot = np.clip((na_dend - na_dend_rand) / (np.abs(na_dend_rand) + 1e-15), na_basal_clip[0], na_basal_clip[1]) * 100
         title = 'Na Spikes - Basal'
         x_ticks = np.arange(0, 40, 5)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-20, 20, 5)]
@@ -114,7 +124,7 @@ def main(random_state):
         ca_path = os.path.join(output_folder, "Ca")
         os.mkdir(ca_path)
 
-        to_plot = np.clip((ca_apic - ca_apic_rand) / (np.abs(ca_apic_rand) + 1e-15), -5, 5) * 100
+        to_plot = np.clip((ca_apic - ca_apic_rand) / (np.abs(ca_apic_rand) + 1e-15), ca_apic_clip[0], ca_apic_clip[1]) * 100
         title = 'Ca2+ Spikes - Nexus'
         x_ticks = np.arange(0, 26, 4)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
@@ -141,13 +151,13 @@ def main(random_state):
         nmda_path = os.path.join(output_folder, "NMDA")
         os.mkdir(nmda_path)
 
-        to_plot = np.clip((nmda_apic - nmda_rand_apic) / (np.abs(nmda_rand_apic) + 1e-15), -5, 5) * 100
+        to_plot = np.clip((nmda_apic - nmda_rand_apic) / (np.abs(nmda_rand_apic) + 1e-15), nmda_apic_clip[0], nmda_apic_clip[1]) * 100
         title = 'NMDA Spikes - Apical'
         x_ticks = np.arange(0, 26, 4)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
         plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, [], save_to = os.path.join(nmda_path, "nmda_spikes_apical.png"))
         
-        to_plot = np.clip((nmda_dend - nmda_rand_dend) / (np.abs(nmda_rand_dend) + 1e-15), -5, 5) * 100
+        to_plot = np.clip((nmda_dend - nmda_rand_dend) / (np.abs(nmda_rand_dend) + 1e-15), nmda_basal_clip[0], nmda_basal_clip[1]) * 100
         title = 'NMDA Spikes - Basal'
         x_ticks = np.arange(0, 26, 4)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
@@ -174,17 +184,11 @@ def main(random_state):
         ca_nmda_path = os.path.join(output_folder, "Ca_NMDA")
         os.mkdir(ca_nmda_path)
 
-        to_plot = np.clip((ca_nmda_apic - ca_nmda_rand_apic) / (np.abs(ca_nmda_rand_apic) + 1e-15), -5, 5) * 100
+        to_plot = np.clip((ca_nmda_apic - ca_nmda_rand_apic) / (np.abs(ca_nmda_rand_apic) + 1e-15), nmda_ca_apic_clip[0], nmda_ca_apic_clip[1]) * 100
         title = 'Ca - NMDA Spikes - Apical'
         x_ticks = np.arange(0, 26, 4)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
         plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, [], save_to = os.path.join(ca_nmda_path, "ca_nmda_spikes_apical.png"))
-
-        to_plot = np.clip((ca_nmda_dend - ca_nmda_rand_dend) / (np.abs(ca_nmda_rand_dend) + 1e-15), -5, 5) * 100
-        title = 'Ca - NMDA Spikes - Basal'
-        x_ticks = np.arange(0, 26, 4)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
-        plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, [], save_to = os.path.join(ca_nmda_path, "ca_nmda_spikes_basal.png"))
 
 if __name__ == "__main__":
     main(random_state = 123)
