@@ -87,8 +87,8 @@ def main(random_state):
         fig.savefig(os.path.join(na_path, title + ".png"))
 
         # Edges
-        plot_edges(edges_dend, sm.segments, na_path, elec_dist_var = 'soma_passive', filename = "na_edges_dend.png")
-        plot_edges(edges_apic, sm.segments, na_path, elec_dist_var = 'soma_passive', filename = "na_edges_apic.png")
+        plot_edges(edges_dend, sm.segments, na_path, elec_dist_var = 'soma_passive', filename = "na_edges_dend.png", seg_type = 'dend')
+        plot_edges(edges_apic, sm.segments, na_path, elec_dist_var = 'soma_passive', filename = "na_edges_apic.png", seg_type = 'apic')
 
         # STA
         to_plot = np.clip((na_apic - na_apic_rand) / (np.abs(na_apic_rand) + 1e-10), na_apic_clip[0], na_apic_clip[1]) * 100
