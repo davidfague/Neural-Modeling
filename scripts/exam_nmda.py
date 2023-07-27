@@ -10,10 +10,10 @@ from Modules.plotting_utils import plot_sta, plot_edges
 import constants
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-07-24_17-02-55_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
+output_folder = "hfs_output/2023-07-26_12-47-47_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
 
 what_to_plot = {
-    "Na": True,
+    "Na": False,
     "Ca": True,
     "NMDA": True,
     "Ca_NMDA": True
@@ -32,7 +32,7 @@ def main(random_state):
     steps = range(step_size, int(constants.h_tstop / constants.h_dt) + 1, step_size) # Timestamps
 
     random_state = np.random.RandomState(random_state)
-    sm = SegmentManager(output_folder, steps = steps, dt = constants.dt)
+    sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt)
     
 
     if what_to_plot["Na"]:
@@ -160,7 +160,7 @@ def main(random_state):
             if (len(i) > 0) & ('apic[50]' in sm.segments[ind].sec):
                 ca_spiketimes.extend(i.tolist())
 
-        ca_spiketimes = np.sort(ca_spiketimes) * dt
+        ca_spiketimes = np.sort(ca_spiketimes) * constants.h_dt
         ca_spiketimes = ca_spiketimes[1:][np.diff(ca_spiketimes) > 100] # This condition is from Ben's code. It's supposed to remove duplicates.
         ca_nmda_apic = sm.get_sta(ca_spiketimes, nmda_lower_bounds, edges_nmda_apic, "apic", current_type='ica', elec_dist_var = 'nexus_passive', mag = nmda_mag, mag_th=-0.1)
         ca_rand_spktimes_apic = np.sort(np.random.choice(np.arange(0, len(sm.segments[0].v-1)), sm.soma_spiketimes.shape[0]))

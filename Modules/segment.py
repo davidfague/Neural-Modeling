@@ -265,7 +265,7 @@ class SegmentManager:
                 seg.ih[spike_time - 100 : spike_time + 200]
                 peak_value = np.max(trace)
                 half_peak = peak_value / 2
-                duration = np.arange(0, 300)[trace > half_peak] + spike_time - 10
+                duration = np.arange(len(trace))[trace > half_peak] + spike_time - 10
                 if len(duration) > 2:
                     duration_low.append(duration[0])
                     duration_high.append(duration[-1])
