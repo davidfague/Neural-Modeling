@@ -20,7 +20,8 @@ def plot_sta(data, edges, title, x_ticks, x_tick_labels, xlim,
 	plt.xlim(*xlim)
 	plt.yticks(ticks = np.arange(11) - 0.5, labels = np.round(edges, 3))
 	plt.ylabel("Edge Quantile")
-	plt.colorbar(label = 'Additional Events per AP')
+	# https://github.com/dbheadley/InhibOnDendComp/blob/master/src/mean_dendevt.py
+	plt.colorbar(label = 'Percent Change from Mean')
 
 	if save_to:
 		fig.savefig(f'{save_to}', dpi = fig.dpi)
@@ -197,7 +198,7 @@ def plot_morphology(sim = None, cellid: int = 0, cell: object = None,
 
 
 def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, 
-			    			nexus_seg_index, trunk_seg_index, loc_param, lfp, elec_pos, plot_lfp_heatmap, 
+							nexus_seg_index, trunk_seg_index, loc_param, lfp, elec_pos, plot_lfp_heatmap, 
 							plot_lfp_traces, xlim = None, ylim = None, figsize: tuple = None, vlim = 'auto',
 							show = True, save_dir = None):
 	if xlim is None:
@@ -272,7 +273,7 @@ def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_ind
 		plt.show()
 							
 def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index, trunk_seg_index,
-			    			loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, 
+							loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, xlim=None, ylim=None, 
 			 			figsize: tuple = None, vlim = 'auto', data_dict: dict = None,
 						cmap: str = 'tab20'):
 							
@@ -295,7 +296,7 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 	num_currents = len(data_dict)
 	colormap = cm.get_cmap(cmap)  # or any other colormap
 	for segment_name, segment_index in segments_dict.items():
-	    # Create a new figure for each segment
+		# Create a new figure for each segment
 		if figsize is None:
 			plt.figure(figsize=(10, 4))
 		else:
@@ -318,156 +319,156 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		plt.close()  # Close the figure after saving it
 
 def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', title = None, filename = None, seg_type = None):
-    """
-    This function creates a plot of segments, colored according to the edge group they belong to.
-    
-    Parameters:
-    edges (array): An array of edge values.
-    segments (list): A list of segments.
-    output_folder (str): Path to the output folder where the plot will be saved.
-    title (str): The title of the plot. If None, the title will be the name of the 'edges' variable.
-    filename (str): The filename for the saved plot. If None, the filename will be the title + '_Elec_distance.png'.
-    seg_type (str): The type of segment you wish to plot ex. 'apic' or 'dend'. Used to filter segments.
-    """
-    
-    # If title is not provided, set title as the name of 'edges' argument
-    if title is None:
-        callers_local_vars = inspect.currentframe().f_back.f_locals.items()
-        title = [var_name for var_name, var_val in callers_local_vars if var_val is edges][0]
-    
-    # If filename is not provided, set filename as title + '_Elec_distance.png'
-    if filename is None:
-        filename = title + '_Elec_distance.png'
-    
-    # Array to store edge indices
-    edge_indices = []
+	"""
+	This function creates a plot of segments, colored according to the edge group they belong to.
+	
+	Parameters:
+	edges (array): An array of edge values.
+	segments (list): A list of segments.
+	output_folder (str): Path to the output folder where the plot will be saved.
+	title (str): The title of the plot. If None, the title will be the name of the 'edges' variable.
+	filename (str): The filename for the saved plot. If None, the filename will be the title + '_Elec_distance.png'.
+	seg_type (str): The type of segment you wish to plot ex. 'apic' or 'dend'. Used to filter segments.
+	"""
+	
+	# If title is not provided, set title as the name of 'edges' argument
+	if title is None:
+		callers_local_vars = inspect.currentframe().f_back.f_locals.items()
+		title = [var_name for var_name, var_val in callers_local_vars if var_val is edges][0]
+	
+	# If filename is not provided, set filename as title + '_Elec_distance.png'
+	if filename is None:
+		filename = title + '_Elec_distance.png'
+	
+	# Array to store edge indices
+	edge_indices = []
 
-    # Adjust edges array to include 0 and 1
-    adjusted_edges = np.concatenate(([0], edges, [1]))
+	# Adjust edges array to include 0 and 1
+	adjusted_edges = np.concatenate(([0], edges, [1]))
 
-    # Iterate over each segment
-    for seg in segments:
-        seg_elec_distance = eval(seg.seg_elec_distance)['beta'][elec_dist_var]
-        
-        # Find the edge this segment is between
-        for i in range(len(adjusted_edges) - 1):
-            if adjusted_edges[i] <= seg_elec_distance <= adjusted_edges[i + 1]:  # include segments exactly at edge values
-                edge_indices.append(i)
-                break
-        else:
-            # if segment doesn't fall within any range, assign it to the last group
-            edge_indices.append(len(adjusted_edges) - 2)
+	# Iterate over each segment
+	for seg in segments:
+		seg_elec_distance = eval(seg.seg_elec_distance)['beta'][elec_dist_var]
+		
+		# Find the edge this segment is between
+		for i in range(len(adjusted_edges) - 1):
+			if adjusted_edges[i] <= seg_elec_distance <= adjusted_edges[i + 1]:  # include segments exactly at edge values
+				edge_indices.append(i)
+				break
+		else:
+			# if segment doesn't fall within any range, assign it to the last group
+			edge_indices.append(len(adjusted_edges) - 2)
 
-    # Normalize the edge_indices to range 0-1
-    normalized_indices = np.array(edge_indices) / (len(adjusted_edges) - 2)  
+	# Normalize the edge_indices to range 0-1
+	normalized_indices = np.array(edge_indices) / (len(adjusted_edges) - 2)  
 
-    # Create colormap
-    cmap = plt.get_cmap('jet', len(adjusted_edges) - 1)
+	# Create colormap
+	cmap = plt.get_cmap('jet', len(adjusted_edges) - 1)
 
-    plt.figure(figsize=(4,10))
+	plt.figure(figsize=(4,10))
 
-    # Filter segments to plot by segment type
-    if seg_type is not None:
-	    new_segments = []
-	    for seg in segments:
-	        if (seg.type == seg_type) or (seg.type == 'soma'):
-			new_segments.append(seg)
-    else:
-	    new_segments = segments
+	# Filter segments to plot by segment type
+	if seg_type is not None:
+		new_segments = []
+		for seg in segments:
+			if (seg.type == seg_type) or (seg.type == 'soma'):
+				new_segments.append(seg)
+	else:
+		new_segments = segments
 		
 
-    # Plot segments colored by normalized edge index
-    for i, seg in enumerate(new_segments):
-        plt.plot([seg.p0_x3d, seg.p0_5_x3d, seg.p1_x3d], [seg.p0_y3d, seg.p0_5_y3d, seg.p1_y3d], color=cmap(normalized_indices[i]))
+	# Plot segments colored by normalized edge index
+	for i, seg in enumerate(new_segments):
+		plt.plot([seg.p0_x3d, seg.p0_5_x3d, seg.p1_x3d], [seg.p0_y3d, seg.p0_5_y3d, seg.p1_y3d], color=cmap(normalized_indices[i]))
 
-    # Invisible scatter plot for the colorbar
-    sc = plt.scatter([seg.p0_x3d for seg in segments], [seg.p0_y3d for seg in segments], c=normalized_indices, s=0, cmap=cmap)
+	# Invisible scatter plot for the colorbar
+	sc = plt.scatter([seg.p0_x3d for seg in segments], [seg.p0_y3d for seg in segments], c=normalized_indices, s=0, cmap=cmap)
 
-    # Draw lines and labels
-    plt.vlines(110,400,500)
-    plt.text(0,450,'100 um')
-    plt.hlines(400,110,210)
-    plt.text(110,350,'100 um')
-    plt.xticks([])
-    plt.yticks([])
+	# Draw lines and labels
+	plt.vlines(110,400,500)
+	plt.text(0,450,'100 um')
+	plt.hlines(400,110,210)
+	plt.text(110,350,'100 um')
+	plt.xticks([])
+	plt.yticks([])
 
-    # Set title
-    plt.title(title)
+	# Set title
+	plt.title(title)
 
-    # Normalize adjusted_edges for colorbar ticks
-    normalized_ticks = np.linspace(0, 1, len(adjusted_edges))
+	# Normalize adjusted_edges for colorbar ticks
+	normalized_ticks = np.linspace(0, 1, len(adjusted_edges))
 
-    # Create colorbar with ticks and labels matching adjusted edges
-    cbar = plt.colorbar(sc, ticks=normalized_ticks, label='Edge index')
-    cbar.ax.set_yticklabels(["{:.3f}".format(val) for val in adjusted_edges])
-    cbar.ax.set_ylabel('Percentage of Somatic signal', rotation=270)
+	# Create colorbar with ticks and labels matching adjusted edges
+	cbar = plt.colorbar(sc, ticks=normalized_ticks, label='Edge index')
+	cbar.ax.set_yticklabels(["{:.3f}".format(val) for val in adjusted_edges])
+	cbar.ax.set_ylabel('Percentage of Somatic signal', rotation=270)
 
-    plt.box(False)
-    plt.savefig(os.path.join(output_folder, filename))
+	plt.box(False)
+	plt.savefig(os.path.join(output_folder, filename))
 
 def plot_spikes(sm, seg=None, seg_index=None, dendritic_spike_times=[], spike_labels=[], start_time=0, end_time=None, output_folder="", title=None):
-    """
-    This function plots the membrane potential of a given segment along with the spike times for different dendritic spikes. 
-    It provides an option to specify a time range for the plot.
+	"""
+	This function plots the membrane potential of a given segment along with the spike times for different dendritic spikes. 
+	It provides an option to specify a time range for the plot.
 
-    Args:
-    sm : Segment Manager object that holds all segments.
-    seg : A Segment object that contains the membrane potential data to be plotted. Either seg or seg_index must be specified.
-    seg_index : Index of the segment in the sm.segments list. Either seg or seg_index must be specified.
-    dendritic_spike_times : A list of lists, each containing spike times for a type of dendritic spike (e.g. NMDA, CA, NA).
-    spike_labels : A list of labels for the dendritic_spike_times.
-    start_time : The start of the time range for the plot, in milliseconds. Default is 0.
-    end_time : The end of the time range for the plot, in milliseconds. If not specified, the plot goes till the end of the segment.
-    output_folder : The folder where to save the plot. If it does not exist, it will be created. Default is the current directory.
-    title: The title for the plot. If not specified, the name of the segment will be used.
+	Args:
+	sm : Segment Manager object that holds all segments.
+	seg : A Segment object that contains the membrane potential data to be plotted. Either seg or seg_index must be specified.
+	seg_index : Index of the segment in the sm.segments list. Either seg or seg_index must be specified.
+	dendritic_spike_times : A list of lists, each containing spike times for a type of dendritic spike (e.g. NMDA, CA, NA).
+	spike_labels : A list of labels for the dendritic_spike_times.
+	start_time : The start of the time range for the plot, in milliseconds. Default is 0.
+	end_time : The end of the time range for the plot, in milliseconds. If not specified, the plot goes till the end of the segment.
+	output_folder : The folder where to save the plot. If it does not exist, it will be created. Default is the current directory.
+	title: The title for the plot. If not specified, the name of the segment will be used.
 
-    Returns:
-    None
-    """
-    if seg is None and seg_index is None:
-        raise ValueError("Either seg or seg_index must be provided")
-    elif seg is None:
-        seg = sm.segments[seg_index]
-    elif seg_index is None:
-        seg_index = sm.segments.index(seg)
+	Returns:
+	None
+	"""
+	if seg is None and seg_index is None:
+		raise ValueError("Either seg or seg_index must be provided")
+	elif seg is None:
+		seg = sm.segments[seg_index]
+	elif seg_index is None:
+		seg_index = sm.segments.index(seg)
 
-    start_index = int(start_time * 10)
-    if end_time is not None:
-        end_index = int(end_time * 10)
-    else:
-        end_index = len(seg.v)
+	start_index = int(start_time * 10)
+	if end_time is not None:
+		end_index = int(end_time * 10)
+	else:
+		end_index = len(seg.v)
 
-    time_range = np.arange(start_time, start_time + (end_index-start_index)*0.1, 0.1)
-    plt.plot(time_range, seg.v[start_index:end_index], color='grey')
+	time_range = np.arange(start_time, start_time + (end_index-start_index)*0.1, 0.1)
+	plt.plot(time_range, seg.v[start_index:end_index], color='grey')
 
-    colors = ['red', 'green', 'blue', 'yellow', 'magenta', 'cyan', 'black', 'white']
+	colors = ['red', 'green', 'blue', 'yellow', 'magenta', 'cyan', 'black', 'white']
 
-    if len(spike_labels) != len(dendritic_spike_times):
-        raise ValueError("dendritic_spike_times and spike_labels must have the same length")
+	if len(spike_labels) != len(dendritic_spike_times):
+		raise ValueError("dendritic_spike_times and spike_labels must have the same length")
 
-    for i, spike in enumerate(dendritic_spike_times):
-        x_values = np.array([x for x in spike[seg_index] if start_index <= x < end_index]) * 0.1
-        y_values = np.array([seg.v[x] for x in spike[seg_index] if start_index <= x < end_index])
-        plt.scatter(x_values, y_values, marker='*', color=colors[i % len(colors)], s=50, label=spike_labels[i])
+	for i, spike in enumerate(dendritic_spike_times):
+		x_values = np.array([x for x in spike[seg_index] if start_index <= x < end_index]) * 0.1
+		y_values = np.array([seg.v[x] for x in spike[seg_index] if start_index <= x < end_index])
+		plt.scatter(x_values, y_values, marker='*', color=colors[i % len(colors)], s=50, label=spike_labels[i])
 
-    # If no title is provided, use seg.name
-    if title is None:
-        title = seg.name
+	# If no title is provided, use seg.name
+	if title is None:
+		title = seg.name
 
-    plt.ylabel('Vm (mv)')
-    plt.xlabel('Time (ms)')
-    plt.title(title)
-    plt.legend()
+	plt.ylabel('Vm (mv)')
+	plt.xlabel('Time (ms)')
+	plt.title(title)
+	plt.legend()
 
-    # Create output folder if it doesn't exist
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
+	# Create output folder if it doesn't exist
+	if not os.path.exists(output_folder):
+		os.makedirs(output_folder)
 
-    # Saving the plot as a .png file. The file name includes the title of the plot.
-    safe_title = title.replace(' ', '_')
-    file_name = f"Dendritic_Spikes_{safe_title}.png"
-    full_path = os.path.join(output_folder, file_name)
+	# Saving the plot as a .png file. The file name includes the title of the plot.
+	safe_title = title.replace(' ', '_')
+	file_name = f"Dendritic_Spikes_{safe_title}.png"
+	full_path = os.path.join(output_folder, file_name)
 
-    plt.savefig(full_path, dpi=300)
+	plt.savefig(full_path, dpi=300)
 
-    plt.show()
+	plt.show()
