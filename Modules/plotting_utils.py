@@ -317,7 +317,7 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
 		plt.close()  # Close the figure after saving it
 
-def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', title = None, filename = None):
+def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', title = None, filename = None, seg_type = None):
     """
     This function creates a plot of segments, colored according to the edge group they belong to.
     
@@ -327,7 +327,7 @@ def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', tit
     output_folder (str): Path to the output folder where the plot will be saved.
     title (str): The title of the plot. If None, the title will be the name of the 'edges' variable.
     filename (str): The filename for the saved plot. If None, the filename will be the title + '_Elec_distance.png'.
-
+    seg_type (str): The type of segment you wish to plot ex. 'apic' or 'dend'. Used to filter segments.
     """
     
     # If title is not provided, set title as the name of 'edges' argument
@@ -366,8 +366,15 @@ def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', tit
 
     plt.figure(figsize=(4,10))
 
+    # Filter segments to plot by segment type
+    new_segments = []
+    for seg in segments:
+        if (seg.type == seg_type) or (seg.type == 'soma'):
+		new_segments.append(seg)
+		
+
     # Plot segments colored by normalized edge index
-    for i, seg in enumerate(segments):
+    for i, seg in enumerate(new_segments):
         plt.plot([seg.p0_x3d, seg.p0_5_x3d, seg.p1_x3d], [seg.p0_y3d, seg.p0_5_y3d, seg.p1_y3d], color=cmap(normalized_indices[i]))
 
     # Invisible scatter plot for the colorbar
