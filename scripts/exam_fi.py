@@ -20,11 +20,13 @@ def main():
         spikes = []
         for ampl_dir in os.listdir(output_folder):
             if ampl_dir.endswith(f"_{int(ampl * 1000)}"):
+                print(step_size)
                 for step in steps:
                     dirname = os.path.join(output_folder, ampl_dir, f"saved_at_step_{step}")
                     with h5py.File(os.path.join(dirname, "spikes_report.h5")) as file:
-                        spikes.append(np.array(file["report"]["biophysical"]["data"])[:step_size])
+                        spikes.append(np.array(file["report"]["biophysical"]["data"]))
         spikes = np.hstack(spikes)
+        print(spikes)
         firing_rate = len(spikes[spikes > skip]) / (constants.h_tstop / 1000)
         firing_rates.append(firing_rate)
 
