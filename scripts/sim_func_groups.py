@@ -10,8 +10,6 @@ from Modules.logger import Logger
 from Modules.recorder import Recorder
 from Modules.reduction import Reductor
 
-from neuron import h
-
 from cell_inference.config import params
 from cell_inference.utils.currents.ecp import EcpMod
 
@@ -20,10 +18,18 @@ from functools import partial
 import scipy.stats as st
 import time, datetime
 import os, h5py, pickle
+from multiprocessing import Process
+
+from neuron import h
 
 import constants
 
 def main(numpy_random_state, neuron_random_state, i_amplitude):
+
+    # Compile and load modfiles
+    os.system(f"nrnivmodl {constants.modfiles_folder}")
+    h.load_file('stdrun.hoc')
+    h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
 
     logger = Logger(output_dir = "./", active = True)
 
@@ -31,10 +37,10 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_section_start(f"Setting random states ({numpy_random_state}, {neuron_random_state})")
 
     random_state = np.random.RandomState(numpy_random_state)
-    neuron_r = h.Random()
+    np.random.seed(numpy_random_state)
 
-    for _ in range(neuron_random_state):
-        neuron_r.MCellRan4()
+    neuron_r = h.Random()
+    neuron_r.MCellRan4(neuron_random_state)
 
     logger.log_section_end("Setting random states")
 
@@ -377,23 +383,18 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log(f'Total runtime: {round(total_runtime)} sec.')
 
 if __name__ == "__main__":
-
-    # Sanity checks
-    if os.path.exists('x86_64'):
-        raise FileExistsError("Delete x86_64 folder.")
     
     if not os.path.exists(constants.save_dir):
         raise FileNotFoundError("No save folder with the given name.")
-
-    # Compile and load modfiles
-    os.system(f"nrnivmodl {constants.modfiles_folder}")
-    h.load_file('stdrun.hoc')
-    h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
 
     for np_state in constants.numpy_random_states:
         for neuron_state in constants.neuron_random_states:
             for i_amplitude in constants.h_i_amplitudes:
                 print(f"Running for seeds ({np_state}, {neuron_state}); CI = {i_amplitude}...")
-                main(np_state, neuron_state, i_amplitude)
+                p = Process(target = main, args=[np_state, neuron_state, i_amplitude])
+                p.start()
+                p.join()
+                p.kill()
+                os.system("rm -r x86_64")
 
     
