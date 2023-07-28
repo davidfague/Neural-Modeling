@@ -316,11 +316,11 @@ class SegmentManager:
     def get_sta(self, spiketimes, lower_bounds, edges, sec_indicator, current_type, elec_dist_var = 'soma_passive', mag = None, mag_th = None):
 
         if current_type == 'ina':
-            bin_start, bin_end, step_size, interval = 2, 2, 1, 39
+            bin_start, bin_end, step_size, interval = 5, 5, 2, 49 # 2, 2, 1, 39
         elif current_type == 'ica':
-            bin_start, bin_end, step_size, interval = 10, 4, 5, 27
+            bin_start, bin_end, step_size, interval = 5, 5, 2, 49 # 10, 4, 5, 27
         elif current_type =='inmda':
-            bin_start, bin_end, step_size, interval = 10, 4, 5, 27
+            bin_start, bin_end, step_size, interval = 5, 5, 2, 49 # 10, 4, 5, 27
         else:
             raise ValueError("current_type not defined")
 

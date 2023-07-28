@@ -17,7 +17,8 @@ def plot_sta(data, edges, title, x_ticks, x_tick_labels, xlim,
 	plt.title(title)
 	plt.xticks(ticks = x_ticks + 0.5, labels = x_tick_labels)
 	plt.xlabel('Time (ms)')
-	plt.xlim(*xlim)
+	if xlim is not None:
+		plt.xlim(*xlim)
 	plt.yticks(ticks = np.arange(11) - 0.5, labels = np.round(edges, 3))
 	plt.ylabel("Edge Quantile")
 	# https://github.com/dbheadley/InhibOnDendComp/blob/master/src/mean_dendevt.py
