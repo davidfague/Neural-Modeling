@@ -13,7 +13,7 @@ import constants
 output_folder = "output/2023-07-27_16-26-51_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
 
 what_to_plot = {
-    "Na": True,
+    "Na": False,
     "Ca": True,
     "NMDA": True,
     "Ca_NMDA": True
@@ -22,7 +22,7 @@ what_to_plot = {
 # Na
 threshold = 0.003 / 1000
 ms_within_somatic_spike = 2
-na_apic_clip = (-3, 3)
+na_apic_clip = (-5, 5)
 na_basal_clip = (-1, 1)
 
 # Ca
@@ -30,7 +30,7 @@ lowery, uppery = 500, 1500
 ca_apic_clip = (-0.25, 1.5)
 
 # NMDA
-nmda_apic_clip = (-3, 3)
+nmda_apic_clip = (-5, 5)
 nmda_basal_clip = (-1.5, 1.5)
 
 # NMDA Ca
@@ -90,18 +90,16 @@ def main(random_state):
         na_apic_mean = np.mean(na_apic, axis = 1, keepdims = True)
         to_plot = np.clip((na_apic - na_apic_mean) / (np.abs(na_apic_mean) + 1e-10), na_apic_clip[0], na_apic_clip[1]) * 100
         title = 'Na Spikes - Apical'
-        x_ticks = np.arange(0, 40, 5)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-20, 20, 5)]
-        xlim = (5, 35)
-        plot_sta(to_plot, edges_apic, title, x_ticks, x_tick_labels, xlim, save_to = os.path.join(na_path, "na_spikes_apical.png"))
+        x_ticks = np.arange(0, 50, 5)
+        x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
+        plot_sta(to_plot, edges_apic, title, x_ticks, x_tick_labels, None, save_to = os.path.join(na_path, "na_spikes_apical.png"))
 
         na_dend_mean = np.mean(na_dend, axis = 1, keepdims = True)
         to_plot = np.clip((na_dend - na_dend_mean) / (np.abs(na_dend_mean) + 1e-15), na_basal_clip[0], na_basal_clip[1]) * 100
         title = 'Na Spikes - Basal'
-        x_ticks = np.arange(0, 40, 5)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-20, 20, 5)]
-        xlim = (5, 35)
-        plot_sta(to_plot, edges_apic, title, x_ticks, x_tick_labels, xlim, save_to = os.path.join(na_path, "na_spikes_basal.png"))
+        x_ticks = np.arange(0, 50, 5)
+        x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
+        plot_sta(to_plot, edges_apic, title, x_ticks, x_tick_labels, None, save_to = os.path.join(na_path, "na_spikes_basal.png"))
 
     if what_to_plot["Ca"]:
         # Get bounds for Ca
@@ -120,9 +118,9 @@ def main(random_state):
         ca_apic_mean = np.mean(ca_apic, axis = 1, keepdims = True)
         to_plot = np.clip((ca_apic - ca_apic_mean) / (np.abs(ca_apic_mean) + 1e-15), ca_apic_clip[0], ca_apic_clip[1]) * 100
         title = 'Ca2+ Spikes - Nexus'
-        x_ticks = np.arange(0, 26, 4)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
-        plot_sta(to_plot, edges_ca, title, x_ticks, x_tick_labels, [], save_to = os.path.join(ca_path, "ca_spikes_apical.png"))
+        x_ticks = np.arange(0, 50, 5)
+        x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
+        plot_sta(to_plot, edges_ca, title, x_ticks, x_tick_labels, None, save_to = os.path.join(ca_path, "ca_spikes_apical.png"))
 
     if what_to_plot["NMDA"]:
         # Get bounds for NMDA
@@ -144,16 +142,16 @@ def main(random_state):
         nmda_apic_mean = np.mean(nmda_apic, axis = 1, keepdims = True)
         to_plot = np.clip((nmda_apic - nmda_apic_mean) / (np.abs(nmda_apic_mean) + 1e-15), nmda_apic_clip[0], nmda_apic_clip[1]) * 100
         title = 'NMDA Spikes - Apical'
-        x_ticks = np.arange(0, 26, 4)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
-        plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, [], save_to = os.path.join(nmda_path, "nmda_spikes_apical.png"))
+        x_ticks = np.arange(0, 50, 5)
+        x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
+        plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, None, save_to = os.path.join(nmda_path, "nmda_spikes_apical.png"))
         
         nmda_dend_mean = np.mean(nmda_dend, axis = 1, keepdims = True)
         to_plot = np.clip((nmda_dend - nmda_dend_mean) / (np.abs(nmda_dend_mean) + 1e-15), nmda_basal_clip[0], nmda_basal_clip[1]) * 100
         title = 'NMDA Spikes - Basal'
-        x_ticks = np.arange(0, 26, 4)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
-        plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, [], save_to = os.path.join(nmda_path, "nmda_spikes_basal.png"))
+        x_ticks = np.arange(0, 50, 5)
+        x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
+        plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, None, save_to = os.path.join(nmda_path, "nmda_spikes_basal.png"))
 
     if (what_to_plot["Ca"]) & (what_to_plot["NMDA"]) & (what_to_plot["Ca_NMDA"]):
         # Set Ca-NMDA
@@ -173,9 +171,9 @@ def main(random_state):
         ca_nmda_apic_mean = np.mean(ca_nmda_apic, axis = 1, keepdims = True)
         to_plot = np.clip((ca_nmda_apic - ca_nmda_apic_mean) / (np.abs(ca_nmda_apic_mean) + 1e-15), nmda_ca_apic_clip[0], nmda_ca_apic_clip[1]) * 100
         title = 'Ca - NMDA Spikes - Apical'
-        x_ticks = np.arange(0, 26, 4)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-100, 40, 20)]
-        plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, [], save_to = os.path.join(ca_nmda_path, "ca_nmda_spikes_apical.png"))
+        x_ticks = np.arange(0, 50, 5)
+        x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
+        plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, None, save_to = os.path.join(ca_nmda_path, "ca_nmda_spikes_apical.png"))
 
 if __name__ == "__main__":
     main(random_state = 123)
