@@ -20,11 +20,12 @@ def main():
         spikes = []
         Vm = []
         t = []
-        print("amplitude: ", ampl)
-        print(f"_{int(ampl * 1000)}")
+        #print("amplitude: ", ampl)
+        #print(f"_{int(ampl * 1000)}")
         for ampl_dir in os.listdir(output_folder): # list folders in directory
             if ampl_dir.endswith(f"_{int(ampl * 1000)}"): # go over all amplitudes
-                print(ampl, ampl_dir)
+                #print(ampl, ampl_dir)
+                #print(step_size)
                 for step in steps:
                     dirname = os.path.join(output_folder, ampl_dir, f"saved_at_step_{step}")
                     with h5py.File(os.path.join(dirname, "Vm_report.h5")) as file:
@@ -36,7 +37,7 @@ def main():
         t = np.hstack(t) # (ms)
         Vm = np.hstack(Vm)
         spikes = np.hstack(spikes)
-        print("spikes:", spikes)
+        #print("spikes:", spikes)
         plt.figure(figsize = (7,8))
         plt.plot(t, Vm[0])
         for spike in spikes:

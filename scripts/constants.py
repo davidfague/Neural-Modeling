@@ -1,6 +1,6 @@
 # Random state
 numpy_random_states = [123]
-neuron_random_states = [1] # Number of calls to MCellRan4()
+neuron_random_states = [87] # Number of calls to MCellRan4()
 
 # Modfiles
 modfiles_folder = "../modfiles"
@@ -73,4 +73,4 @@ ties_pad_aiv = 0
 # Log, plot and save
 save_dir = "output"
 log_every_ms = 500
-save_every_ms = 200
+save_every_ms = 2000
