@@ -34,13 +34,15 @@ loc_param_default = [0., 0., 45., 0., 1., 0.]
 # Default view
 elev, azim = 10, 90
 
+new_property = ['inmda','iampa','net_exc_i'] # set to None if not using existing property
 
 time_index = 300
 #identify the property being used #check cell.seg_info[0] for dictionary of properties (some are nested)
-if hasattr(constants, "property_list_to_analyze"):
-  property_list_to_analyze = constants.property_list_to_analyze
-else:
-  property_list_to_analyze = ['v'] # can update here if it is not specified in constants.py
+if not new_property:
+  if hasattr(constants, "property_list_to_analyze"):
+    property_list_to_analyze = constants.property_list_to_analyze
+  else:
+    property_list_to_analyze = ['inmda'] # can update here if it is not specified in constants.py
   # property_list_to_analyze = ['netcon_density_per_seg','exc']
   # property_list_to_analyze = ['seg_elec_info','beta','passive_soma']
 
@@ -50,7 +52,13 @@ def main():
 
   #random_state = np.random.RandomState(random_state)
   sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt)
-  print(dir(sm.segments[0]))
+  sm.compute_axial_currents()
+  print(new_property[:-1],new_property[-1])
+  if new_property:
+    sm.sum_currents(currents=new_property[:-1], var_name = new_property[-1])
+    property_list_to_analyze = [new_property[-1]]
+  #print(dir(sm.segments[0]))
+  print(property_list_to_analyze)
   seg_prop = np.array([get_nested_property(seg, property_list_to_analyze, time_index) for seg in sm.segments]) # get seg property
 
   

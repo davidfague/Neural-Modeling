@@ -323,7 +323,7 @@ def plot_spikes(sm, seg=None, seg_index=None, dendritic_spike_times=[], spike_la
 	full_path = os.path.join(output_folder, file_name)
 
 	plt.savefig(full_path, dpi=300)
-  plt.show()
+	plt.show()
 
 ##TODO: add docstirng
 def plot_morphology(segments, 
