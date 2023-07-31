@@ -249,9 +249,11 @@ class CellModel:
           seg_index_global = 0
           for sec in self.all:
               sec_type = sec.name().split('.')[1][:4]
+              seg_id_in_sec = 0
               for seg in sec:
-                  self.seg_info.append(self.generate_seg_info(seg, sec, sec_type, seg_index_global, bmtk_index))
+                  self.seg_info.append(self.generate_seg_info(seg, sec, sec_type, seg_index_global, bmtk_index, seg_id_in_sec))
                   seg_index_global += 1
+                  seg_id_in_sec += 1
               bmtk_index += 1
         
     def recompute_parent_segment_ids(self) -> None:
@@ -489,7 +491,7 @@ class CellModel:
                         data = data.values
             file.create_dataset("report/biophysical/data", data = data)
 
-    def generate_seg_info(self, seg, sec, sec_type, seg_index_global, bmtk_index) -> dict:
+    def generate_seg_info(self, seg, sec, sec_type, seg_index_global, bmtk_index, seg_id_in_sec) -> dict:
         info = {
             'seg': seg,
             'seg_index_global': seg_index_global,
@@ -518,7 +520,8 @@ class CellModel:
             'seg_half_seg_RA': 0.01 * seg.sec.Ra * (sec.L / 2 / seg.sec.nseg) / (np.pi * (seg.diam / 2)**2),
             'pseg_index': None,
             'seg_elec_distance': {},
-            'adjacent_segments': []
+            'adjacent_segments': [],
+            'seg_id_in_sec': seg_id_in_sec
         }
         return info
         

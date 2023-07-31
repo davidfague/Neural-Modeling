@@ -5,6 +5,7 @@ import matplotlib.cm as cm
 import inspect
 import os
 import seaborn as sns
+import json
 
 def plot_sta(data, edges, title, x_ticks, x_tick_labels, xlim, 
 			 norm_percentiles = (1, 99), save_to = None) -> None:
@@ -46,155 +47,6 @@ def move_position(translate: list, rotate: list, old_position: list = None, move
 	else:
 		new_position = rot.apply(old_position) + translate
 	return new_position
-
-#TODO: add docstirng
-def plot_morphology(sim = None, cellid: int = 0, cell: object = None,
-					seg_coords: dict = None, sec_nseg: list = None,
-					type_id: list = None, electrodes: np.ndarray = None,
-					axes: list = [2, 0, 1], clr: list = None,
-					elev: int = 20, azim: int = 10, move_cell: list = None,
-					figsize: tuple = None, seg_property = None, segment_colors = None, sm = None) -> tuple:
-	"""
-	Plot morphology in 3D.
-
-	Parameters:
-	----------
-	sim: object
-		Simulation object
-
-	cellid: int = 0
-		Cell id in the simulation object.
-
-	cell: object = None
-		cell object. Ignore sim and cellid if specified.
-
-	seg_coords: dict = None
-		If not using sim or cell, a dictionary that includes dl, pc, r.
-
-	sec_nseg: list = None
-		If not using sim or cell, list of number of segments in each section.
-
-	type_id: list = None
-		If not using sim or cell, list of the swc type id of each section/segment.
-
-	electrodes: np.ndarray = None
-		Electrode positions. Default: None, not shown.
-
-	axes: list = [2, 0, 1]
-		Sequence of axes to display in 3d plot axes.
-		Default: [2,0,1] show z, x, y in 3d plot x, y, z axes, so y is upward.
-
-	clr: list
-		List of colors for each type of section.
-
-	Returns:
-	----------
-	fig: plt.Figure
-
-	ax: plt.Axis
-	"""
-	if sim is None and cell is None:
-		if seg_coords is None or sec_nseg is None or type_id is None:
-			raise ValueError("If not using 'Simulation', input arguments 'seg_coords', 'sec_nseg', 'type_id' are required.")
-		if clr is None:
-			clr = ('g', 'r', 'b', 'c')
-		if move_cell is None:
-			move_cell = [0., 0., 0., 0., 1., 0.]
-		sec_id_in_seg = np.cumsum([0] + list(sec_nseg[:-1]))
-		type_id = np.asarray(type_id) - 1
-		if type_id.size != len(sec_nseg):
-			type_id = type_id = type_id[sec_id_in_seg]
-		type_id = type_id.tolist()
-		label_idx = np.array([type_id.index(i) for i in range(4)])
-		lb_odr = np.argsort(label_idx)
-		label_idx = label_idx[lb_odr].tolist()
-		sec_name = np.array(('soma','axon','dend','apic'))[lb_odr]
-	else:
-		if clr is None:
-			clr = ('g', 'b', 'pink', 'purple', 'r', 'c')
-		if cell is None:
-			if move_cell is None:
-				move_cell = sim.loc_param[cellid, 0]
-			cell = sim.cells[cellid]
-		elif move_cell is None:
-			move_cell = [0., 0., 0., 0., 1., 0.]
-		seg_coords = cell.seg_coords
-		sec_id_in_seg = cell.sec_id_in_seg
-		sec_nseg = []
-		sec_name = []
-		label_idx = []
-		type_id = []
-		for i, sec in enumerate(cell.all):
-			sec_nseg.append(sec.nseg)
-			name = sec.name().split('.')[-1]
-			if name not in sec_name:
-				sec_name.append(name)
-				label_idx.append(i)
-			type_id.append(sec_name.index(name))
-	label_idx.append(-1)
-
-	move_cell = np.asarray(move_cell).reshape((2, 3))
-	dl = move_position([0., 0., 0.], move_cell[1], seg_coords['dl'])
-	pc = move_position(move_cell[0], move_cell[1], seg_coords['pc'])
-	xyz = 'xyz'
-	box = np.vstack([np.full(3, np.inf), np.full(3, np.NINF)])
-	if electrodes is not None:
-		box[0, axes[0:2]] = np.amin(electrodes[:, axes[0:2]], axis=0)
-		box[1, axes[0:2]] = np.amax(electrodes[:, axes[0:2]], axis=0)
-
-	fig = plt.figure(figsize=figsize)
-	ax = plt.axes(projection='3d')
-	lb_ptr = 0
-	if segment_colors is None:
-		for i, itype in enumerate(type_id):
-			label = sec_name[lb_ptr] if i == label_idx[lb_ptr] else None
-			if label is not None: lb_ptr += 1
-			i0 = sec_id_in_seg[i]
-			i1 = i0 + sec_nseg[i] - 1
-			if sec_name[itype] == 'soma':
-				p05 = (pc[i0] + pc[i1]) / 2
-				ax.scatter(*[p05[j] for j in axes], c=clr[itype], s=20, label=label)
-			else:
-				p0 = pc[i0] - dl[i0] / 2
-				p1 = pc[i1] + dl[i1] / 2
-				ax.plot3D(*[(p0[j], p1[j]) for j in axes], color=clr[itype], label=label)
-				box[0, :] = np.minimum(box[0, :], np.minimum(p0, p1))
-				box[1, :] = np.maximum(box[1, :], np.maximum(p0, p1))
-	else:
-		for i, itype in enumerate(type_id):
-			label = sec_name[lb_ptr] if i == label_idx[lb_ptr] else None
-			if label is not None: lb_ptr += 1
-			i0 = sec_id_in_seg[i] #segments list index of first segment of this section
-			i1 = i0 + sec_nseg[i] - 1 #segments list index of last segment of this section
-			if sec_name[itype] == 'soma':
-				p05 = (pc[i0] + pc[i1]) / 2
-				ax.scatter(*[p05[j] for j in axes], c=clr[itype], s=20, label=label)
-			else:
-				for seg_index in range(i0,i1+1):
-					p0 = pc[seg_index] - dl[seg_index]/2
-					p1 = pc[seg_index] + dl[seg_index]/2
-					ax.plot3D(*[(p0[j], p1[j]) for j in axes], color=segment_colors[seg_index], label=label)
-					box[0, :] = np.minimum(box[0, :], np.minimum(p0, p1))
-					box[1, :] = np.maximum(box[1, :], np.maximum(p0, p1))
-	cbar_ax = fig.add_axes([0.75, 0.2, 0.03, 0.6])
-	cbar = fig.colorbar(sm, cax=cbar_ax)
-	if seg_property is not None:
-		cbar.set_label(seg_property)
-	ctr = np.mean(box, axis=0)
-	r = np.amax(box[1, :] - box[0, :]) / 2
-	box = np.vstack([ctr - r, ctr + r])
-	if electrodes is not None:
-		idx = np.logical_and(np.all(electrodes >= box[0, :], axis=1), np.all(electrodes <= box[1, :], axis = 1))
-		ax.scatter(*[(electrodes[idx, j], electrodes[idx, j]) for j in axes], color = 'orange', s = 5, label = 'electrodes')
-	box = box[:, axes]
-	ax.auto_scale_xyz(*box.T)
-	ax.view_init(elev, azim)
-	ax.set_xlabel(xyz[axes[0]])
-	ax.set_ylabel(xyz[axes[1]])
-	ax.set_zlabel(xyz[axes[2]])
-
-	return fig, ax
-
 
 def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, 
 			    			nexus_seg_index, trunk_seg_index, loc_param, lfp, elec_pos, plot_lfp_heatmap, 
@@ -368,10 +220,10 @@ def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', tit
 
     # Filter segments to plot by segment type
     if seg_type is not None:
-	    new_segments = []
-	    for seg in segments:
-	        if (seg.type == seg_type) or (seg.type == 'soma'):
-			new_segments.append(seg)
+      new_segments = []
+      for seg in segments:
+        if (seg.type == seg_type) or (seg.type == 'soma'):
+          new_segments.append(seg)
     else:
 	    new_segments = segments
 		
@@ -471,3 +323,169 @@ def plot_spikes(sm, seg=None, seg_index=None, dendritic_spike_times=[], spike_la
     plt.savefig(full_path, dpi=300)
 
     plt.show()
+
+##TODO: add docstirng
+def plot_morphology(segments, 
+                    electrodes: np.ndarray = None, 
+                    axes: list = [2, 0, 1], 
+                    elev: int = 20, azim: int = 10, 
+                    move_cell: list = None, 
+                    figsize: tuple = None, 
+                    seg_property = None, 
+                    segment_colors = None, 
+                    sm = None) -> tuple:                 
+    """
+    Plot morphology in 3D.
+    
+    Parameters:
+    ----------
+    segments: SegmentManager Segment objects
+    
+    electrodes: np.ndarray = None
+    	Electrode positions. Default: None, not shown.
+    
+    axes: list = [2, 0, 1]
+    	Sequence of axes to display in 3d plot axes.
+    	Default: [2,0,1] show z, x, y in 3d plot x, y, z axes, so y is upward.
+    
+    seg_property: label for color bar
+    
+    segment_colors: list
+    	List of colors for each segment.
+     
+     sm: ScalarMappable
+    
+    Returns:
+    ----------
+    fig: plt.Figure
+    
+    ax: plt.Axis
+    """ 
+    # Initialize lists to hold the coordinates and radius
+    p0_x3d, p0_y3d, p0_z3d = [], [], []
+    p0_5_x3d, p0_5_y3d, p0_5_z3d = [], [], []
+    p1_x3d, p1_y3d, p1_z3d = [], [], []
+    r = []
+    
+    # Loop over all segments
+    for seg in segments:
+        # Append coordinates to the lists
+        p0_x3d.append(seg.p0_x3d)
+        p0_y3d.append(seg.p0_y3d)
+        p0_z3d.append(seg.p0_z3d)
+        
+        p0_5_x3d.append(seg.p0_5_x3d)
+        p0_5_y3d.append(seg.p0_5_y3d)
+        p0_5_z3d.append(seg.p0_5_z3d)
+        
+        p1_x3d.append(seg.p1_x3d)
+        p1_y3d.append(seg.p1_y3d)
+        p1_z3d.append(seg.p1_z3d)
+        
+        r.append(seg.seg_diam/2)  # assumes seg.r is a radius
+    # Convert lists to numpy arrays
+    p0_x3d, p0_y3d, p0_z3d = np.array(p0_x3d), np.array(p0_y3d), np.array(p0_z3d)
+    p0_5_x3d, p0_5_y3d, p0_5_z3d = np.array(p0_5_x3d), np.array(p0_5_y3d), np.array(p0_5_z3d)
+    p1_x3d, p1_y3d, p1_z3d = np.array(p1_x3d), np.array(p1_y3d), np.array(p1_z3d)
+    r = np.array(r)
+    
+    # Construct the seg_coords dictionary
+    seg_coords = {
+        'p0': np.vstack((p0_x3d, p0_y3d, p0_z3d)).T,
+        'pc': np.vstack((p0_5_x3d, p0_5_y3d, p0_5_z3d)).T,
+        'p1': np.vstack((p1_x3d, p1_y3d, p1_z3d)).T,
+        'r': r,
+        'dl': np.vstack((p1_x3d, p1_y3d, p1_z3d)).T - np.vstack((p0_x3d, p0_y3d, p0_z3d)).T,
+    }
+    #print(seg_coords)
+    if move_cell is None:
+    		move_cell = [0., 0., 0., 0., 1., 0.]
+    
+    move_cell = np.asarray(move_cell).reshape((2, 3))
+    dl = move_position([0., 0., 0.], move_cell[1], seg_coords['dl'])
+    p0 = move_position(move_cell[0], move_cell[1], seg_coords['p0'])
+    pc = move_position(move_cell[0], move_cell[1], seg_coords['pc'])
+    p1 = move_position(move_cell[0], move_cell[1], seg_coords['p1'])
+    xyz = 'xyz'
+    box = np.vstack([np.full(3, np.inf), np.full(3, np.NINF)])
+    if electrodes is not None:
+    	box[0, axes[0:2]] = np.amin(electrodes[:, axes[0:2]], axis=0)
+    	box[1, axes[0:2]] = np.amax(electrodes[:, axes[0:2]], axis=0)
+    
+    fig = plt.figure(figsize=figsize)
+    ax = plt.axes(projection='3d')
+    lb_ptr = 0
+    # scale linewidth to seg diameter
+    min_width = 1  # minimum linewidth
+    max_width = 5    # maximum linewidth
+    # Rescale segment diameters to the range [min_width, max_width]
+    seg_diams = [seg.seg_diam for seg in segments]
+    min_diam, max_diam = min(seg_diams), max(seg_diams)
+    scale_factor = (max_width - min_width) / (max_diam - min_diam)
+    for seg_index, seg in enumerate(segments):
+      linewidth = (seg.seg_diam - min_diam) * scale_factor + min_width
+      ax.plot3D([p0[seg_index, axes[0]], pc[seg_index, axes[0]]], 
+              [p0[seg_index, axes[1]], pc[seg_index, axes[1]]], 
+              [p0[seg_index, axes[2]], pc[seg_index, axes[2]]], 
+              color=segment_colors[seg_index], linewidth=linewidth)
+
+      ax.plot3D([pc[seg_index, axes[0]], p1[seg_index, axes[0]]], 
+              [pc[seg_index, axes[1]], p1[seg_index, axes[1]]], 
+              [pc[seg_index, axes[2]], p1[seg_index, axes[2]]], 
+              color=segment_colors[seg_index], linewidth=linewidth)
+    box[0, :] = np.minimum(box[0, :], np.minimum(p0.min(axis=0), p1.min(axis=0)))
+    box[1, :] = np.maximum(box[1, :], np.maximum(p0.max(axis=0), p1.max(axis=0)))
+
+    cbar_ax = fig.add_axes([0.75, 0.2, 0.03, 0.6])
+    cbar = fig.colorbar(sm, cax=cbar_ax)
+    if seg_property is not None:
+    	cbar.set_label(seg_property)
+    ctr = np.mean(box, axis=0)
+    r = np.amax(box[1, :] - box[0, :]) / 2
+    box = np.vstack([ctr - r, ctr + r])
+    if electrodes is not None:
+    	idx = np.logical_and(np.all(electrodes >= box[0, :], axis=1), np.all(electrodes <= box[1, :], axis = 1))
+    	ax.scatter(*[(electrodes[idx, j], electrodes[idx, j]) for j in axes], color = 'orange', s = 5, label = 'electrodes')
+    box = box[:, axes]
+    ax.auto_scale_xyz(*box.T)
+    ax.view_init(elev, azim)
+    ax.set_xlabel(xyz[axes[0]])
+    ax.set_ylabel(xyz[axes[1]])
+    ax.set_zlabel(xyz[axes[2]])
+    
+    return fig, ax
+
+def get_nested_property(seg, properties, time_index = None):
+    #print(f"Debug: seg = {seg}, properties = {properties}")  # Debug line
+    if properties:
+        property = properties[0]
+        remaining_properties = properties[1:]
+        if isinstance(seg, dict) and property in seg:
+            prop_value = seg[property]
+        elif hasattr(seg, property):
+            prop_value = getattr(seg, property)
+        else:
+            raise ValueError(f"Property '{property}' not found in segment. Please specify a proper path in seg_info.")
+        
+        # Attempt to convert string representation of dictionary into dictionary
+        if isinstance(prop_value, str):
+            try:
+                prop_value = json.loads(prop_value.replace("'", "\""))
+            except json.JSONDecodeError:
+                pass
+
+        #print(f"Debug: prop_value type = {type(prop_value)}")  # Additional debug line
+        
+        if remaining_properties:
+            if isinstance(prop_value, dict):
+                return get_nested_property(prop_value, remaining_properties)
+            else:
+                #print(f"Debug: prop_value = {prop_value}, remaining_properties = {remaining_properties}")  # Debug line
+                raise ValueError("Property list contains too many items for the depth of the target")
+        else:
+            if (isinstance(prop_value, np.ndarray)) & (time_index is not None):
+              if (len(prop_value) > 1):
+                return prop_value[time_index]
+            return prop_value
+    else:
+        raise ValueError("Empty property list")

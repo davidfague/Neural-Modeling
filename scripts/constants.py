@@ -20,13 +20,13 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 1000 # Sim runtime (ms)
+h_tstop = 2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
-h_i_amplitudes = [None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
-h_i_duration = 900 # (ms)
-h_i_delay = 10 # (ms)
+h_i_amplitudes = [None]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
+h_i_duration = 20000 # (ms)
+h_i_delay = 400 # (ms)
 
 # Excitatory dend
 exc_gmax_mean_0 = 0.2
