@@ -161,7 +161,6 @@ class SegmentManager:
             data[name] = np.hstack(data[name])
 
         data["seg_info"] = pd.read_csv(os.path.join(output_folder, f"saved_at_step_{steps[0]}", "seg_info.csv"))
-        print(data["spikes_report"])
 
         return data
 
@@ -315,15 +314,8 @@ class SegmentManager:
         return edges
 
     def get_sta(self, spiketimes, lower_bounds, edges, sec_indicator, current_type, elec_dist_var = 'soma_passive', mag = None, mag_th = None):
-
-        if current_type == 'ina':
-            bin_start, bin_end, step_size, interval = 2, 2, 1, 39
-        elif current_type == 'ica':
-            bin_start, bin_end, step_size, interval = 10, 4, 5, 27
-        elif current_type =='inmda':
-            bin_start, bin_end, step_size, interval = 10, 4, 5, 27
-        else:
-            raise ValueError("current_type not defined")
+        
+        bin_start, bin_end, step_size, interval = 5, 5, 2, 49
 
         sta = np.zeros((len(edges), interval))
         c = 0

@@ -133,10 +133,10 @@ class Synapse:
         self.set_params_based_on_synapse_mod(self.syn_type)
         if (gmax is None) and (syn_obj is not None):
           self.gmax = self.get_gmax_from_syn_obj()
-        if gmax is not None:
+        elif gmax is not None:
           self.gmax = gmax
         else:
-          raise(ImplementationError("Need to pass either existing neuron synapse object or gmax to create new synapse."))
+          raise(NotImplementedError("Need to pass either existing neuron synapse object or gmax to create new synapse."))
         self.setup(record, vector_length)
         self.ncs = []
 
