@@ -490,3 +490,53 @@ def get_nested_property(seg, properties, time_index = None):
             return prop_value
     else:
         raise ValueError("Empty property list")
+        
+def plot_adjacent_segments(segs, sm, figsize = (3,10), title_prefix=None, save_to=None):
+  '''
+  Plots Morphology in 2D and marks the desired segs and their adjacent segments.
+  segs: list
+  target SegmentManager Segment to mark
+  sm: SegmentManager
+  '''
+  #Plot segments adjacent to segments
+  plt.figure(figsize=figsize)
+  # Since 'segs' is now a list of segment objects instead of a dictionary, we need to iterate through it
+  # and get the 'p0_5_x3d' and 'p0_5_y3d' attributes of each segment
+  x_values = [seg.p0_5_x3d for seg in sm.segments]
+  y_values = [seg.p0_5_y3d for seg in sm.segments]
+  
+  ax = plt.plot(x_values, y_values, '.', color='black', markersize=6)
+  
+  plt.vlines(110, 400, 500)
+  plt.text(0, 450, '100 um')
+  plt.hlines(400, 110, 210)
+  plt.text(110, 350, '100 um')
+  plt.xticks([])
+  plt.yticks([])
+  plt.box(False)
+  
+  # plot segments that are adjacent to soma segments
+  target_segs_that_are_adj_segs_of_other_targets=[]
+  for seg in segs:
+      for adj_seg in seg.adj_segs:
+          if adj_seg in segs:
+            target_segs_that_are_adj_segs_of_other_targets.append(adj_seg)
+            plt.plot(adj_seg.p0_5_x3d,
+                   adj_seg.p0_5_y3d,
+                   '*', color='purple') # adj seg and target seg
+          else:
+            plt.plot(adj_seg.p0_5_x3d,
+                   adj_seg.p0_5_y3d,
+                   '*', color='blue') # adj seg
+                   
+  # plot target segments
+  for seg in segs:
+    if seg in target_segs_that_are_adj_segs_of_other_targets:
+      pass # already plotted as purple
+    else:
+      plt.plot(seg.p0_5_x3d,
+               seg.p0_5_y3d,
+               '*', color='red') # target seg
+  
+  plt.savefig(os.path.join(save_to, title_prefix+"adjacent_segments.png"))
+       
