@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 # Output folder should store folders 2023...
 output_folder = "output"
-skip = 300 # (ms)
+skip = 400 # (ms)
 
 def main():
     step_size = int(constants.save_every_ms / constants.h_dt) # Timestamps
