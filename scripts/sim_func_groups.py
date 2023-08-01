@@ -17,7 +17,7 @@ import numpy as np
 from functools import partial
 import scipy.stats as st
 import time, datetime
-import os, h5py, pickle
+import os, h5py, pickle, shutil
 from multiprocessing import Process
 
 from neuron import h
@@ -327,6 +327,10 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     # Save indexes for plotting
     with open(os.path.join(save_folder, "seg_indexes.pickle"), "wb") as file:
         pickle.dump(seg_indexes, file)
+
+    # Save constants
+    shutil.copy2("constants.py", save_folder)
+    os.rename(os.path.join(save_folder, "constants.py"), os.path.join(save_folder, "constants_image.txt"))
 
     h.finitialize(h.v_init)
     while h.t <= h.tstop + 1:
