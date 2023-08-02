@@ -350,6 +350,9 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
 
             with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
                 file.create_dataset("report/biophysical/data", data = lfp)
+            # save net membrane current
+            with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "imembrane.h5"), 'w') as file:
+                file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
 
             # Save time
             with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "t.h5"), 'w') as file:

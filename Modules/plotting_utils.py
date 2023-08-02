@@ -458,38 +458,39 @@ def plot_morphology(segments,
 
 def get_nested_property(seg, properties, time_index = None):
 	#print(f"Debug: seg = {seg}, properties = {properties}")  # Debug line
-	if properties:
-		property = properties[0]
-		remaining_properties = properties[1:]
-		if isinstance(seg, dict) and property in seg:
-			prop_value = seg[property]
-		elif hasattr(seg, property):
-			prop_value = getattr(seg, property)
-		else:
-			raise ValueError(f"Property '{property}' not found in segment. Please specify a proper path in seg_info.")
-		
-		# Attempt to convert string representation of dictionary into dictionary
-		if isinstance(prop_value, str):
-			try:
-				prop_value = json.loads(prop_value.replace("'", "\""))
-			except json.JSONDecodeError:
-				pass
-
+  if properties:
+    property = properties[0]
+    remaining_properties = properties[1:]
+    if isinstance(seg, dict) and property in seg:
+      prop_value = seg[property]
+    elif hasattr(seg, property):
+      prop_value = getattr(seg, property)
+    else:
+      raise ValueError(f"Property '{property}' not found in segment. Please specify a proper path in seg_info.")
+    
+    # Attempt to convert string representation of dictionary into dictionary
+    if isinstance(prop_value, str):
+      try:
+        prop_value = json.loads(prop_value.replace("'", "\""))
+      except json.JSONDecodeError:
+        pass
         #print(f"Debug: prop_value type = {type(prop_value)}")  # Additional debug line
         
-        if remaining_properties:
-            if isinstance(prop_value, dict):
-                return get_nested_property(prop_value, remaining_properties)
-            else:
-                #print(f"Debug: prop_value = {prop_value}, remaining_properties = {remaining_properties}")  # Debug line
-                raise ValueError("Property list contains too many items for the depth of the target")
-        else:
-            if (isinstance(prop_value, np.ndarray)) & (time_index is not None):
-              if (len(prop_value) > 1):
-                return prop_value[time_index]
-            return prop_value
+  if remaining_properties:
+    if isinstance(prop_value, dict):
+      return get_nested_property(prop_value, remaining_properties)
     else:
-        raise ValueError("Empty property list")
+      #print(f"Debug: prop_value = {prop_value}, remaining_properties = {remaining_properties}")  # Debug line
+      raise ValueError("Property list contains too many items for the depth of the target")
+  else:
+    if (isinstance(prop_value, np.ndarray)) & (time_index is not None):
+      if (len(prop_value) > 1):
+        return prop_value[time_index]
+      return prop_value
+    elif (isinstance(prop_value, np.ndarray)) & (time_index is None):
+      return prop_value
+    else:
+      raise ValueError("Check property list")
         
 def plot_adjacent_segments(segs, sm, figsize = (3,10), title_prefix=None, save_to=None):
   '''

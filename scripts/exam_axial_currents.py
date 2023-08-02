@@ -15,7 +15,10 @@ import pdb #python debugger
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
 import constants
-output_folder = 'output/2023-07-31_14-06-21_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn'
+output_folder = 'output/2023-08-02_14-00-11_seeds_123_87L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn' #"output/BenModel/"
+if 'BenModel' in output_folder:
+  constants.save_every_ms = 3000
+  constants.h_tstop = 3000
 dt=constants.h_dt
 
 print(constants.h_dt, constants.save_every_ms, constants.h_tstop)
@@ -66,27 +69,28 @@ def main():
   plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=AC_path)
        
   
-  #Plot Axial Currents
-  for seg in soma_segs:
-      plot_all(seg, t, save_to=AC_path, title_prefix ='Soma_')
-  for seg in nexus_segs:
-      plot_all(seg, t, save_to=AC_path, title_prefix = 'Nexus_')
+#  #Plot Axial Currents
+#  for seg in soma_segs:
+#      plot_all(seg, t, save_to=AC_path, title_prefix ='Soma_')
+#  for seg in nexus_segs:
+#      plot_all(seg, t, save_to=AC_path, title_prefix = 'Nexus_')
 
-  # Plot around APs # should update to include vlines indicating spike times.
+  # Plot around APs
   for i,AP_time in enumerate(np.array(sm.soma_spiketimes)):# spike time (ms) #TODO: check
+      # Create the figure outside the loop
       before_AP = AP_time - 100 #0.5 # ms
       after_AP = AP_time + 100 #3 # ms
       xlim = [before_AP, after_AP] # time range
       # plot around each AP
       for seg in soma_segs:
-          plot_all(seg, t, xlim=xlim, index=i+1, save_to=AC_path, title_prefix="Soma_", ylim=[-1,1])
+          plot_all(seg, t, xlim=xlim, index=i+1, save_to=AC_path, title_prefix="Soma_", ylim=[-1,1], vlines = np.array(sm.soma_spiketimes))
       before_AP = AP_time - 100 #0.5 # ms
       after_AP = AP_time + 100 #3 # ms
       xlim = [before_AP, after_AP] # time range
       for seg in nexus_segs:
-          plot_all(seg, t, xlim=xlim, index=i+1, save_to=AC_path, title_prefix="Nexus_", ylim=[-1,1])
+          plot_all(seg, t, xlim=xlim, index=i+1, save_to=AC_path, title_prefix="Nexus_", ylim=[-1,1], vlines = np.array(sm.soma_spiketimes))
 
-def plot_all(segment, t, xlim=None, ylim=None, index=None, save_to=None, title_prefix=None):
+def plot_all(segment, t, xlim=None, ylim=None, index=None, save_to=None, title_prefix=None, vlines = None):
     '''
     Plots axial current from segment to adjacent segments,
     Plots Vm of segment and adjacent segments,
@@ -106,26 +110,36 @@ def plot_all(segment, t, xlim=None, ylim=None, index=None, save_to=None, title_p
     if index:
       for i,title in enumerate(titles):
         titles[i] = 'Spike ' + str(int(index)) + ' ' + title
-    ylabels = ['nA', 'nA', 'mV', 'mV']
-    data_types = ['axial_currents', 'v', ['iampa', 'icah', 'ical', 'ih', 'ina', 'inmda']] # igaba missing # can adjust this list to visualize a specific current
+    ylabels = ['nA', 'mV', 'nA']
+    data_types = ['axial_currents', 'v', ['iampa+inmda', 'iampa+inmda+igaba','inmda', 'iampa','igaba', "imembrane"]] # can adjust this list to visualize a specific current
 
-    for j, title in enumerate(titles):
-        fig = plt.figure(figsize=(12.8,4.8))
-        title = title.format(segment.name)
+    fig, axs = plt.subplots(len(titles), figsize=(12.8, 4.8 * len(titles)))
+
+    for j, ax in enumerate(axs):
+        title = titles[j].format(segment.name)
         ylabel = ylabels[j]
         data_type = data_types[j]
 
         if type(data_type) == list: # For 'Currents from [{}]'
             for current in data_type:
-                data = getattr(segment, current)
+                if '+' in current:
+                  currents_to_sum = current.split('+')
+                  data=getattr(segment,currents_to_sum[0])
+                  for current_to_sum in currents_to_sum[1:]:
+                    data+=getattr(segment,current_to_sum)
+                else:
+                  data = getattr(segment, current)
                 t=np.arange(0,len(data)*dt,dt)
-                plt.plot(t, data, label = current)
-            # plt.yscale('log') # Use symmetrical logarithmic scale # to visualize weaker currents
+                ax.plot(t, data, label = current)
+            #if ylim is None:
+            #    ax.set_ylim([min(data), max(data)])
         elif data_type == 'v': # For 'Vm from [{}]'
             t=np.arange(0,len(segment.v)*dt,dt)
-            plt.plot(t, segment.v, color = segment.color, label = segment.name)
+            ax.plot(t, segment.v, color = segment.color, label = segment.name)
             for i, adj_seg in enumerate(segment.adj_segs):
-                plt.plot(t, adj_seg.v, label = adj_seg.name, color = adj_seg.color)
+                ax.plot(t, adj_seg.v, label = adj_seg.name, color = adj_seg.color)
+            if ylim is None:
+                ax.set_ylim([min(segment.v), max(segment.v)])
         else: # For 'Axial Current from [{}]'
             total_AC = np.zeros(len(segment.v))
             total_dend_AC = np.zeros(len(segment.v))
@@ -140,38 +154,46 @@ def plot_all(segment, t, xlim=None, ylim=None, index=None, save_to=None, title_p
                 if adj_seg.type == 'dend':
                   basals=True
                   total_dend_AC += segment.axial_currents[i] # basal dendrites
-                #elif adj_seg.type == 'axon':
-                #  pass
                 elif segment.type == 'soma':
-                  plt.plot(t, segment.axial_currents[i], label = adj_seg.name, color = adj_seg.color) # apical, axon
+                  ax.plot(t, segment.axial_currents[i], label = adj_seg.name, color = adj_seg.color) # apical, axon
             if segment.type=='soma':
-              plt.plot(t, total_dend_AC, label = 'Summed basal axial currents', color = 'red')
-              plt.ylim([-2,2])
+              ax.plot(t, total_dend_AC, label = 'Summed basal axial currents', color = 'red')
+              ax.set_ylim([-2,2])
             else:
-              plt.plot(t, total_to_soma_AC, label = 'Summed axial currents to segments toward soma', color = 'blue')
-              plt.plot(t, total_away_soma_AC, label = 'Summed axial currents to segments away from soma', color = 'red') # can update label and color. # net current
-              plt.ylim([-0.75,0.75])
-            plt.plot(t, total_AC, label = 'Summed axial currents', color = 'Magenta') # can update label and color. # net current
-              
-            #plt.ylim([-0.75,0.75])#plt.ylim([-2,2])
+              ax.plot(t, total_to_soma_AC, label = 'Summed axial currents to segments toward soma', color = 'blue')
+              ax.plot(t, total_away_soma_AC, label = 'Summed axial currents to segments away from soma', color = 'red')
+              ax.set_ylim([-0.75,0.75])
+            ax.plot(t, total_AC, label = 'Summed axial currents', color = 'Magenta')
 
+        if vlines is not None:
+            if j==0: # only the axial currents plot
+              for ap_index,vline in enumerate(vlines):
+                if ap_index == 0: # only label one so that legend is not outrageous
+                  ax.vlines(vline, ymin=ax.get_ylim()[0], ymax=ax.get_ylim()[1], color='black', label='AP time', linestyle='dashed')
+                else:
+                  ax.vlines(vline, ymin=ax.get_ylim()[0], ymax=ax.get_ylim()[1], color='black', linestyle='dashed')
+        ax.axhline(0, color='grey')
         if xlim:
-            plt.xlim(xlim)
-        if ylim:
-            plt.ylim(ylim)
-        plt.ylabel(ylabel)
-        plt.xlabel('time (ms)')
-        plt.legend()
+            ax.set_xlim(xlim)
+        ax.set_ylabel(ylabel)
+        ax.set_xlabel('time (ms)')
+        ax.legend()
         if title_prefix:
-          plt.title(title_prefix+title)
-          if save_to:
-            fig.savefig(os.path.join(save_to, title_prefix+title + ".png"))
+          ax.set_title(title_prefix+title)
         else:
-          plt.title(title)
-          if save_to:
-            fig.savefig(os.path.join(save_to, title + ".png"))
-        plt.close()
-        #plt.show()
+          ax.set_title(title)
+
+    plt.tight_layout()
+
+    if save_to:
+        if title_prefix:
+          fig.savefig(os.path.join(save_to, title_prefix + "Combined_plot" + "_{}".format(index) + ".png"))
+        else:
+          fig.savefig(os.path.join(save_to, "Combined_plot" + "_{}".format(index) + ".png"))
+          
+    plt.close()
+
+
 
 if __name__ == "__main__":
     main()

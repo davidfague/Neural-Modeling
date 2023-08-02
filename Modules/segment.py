@@ -105,9 +105,9 @@ class SegmentManager:
         skip: ms of simulation to skip
         '''
         filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
-                     "i_NMDA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
-                     "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "spikes_report"]
-        current_names = ["v", "gNaTa", "iampa", "inmda", "icah", "ical", "ih", "ina"]
+                     "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
+                     "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "imembrane","spikes_report"]
+        current_names = ["v", "gNaTa", "iampa", "inmda", "igaba","icah", "ical", "ih", "ina", "imembrane"]
 
         self.segments = []
         self.dt = dt
