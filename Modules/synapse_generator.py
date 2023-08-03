@@ -134,11 +134,8 @@ class SynapseGenerator:
 			
 	def add_random_generator(self, syn_mod, synapse, r: h.Random):				 
 		if syn_mod in ['pyr2pyr', 'int2pyr']:
-			# Assigns random generator of release probability
-			# r = h.Random()
-			# r.MCellRan4()
 			r.uniform(0, 1)
 			synapse.setRandObjRef(r)
-			
-			# A list of random generators is kept so that they are not automatically garbaged
-			self.randomgenerators.append(r)
+		
+		# A list of random generators is kept so that they are not automatically garbaged
+		self.randomgenerators.append(r)

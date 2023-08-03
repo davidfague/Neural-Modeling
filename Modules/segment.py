@@ -161,6 +161,7 @@ class SegmentManager:
             data[name] = np.hstack(data[name])
 
         data["seg_info"] = pd.read_csv(os.path.join(output_folder, f"saved_at_step_{steps[0]}", "seg_info.csv"))
+        print(data["spikes_report"])
 
         return data
 
@@ -316,11 +317,11 @@ class SegmentManager:
     def get_sta(self, spiketimes, lower_bounds, edges, sec_indicator, current_type, elec_dist_var = 'soma_passive', mag = None, mag_th = None):
 
         if current_type == 'ina':
-            bin_start, bin_end, step_size, interval = 5, 5, 2, 49 # 2, 2, 1, 39
+            bin_start, bin_end, step_size, interval = 2, 2, 1, 39
         elif current_type == 'ica':
-            bin_start, bin_end, step_size, interval = 5, 5, 2, 49 # 10, 4, 5, 27
+            bin_start, bin_end, step_size, interval = 10, 4, 5, 27
         elif current_type =='inmda':
-            bin_start, bin_end, step_size, interval = 5, 5, 2, 49 # 10, 4, 5, 27
+            bin_start, bin_end, step_size, interval = 10, 4, 5, 27
         else:
             raise ValueError("current_type not defined")
 
@@ -342,3 +343,27 @@ class SegmentManager:
                 c = s_times
 
         return sta[:-1, :]
+        
+    def sum_currents(self, currents: list, var_name: str):
+      '''
+      function for summing a list of currents, as new attribute of Segment class
+      '''
+      for seg in self.segments:
+        i = 0
+        for current in currents:
+          i += getattr(seg, current)
+        setattr(seg, var_name, i)
+      
+    def compute_axial_currents(self):
+      '''
+      function for computing axial currents as new attribute of Segment class
+      '''
+      #compute axial currents between all segments
+      for seg in self.segments:
+        for adj_seg in seg.adj_segs:
+          axc = (seg.v - adj_seg.v) / (seg.seg_half_seg_RA + adj_seg.seg_half_seg_RA) #compute axial current using (v_in-v_out)/(halfsegRa+halfsegRa)
+          seg.axial_currents.append(axc)
+          if adj_seg in seg.parent_segs:
+            seg.parent_axial_currents.append(axc)
+          elif adj_seg in seg.child_segs:
+            seg.child_axial_currents.append(axc)

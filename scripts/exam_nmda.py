@@ -13,7 +13,7 @@ import constants
 output_folder = "hfs_output/2023-07-26_12-47-47_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
 
 what_to_plot = {
-    "Na": False,
+    "Na": True,
     "Ca": True,
     "NMDA": True,
     "Ca_NMDA": True

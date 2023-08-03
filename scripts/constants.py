@@ -1,5 +1,5 @@
 # Random state
-numpy_random_states = [124]
+numpy_random_states = [124, 125, 126]
 neuron_random_states = [2] # Number of calls to MCellRan4()
 
 # Modfiles
@@ -20,11 +20,11 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 5400 # Sim runtime (ms)
+h_tstop = 5400#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
-h_i_amplitudes = [-2. , -1.8, -1.6, -1.4, -1.2, -1. , -0.8, -0.6, -0.4, -0.2, 0, 0.2,  0.4,  0.6,  0.8,  1. ,  1.2,  1.4,  1.6,  1.8,  2. ] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
+h_i_amplitudes = [-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
 h_i_duration = 5000 # (ms)
 h_i_delay = 400 # (ms)
 
