@@ -17,7 +17,7 @@ import numpy as np
 from functools import partial
 import scipy.stats as st
 import time, datetime
-import os, h5py, pickle
+import os, h5py, pickle, shutil
 from multiprocessing import Process
 
 from neuron import h
@@ -328,6 +328,10 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     with open(os.path.join(save_folder, "seg_indexes.pickle"), "wb") as file:
         pickle.dump(seg_indexes, file)
 
+    # Save constants
+    shutil.copy2("constants.py", save_folder)
+    os.rename(os.path.join(save_folder, "constants.py"), os.path.join(save_folder, "constants_image.txt"))
+
     h.finitialize(h.v_init)
     while h.t <= h.tstop + 1:
 
@@ -346,6 +350,9 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
 
             with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
                 file.create_dataset("report/biophysical/data", data = lfp)
+            # save net membrane current
+            with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "imembrane.h5"), 'w') as file:
+                file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
 
             # Save time
             with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "t.h5"), 'w') as file:

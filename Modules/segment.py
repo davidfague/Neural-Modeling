@@ -105,9 +105,9 @@ class SegmentManager:
         skip: ms of simulation to skip
         '''
         filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
-                     "i_NMDA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
-                     "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "spikes_report"]
-        current_names = ["v", "gNaTa", "iampa", "inmda", "icah", "ical", "ih", "ina"]
+                     "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
+                     "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "i_membrane_report","spikes_report"]
+        current_names = ["v", "gNaTa", "iampa", "inmda", "igaba","icah", "ical", "ih", "ina", "imembrane"]
 
         self.segments = []
         self.dt = dt
@@ -149,19 +149,29 @@ class SegmentManager:
     def read_data(self, filenames: list, output_folder: str, steps: list) -> list:
 
         data = {name : [] for name in filenames}
-
+        
         for step in steps:
             dirname = os.path.join(output_folder, f"saved_at_step_{step}")
             for name in filenames:
-                with h5py.File(os.path.join(dirname, name + ".h5"), 'r') as file:
-                    data[name].append(np.array(file["report"]["biophysical"]["data"]))
+              with h5py.File(os.path.join(dirname, name + ".h5"), 'r') as file:
+                if name == 'spikes_report':
+                    if "spikes" in file and "biophysical" in file["spikes"]:
+                        data[name].append(np.array(file["spikes"]["biophysical"]["timestamps"][:]))
+                    elif "report" in file and "biophysical" in file["report"]:
+                        data[name].append(np.array(file["report"]["biophysical"]["timestamps"]))
+                    else:
+                        print(f"No expected key found in file {name}.h5 for spikes_report")
+                else:
+                    if "report" in file and "biophysical" in file["report"]:
+                        data[name].append(np.array(file["report"]["biophysical"]["data"][:]))
+                    else:
+                        print(f"No expected key found in file {name}.h5 for report")
 
         # Merge data
         for name in data.keys():
             data[name] = np.hstack(data[name])
 
         data["seg_info"] = pd.read_csv(os.path.join(output_folder, f"saved_at_step_{steps[0]}", "seg_info.csv"))
-        print(data["spikes_report"])
 
         return data
 
@@ -315,15 +325,8 @@ class SegmentManager:
         return edges
 
     def get_sta(self, spiketimes, lower_bounds, edges, sec_indicator, current_type, elec_dist_var = 'soma_passive', mag = None, mag_th = None):
-
-        if current_type == 'ina':
-            bin_start, bin_end, step_size, interval = 2, 2, 1, 39
-        elif current_type == 'ica':
-            bin_start, bin_end, step_size, interval = 10, 4, 5, 27
-        elif current_type =='inmda':
-            bin_start, bin_end, step_size, interval = 10, 4, 5, 27
-        else:
-            raise ValueError("current_type not defined")
+        
+        bin_start, bin_end, step_size, interval = 5, 5, 2, 49
 
         sta = np.zeros((len(edges), interval))
         c = 0
