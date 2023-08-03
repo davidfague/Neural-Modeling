@@ -106,7 +106,7 @@ class SegmentManager:
         '''
         filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
                      "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
-                     "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "imembrane","spikes_report"]
+                     "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "i_membrane_report","spikes_report"]
         current_names = ["v", "gNaTa", "iampa", "inmda", "igaba","icah", "ical", "ih", "ina", "imembrane"]
 
         self.segments = []
@@ -149,12 +149,23 @@ class SegmentManager:
     def read_data(self, filenames: list, output_folder: str, steps: list) -> list:
 
         data = {name : [] for name in filenames}
-
+        
         for step in steps:
             dirname = os.path.join(output_folder, f"saved_at_step_{step}")
             for name in filenames:
-                with h5py.File(os.path.join(dirname, name + ".h5"), 'r') as file:
-                    data[name].append(np.array(file["report"]["biophysical"]["data"]))
+              with h5py.File(os.path.join(dirname, name + ".h5"), 'r') as file:
+                if name == 'spikes_report':
+                    if "spikes" in file and "biophysical" in file["spikes"]:
+                        data[name].append(np.array(file["spikes"]["biophysical"]["timestamps"][:]))
+                    elif "report" in file and "biophysical" in file["report"]:
+                        data[name].append(np.array(file["report"]["biophysical"]["timestamps"]))
+                    else:
+                        print(f"No expected key found in file {name}.h5 for spikes_report")
+                else:
+                    if "report" in file and "biophysical" in file["report"]:
+                        data[name].append(np.array(file["report"]["biophysical"]["data"][:]))
+                    else:
+                        print(f"No expected key found in file {name}.h5 for report")
 
         # Merge data
         for name in data.keys():
