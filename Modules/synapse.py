@@ -232,3 +232,11 @@ class Synapse:
 
     def get_segment(self) -> nrn.Segment:
         return self.synapse_neuron_obj.get_segment()
+        
+    def get_exc_or_inh_from_syn_type(self):
+        if 'pyr2pyr' in self.syn_type or 'AMPA_NMDA' in self.syn_type:
+            return 'exc'
+        elif 'int2pyr' in self.syn_type or 'GABA_AB' in self.syn_type:
+            return 'inh'
+        else:
+            raise(ValueError("Cannot determine 'exc' or 'inh' from syn_type:", self.syn_type))

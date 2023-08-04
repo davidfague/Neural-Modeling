@@ -3,6 +3,7 @@ from scipy.signal import lfilter
 from neuron import h
 from Modules.cell_model import CellModel
 import warnings
+import math
 
 def minmax(x):
 	return (x - np.min(x)) / (np.max(x) - np.min(x))
@@ -359,6 +360,50 @@ class SpikeGenerator:
 		sample_values = random_state.poisson(fr_profile / 1000)
 		spike_times = np.where(sample_values > 0)[0]
 		return spike_times
+   
+	def create_netstim(self, frequency=None, interval=None, number=None, duration=None, start=None, noise=0):
+		'''
+    function for creating a NetStim. Provide either frequency or interval and number or duration.
+    frequency: float
+      desired frequency for stimulus (Hz)
+    interval: float
+      mean time between spikes (ms)
+    number: int
+      average number of spikes
+    duration: float
+      desired duration of stimulus (ms)
+    start: float
+      most likely start time of first spike (ms)
+    noise: range 0 to 1 
+      Fractional randomness. 0 deterministic, 1 intervals have negexp distribution.
+      an interval between spikes consists of a fixed interval of duration (1 - noise)*interval plus a negexp interval of mean duration noise*interval. 
+      Note that the most likely negexp interval has duration 0.
+    '''
+		if start is None:
+			raise(ValueError("Pass start argument."))  
+    
+		if (frequency is not None) & (interval is not None):
+			raise(ValueError("Pass either frequency or interval argument. Not Both."))
+		elif (frequency is None) & (interval is None):
+			raise(ValueError("Pass either frequency or interval argument."))
+		elif (frequency is not None):
+			interval = 1000/frequency # calculate interval from frequency # convert from Hz to ms.
+    
+		if (number is not None) & (duration is not None):
+			raise(ValueError("Pass either number or duration argument. Not Both."))
+		elif (number is None) & (duration is None):
+			raise(ValueError("Pass either number or duration argument."))
+		elif (duration is not None):
+			number = math.floor(duration/interval) # calculate number of spike from duration and spike interval
+    
+    #create NetStim hoc object
+		stim = h.NetStim()
+		stim.interval = interval
+		stim.number = number
+		stim.start = start
+		stim.noise = noise
+    
+		return stim
 	
 	def set_spike_train(self, synapse, spikes) -> h.NetCon:
 		self.spike_trains.append(spikes)
