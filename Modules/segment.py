@@ -100,7 +100,7 @@ class Segment:
 
 class SegmentManager:
 
-    def __init__(self, output_folder: str, steps: list, dt: float = 0.1, skip: int = 0):
+    def __init__(self, output_folder: str, steps: list, dt: float = 0.1, skip: int = 0, transpose = False):
         '''
         skip: ms of simulation to skip
         '''
@@ -114,14 +114,19 @@ class SegmentManager:
 
         # Read datafiles
         data = self.read_data(filenames, output_folder, steps)
+        print(data["Vm_report"].shape)
 
         self.num_segments = len(data["seg_info"])
+        print("NUM seg", self.num_segments)
 
-        for i in range(self.num_segments):
+        for i in range(4, self.num_segments - 4):
             # Build seg_data
             seg_data = {}
             for filename, current_name in zip(filenames[:-1], current_names):
-                seg_data[current_name] = data[filename][i, int(skip / dt):]
+                if transpose:
+                    seg_data[current_name] = data[filename].T[i, int(skip / dt):]
+                else:
+                    seg_data[current_name] = data[filename][i, int(skip / dt):]
 
             seg = Segment(seg_info = data["seg_info"].iloc[i], seg_data = seg_data)
             self.segments.append(seg)
