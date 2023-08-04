@@ -20,7 +20,7 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 2500#20400 # Sim runtime (ms)
+h_tstop = 55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
@@ -70,7 +70,11 @@ ties_CV_t = 1
 ties_sigma_iv = 1
 ties_pad_aiv = 0
 
+# Post Synaptic Current analysis
+number_of_presynaptic_cells = 6524
+PSC_start = 5
+
 # Log, plot and save
 save_dir = "output"
-log_every_ms = 500
-save_every_ms = 2000
+log_every_ms = 55
+save_every_ms = 55
