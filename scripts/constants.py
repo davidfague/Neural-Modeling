@@ -1,6 +1,6 @@
 # Random state
-numpy_random_states = [123]
-neuron_random_states = [87] # Number of calls to MCellRan4()
+numpy_random_states = [124, 125, 126]
+neuron_random_states = [2] # Number of calls to MCellRan4()
 
 # Modfiles
 modfiles_folder = "../modfiles"
@@ -24,8 +24,8 @@ h_tstop = 55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
-h_i_amplitudes = [None]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
-h_i_duration = 20000 # (ms)
+h_i_amplitudes = [-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
+h_i_duration = 5000 # (ms)
 h_i_delay = 400 # (ms)
 
 # Excitatory dend
