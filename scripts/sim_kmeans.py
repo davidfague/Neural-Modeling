@@ -210,7 +210,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     
     reductor = Reductor()
     cell = reductor.reduce_cell(complex_cell = complex_cell, reduce_cell = constants.reduce_cell, 
-                                optimize_nseg = constants.optimize_nseg, synapses_list = all_syns,
+                                optimize_nseg = constants.optimize_nseg_by_lambda, synapses_list = all_syns,
                                 netcons_list = spike_generator.netcons, spike_trains = spike_generator.spike_trains,
                                 spike_threshold = constants.spike_threshold, random_state = random_state,
                                 var_names = constants.channel_names, reduction_frequency = constants.reduction_frequency, 
