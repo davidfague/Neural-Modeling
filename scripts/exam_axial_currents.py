@@ -15,10 +15,15 @@ import pdb #python debugger
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
 import constants
-output_folder = 'output/BenModel/'#'output/2023-08-02_14-00-11_seeds_123_87L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn' #"output/BenModel/"
+output_folder = 'output/2023-08-02_14-00-11_seeds_123_87L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn' #"output/BenModel/"
 if 'BenModel' in output_folder:
   constants.save_every_ms = 3000
   constants.h_tstop = 3000
+  transpose =True
+else:
+  transpose=False
+  constants.save_every_ms = 200
+  constants.h_tstop = 2500
 dt=constants.h_dt
 
 print(constants.h_dt, constants.save_every_ms, constants.h_tstop)
@@ -40,7 +45,7 @@ def main():
 #  print(t)
 
   #random_state = np.random.RandomState(random_state)
-  sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt, skip=300)
+  sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt, skip=300, transpose=transpose)
   t=np.arange(0,len(sm.segments[0].v)*dt,dt) # can probably change this to read the recorded t_vec
   
   #Compute axial currents from each segment toward its adjacent segments.
@@ -63,21 +68,25 @@ def main():
   AC_path = os.path.join(output_folder, "current_analysis")
   os.mkdir(AC_path)
   
-#  #Plot segments adjacent to soma
-#  plot_adjacent_segments(segs=soma_segs, sm=sm, title_prefix="Soma_", save_to=AC_path)
-#  #Plot segments adjacent to nexus
-#  with open(os.path.join(output_folder, "seg_indexes.pickle"), "rb") as file:
-#      seg_indexes = pickle.load(file)
-#  nexus_seg_index=seg_indexes["nexus"]
-#  nexus_segs=[sm.segments[nexus_seg_index]]
-#  plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=AC_path)
+  #Plot segments adjacent to soma
+  plot_adjacent_segments(segs=soma_segs, sm=sm, title_prefix="Soma_", save_to=AC_path)
+  #Plot segments adjacent to nexus
+  with open(os.path.join(output_folder, "seg_indexes.pickle"), "rb") as file:
+      seg_indexes = pickle.load(file)
+  if 'BenModel' in output_folder:
+    nexus_seg_index = []
+  else:
+    nexus_seg_index=seg_indexes["nexus"]
+    print("NEXUS SEG:", sm.segments[nexus_seg_index].seg) # to determine matching seg
+  nexus_segs=[sm.segments[nexus_seg_index]]
+  plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=AC_path)
        
   
-#  #Plot Axial Currents
-#  for seg in soma_segs:
-#      plot_all(seg, t, save_to=AC_path, title_prefix ='Soma_')
-#  for seg in nexus_segs:
-#      plot_all(seg, t, save_to=AC_path, title_prefix = 'Nexus_')
+  #Plot Axial Currents
+  for seg in soma_segs:
+      plot_all(seg, t, save_to=AC_path, title_prefix ='Soma_')
+  for seg in nexus_segs:
+      plot_all(seg, t, save_to=AC_path, title_prefix = 'Nexus_')
 
   # Plot around APs
   for i,AP_time in enumerate(np.array(sm.soma_spiketimes)):# spike time (ms) #TODO: check

@@ -119,7 +119,7 @@ class SegmentManager:
         self.num_segments = len(data["seg_info"])
         print("NUM seg", self.num_segments)
 
-        for i in range(4, self.num_segments - 4):
+        for i in range(self.num_segments):
             # Build seg_data
             seg_data = {}
             for filename, current_name in zip(filenames[:-1], current_names):
@@ -163,7 +163,7 @@ class SegmentManager:
                     if "spikes" in file and "biophysical" in file["spikes"]:
                         data[name].append(np.array(file["spikes"]["biophysical"]["timestamps"][:]))
                     elif "report" in file and "biophysical" in file["report"]:
-                        data[name].append(np.array(file["report"]["biophysical"]["timestamps"]))
+                        data[name].append(np.array(file["report"]["biophysical"]["data"]))
                     else:
                         print(f"No expected key found in file {name}.h5 for spikes_report")
                 else:

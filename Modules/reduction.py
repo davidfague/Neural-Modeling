@@ -10,7 +10,7 @@ import warnings
 
 class Reductor():
 
-	def reduce_cell(self, complex_cell: object, reduce_cell: bool = False, synapses_list: list = None, netcons_list: list = None, 
+	def reduce_cell(self, complex_cell: object, reduce_cell: bool = False, optimize_nseg: bool = False, synapses_list: list = None, netcons_list: list = None, 
 		 			spike_trains: list = None, spike_threshold: int = 10, random_state: np.random.RandomState = None, 
 					var_names: list = None, reduction_frequency: float = 0, expand_cable: bool = False, choose_branches: list = None):
 		
@@ -51,6 +51,9 @@ class Reductor():
 					else: # Synapse did not receive netcons during cable_expander.redistribute_netcons
 						synapses_without_netcons.append(nrn_syn)
 				print(f'Reductor: {len(synapses_without_netcons)} unused synapses after expansion')
+        
+				if optimize_nseg:
+					self.update_model_nseg_using_lambda(self.reduced_dendritic_cell)
 
 				cell = CellModel(hoc_model = self.reduced_dendritic_cell, synapses = synapses_list, netcons = netcons_list, 
 								 spike_trains = spike_trains, spike_threshold = spike_threshold, random_state = random_state,
@@ -72,11 +75,15 @@ class Reductor():
 					syn = Synapse(syn_obj=nrn_syn)
 					syn.ncs = syn_to_netcon[nrn_syn]
 					synapses_list.append(syn)
+				if optimize_nseg:
+					self.update_model_nseg_using_lambda(self.reduced_cell)
 				cell = CellModel(hoc_model = self.reduced_cell, synapses = synapses_list, netcons = netcons_list, 
 								  spike_trains = spike_trains, spike_threshold = spike_threshold, random_state = random_state,
 								  var_names = var_names)
 				print(f"Reductor: {len(cell.tufts)} terminal tuft branches in NR reduced_cell")
 		else: # No reduction
+			if optimize_nseg:
+				reductor.update_model_nseg_using_lambda(self.complex_cell)
 			cell = CellModel(hoc_model = complex_cell, synapses = synapses_list, netcons = netcons_list,
 		    				 spike_trains = spike_trains, spike_threshold = spike_threshold, random_state = random_state,
 							 var_names = var_names)

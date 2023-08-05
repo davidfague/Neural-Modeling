@@ -490,7 +490,8 @@ def get_nested_property(seg, properties, time_index = None):
     elif (isinstance(prop_value, np.ndarray)) & (time_index is None):
       return prop_value
     else:
-      raise ValueError("Check property list")
+      return prop_value
+      #raise ValueError("Check property list")
         
 def plot_adjacent_segments(segs, sm, figsize = (3,10), title_prefix=None, save_to=None):
   '''

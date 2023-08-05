@@ -17,11 +17,19 @@ import constants
 
 
 output_folder = "output/2023-08-02_14-00-11_seeds_123_87L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
+output_folder = "output/BenModel"
+constants.save_every_ms = 200
+constants.h_tstop = 2500
+if 'BenModel' in output_folder:
+  constants.save_every_ms = 3000
+  constants.h_tstop = 3000
+  transpose =True
 skip = 300 # (ms)
 
 find_average=False
-animate_plot=True
-constants.cmap_type = 'jet'#'Greys'
+animate_plot=False
+interactive=False
+constants.cmap_type = 'cool'#'Greys'
 
 constants.show_electrodes = False
 if constants.show_electrodes:
@@ -36,17 +44,17 @@ loc_param_default = [0., 0., 45., 0., 1., 0.]
 #[0., 0., 80., 0., 1., 0.] # resulted in 5 uV LFP # original
 
 # Default view
-elev, azim = 10, 90
+elev, azim = 10, -45#90
 
 new_property = None#['inmda','iampa','net_exc_i'] # set to None if not using existing property
 
 time_index = 300
 #identify the property being used #check cell.seg_info[0] for dictionary of properties (some are nested)
-if new_property is None:
-  if hasattr(constants, "property_list_to_analyze"):
-    property_list_to_analyze = constants.property_list_to_analyze
-  else:
-    property_list_to_analyze = ['imembrane'] # can update here if it is not specified in constants.py
+#if new_property is None:
+#  if hasattr(constants, "property_list_to_analyze"):
+#    property_list_to_analyze = constants.property_list_to_analyze
+#  else:
+property_list_to_analyze = ['netcon_density_per_seg', 'inh'] # can update here if it is not specified in constants.py
   # property_list_to_analyze = ['netcon_density_per_seg','exc']
   # property_list_to_analyze = ['seg_elec_info','beta','passive_soma']
   
@@ -73,7 +81,7 @@ def main(property_list_to_analyze):
   
   # Get Robust normalized properties
   # Define your percentile thresholds
-  lower, upper = np.percentile(seg_prop, [1, 99]) # you can adjust these percentiles to your needs
+  lower, upper = np.percentile(seg_prop, [1, 95])#90]) # you can adjust these percentiles to your needs
   # Define normalization function based on these percentiles
   robust_norm = plt.Normalize(vmin=lower, vmax=upper)
   # Apply robust normalization to segment property
@@ -96,6 +104,7 @@ def main(property_list_to_analyze):
 #                                seg_coords = seg_coords, sec_nseg = sec_nseg, type_id = type_id)
       fig, ax = plot_morphology(segments=sm.segments, electrodes=elec_pos, move_cell=loc_param, elev=-elev, azim=-azim, figsize=(12, 8),
                                 seg_property = label, segment_colors = segment_colors, sm=smap)
+      fig.savefig(os.path.join(output_folder, label+'.png'))
       plt.show()
   
   xslider = Layout(width='500px')
@@ -136,10 +145,14 @@ def main(property_list_to_analyze):
       # Create the animation
       ani = FuncAnimation(fig, animate, frames=range(len([get_nested_property(seg, property_list_to_analyze) for seg in [sm.segments[0]]])), interval=200, fargs=(sm,robust_norm,cmap,ax, loc_param,label,))
       plt.show()
+  elif interactive: 
+      out = interactive_output(interactive_plot, {'x': w_x, 'y': w_y, 'z': w_z, 'alpha': w_alpha, 'beta': w_beta, 'phi': w_phi, 'elev': w_elev, 'azim': w_azim})
+      ui = VBox([ w_reset, HBox([ VBox([w_x, w_y, w_z]), VBox([w_alpha, w_beta, w_phi]) ]), HBox([ VBox([out, w_azim]), w_elev]) ])
+      display(ui)
   else:
-    out = interactive_output(interactive_plot, {'x': w_x, 'y': w_y, 'z': w_z, 'alpha': w_alpha, 'beta': w_beta, 'phi': w_phi, 'elev': w_elev, 'azim': w_azim})
-    ui = VBox([ w_reset, HBox([ VBox([w_x, w_y, w_z]), VBox([w_alpha, w_beta, w_phi]) ]), HBox([ VBox([out, w_azim]), w_elev]) ])
-    display(ui)
+      print("saving figure")
+      interactive_plot(x=w_x.value, y=w_y.value, z=w_z.value, alpha=w_alpha.value, beta=w_beta.value, phi=w_phi.value, elev=w_elev.value, azim=w_azim.value)
+
 
   
 if __name__ == "__main__":

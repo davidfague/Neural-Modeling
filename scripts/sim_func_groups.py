@@ -120,13 +120,15 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     for i, seg in enumerate(no_soma_segments):
         if h.distance(seg, complex_cell.soma[0](0.5)) < 75:
             adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
+        elif seg in complex_cell.apic[0]: # trunk
+            adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
         else:
             adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
 
     logger.log_memory()
 
     exc_functional_groups = generate_excitatory_functional_groups(all_segments = no_soma_segments,
-                                                                  all_len_per_segment = no_soma_len_per_segment,
+                                                                  all_len_per_segment = adjusted_no_soma_len_per_segment, #no_soma_len_per_segment,
                                                                   all_segments_centers = no_soma_segments_center,
                                                                   number_of_groups = exc_number_of_groups,
                                                                   cells_per_group = cells_per_group,
@@ -234,13 +236,12 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_memory()
     
     reductor = Reductor()
-    cell = reductor.reduce_cell(complex_cell = complex_cell, reduce_cell = constants.reduce_cell, synapses_list = all_syns,
+    cell = reductor.reduce_cell(complex_cell = complex_cell, reduce_cell = constants.reduce_cell, 
+                                optimize_nseg = constants.optimize_nseg, synapses_list = all_syns,
                                 netcons_list = spike_generator.netcons, spike_trains = spike_generator.spike_trains,
                                 spike_threshold = constants.spike_threshold, random_state = random_state,
                                 var_names = constants.channel_names, reduction_frequency = constants.reduction_frequency, 
                                 expand_cable = constants.expand_cable, choose_branches = constants.choose_branches)
-    if constants.optimize_nseg_by_lambda:
-        reductor.update_model_nseg_using_lambda(cell, constants.segs_per_lambda)
     if constants.merge_synapses:
         reductor.merge_synapses(cell)
     cell.setup_recorders(vector_length = constants.save_every_ms)
@@ -351,7 +352,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
             with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
                 file.create_dataset("report/biophysical/data", data = lfp)
             # save net membrane current
-            with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "imembrane.h5"), 'w') as file:
+            with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "i_membrane_report.h5"), 'w') as file:
                 file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
 
             # Save time

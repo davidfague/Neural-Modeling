@@ -10,7 +10,7 @@ reduce_cell = False
 expand_cable = False
 reduction_frequency = 0
 choose_branches = 22
-optimize_nseg_by_lambda = False # Whether or not to optimize the number of segments by lambda after reduction (may need to add an update to the CellModel class instance's segments list and seg_info list.)
+optimize_nseg_by_lambda = True # Whether or not to optimize the number of segments by lambda after reduction (may need to add an update to the CellModel class instance's segments list and seg_info list.)
 merge_synapses = False # Whether or not to merge synapses after optimizing nseg by lambda. (synapses should already be merged by the reduce_cell_func, but could be merged again if optimize_nseg_by_lambda lowers nseg.)
 segs_per_lambda = 10 # Desired number of segs per length constant
 
@@ -20,7 +20,7 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 55#2500#20400 # Sim runtime (ms)
+h_tstop = 2500#55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
@@ -76,5 +76,5 @@ PSC_start = 5
 
 # Log, plot and save
 save_dir = "output"
-log_every_ms = 55
-save_every_ms = 55
+log_every_ms = 500
+save_every_ms = 500
