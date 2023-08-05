@@ -4,11 +4,11 @@ sys.path.append("../")
 from Modules.synapse_generator import SynapseGenerator
 from Modules.spike_generator import SpikeGenerator
 from Modules.complex_cell import build_L5_cell
-from Modules.functional_group import generate_excitatory_functional_groups, generate_inhibitory_functional_groups
 from Modules.cell_utils import get_segments_and_len_per_segment
 from Modules.logger import Logger
 from Modules.recorder import Recorder
 from Modules.reduction import Reductor
+from Modules.clustering import FunctionalGroup, PresynapticCell
 
 from cell_inference.config import params
 from cell_inference.utils.currents.ecp import EcpMod
@@ -217,29 +217,26 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                 var_names = constants.channel_names, reduction_frequency = constants.reduction_frequency, 
                                 expand_cable = constants.expand_cable, choose_branches = constants.choose_branches)
     
-    # Cluster synapses
+    # get segmetsncoordinatesCluster cell segments into functional groups
     segment_coordinates = np.zeros((len(cell.seg_info), 3))
     for ind, seg in enumerate(cell.seg_info):
         segment_coordinates[ind, 0] = seg['p0.5_x3d']
         segment_coordinates[ind, 1] = seg['p0.5_y3d']
         segment_coordinates[ind, 2] = seg['p0.5_z3d']
-    
-    n_clusters = 10
-    km = KMeans(n_clusters = n_clusters)
-    seg_id_to_cluster_index = km.fit_predict(segment_coordinates)
+        
 
-    # Calculate spike train for each cluster
-    cluster_spike_trains = [[] for _ in range(n_clusters)]
-
-    # Assign spike train by segment cluster index
-    for synapse_list in [exc_synapses, inh_synapses, soma_inh_synapses]:
-        for synapse in synapse_list:
-            synapse_segment = synapse.get_segment() # get synapse segment
-            seg_id = cell.segments.index(synapse_segment) # get seg index
-            cluster_index = seg_id_to_cluster_index[seg_id]
-            cluster_spike_trains[cluster_index].append(1) #TODO: append spike train
-            
-    return 0
+    from Modules.clustering import create_functional_presynaptic_cell_groups
+    # for debuggin:
+#    def generate_functional_groups(all_segments: list, all_segments_centers: list, all_len_per_segment: list,
+#										  number_of_groups: int, cells_per_group: int, synapses_per_cluster: int,
+#										  functional_group_span: float, cluster_span: float, 
+#										  gmax_dist: object, mean_fr_dist: object, 
+#										  spike_generator: SpikeGenerator,
+#										  t: np.ndarray, random_state: np.random.RandomState, neuron_r: h.Random,
+#										  record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB',
+#										  vector_length: int = None) -> list:
+    create_functional_presynaptic_cell_groups(segment_coordinates=,n_functional_groups=,n_presynaptic_cells_per_functional_group=,name_prefix=,cell=cell,)
+        
 
     if constants.merge_synapses:
         reductor.merge_synapses(cell)

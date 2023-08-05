@@ -160,7 +160,7 @@ def generate_inhibitory_functional_groups(cell: object, all_segments: list, all_
 
 class FunctionalGroup:
   
-	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 100, name: str = None):
+	def __init__(self, center_seg: nrn.Segment = None, segments: list = [], segment_centers: list = [], radius: float = 100, name: str = None):
 		'''
 		Parameters:
 		----------
@@ -180,7 +180,7 @@ class FunctionalGroup:
 			Name of the functional group.
 		'''
 		self.center_seg = center_seg
-		self.segments = [] # list of segments within this FunctionalGroup
+		self.segments = segments # list of segments within this FunctionalGroup
 		self.len_per_segment = [] # list of lengths of segments within this FunctionalGroup
 		self.synapses = [] # list of synapses in this cluster
 		self.clusters = []
@@ -193,14 +193,16 @@ class FunctionalGroup:
 			center = segment_centers[segments.index(center_seg)]
 			# Get segments within this cluster
 			self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius)
+		if len(self.segments) != len(self.len_per_segment):
 			# Get segment lengths
+      self.len_per_segment = []
 			for seg in self.segments:
 				self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
 			self.len_per_segment = np.array(self.len_per_segment)
 
 class Cluster:
 
-	def __init__(self, center_seg: nrn.Segment, segments: list, segment_centers: list, radius: float = 10):
+	def __init__(self, center_seg: nrn.Segment = None, segments: list = [], segment_centers: list = [], radius: float = 10):
 		'''
 		Parameters:
 		----------
