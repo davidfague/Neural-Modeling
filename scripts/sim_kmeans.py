@@ -14,6 +14,7 @@ from cell_inference.config import params
 from cell_inference.utils.currents.ecp import EcpMod
 
 import numpy as np
+from sklearn.cluster import KMeans
 from functools import partial
 import scipy.stats as st
 import time, datetime
@@ -129,7 +130,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
 
     exc_synapses = synapse_generator.add_synapses(segments = no_soma_segments,
                                               probs = no_soma_len_per_segment,
-                                              density=constants.exc_syn_ensity,
+                                              density=constants.exc_synaptic_density,
                                               record = True,
                                               vector_length = constants.save_every_ms,
                                               gmax = gmax_exc_dist,
@@ -163,7 +164,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_memory()
     inh_synapses = synapse_generator.add_synapses(segments = all_segments,
                                               probs = all_len_per_segment,
-                                              density=constants.inh_syn_ensity,
+                                              density=constants.inh_synaptic_density,
                                               record = True,
                                               vector_length = constants.save_every_ms,
                                               gmax = constants.inh_gmax_dist,
@@ -181,10 +182,10 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_memory()
     soma_inh_synapses = synapse_generator.add_synapses(segments = soma_segments,
                                               probs = soma_SA_per_segment,
-                                              number=150,
+                                              number_of_synapses=150,
                                               record = True,
                                               vector_length = constants.save_every_ms,
-                                              gmax = constants.soma_gmax_dist,,
+                                              gmax = constants.soma_gmax_dist,
                                               random_state=random_state,
                                               neuron_r = neuron_r,
                                               syn_mod = 'GABA_AB'
@@ -215,20 +216,30 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                 spike_threshold = constants.spike_threshold, random_state = random_state,
                                 var_names = constants.channel_names, reduction_frequency = constants.reduction_frequency, 
                                 expand_cable = constants.expand_cable, choose_branches = constants.choose_branches)
-    #TO DO:
-    # perform kmeans clustering of segments
-    seg_id_to_cluster_index = []
-    # calculate spike train for each cluster
-    cluster_spike_trains = []
+    
+    # Cluster synapses
+    segment_coordinates = np.zeros((len(cell.seg_info), 3))
+    for ind, seg in enumerate(cell.seg_info):
+        segment_coordinates[ind, 0] = seg['p0.5_x3d']
+        segment_coordinates[ind, 1] = seg['p0.5_y3d']
+        segment_coordinates[ind, 2] = seg['p0.5_z3d']
+    
+    n_clusters = 10
+    km = KMeans(n_clusters = n_clusters)
+    seg_id_to_cluster_index = km.fit_predict(segment_coordinates)
 
-    # assign spike train by segment cluster index
+    # Calculate spike train for each cluster
+    cluster_spike_trains = [[] for _ in range(n_clusters)]
+
+    # Assign spike train by segment cluster index
     for synapse_list in [exc_synapses, inh_synapses, soma_inh_synapses]:
         for synapse in synapse_list:
             synapse_segment = synapse.get_segment() # get synapse segment
             seg_id = cell.segments.index(synapse_segment) # get seg index
             cluster_index = seg_id_to_cluster_index[seg_id]
-            cluster_spike_trains[cluster_index]
+            cluster_spike_trains[cluster_index].append(1) #TODO: append spike train
             
+    return 0
 
     if constants.merge_synapses:
         reductor.merge_synapses(cell)
