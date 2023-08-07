@@ -8,7 +8,8 @@ from Modules.cell_utils import get_segments_and_len_per_segment
 from Modules.logger import Logger
 from Modules.recorder import Recorder
 from Modules.reduction import Reductor
-from Modules.clustering import FunctionalGroup, PresynapticCell
+from Modules.clustering import create_functional_groups_of_presynaptic_cells
+from Modules.cell_model import CellModel
 
 from cell_inference.config import params
 from cell_inference.utils.currents.ecp import EcpMod
@@ -138,8 +139,6 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                               neuron_r = neuron_r,
                                               syn_mod = 'AMPA_NMDA'
                                               )
-    
-    exc_spikes = spike_generator.spike_trains
 
     logger.log_memory()
     logger.log_section_end("Generating Excitatory func groups")
@@ -203,12 +202,55 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     for synapse_list in synapse_generator.synapses: # synapse_generator.synapses is a list of synapse lists
         for synapse in synapse_list:
             all_syns.append(synapse)
-
+    
+    excit_synapses=[]
+    inhib_synapses=[]
+    soma_inhib_synapses=[]
+    for synapse in exc_synapses:
+      excit_synapses.append(synapse.synapse_neuron_obj)
+    for synapse in inh_synapses:
+      inhib_synapses.append(synapse.synapse_neuron_obj)
+    for synapse in soma_inh_synapses:
+      soma_inhib_synapses.append(synapse.synapse_neuron_obj)
+            
+    print("exc_synapses:", excit_synapses)
+    print("inh_synapses:", inhib_synapses)
+    print("soma_inh_synapses:", soma_inhib_synapses)
     logger.log_section_end("Adding all synapses")
 
     logger.log_section_start("Initializing cell model")
     logger.log_memory()
     
+    cell = CellModel(hoc_model = complex_cell, random_state = random_state)
+
+    # get segmetsncoordinatesCluster cell segments into functional groups
+    segment_coordinates = np.zeros((len(cell.seg_info), 3))
+    soma_coordinates = np.zeros(3)
+    for ind, seg in enumerate(cell.seg_info):
+        segment_coordinates[ind, 0] = seg['p0.5_x3d']
+        segment_coordinates[ind, 1] = seg['p0.5_y3d']
+        segment_coordinates[ind, 2] = seg['p0.5_z3d']
+        if seg['seg'] == cell.soma[0](0.5):
+          soma_coordinates[0] = seg['p0.5_x3d']
+          soma_coordinates[1] = seg['p0.5_y3d']
+          soma_coordinates[2] = seg['p0.5_z3d']
+
+    exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=4,n_presynaptic_cells_per_functional_group=2,name_prefix='exc',synapses = exc_synapses, cell=cell, mean_firing_rate = mean_fr_dist, spike_generator=spike_generator, t = t, random_state=random_state, method = '1f_noise')
+    
+    # get exc spikes for inh delay modulation # further implementation could potentially separate delay modulation by functional group.
+#    exc_spikes=[]
+#    for func_grp in exc_functional_groups:
+#      for presynaptic_cell in func_grp.presynaptic_cells:
+#        exc_spikes.append(presynaptic_cell.spike_train)
+    exc_spikes=spike_generator.spike_trains
+    
+    # generate inh functional groups
+    #dendritic
+    inh_distributed_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=4,n_presynaptic_cells_per_functional_group=2,name_prefix='inh',cell=cell, synapses = inh_synapses, proximal_fr_dist = proximal_inh_dist, distal_fr_dist=distal_inh_dist, spike_generator=spike_generator, t = t, random_state=random_state, spike_trains_to_delay = exc_spikes, fr_time_shift = constants.inh_firing_rate_time_shift, soma_coordinates=soma_coordinates, method = 'delay')
+    #somatic
+    inh_soma_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=1,n_presynaptic_cells_per_functional_group=1,name_prefix='soma_inh',cell=cell, synapses = soma_inh_synapses, proximal_fr_dist = proximal_inh_dist, distal_fr_dist=distal_inh_dist, spike_generator=spike_generator, t = t, random_state=random_state, spike_trains_to_delay = exc_spikes, fr_time_shift = constants.inh_firing_rate_time_shift, soma_coordinates=soma_coordinates, method = 'delay')
+
+
     reductor = Reductor()
     cell = reductor.reduce_cell(complex_cell = complex_cell, reduce_cell = constants.reduce_cell, 
                                 optimize_nseg = constants.optimize_nseg_by_lambda, synapses_list = all_syns,
@@ -217,31 +259,10 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                 var_names = constants.channel_names, reduction_frequency = constants.reduction_frequency, 
                                 expand_cable = constants.expand_cable, choose_branches = constants.choose_branches)
     
-    # get segmetsncoordinatesCluster cell segments into functional groups
-    segment_coordinates = np.zeros((len(cell.seg_info), 3))
-    for ind, seg in enumerate(cell.seg_info):
-        segment_coordinates[ind, 0] = seg['p0.5_x3d']
-        segment_coordinates[ind, 1] = seg['p0.5_y3d']
-        segment_coordinates[ind, 2] = seg['p0.5_z3d']
-        
-
-    from Modules.clustering import create_functional_presynaptic_cell_groups
-    # for debuggin:
-#    def generate_functional_groups(all_segments: list, all_segments_centers: list, all_len_per_segment: list,
-#										  number_of_groups: int, cells_per_group: int, synapses_per_cluster: int,
-#										  functional_group_span: float, cluster_span: float, 
-#										  gmax_dist: object, mean_fr_dist: object, 
-#										  spike_generator: SpikeGenerator,
-#										  t: np.ndarray, random_state: np.random.RandomState, neuron_r: h.Random,
-#										  record: bool = False, syn_params: dict = None, syn_mod: str = 'GABA_AB',
-#										  vector_length: int = None) -> list:
-    create_functional_presynaptic_cell_groups(segment_coordinates=,n_functional_groups=,n_presynaptic_cells_per_functional_group=,name_prefix=,cell=cell,)
-        
-
     if constants.merge_synapses:
         reductor.merge_synapses(cell)
     cell.setup_recorders(vector_length = constants.save_every_ms)
-
+    
     # Add injections for F/I curve
     if i_amplitude is not None:
         cell.add_injection(sec_index = cell.all.index(cell.soma[0]), record = True, delay = constants.h_i_delay, dur = constants.h_i_delay, amp = i_amplitude)

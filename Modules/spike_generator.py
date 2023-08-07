@@ -250,7 +250,6 @@ class SpikeGenerator:
 		# Flatten all the spike trains, because otherwise np.histogram doesn't work
 		# Ignore spike trains without spikes
 		times_where_spikes = [sp_time for sp_train in spike_trains_to_delay for sp_time in sp_train if len(sp_train) > 0]
-				
 		# Compute the firing rate profile from the histogram
 		hist, _ = np.histogram(times_where_spikes, bins = spike_train_t)
 
