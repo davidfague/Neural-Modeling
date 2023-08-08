@@ -195,7 +195,7 @@ class FunctionalGroup:
 			self.segments = make_seg_sphere(center = center, segments = segments, segment_centers = segment_centers, radius = radius)
 		if len(self.segments) != len(self.len_per_segment):
 			# Get segment lengths
-      self.len_per_segment = []
+			self.len_per_segment = []
 			for seg in self.segments:
 				self.len_per_segment.append(seg.sec.L / seg.sec.nseg)
 			self.len_per_segment = np.array(self.len_per_segment)

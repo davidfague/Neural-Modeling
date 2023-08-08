@@ -2,6 +2,9 @@
 numpy_random_states = [123]
 neuron_random_states = [87] # Number of calls to MCellRan4()
 
+# Runtime
+parallelize = False
+
 # Modfiles
 modfiles_folder = "../modfiles"
 
