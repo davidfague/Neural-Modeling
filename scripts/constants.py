@@ -20,7 +20,7 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 500 #55#2500#20400 # Sim runtime (ms)
+h_tstop = 30000 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
@@ -36,9 +36,10 @@ exc_synaptic_density = 2.12
 exc_functional_group_span = 100
 exc_cluster_span = 10
 exc_synapses_per_cluster = 5
+exc_syn_mod= 'AMPA_NMDA' #'pyr2pyr'
 
 # Inhibitory dend
-inh_gmax_dist = 2.25
+inh_gmax_dist = 1#2.25
 inh_synaptic_density = 0.22
 inh_cluster_span = 10
 inh_prox_mean_fr = 16.9
@@ -48,9 +49,10 @@ inh_distal_std_fr = 4.9
 inh_number_of_groups = 1
 inh_functional_group_span = 100
 inh_firing_rate_time_shift = 4
+inh_syn_mod = 'GABA_AB' # 'int2pyr'
 
 # Inhibitory soma
-soma_gmax_dist = 2.25
+soma_gmax_dist = 1#2.25
 soma_number_of_clusters = 15 # Number of presynaptic cells
 soma_cluster_span = 10
 soma_synapses_per_cluster = 10 # Number of synapses per presynaptic cell

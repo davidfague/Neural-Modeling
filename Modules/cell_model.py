@@ -236,12 +236,17 @@ class CellModel:
                     for seg in sec:
                         setattr(getattr(seg, channel), conductance, 0) # set the maximum conductance to zero
 
-    def write_seg_info_to_csv(self, path):
-        csv_file_path = os.path.join(path, 'seg_info.csv')
+    def write_seg_info_to_csv(self, path, seg_info=None, title_prefix:str = None):
+        if seg_info is  None:
+          seg_info=self.seg_info
+        if title_prefix:
+          csv_file_path = os.path.join(path, title_prefix+'seg_info.csv')
+        else:
+          csv_file_path = os.path.join(path, 'seg_info.csv')
         with open(csv_file_path, mode = 'w') as file:
-            writer = csv.DictWriter(file, fieldnames = self.seg_info[0].keys())
+            writer = csv.DictWriter(file, fieldnames = seg_info[0].keys())
             writer.writeheader()
-            for row in self.seg_info:
+            for row in seg_info:
                 writer.writerow(row)
     
     def init_segment_info(self) -> None:

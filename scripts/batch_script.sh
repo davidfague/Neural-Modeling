@@ -5,4 +5,4 @@
 #SBATCH --job-name=l5cell
 
 source /home/shared/L5env/bin/activate
-python sim_func_groups.py
+python sim_kmeans.py

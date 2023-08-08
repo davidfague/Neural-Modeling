@@ -76,7 +76,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     
     # increase nseg for complex cell # for clustering of synapses by kmeans on segments
     for sec in complex_cell.all:
-      sec.nseg=int(sec.nseg*2)
+      sec.nseg=int(sec.L*2)+1
 
     all_segments, all_len_per_segment, all_SA_per_segment,\
     all_segments_center, soma_segments, soma_len_per_segment,\
@@ -141,7 +141,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                               gmax = gmax_exc_dist,
                                               random_state=random_state,
                                               neuron_r = neuron_r,
-                                              syn_mod = 'AMPA_NMDA'
+                                              syn_mod = constants.exc_syn_mod
                                               )
 
     logger.log_memory()
@@ -173,7 +173,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                               gmax = constants.inh_gmax_dist,
                                               random_state=random_state,
                                               neuron_r = neuron_r,
-                                              syn_mod = 'GABA_AB'
+                                              syn_mod = constants.inh_syn_mod
                                               )
     
     logger.log_memory()
@@ -191,7 +191,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                               gmax = constants.soma_gmax_dist,
                                               random_state=random_state,
                                               neuron_r = neuron_r,
-                                              syn_mod = 'GABA_AB'
+                                              syn_mod = constants.inh_syn_mod
                                               )
     
     logger.log_memory()
@@ -230,6 +230,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
 
     # get segmetsncoordinatesCluster cell segments into functional groups
     segment_coordinates = np.zeros((len(cell.seg_info), 3))
+    detailed_seg_info = cell.seg_info.copy()
     soma_coordinates = np.zeros(3)
     for ind, seg in enumerate(cell.seg_info):
         segment_coordinates[ind, 0] = seg['p0.5_x3d']
@@ -240,8 +241,9 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
           soma_coordinates[1] = seg['p0.5_y3d']
           soma_coordinates[2] = seg['p0.5_z3d']
           
+          
     # create excitatory functional groups
-    exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=4,n_presynaptic_cells_per_functional_group=20,name_prefix='exc',synapses = exc_synapses, cell=cell, mean_firing_rate = mean_fr_dist, spike_generator=spike_generator, t = t, random_state=random_state, method = '1f_noise')
+    exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=24,n_presynaptic_cells_per_functional_group=100,name_prefix='exc',synapses = exc_synapses, cell=cell, mean_firing_rate = mean_fr_dist, spike_generator=spike_generator, t = t, random_state=random_state, method = '1f_noise')
     
     # get exc spikes for inh delay modulation # further implementation could potentially separate delay modulation by functional group.
     exc_spikes=spike_generator.spike_trains.copy()
@@ -253,8 +255,47 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     inh_distributed_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=4,n_presynaptic_cells_per_functional_group=2,name_prefix='inh',cell=cell, synapses = inh_synapses, proximal_fr_dist = proximal_inh_dist, distal_fr_dist=distal_inh_dist, spike_generator=spike_generator, t = t, random_state=random_state, spike_trains_to_delay = exc_spikes, fr_time_shift = constants.inh_firing_rate_time_shift, soma_coordinates=soma_coordinates, method = 'delay')
     #somatic
     inh_soma_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=1,n_presynaptic_cells_per_functional_group=1,name_prefix='soma_inh',cell=cell, synapses = soma_inh_synapses, proximal_fr_dist = proximal_inh_dist, distal_fr_dist=distal_inh_dist, spike_generator=spike_generator, t = t, random_state=random_state, spike_trains_to_delay = exc_spikes, fr_time_shift = constants.inh_firing_rate_time_shift, soma_coordinates=soma_coordinates, method = 'delay')
+    
+    # save fg and pc to csv
+    
+    def functional_group_to_dict(functional_group, functional_group_index):
+        """Converts a FunctionalGroup object to a dictionary with an index."""
+        data = {attr: value for attr, value in functional_group.__dict__.items() if attr != "presynaptic_cells"}
+        data['functional_group_index'] = functional_group_index
+        return data
+    
+    def presynaptic_cell_to_dict(presynaptic_cell, presynaptic_cell_index):
+        """Converts a PresynapticCell object to a dictionary with an index."""
+        data = {attr: value for attr, value in presynaptic_cell.__dict__.items()}
+        data['presynaptic_cell_index'] = presynaptic_cell_index
+        return data
+    
+    def functional_groups_to_dataframe_with_index(functional_groups):
+        """Converts a list of FunctionalGroup objects to a DataFrame with indices."""
+        functional_group_data = []
+        presynaptic_cell_data = []
+        functional_group_index = 0
+        presynaptic_cell_index = 0
+    
+        for fg in functional_groups:
+            functional_group_data.append(functional_group_to_dict(fg, functional_group_index))
+            for pc in fg.presynaptic_cells:
+                pc_data = presynaptic_cell_to_dict(pc, presynaptic_cell_index)
+                pc_data['functional_group_index'] = functional_group_index  # Reference to the FunctionalGroup it belongs to
+                presynaptic_cell_data.append(pc_data)
+                presynaptic_cell_index += 1
+            functional_group_index += 1
+    
+        functional_group_df = pd.DataFrame(functional_group_data)
+        presynaptic_cell_df = pd.DataFrame(presynaptic_cell_data)
+        return functional_group_df, presynaptic_cell_df
 
+    # Convert dictionary to dataframe
+    exc_functional_groups_df, exc_presynaptic_cells_df = functional_groups_to_dataframe_with_index(exc_functional_groups)
+    inh_functional_groups_df, inh_presynaptic_cells_df = functional_groups_to_dataframe_with_index(inh_functional_groups)
+    inh_soma_functional_groups_df, inh_soma_presynaptic_cells_df = functional_groups_to_dataframe_with_index(inh_soma_functional_groups)
 
+    
     reductor = Reductor()
     cell = reductor.reduce_cell(complex_cell = complex_cell, reduce_cell = constants.reduce_cell, 
                                 optimize_nseg = constants.optimize_nseg_by_lambda, synapses_list = all_syns,
@@ -349,6 +390,21 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     # Save indexes for plotting
     with open(os.path.join(save_folder, "seg_indexes.pickle"), "wb") as file:
         pickle.dump(seg_indexes, file)
+        
+    # Save detailed_seg_info for plotting
+    with open(os.path.join(save_folder, "detailed_seg_info.pickle"), "wb") as file:
+        pickle.dump(detailed_seg_info, file)
+        
+    # Save fg and pc to CSV within the save_folder for plotting
+    exc_functional_groups_df.to_csv(os.path.join(save_folder_path, "exc_functional_groups.csv"), index=False)
+    exc_presynaptic_cells_df.to_csv(os.path.join(save_folder_path, "exc_presynaptic_cells.csv"), index=False)
+    inh_functional_groups_df.to_csv(os.path.join(save_folder_path, "inh_functional_groups.csv"), index=False)
+    inh_presynaptic_cells_df.to_csv(os.path.join(save_folder_path, "inh_presynaptic_cells.csv"), index=False)
+    inh_soma_functional_groups_df.to_csv(os.path.join(save_folder_path, "inh_soma_functional_groups.csv"), index=False)
+    inh_soma_presynaptic_cells_df.to_csv(os.path.join(save_folder_path, "inh_soma_presynaptic_cells.csv"), index=False)
+    cell.write_seg_info_to_csv(path=save_folder, seg_info=detail_seg_info, title_prefix='detailed_')
+    
+    
 
     # Save constants
     shutil.copy2("constants.py", save_folder)
