@@ -391,10 +391,6 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     with open(os.path.join(save_folder, "seg_indexes.pickle"), "wb") as file:
         pickle.dump(seg_indexes, file)
         
-    # Save detailed_seg_info for plotting
-    with open(os.path.join(save_folder, "detailed_seg_info.pickle"), "wb") as file:
-        pickle.dump(detailed_seg_info, file)
-        
     # Save fg and pc to CSV within the save_folder for plotting
     exc_functional_groups_df.to_csv(os.path.join(save_folder_path, "exc_functional_groups.csv"), index=False)
     exc_presynaptic_cells_df.to_csv(os.path.join(save_folder_path, "exc_presynaptic_cells.csv"), index=False)
