@@ -76,7 +76,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     
     # increase nseg for complex cell # for clustering of synapses by kmeans on segments
     for sec in complex_cell.all:
-      sec.nseg=int(sec.nseg*10)
+      sec.nseg=int(sec.nseg*2)
 
     all_segments, all_len_per_segment, all_SA_per_segment,\
     all_segments_center, soma_segments, soma_len_per_segment,\
@@ -217,9 +217,9 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     for synapse in soma_inh_synapses:
       soma_inhib_synapses.append(synapse.synapse_neuron_obj)
             
-    print("exc_synapses:", excit_synapses)
-    print("inh_synapses:", inhib_synapses)
-    print("soma_inh_synapses:", soma_inhib_synapses)
+    #print("exc_synapses:", excit_synapses)
+    #print("inh_synapses:", inhib_synapses)
+    #print("soma_inh_synapses:", soma_inhib_synapses)
     logger.log_section_end("Adding all synapses")
 
     logger.log_section_start("Initializing cell model")
@@ -245,8 +245,8 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     
     # get exc spikes for inh delay modulation # further implementation could potentially separate delay modulation by functional group.
     exc_spikes=spike_generator.spike_trains.copy()
-    print("exc_spikes:",exc_spikes)
-    print("exc_spikes if there was no copy:",spike_generator.spike_trains)
+    #print("exc_spikes:",exc_spikes)
+    #print("exc_spikes if there was no copy:",spike_generator.spike_trains)
     
     # generate inh functional groups
     #dendritic
