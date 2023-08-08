@@ -2,6 +2,9 @@
 numpy_random_states = [123]
 neuron_random_states = [87] # Number of calls to MCellRan4()
 
+# Runtime
+parallelize = False
+
 # Modfiles
 modfiles_folder = "../modfiles"
 
@@ -20,7 +23,7 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 30000 #55#2500#20400 # Sim runtime (ms)
+h_tstop = 1000 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
