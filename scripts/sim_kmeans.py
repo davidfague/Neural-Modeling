@@ -73,6 +73,10 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
 
     # Get segments and lengths
     logger.log_section_start("Getting segments and lengths")
+    
+    # increase nseg for complex cell # for clustering of synapses by kmeans on segments
+    for sec in complex_cell.all:
+      sec.nseg=int(sec.nseg*10)
 
     all_segments, all_len_per_segment, all_SA_per_segment,\
     all_segments_center, soma_segments, soma_len_per_segment,\
@@ -221,6 +225,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_section_start("Initializing cell model")
     logger.log_memory()
     
+    # get segment coordinates # can also increase the number of segments here for better clustering resolution.
     cell = CellModel(hoc_model = complex_cell, random_state = random_state)
 
     # get segmetsncoordinatesCluster cell segments into functional groups
@@ -234,15 +239,14 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
           soma_coordinates[0] = seg['p0.5_x3d']
           soma_coordinates[1] = seg['p0.5_y3d']
           soma_coordinates[2] = seg['p0.5_z3d']
-
-    exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=4,n_presynaptic_cells_per_functional_group=2,name_prefix='exc',synapses = exc_synapses, cell=cell, mean_firing_rate = mean_fr_dist, spike_generator=spike_generator, t = t, random_state=random_state, method = '1f_noise')
+          
+    # create excitatory functional groups
+    exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=4,n_presynaptic_cells_per_functional_group=20,name_prefix='exc',synapses = exc_synapses, cell=cell, mean_firing_rate = mean_fr_dist, spike_generator=spike_generator, t = t, random_state=random_state, method = '1f_noise')
     
     # get exc spikes for inh delay modulation # further implementation could potentially separate delay modulation by functional group.
-#    exc_spikes=[]
-#    for func_grp in exc_functional_groups:
-#      for presynaptic_cell in func_grp.presynaptic_cells:
-#        exc_spikes.append(presynaptic_cell.spike_train)
-    exc_spikes=spike_generator.spike_trains
+    exc_spikes=spike_generator.spike_trains.copy()
+    print("exc_spikes:",exc_spikes)
+    print("exc_spikes if there was no copy:",spike_generator.spike_trains)
     
     # generate inh functional groups
     #dendritic
