@@ -15,7 +15,6 @@ from cell_inference.config import params
 from cell_inference.utils.currents.ecp import EcpMod
 
 import numpy as np
-from sklearn.cluster import KMeans
 from functools import partial
 import scipy.stats as st
 import time, datetime
@@ -29,10 +28,7 @@ import constants
 
 def main(numpy_random_state, neuron_random_state, i_amplitude):
 
-    # Compile and load modfiles
-    os.system(f"nrnivmodl {constants.modfiles_folder}")
-    h.load_file('stdrun.hoc')
-    h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
+    print(f"Running for seeds ({np_state}, {neuron_state}); CI = {i_amplitude}...")
 
     logger = Logger(output_dir = "./", active = True)
 
@@ -503,15 +499,32 @@ if __name__ == "__main__":
     
     if not os.path.exists(constants.save_dir):
         raise FileNotFoundError("No save folder with the given name.")
+    
+    # Compile and load modfiles
+    os.system(f"nrnivmodl {constants.modfiles_folder}")
+    h.load_file('stdrun.hoc')
+    h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
 
+    pool = []
     for np_state in constants.numpy_random_states:
         for neuron_state in constants.neuron_random_states:
             for i_amplitude in constants.h_i_amplitudes:
-                print(f"Running for seeds ({np_state}, {neuron_state}); CI = {i_amplitude}...")
-                p = Process(target = main, args=[np_state, neuron_state, i_amplitude])
-                p.start()
-                p.join()
-                p.terminate()
-                os.system("rm -r x86_64")
+                if constants.parallelize:
+                    pool.append(Process(target = main, args=[np_state, neuron_state, i_amplitude]))
+                else:
+                    p = Process(target = main, args=[np_state, neuron_state, i_amplitude])
+                    p.start()
+                    p.join()
+                    p.terminate()
+    
+    if constants.parallelize:
+        for p in pool:
+            p.start()
+            # Start the next process with delay to prevent name conflicts
+            time.sleep(1)
+        for p in pool: p.join()
+        for p in pool: p.terminate()
+
+    os.system("rm -r x86_64")
 
     
