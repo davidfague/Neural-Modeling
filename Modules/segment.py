@@ -97,12 +97,18 @@ class Segment:
         self.parent_segs = []
         self.parent_axial_currents = []
         self.child_axial_currents = []
+        # initialize attributes for functional groups and presynaptic cells
+        self.functional_group_indices = []
+        self.functional_group_names = []
+        self.presynaptic_cell_indices = []
+        self.presynaptic_cell_names = []
 
 class SegmentManager:
 
-    def __init__(self, output_folder: str, steps: list, dt: float = 0.1, skip: int = 0, transpose = False):
+    def __init__(self, output_folder: str, steps: list, dt: float = 0.1, skip: int = 0, transpose = False, build_detailed_seg_info: bool = False):
         '''
         skip: ms of simulation to skip
+        build_detailed_seg_info: Whether or not to try to read detailed_seg_info.csv, a csv containing much more segmentation
         '''
         filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
                      "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
@@ -114,6 +120,8 @@ class SegmentManager:
 
         # Read datafiles
         data = self.read_data(filenames, output_folder, steps)
+#        if build_detailed_seg_info: # not yet implemented
+#          build_detailed_segments(output_folder, steps)
         print(data["Vm_report"].shape)
 
         self.num_segments = len(data["seg_info"])
@@ -375,3 +383,6 @@ class SegmentManager:
             seg.parent_axial_currents.append(axc)
           elif adj_seg in seg.child_segs:
             seg.child_axial_currents.append(axc)
+    
+    def build_detailed_segments(self):
+      pass

@@ -10,7 +10,7 @@ from Modules.plotting_utils import plot_sta, plot_edges
 import constants
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "hfs_output/2023-07-26_12-47-47_seeds_123_1L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn"
+output_folder = "output/2023-08-08_16-39-13_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_59156NCs_29578nsyn"
 
 what_to_plot = {
     "Na": True,

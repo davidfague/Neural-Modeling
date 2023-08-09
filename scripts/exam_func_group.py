@@ -10,7 +10,7 @@ from cell_inference.config import params
 from cell_inference.utils.plotting.plot_results import plot_lfp_heatmap, plot_lfp_traces
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-08-08_11-35-38_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_28918NCs_28918nsyn"
+output_folder = "output/2023-08-08_17-59-56_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_59156NCs_29578nsyn"
 
 # Check shape of each saved file
 analyze = True
@@ -22,7 +22,13 @@ def main():
 
     step_size = int(constants.save_every_ms / constants.h_dt) # Timestamps
     steps = range(step_size, int(constants.h_tstop / constants.h_dt) + 1, step_size) # Timestamps
-
+    #solve folder
+    save_path = os.path.join(output_folder, "Analysis Voltage and LFP")
+    if os.path.exists(save_path):
+      print('Directory already exists:',save_path)
+    else:
+      print('Creating Directory:',save_path)
+      os.mkdir(save_path)
     if analyze:
         for step in steps:
             dirname = os.path.join(output_folder, f"saved_at_step_{step}")
@@ -57,7 +63,7 @@ def main():
         plot_simulation_results(t, Vm, seg_indexes['soma'], seg_indexes['axon'], seg_indexes['basal'], 
                                 seg_indexes['tuft'], seg_indexes['nexus'], seg_indexes['trunk'], 
                                 loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces, vlim = [-0.023,0.023],
-                                show = False, save_dir = output_folder)
+                                show = False, save_dir = save_path)
 
 
 if __name__ == "__main__":

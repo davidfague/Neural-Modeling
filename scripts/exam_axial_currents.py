@@ -15,15 +15,15 @@ import pdb #python debugger
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
 import constants
-output_folder = 'output/2023-08-02_14-00-11_seeds_123_87L5PCtemplate[0]_642nseg_108nbranch_28918NCs_28918nsyn' #"output/BenModel/"
+output_folder = 'output/2023-08-08_17-59-56_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_59156NCs_29578nsyn' #"output/BenModel/"
 if 'BenModel' in output_folder:
   constants.save_every_ms = 3000
   constants.h_tstop = 3000
   transpose =True
 else:
   transpose=False
-  constants.save_every_ms = 200
-  constants.h_tstop = 2500
+#  constants.save_every_ms = 200
+#  constants.h_tstop = 2500
 dt=constants.h_dt
 
 print(constants.h_dt, constants.save_every_ms, constants.h_tstop)
@@ -65,11 +65,15 @@ def main():
   
   print("voltage data length:",len(sm.segments[3].v))
   print("ina data length:",len(sm.segments[3].ina))
-  AC_path = os.path.join(output_folder, "current_analysis")
-  os.mkdir(AC_path)
+  save_path = os.path.join(output_folder, "Analysis Currents")
+  if os.path.exists(save_path):
+    print('Directory already exists:',save_path)
+  else:
+    print('Creating Directory:',save_path)
+    os.mkdir(save_path)
   
   #Plot segments adjacent to soma
-  plot_adjacent_segments(segs=soma_segs, sm=sm, title_prefix="Soma_", save_to=AC_path)
+  plot_adjacent_segments(segs=soma_segs, sm=sm, title_prefix="Soma_", save_to=save_path)
   #Plot segments adjacent to nexus
   with open(os.path.join(output_folder, "seg_indexes.pickle"), "rb") as file:
       seg_indexes = pickle.load(file)
@@ -79,14 +83,14 @@ def main():
     nexus_seg_index=seg_indexes["nexus"]
     print("NEXUS SEG:", sm.segments[nexus_seg_index].seg) # to determine matching seg
   nexus_segs=[sm.segments[nexus_seg_index]]
-  plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=AC_path)
+  plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=save_path)
        
   
   #Plot Axial Currents
   for seg in soma_segs:
-      plot_all(seg, t, save_to=AC_path, title_prefix ='Soma_')
+      plot_all(seg, t, save_to=save_path, title_prefix ='Soma_')
   for seg in nexus_segs:
-      plot_all(seg, t, save_to=AC_path, title_prefix = 'Nexus_')
+      plot_all(seg, t, save_to=save_path, title_prefix = 'Nexus_')
 
   # Plot around APs
   for i,AP_time in enumerate(np.array(sm.soma_spiketimes)):# spike time (ms) #TODO: check
@@ -96,12 +100,12 @@ def main():
       xlim = [before_AP, after_AP] # time range
       # plot around each AP
       for seg in soma_segs:
-          plot_all(seg, t, xlim=xlim, index=i+1, save_to=AC_path, title_prefix="Soma_", vlines = np.array(sm.soma_spiketimes))
+          plot_all(seg, t, xlim=xlim, index=i+1, save_to=save_path, title_prefix="Soma_", vlines = np.array(sm.soma_spiketimes))
       before_AP = AP_time - 100 #0.5 # ms
       after_AP = AP_time + 100 #3 # ms
       xlim = [before_AP, after_AP] # time range
       #for seg in nexus_segs:
-      #    plot_all(seg, t, xlim=xlim, index=i+1, save_to=AC_path, title_prefix="Nexus_", ylim=[-1,1], vlines = np.array(sm.soma_spiketimes))
+      #    plot_all(seg, t, xlim=xlim, index=i+1, save_to=save_path, title_prefix="Nexus_", ylim=[-1,1], vlines = np.array(sm.soma_spiketimes))
 
 def plot_all(segment, t, xlim=None, ylim=None, index=None, save_to=None, title_prefix=None, vlines = None):
     '''
@@ -200,9 +204,9 @@ def plot_all(segment, t, xlim=None, ylim=None, index=None, save_to=None, title_p
 
     if save_to:
         if title_prefix:
-          fig.savefig(os.path.join(save_to, title_prefix + "Combined_plot" + "_{}".format(index) + ".png"))
+          fig.savefig(os.path.join(save_to, title_prefix + "AP_" + "_{}".format(index) + ".png"))
         else:
-          fig.savefig(os.path.join(save_to, "Combined_plot" + "_{}".format(index) + ".png"))
+          fig.savefig(os.path.join(save_to, "AP_" + "_{}".format(index) + ".png"))
           
     plt.close()
 
