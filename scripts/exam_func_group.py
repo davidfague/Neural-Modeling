@@ -3,6 +3,7 @@ sys.path.append("../")
 
 import numpy as np
 import h5py, pickle, os
+from multiprocessing import Process
 import constants
 
 from Modules.plotting_utils import plot_simulation_results
@@ -10,7 +11,7 @@ from cell_inference.config import params
 from cell_inference.utils.plotting.plot_results import plot_lfp_heatmap, plot_lfp_traces
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-08-08_17-59-56_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_59156NCs_29578nsyn"
+output_folders = ["output/2023-08-08_17-59-56_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_59156NCs_29578nsyn"]
 
 # Check shape of each saved file
 analyze = True
@@ -18,16 +19,17 @@ analyze = True
 # Plot voltage and lfp traces
 plot_voltage_lfp = True
 
-def main():
+def main(output_folder):
 
     step_size = int(constants.save_every_ms / constants.h_dt) # Timestamps
     steps = range(step_size, int(constants.h_tstop / constants.h_dt) + 1, step_size) # Timestamps
-    #solve folder
+    
+    # Save folder
     save_path = os.path.join(output_folder, "Analysis Voltage and LFP")
     if os.path.exists(save_path):
-      print('Directory already exists:',save_path)
+      print('Directory already exists:', save_path)
     else:
-      print('Creating Directory:',save_path)
+      print('Creating Directory:', save_path)
       os.mkdir(save_path)
     if analyze:
         for step in steps:
@@ -67,4 +69,18 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+
+    pool = []
+    for folder in output_folders:
+        if constants.parallelize:
+            pool.append(Process(target = main, args = [folder]))
+        else:
+            p = Process(target = main, args = [folder])
+            p.start()
+            p.join()
+            p.terminate()
+    
+    if constants.parallelize:
+        for p in pool: p.start()
+        for p in pool: p.join()
+        for p in pool: p.terminate()
