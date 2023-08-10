@@ -15,7 +15,7 @@ import pdb #python debugger
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
 import constants
-output_folder = 'output/2023-08-08_17-59-56_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_59156NCs_29578nsyn' #"output/BenModel/"
+output_folder = 'output/2023-08-09_20-35-38_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn' #"output/BenModel/"
 if 'BenModel' in output_folder:
   constants.save_every_ms = 3000
   constants.h_tstop = 3000
@@ -104,8 +104,8 @@ def main():
       before_AP = AP_time - 100 #0.5 # ms
       after_AP = AP_time + 100 #3 # ms
       xlim = [before_AP, after_AP] # time range
-      #for seg in nexus_segs:
-      #    plot_all(seg, t, xlim=xlim, index=i+1, save_to=save_path, title_prefix="Nexus_", ylim=[-1,1], vlines = np.array(sm.soma_spiketimes))
+      for seg in nexus_segs:
+          plot_all(seg, t, xlim=xlim, index=i+1, save_to=save_path, title_prefix="Nexus_", ylim=[-1,1], vlines = np.array(sm.soma_spiketimes))
 
 def plot_all(segment, t, xlim=None, ylim=None, index=None, save_to=None, title_prefix=None, vlines = None):
     '''
@@ -154,7 +154,10 @@ def plot_all(segment, t, xlim=None, ylim=None, index=None, save_to=None, title_p
             t=np.arange(0,len(segment.v)*dt,dt)
             ax.plot(t, segment.v, color = segment.color, label = segment.name)
             for i, adj_seg in enumerate(segment.adj_segs):
-                ax.plot(t, adj_seg.v, label = adj_seg.name, color = adj_seg.color)
+                if adj_seg.color == segment.color:
+                    ax.plot(t, adj_seg.v, label = adj_seg.name, color = 'Magenta')
+                else:
+                    ax.plot(t, adj_seg.v, label = adj_seg.name, color = adj_seg.color)
             if ylim is None:
                 ax.set_ylim([min(segment.v), max(segment.v)])
         else: # For 'Axial Current from [{}]'

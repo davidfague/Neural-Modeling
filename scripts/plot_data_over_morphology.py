@@ -54,7 +54,7 @@ time_index = 300
 #  if hasattr(constants, "property_list_to_analyze"):
 #    property_list_to_analyze = constants.property_list_to_analyze
 #  else:
-property_list_to_analyze = ['netcon_density_per_seg', 'inh'] # can update here if it is not specified in constants.py
+property_list_to_analyze = ['netcon_density_per_seg', 'exc'] # can update here if it is not specified in constants.py
   # property_list_to_analyze = ['netcon_density_per_seg','exc']
   # property_list_to_analyze = ['seg_elec_info','beta','passive_soma']
   

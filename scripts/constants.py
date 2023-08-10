@@ -23,7 +23,7 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 1000 #55#2500#20400 # Sim runtime (ms)
+h_tstop = 30000 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
@@ -31,32 +31,56 @@ h_i_amplitudes = [None] #[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,
 h_i_duration = 5000 # (ms)
 h_i_delay = 400 # (ms)
 
-# Excitatory dend
+# gmax distributions
 exc_gmax_mean_0 = 0.2
 exc_gmax_std_0 = 0.345
-exc_gmax_clip = (0, 0.7)
-exc_synaptic_density = 2.12
-exc_functional_group_span = 100
-exc_cluster_span = 10
-exc_synapses_per_cluster = 5
-exc_syn_mod= 'AMPA_NMDA' #'pyr2pyr'
-trunk_exc_synapses = True # on/off switch
+exc_gmax_clip = (0,0.65)#(0, 0.7)
+inh_gmax_dist = 2.25#2.25
+soma_gmax_dist = 2.25#2.25
 
-# Inhibitory dend
-inh_gmax_dist = 1#2.25
+# synapse density syns/um
+exc_synaptic_density = 2.16
 inh_synaptic_density = 0.22
-inh_cluster_span = 10
+
+# release probability distributions
+exc_P_release_mean = 0.53
+exc_P_release_std = 0.22
+inh_basal_P_release_mean = 0.72
+inh_basal_P_release_std = 0.1
+inh_apic_P_release_mean = 0.3
+inh_apic_P_release_std = 0.08
+inh_soma_P_release_mean = 0.88
+inh_soma_P_release_std = 0.05
+
+# syn_mod
+exc_syn_mod= 'AMPA_NMDA' #'pyr2pyr'
+inh_syn_mod = 'GABA_AB' # 'int2pyr'
+
+# firing rate distributions
 inh_prox_mean_fr = 16.9
 inh_prox_std_fr = 14.3
 inh_distal_mean_fr = 3.9
 inh_distal_std_fr = 4.9
+inh_firing_rate_time_shift = 4
+
+# kmeans clustering
+exc_n_FuncGroups = 24
+exc_n_PreCells_per_FuncGroup = 100
+inh_distributed_n_FuncGroups = 5
+inh_distributed_n_PreCells_per_FuncGroup = 50
+
+# Excitatory dend
+exc_functional_group_span = 100
+exc_cluster_span = 10
+exc_synapses_per_cluster = 5
+trunk_exc_synapses = False # on/off switch
+
+# Inhibitory dend
+inh_cluster_span = 10
 inh_number_of_groups = 1
 inh_functional_group_span = 100
-inh_firing_rate_time_shift = 4
-inh_syn_mod = 'GABA_AB' # 'int2pyr'
 
 # Inhibitory soma
-soma_gmax_dist = 1#2.25
 soma_number_of_clusters = 15 # Number of presynaptic cells
 soma_cluster_span = 10
 soma_synapses_per_cluster = 10 # Number of synapses per presynaptic cell

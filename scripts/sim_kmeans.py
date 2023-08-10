@@ -121,7 +121,16 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
 
     # Distribution of mean firing rates
     mean_fr_dist = partial(exp_levy_dist, alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1)
-
+    
+    # release probability distribution
+    def P_release_dist(P_mean, P_std, size):
+        val = np.random.normal(P_mean, P_std, size)
+        s = float(np.clip(val, 0, 1))
+        return s
+    
+    # exc release probability distribution everywhere
+    exc_P_dist = partial(P_release_dist, P_mean=constants.exc_P_release_mean, P_std=constants.exc_P_release_std, size=1)
+    
     # New list to change probabilty of exc functional group nearing soma
     adjusted_no_soma_len_per_segment = []
     for i, seg in enumerate(no_soma_segments):
@@ -142,7 +151,8 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                               gmax = gmax_exc_dist,
                                               random_state=random_state,
                                               neuron_r = neuron_r,
-                                              syn_mod = constants.exc_syn_mod
+                                              syn_mod = constants.exc_syn_mod,
+                                              P_dist=exc_P_dist
                                               )
 
     logger.log_memory()
@@ -151,9 +161,6 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     # ---- Inhibitory
 
     logger.log_section_start("Generating inhibitory func groups for dendrites")
-
-    inh_number_of_clusters = int(sum(all_len_per_segment) / constants.inh_cluster_span)
-    inh_synapses_per_cluster = int(constants.inh_cluster_span * constants.inh_synaptic_density)
 
     # Proximal inh mean_fr distribution
     mean_fr, std_fr = constants.inh_prox_mean_fr, constants.inh_prox_std_fr
@@ -164,6 +171,16 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     mean_fr, std_fr = constants.inh_distal_mean_fr, constants.inh_distal_std_fr
     a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
     distal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
+    
+    # inh release probability distributions
+    inh_soma_P_dist = partial(P_release_dist, P_mean=constants.inh_soma_P_release_mean, P_std=constants.inh_soma_P_release_std, size=1)
+    inh_apic_P_dist = partial(P_release_dist, P_mean=constants.inh_apic_P_release_mean, P_std=constants.inh_apic_P_release_std, size=1)
+    inh_basal_P_dist = partial(P_release_dist, P_mean=constants.inh_basal_P_release_mean, P_std=constants.inh_basal_P_release_std, size=1)
+    
+    inh_P_dist ={}
+    inh_P_dist["soma"] = inh_soma_P_dist
+    inh_P_dist["apic"] = inh_apic_P_dist
+    inh_P_dist["dend"] = inh_basal_P_dist
 
     logger.log_memory()
     inh_synapses = synapse_generator.add_synapses(segments = all_segments,
@@ -174,7 +191,9 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                               gmax = constants.inh_gmax_dist,
                                               random_state=random_state,
                                               neuron_r = neuron_r,
-                                              syn_mod = constants.inh_syn_mod
+                                              syn_mod = constants.inh_syn_mod,
+                                              P_dist = inh_P_dist,
+                                              cell=complex_cell
                                               )
     
     logger.log_memory()
@@ -192,7 +211,8 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                               gmax = constants.soma_gmax_dist,
                                               random_state=random_state,
                                               neuron_r = neuron_r,
-                                              syn_mod = constants.inh_syn_mod
+                                              syn_mod = constants.inh_syn_mod,
+                                              P_dist=inh_soma_P_dist
                                               )
     
     logger.log_memory()
@@ -252,7 +272,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_section_start("Creating Excitatory Functional groups")
     logger.log_memory()
     # create excitatory functional groups
-    exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=24,n_presynaptic_cells_per_functional_group=100,name_prefix='exc',synapses = exc_synapses, cell=cell, mean_firing_rate = mean_fr_dist, spike_generator=spike_generator, t = t, random_state=random_state, method = '1f_noise')
+    exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=constants.exc_n_FuncGroups,n_presynaptic_cells_per_functional_group=constants.exc_n_PreCells_per_FuncGroup,name_prefix='exc',synapses = exc_synapses, cell=cell, mean_firing_rate = mean_fr_dist, spike_generator=spike_generator, t = t, random_state=random_state, method = '1f_noise')
     
     logger.log_section_end("Creating Excitatory Functional groups")
     
@@ -265,7 +285,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_memory()
     # generate inh functional groups
     #dendritic
-    inh_distributed_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=4,n_presynaptic_cells_per_functional_group=2,name_prefix='inh',cell=cell, synapses = inh_synapses, proximal_fr_dist = proximal_inh_dist, distal_fr_dist=distal_inh_dist, spike_generator=spike_generator, t = t, random_state=random_state, spike_trains_to_delay = exc_spikes, fr_time_shift = constants.inh_firing_rate_time_shift, soma_coordinates=soma_coordinates, method = 'delay')
+    inh_distributed_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=constants.inh_distributed_n_FuncGroups,n_presynaptic_cells_per_functional_group=constants.inh_distributed_n_PreCells_per_FuncGroup,name_prefix='inh',cell=cell, synapses = inh_synapses, proximal_fr_dist = proximal_inh_dist, distal_fr_dist=distal_inh_dist, spike_generator=spike_generator, t = t, random_state=random_state, spike_trains_to_delay = exc_spikes, fr_time_shift = constants.inh_firing_rate_time_shift, soma_coordinates=soma_coordinates, method = 'delay')
     logger.log_section_end("Creating Inhibitory Distributed Functional groups")
     
     logger.log_section_start("Creating Inhibitory SOMA Functional groups")
@@ -298,12 +318,17 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
         presynaptic_cell_index = 0
     
         for fg in functional_groups:
-            functional_group_data.append(functional_group_to_dict(fg, functional_group_index))
+            fg_data=functional_group_to_dict(fg, functional_group_index)
+            fg_synapses=0
             for pc in fg.presynaptic_cells:
                 pc_data = presynaptic_cell_to_dict(pc, presynaptic_cell_index)
                 pc_data['functional_group_index'] = functional_group_index  # Reference to the FunctionalGroup it belongs to
+                pc_data['num_synapses'] = len(pc.synapses)
+                fg_synapses += len(pc.synapses)
                 presynaptic_cell_data.append(pc_data)
                 presynaptic_cell_index += 1
+            fg_data['num_synapses'] = fg_synapses
+            functional_group_data.append(fg_data)
             functional_group_index += 1
     
         functional_group_df = pd.DataFrame(functional_group_data)
@@ -331,11 +356,11 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_section_end("Initializing Reductor and cell model for simulation |NR:"+str(constants.reduce_cell)+"|optimize nseg:"+str(constants.optimize_nseg_by_lambda)+"|Expand Cable:"+str(constants.expand_cable))
     
     # Turn off certain presynaptic neurons to simulate in vivo
-    if not constants.trunk_exc_synapses:
+    if not constants.trunk_exc_synapses: # turn off trunk exc synapses.
       for synapse in cell.synapses:
-        if (synapse.get_segment().sec == cell.apic[0]) & (synapse.syn_type in constants.exc_syn_mod):
-          for netcon in synapse.ncs:
-            netcon.active(False)
+        if (synapse.get_segment().sec in cell.apic) & (synapse.syn_type in constants.exc_syn_mod) & (synapse.get_segment().sec not in cell.obliques) & (synapse.get_segment().sec.y3d(0)<600):
+            for netcon in synapse.ncs:
+              netcon.active(False)
     
     if constants.merge_synapses: # may already be merged if reductor reduced the cell.
         logger.log_section_start("Merging Synapses")

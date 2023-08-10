@@ -101,6 +101,7 @@ class PresynapticCell:
 		self.spike_train = spike_train
 		self.name = name
 		self.cluster_center=cluster_center
+		self.mean_firing_rate = None
 ############################################################
 #functions
 def create_functional_groups_of_presynaptic_cells(segments_coordinates: np.ndarray, 
@@ -240,6 +241,7 @@ def generate_spike_train_for_functional_groups(functional_groups: list,
         mean_fr = spike_generator.get_mean_fr(mean_firing_rate)
       else:
         raise(ValueError("Must specify either mean_firing_rate or both proximal_fr_dist and distal_fr_dist."))
+      presynaptic_cell.mean_firing_rate = mean_fr
       spikes = spike_generator.generate_spikes_from_profile(functional_group.firing_rate_profile, mean_fr, random_state)
       #print(mean_fr, functional_group.firing_rate_profile, spikes)
       #spike_trains.append(spikes)

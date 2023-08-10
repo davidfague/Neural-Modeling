@@ -11,7 +11,7 @@ import constants
 from Modules.segment import Segment
 
 
-output_folder = "output/2023-08-08_16-39-13_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_59156NCs_29578nsyn"
+output_folder = "output/2023-08-09_20-35-38_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn"
 
 
 constants.show_electrodes = False
@@ -50,14 +50,18 @@ def reset_segment_assignments(segments):
 def assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, segments, data):
     """Assign FuncGroups and PreCells to segments based on the given cluster_type."""
     max_dists = [] # list for cluster spans
+    pc_mean_firing_rates = None
+    all_num_synapses = []
     if plotting_mode == 'functional_groups':
       # Iterate over functional groups and assign them to segments
       for _, row in data["functional_groups"][cluster_type].iterrows():
           fg_name = row["name"]
           fg_index = row["functional_group_index"]
+          num_synapses=row['num_synapses']
           cleaned_strings = row["target_segment_indices"].replace('[', '').replace(']', '').split(',')
           target_indices = [int(x) for x in cleaned_strings]
           max_dists.append(max_distance_for_segments(segments))
+          all_num_synapses.append(num_synapses)
           for target_seg_index in target_indices:
               seg = segments[target_seg_index]
               seg.functional_group_names.append(fg_name)
@@ -65,12 +69,17 @@ def assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, segm
     # For presynaptic cells
     elif plotting_mode == 'presynaptic_cells':
       # Iterate over presynaptic cells and assign them to segments
+      pc_mean_firing_rates = []
       for _, row in data["presynaptic_cells"][cluster_type].iterrows():
           pc_name = row["name"]
           pc_index = row["presynaptic_cell_index"]
+          pc_mean_firing_rate = row["mean_firing_rate"]
+          num_synapses=row['num_synapses']
           cleaned_strings = row["target_segment_indices"].replace('[', '').replace(']', '').split(',')
           target_indices = [int(x) for x in cleaned_strings]
           max_dists.append(max_distance_for_segments(segments))
+          all_num_synapses.append(num_synapses)
+          pc_mean_firing_rates.append(pc_mean_firing_rate)
           for target_seg_index in target_indices:
               seg = segments[target_seg_index]
               seg.presynaptic_cell_names.append(pc_name)
@@ -78,10 +87,16 @@ def assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, segm
             
     mean_distance = np.mean(max_dists)
     std_distance = np.std(max_dists)
+    mean_num_synapses = np.mean(all_num_synapses)
+    std_num_synapses = np.std(all_num_synapses)
+    if pc_mean_firing_rates: # only for presynaptic cells
+      mean_mean_fr = np.mean(pc_mean_firing_rates)
+      std_mean_fr = np.std(pc_mean_firing_rates)
+    else:
+      mean_mean_fr = None
+      std_mean_fr = None
     
-    print(f"'{cluster_type}' '{plotting_mode}':")
-    print(f"Mean of maximum distances: {mean_distance}")
-    print(f"Standard deviation of maximum distances: {std_distance}\n")
+    return mean_distance, std_distance, mean_mean_fr, std_mean_fr, mean_num_synapses, std_num_synapses
 
 
   # Function to compute pairwise distance between segment endpoints
@@ -151,7 +166,8 @@ def main(cluster_types, plotting_modes, output_folder):
     os.mkdir(save_path)
   
   num_segments = len(data["detailed_seg_info"])
-  print("NUM detailed seg", num_segments)
+  with open(os.path.join(save_path, 'info.txt'), 'a') as file:  # 'a' stands for append mode
+    print(f'number of detailed segments used for clustering:{num_segments}', file=file)
   detailed_segments=[]
   for i in range(num_segments):
       # Build seg_data
@@ -164,23 +180,35 @@ def main(cluster_types, plotting_modes, output_folder):
       
       # Reset segment assignments
       reset_segment_assignments(detailed_segments)
-      print(f'analyzing {cluster_type} {plotting_mode}')
+      with open(os.path.join(save_path, 'info.txt'), 'a') as file:  # 'a' stands for append mode
+        print(f'analyzing {cluster_type} {plotting_mode}', file=file)
       # Assign segments to FuncGroups or PreCells based on the current cluster_type and plotting mode
-      assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, detailed_segments, data)
+      mean_distance, std_distance, mean_mean_fr, std_mean_fr, mean_num_synapses, std_num_synapses = assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, detailed_segments, data)
+      with open(os.path.join(save_path, 'info.txt'), 'a') as file:  # 'a' stands for append mode
+        print(f"'{cluster_type}' '{plotting_mode}/n':", file=file)
+        print(f"Mean of maximum distances: {mean_distance}", file=file)
+        print(f"Standard deviation of maximum distances: {std_distance}", file=file)
+        print(f"Mean number of synapses: {mean_num_synapses}", file=file)
+        print(f"Standard deviation of number of synapses: {std_num_synapses}/n", file=file)
+        if mean_mean_fr:
+          print(f"Mean of PreCell mean firing rates: {mean_mean_fr}", file=file)
+          print(f"Standard deviation of PreCell mean firing rates: {std_mean_fr}/n", file=file)
     
       # make color maps for clustering assignment
       num_groups = len(data[plotting_mode][cluster_type])
-      group_colors = plt.cm.get_cmap('tab20', num_functional_groups)
-      print(f"number of '{cluster_type}' '{plotting_mode}': '{num_groups}'")
+      group_colors = plt.cm.get_cmap('tab20', num_groups)
+      with open(os.path.join(save_path, 'info.txt'), 'a') as file:  # 'a' stands for append mode
+        print(f"number of '{cluster_type}' '{plotting_mode}': '{num_groups}'", file=file)
       
       for seg in detailed_segments:
         if plotting_mode == 'functional_group' and seg.functional_group_indices:
-          seg.color = functional_group_colors(seg.functional_group_indices[0])
+          seg.color = group_colors(seg.functional_group_indices[0])
         elif plotting_mode == 'presynaptic_cell' and seg.presynaptic_cell_indices:
-          seg.color = presynaptic_cell_colors(seg.presynaptic_cell_indices[0])
+          seg.color = group_colors(seg.presynaptic_cell_indices[0])
       
       # plot
-      print(f'plotting {cluster_type} {plotting_mode}')
+      with open(os.path.join(save_path, 'info.txt'), 'a') as file:  # 'a' stands for append mode
+        print(f'plotting {cluster_type} {plotting_mode}/n/n/n/n',file=file)
       save_name = os.path.join(save_path, f'{cluster_type}_{plotting_mode}.png')
       plot_segments(detailed_segments, save_name)
   
