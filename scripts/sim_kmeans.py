@@ -342,6 +342,8 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_memory()
     
     reductor = Reductor()
+    print('netcons list:',len(spike_generator.netcons))
+    print('unique netcons in list:',len(np.unique(spike_generator.netcons)))
     cell = reductor.reduce_cell(complex_cell = complex_cell, reduce_cell = constants.reduce_cell, 
                                 optimize_nseg = constants.optimize_nseg_by_lambda, synapses_list = all_syns,
                                 netcons_list = spike_generator.netcons, spike_trains = spike_generator.spike_trains,

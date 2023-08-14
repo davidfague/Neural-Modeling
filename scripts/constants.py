@@ -23,7 +23,7 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 30000 #55#2500#20400 # Sim runtime (ms)
+h_tstop = 150000 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
@@ -53,8 +53,8 @@ inh_soma_P_release_mean = 0.88
 inh_soma_P_release_std = 0.05
 
 # syn_mod
-exc_syn_mod= 'AMPA_NMDA' #'pyr2pyr'
-inh_syn_mod = 'GABA_AB' # 'int2pyr'
+exc_syn_mod= 'AMPA_NMDA_STP' #'pyr2pyr'
+inh_syn_mod = 'GABA_AB_STP' # 'int2pyr'
 
 # firing rate distributions
 inh_prox_mean_fr = 16.9
@@ -62,6 +62,36 @@ inh_prox_std_fr = 14.3
 inh_distal_mean_fr = 3.9
 inh_distal_std_fr = 4.9
 inh_firing_rate_time_shift = 4
+
+# syn parameters # not yet implemented. Can also implement area related synapse density, and increase membrane capacitance for exc spines.
+# inh distal apic:
+LTS_syn_params = {
+                              'e_GABAA': -90.,
+                              'Use': 0.3,
+                              'Dep': 25.,
+                              'Fac': 100.
+                              }
+# inh perisomatic
+FSI_syn_params = {
+                              'e_GABAA': -90.,
+                              'Use': 0.3,
+                              'Dep': 400.,
+                              'Fac': 0.
+                              }
+# exc choice of two:
+CS2CP_syn_params = {
+                    'tau_d_AMPA': 5.2,
+                    'Use': 0.41,
+                    'Dep': 532.,
+                    'Fac': 65.
+                    }
+CP2CP_syn_params = {
+                    'tau_d_AMPA': 5.2,
+                    'Use': 0.37,
+                    'Dep': 31.7,
+                    'Fac': 519.
+                    }
+exc_syn_params=[CS2CP_syn_params,CP2CP_syn_params]
 
 # kmeans clustering
 exc_n_FuncGroups = 24

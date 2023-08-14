@@ -154,22 +154,22 @@ class Synapse:
         elif syn_mod in ['pyr2pyr', 'int2pyr']: # ampanmda, gaba
             self.syn_params = {}
             self.gmax_var = 'initW'
-        elif any(ext in syn_mod for ext in ['AMPA_NMDA', 'GABA_AB']): # ampanmda, gaba
+        elif any(ext in syn_mod for ext in ['AMPA_NMDA','AMPA_NMDA_STP','GABA_AB', 'GABA_AB_STP']): # ampanmda, gaba
             self.syn_params = {}
             self.gmax_var = 'initW'
         else:
-            raise ValueError("Synpase type not defined.")
+            raise(ValueError("Synpase type not defined."))
         
-        if syn_mod in ['AlphaSynapse1', 'Exp2Syn', 'GABA_AB']:
+        if syn_mod in ['AlphaSynapse1', 'Exp2Syn', 'GABA_AB', 'GABA_AB_STP']:
             self.current_type = "i"
         elif syn_mod == 'pyr2pyr':
             self.current_type = "iampa_inmda"
-        elif syn_mod == 'AMPA_NMDA':
+        elif (syn_mod == 'AMPA_NMDA') or (syn_mod == 'AMPA_NMDA_STP'):
             self.current_type = 'i_AMPA_i_NMDA'
         elif syn_mod =='int2pyr':
             self.current_type = 'igaba'
         else:
-            raise ValueError
+            raise(ValueError("Synpase type not defined."))
         if self.synapse_neuron_obj is None: # create new synapse hoc object if not provided one
             self.synapse_neuron_obj = getattr(h, self.syn_type)(self.segment)
 
@@ -179,14 +179,18 @@ class Synapse:
         self.setup_synapse()
         if record:
             self.setup_recorder(vector_length)
+            
+    def set_syn_params(self,syn_params) -> None:
+        self.syn_params = syn_params # update syn_params if calling outside init
+        for key, value in syn_params.items():
+            if callable(value):
+                setattr(self.synapse_neuron_obj, key, value(size=1))
+            else:
+                setattr(self.synapse_neuron_obj, key, value)
 
     def setup_synapse(self) -> None:
         if self.syn_params is not None:
-            for key, value in self.syn_params.items():
-                if callable(value):
-                    setattr(self.synapse_neuron_obj, key, value(size=1))
-                else:
-                    setattr(self.synapse_neuron_obj, key, value)
+            self.set_syn_params(self.syn_params)
         self.set_gmax()
 
     def set_gmax(self, gmax: float = None) -> None:

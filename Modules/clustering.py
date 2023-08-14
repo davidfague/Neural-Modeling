@@ -84,7 +84,7 @@ class FunctionalGroup:
 
 class PresynapticCell:
   
-	def __init__(self, target_segment_indices: list = [], spike_train: np.ndarray = [], name: str = None, cluster_center: np.ndarray = None):
+	def __init__(self, target_segment_indices: list = [], spike_train: np.ndarray = [], name: str = None, cluster_center: np.ndarray = None, cell_type: str = None):
 		'''
 		Class representing a functional group of presynaptic cells that provide correlated inputs.
 		Parameters:
@@ -102,6 +102,7 @@ class PresynapticCell:
 		self.name = name
 		self.cluster_center=cluster_center
 		self.mean_firing_rate = None
+		self.cell_type = cell_type
 ############################################################
 #functions
 def create_functional_groups_of_presynaptic_cells(segments_coordinates: np.ndarray, 

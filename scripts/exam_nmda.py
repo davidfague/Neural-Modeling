@@ -10,7 +10,7 @@ from Modules.plotting_utils import plot_sta, plot_edges
 import constants
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-08-09_20-35-38_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn"
+output_folder = "output/2023-08-12_09-34-38_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn"
 
 what_to_plot = {
     "Na": True,
@@ -99,7 +99,7 @@ def main(random_state):
         title = 'Na Spikes - Basal'
         x_ticks = np.arange(0, 50, 5)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
-        plot_sta(to_plot, edges_apic, title, x_ticks, x_tick_labels, None, save_to = os.path.join(na_path, "na_spikes_basal.png"))
+        plot_sta(to_plot, edges_dend, title, x_ticks, x_tick_labels, None, save_to = os.path.join(na_path, "na_spikes_basal.png"))
 
     if what_to_plot["Ca"]:
         # Get bounds for Ca
@@ -151,7 +151,7 @@ def main(random_state):
         title = 'NMDA Spikes - Basal'
         x_ticks = np.arange(0, 50, 5)
         x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
-        plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, None, save_to = os.path.join(nmda_path, "nmda_spikes_basal.png"))
+        plot_sta(to_plot, edges_nmda_dend, title, x_ticks, x_tick_labels, None, save_to = os.path.join(nmda_path, "nmda_spikes_basal.png"))
 
     if (what_to_plot["Ca"]) & (what_to_plot["NMDA"]) & (what_to_plot["Ca_NMDA"]):
         # Set Ca-NMDA
@@ -162,7 +162,7 @@ def main(random_state):
 
         ca_spiketimes = np.sort(ca_spiketimes) * constants.h_dt
         ca_spiketimes = ca_spiketimes[1:][np.diff(ca_spiketimes) > 100] # This condition is from Ben's code. It's supposed to remove duplicates.
-        ca_nmda_apic = sm.get_sta(ca_spiketimes, nmda_lower_bounds, edges_nmda_apic, "apic", current_type='ica', elec_dist_var = 'nexus_passive', mag = nmda_mag, mag_th=-0.1)
+        ca_nmda_apic = sm.get_sta(ca_spiketimes, nmda_lower_bounds, edges_nmda_apic, "apic", current_type='ica', elec_dist_var = 'soma_passive', mag = nmda_mag, mag_th=-0.1)
         
         # Save Ca-NMDA plots
         ca_nmda_path = os.path.join(output_folder, "Ca_NMDA")
