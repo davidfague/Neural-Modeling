@@ -10,7 +10,7 @@ from Modules.plotting_utils import plot_sta, plot_edges
 import constants
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-08-12_09-34-38_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn"
+output_folder = "output/2023-08-14_18-47-11_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_29543NCs_29543nsyn"
 
 what_to_plot = {
     "Na": True,
@@ -35,6 +35,28 @@ nmda_basal_clip = (-1.5, 1.5)
 
 # NMDA Ca
 nmda_ca_apic_clip = (-2, 2)
+
+def compute_mean_and_plot_sta(spikes: np.ndarray, edges: np.ndarray, title: str, path: str, 
+                              clipping_values: tuple = (None, None), clip: str = "img"):
+    if clipping_values[0] is None:
+        clipping_values[0] = spikes.min()
+    if clipping_values[1] is None:
+        clipping_values[1] = spikes.max()
+
+    spk_mean = np.mean(spikes, axis = 1, keepdims = True)
+    to_plot = (spikes - spk_mean) / (np.abs(spk_mean) + 1e-10)
+
+    if clip == "data":
+        to_plot = np.clip(to_plot, clipping_values[0], clipping_values[1])
+    to_plot = to_plot * 100
+
+    x_ticks = np.arange(0, 50, 5)
+    x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
+    
+    if clip == "img":
+        plot_sta(to_plot, edges, title, x_ticks, x_tick_labels, clipping_values, save_to = os.path.join(path, f"{title.replace(' ', '_')}.png"))
+    elif clip == "data":
+        plot_sta(to_plot, edges, title, x_ticks, x_tick_labels, (None, None), save_to = os.path.join(path, f"{title.replace(' ', '_')}.png"))
 
 def main(random_state):
 
@@ -87,19 +109,8 @@ def main(random_state):
         plot_edges(edges_apic, sm.segments, na_path, elec_dist_var = 'soma_passive', filename = "na_edges_apic.png", seg_type = 'apic')
 
         # STA
-        na_apic_mean = np.mean(na_apic, axis = 1, keepdims = True)
-        to_plot = np.clip((na_apic - na_apic_mean) / (np.abs(na_apic_mean) + 1e-10), na_apic_clip[0], na_apic_clip[1]) * 100
-        title = 'Na Spikes - Apical'
-        x_ticks = np.arange(0, 50, 5)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
-        plot_sta(to_plot, edges_apic, title, x_ticks, x_tick_labels, None, save_to = os.path.join(na_path, "na_spikes_apical.png"))
-
-        na_dend_mean = np.mean(na_dend, axis = 1, keepdims = True)
-        to_plot = np.clip((na_dend - na_dend_mean) / (np.abs(na_dend_mean) + 1e-15), na_basal_clip[0], na_basal_clip[1]) * 100
-        title = 'Na Spikes - Basal'
-        x_ticks = np.arange(0, 50, 5)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
-        plot_sta(to_plot, edges_dend, title, x_ticks, x_tick_labels, None, save_to = os.path.join(na_path, "na_spikes_basal.png"))
+        compute_mean_and_plot_sta(na_apic, edges_apic, "Na Spikes - Apical", na_path, na_apic_clip, "img")
+        compute_mean_and_plot_sta(na_dend, edges_dend, "Na Spikes - Basal", na_path, na_basal_clip, "img")
 
     if what_to_plot["Ca"]:
         # Get bounds for Ca
@@ -115,12 +126,8 @@ def main(random_state):
         ca_path = os.path.join(output_folder, "Ca")
         os.mkdir(ca_path)
 
-        ca_apic_mean = np.mean(ca_apic, axis = 1, keepdims = True)
-        to_plot = np.clip((ca_apic - ca_apic_mean) / (np.abs(ca_apic_mean) + 1e-15), ca_apic_clip[0], ca_apic_clip[1]) * 100
-        title = 'Ca2+ Spikes - Nexus'
-        x_ticks = np.arange(0, 50, 5)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
-        plot_sta(to_plot, edges_ca, title, x_ticks, x_tick_labels, None, save_to = os.path.join(ca_path, "ca_spikes_apical.png"))
+        compute_mean_and_plot_sta(ca_apic, edges_ca, 'Ca2+ Spikes - Nexus', ca_path, ca_apic_clip, "img")
+
 
     if what_to_plot["NMDA"]:
         # Get bounds for NMDA
@@ -139,19 +146,8 @@ def main(random_state):
         nmda_path = os.path.join(output_folder, "NMDA")
         os.mkdir(nmda_path)
 
-        nmda_apic_mean = np.mean(nmda_apic, axis = 1, keepdims = True)
-        to_plot = np.clip((nmda_apic - nmda_apic_mean) / (np.abs(nmda_apic_mean) + 1e-15), nmda_apic_clip[0], nmda_apic_clip[1]) * 100
-        title = 'NMDA Spikes - Apical'
-        x_ticks = np.arange(0, 50, 5)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
-        plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, None, save_to = os.path.join(nmda_path, "nmda_spikes_apical.png"))
-        
-        nmda_dend_mean = np.mean(nmda_dend, axis = 1, keepdims = True)
-        to_plot = np.clip((nmda_dend - nmda_dend_mean) / (np.abs(nmda_dend_mean) + 1e-15), nmda_basal_clip[0], nmda_basal_clip[1]) * 100
-        title = 'NMDA Spikes - Basal'
-        x_ticks = np.arange(0, 50, 5)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
-        plot_sta(to_plot, edges_nmda_dend, title, x_ticks, x_tick_labels, None, save_to = os.path.join(nmda_path, "nmda_spikes_basal.png"))
+        compute_mean_and_plot_sta(nmda_apic, edges_nmda_apic, 'NMDA Spikes - Apical', nmda_path, nmda_apic_clip, "img")
+        compute_mean_and_plot_sta(nmda_dend, edges_nmda_dend, 'NMDA Spikes - Basal', nmda_path, nmda_basal_clip, "img")
 
     if (what_to_plot["Ca"]) & (what_to_plot["NMDA"]) & (what_to_plot["Ca_NMDA"]):
         # Set Ca-NMDA
@@ -168,12 +164,7 @@ def main(random_state):
         ca_nmda_path = os.path.join(output_folder, "Ca_NMDA")
         os.mkdir(ca_nmda_path)
 
-        ca_nmda_apic_mean = np.mean(ca_nmda_apic, axis = 1, keepdims = True)
-        to_plot = np.clip((ca_nmda_apic - ca_nmda_apic_mean) / (np.abs(ca_nmda_apic_mean) + 1e-15), nmda_ca_apic_clip[0], nmda_ca_apic_clip[1]) * 100
-        title = 'Ca - NMDA Spikes - Apical'
-        x_ticks = np.arange(0, 50, 5)
-        x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
-        plot_sta(to_plot, edges_nmda_apic, title, x_ticks, x_tick_labels, None, save_to = os.path.join(ca_nmda_path, "ca_nmda_spikes_apical.png"))
+        compute_mean_and_plot_sta(ca_nmda_apic, edges_nmda_apic, 'Ca - NMDA Spikes - Apical', ca_nmda_path, nmda_ca_apic_clip, "img")
 
 if __name__ == "__main__":
     main(random_state = 123)

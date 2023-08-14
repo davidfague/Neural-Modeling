@@ -8,13 +8,13 @@ import seaborn as sns
 import json
 
 def plot_sta(data, edges, title, x_ticks, x_tick_labels, xlim, 
-			 norm_percentiles = (1, 99), save_to = None) -> None:
+			 clipping_values = (1, 99), save_to = None) -> None:
 	# Adjust the data
 	# lower, upper = np.percentile(data, norm_percentiles)
 	# robust_norm = plt.Normalize(vmin = lower, vmax = upper)
 	# normed_data = robust_norm(data) * 2 - 1 # Normalize to [-1, 1]
 	fig = plt.figure(figsize = (10, 5))
-	plt.imshow(data, cmap = sns.color_palette("coolwarm", as_cmap=True))
+	plt.imshow(data, cmap = sns.color_palette("coolwarm", as_cmap = True), vmin = clipping_values[0], vmax = clipping_values[1])
 	plt.title(title)
 	plt.xticks(ticks = x_ticks - 0.5, labels = x_tick_labels)
 	plt.xlabel('Time (ms)')
