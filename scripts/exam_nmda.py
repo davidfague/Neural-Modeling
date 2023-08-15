@@ -54,7 +54,7 @@ def compute_mean_and_plot_sta(spikes: np.ndarray, edges: np.ndarray, title: str,
     x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
     
     if clip == "img":
-        plot_sta(to_plot, edges, title, x_ticks, x_tick_labels, None, clipping_values, save_to = os.path.join(path, f"{title.replace(' ', '_')}.png"))
+        plot_sta(to_plot, edges, title, x_ticks, x_tick_labels, None, (clipping_values[0] * 100, clipping_values[1] * 100), save_to = os.path.join(path, f"{title.replace(' ', '_')}.png"))
     elif clip == "data":
         plot_sta(to_plot, edges, title, x_ticks, x_tick_labels, None, (None, None), save_to = os.path.join(path, f"{title.replace(' ', '_')}.png"))
 
