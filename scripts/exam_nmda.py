@@ -10,7 +10,13 @@ from Modules.plotting_utils import plot_sta, plot_edges
 import constants
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-08-14_18-47-11_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_29543NCs_29543nsyn"
+output_folder = "output/BenModel"#"output/2023-08-14_18-47-11_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_29543NCs_29543nsyn"
+if 'BenModel' in output_folder:
+  constants.save_every_ms = 3000
+  constants.h_tstop = 3000
+  transpose =True
+else:
+  transpose=False
 
 what_to_plot = {
     "Na": True,
@@ -64,7 +70,7 @@ def main(random_state):
     steps = range(step_size, int(constants.h_tstop / constants.h_dt) + 1, step_size) # Timestamps
 
     random_state = np.random.RandomState(random_state)
-    sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt)
+    sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt, transpose=transpose)
     
 
     if what_to_plot["Na"]:

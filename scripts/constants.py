@@ -23,7 +23,7 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 150000 #55#2500#20400 # Sim runtime (ms)
+h_tstop = 5000 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
@@ -104,6 +104,7 @@ exc_functional_group_span = 100
 exc_cluster_span = 10
 exc_synapses_per_cluster = 5
 trunk_exc_synapses = False # on/off switch
+perisomatic_exc_synapses = False
 
 # Inhibitory dend
 inh_cluster_span = 10

@@ -49,6 +49,10 @@ class CellModel:
             self._nbranch = len(self.tufts) + len(self.basals) # trunk is branch
         else:
             self._nbranch = len(self.tufts) - 1 + len(self.basals) # trunk is not branch
+            
+        if self.soma[0].nseg != 1:
+          warnings.warn(f"Changed Soma nseg from {self.soma[0].nseg} to 1",RuntimeWarning)
+          self.soma[0].nseg=1
 
         # Angles and rotations that were used to branch the cell
         # Store to use for geometry file generation
