@@ -54,9 +54,9 @@ def compute_mean_and_plot_sta(spikes: np.ndarray, edges: np.ndarray, title: str,
     x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
     
     if clip == "img":
-        plot_sta(to_plot, edges, title, x_ticks, x_tick_labels, clipping_values, save_to = os.path.join(path, f"{title.replace(' ', '_')}.png"))
+        plot_sta(to_plot, edges, title, x_ticks, x_tick_labels, None, clipping_values, save_to = os.path.join(path, f"{title.replace(' ', '_')}.png"))
     elif clip == "data":
-        plot_sta(to_plot, edges, title, x_ticks, x_tick_labels, (None, None), save_to = os.path.join(path, f"{title.replace(' ', '_')}.png"))
+        plot_sta(to_plot, edges, title, x_ticks, x_tick_labels, None, (None, None), save_to = os.path.join(path, f"{title.replace(' ', '_')}.png"))
 
 def main(random_state):
 
@@ -109,7 +109,7 @@ def main(random_state):
         plot_edges(edges_apic, sm.segments, na_path, elec_dist_var = 'soma_passive', filename = "na_edges_apic.png", seg_type = 'apic')
 
         # STA
-        compute_mean_and_plot_sta(na_apic, edges_apic, "Na Spikes - Apical", na_path, na_apic_clip, "img")
+        compute_mean_and_plot_sta(na_apic, edges_apic, "Na Spikes - Apical", na_path, na_apic_clip, "data")
         compute_mean_and_plot_sta(na_dend, edges_dend, "Na Spikes - Basal", na_path, na_basal_clip, "img")
 
     if what_to_plot["Ca"]:
