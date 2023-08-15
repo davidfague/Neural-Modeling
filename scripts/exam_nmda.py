@@ -10,7 +10,13 @@ from Modules.plotting_utils import plot_sta, plot_edges
 import constants
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-08-14_18-47-11_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_29543NCs_29543nsyn"
+output_folder = "output/BenModel"#"output/2023-08-14_18-47-11_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_29543NCs_29543nsyn"
+if 'BenModel' in output_folder:
+  constants.save_every_ms = 3000
+  constants.h_tstop = 3000
+  transpose =True
+else:
+  transpose=False
 
 what_to_plot = {
     "Na": True,
@@ -54,7 +60,7 @@ def compute_mean_and_plot_sta(spikes: np.ndarray, edges: np.ndarray, title: str,
     x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
     
     if clip == "img":
-        plot_sta(to_plot, edges, title, x_ticks, x_tick_labels, None, clipping_values, save_to = os.path.join(path, f"{title.replace(' ', '_')}.png"))
+        plot_sta(to_plot, edges, title, x_ticks, x_tick_labels, None, (clipping_values[0] * 100, clipping_values[1] * 100), save_to = os.path.join(path, f"{title.replace(' ', '_')}.png"))
     elif clip == "data":
         plot_sta(to_plot, edges, title, x_ticks, x_tick_labels, None, (None, None), save_to = os.path.join(path, f"{title.replace(' ', '_')}.png"))
 
@@ -64,7 +70,7 @@ def main(random_state):
     steps = range(step_size, int(constants.h_tstop / constants.h_dt) + 1, step_size) # Timestamps
 
     random_state = np.random.RandomState(random_state)
-    sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt)
+    sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt, transpose=transpose)
     
 
     if what_to_plot["Na"]:
@@ -109,7 +115,7 @@ def main(random_state):
         plot_edges(edges_apic, sm.segments, na_path, elec_dist_var = 'soma_passive', filename = "na_edges_apic.png", seg_type = 'apic')
 
         # STA
-        compute_mean_and_plot_sta(na_apic, edges_apic, "Na Spikes - Apical", na_path, na_apic_clip, "data")
+        compute_mean_and_plot_sta(na_apic, edges_apic, "Na Spikes - Apical", na_path, na_apic_clip, "img")
         compute_mean_and_plot_sta(na_dend, edges_dend, "Na Spikes - Basal", na_path, na_basal_clip, "img")
 
     if what_to_plot["Ca"]:

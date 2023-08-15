@@ -110,10 +110,10 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     spike_generator = SpikeGenerator()
     synapse_generator = SynapseGenerator()
 
-    exc_number_of_groups = int(sum(all_len_per_segment) / constants.exc_functional_group_span)
+    #exc_number_of_groups = int(sum(all_len_per_segment) / constants.exc_functional_group_span)
 
     # Number of presynaptic cells
-    cells_per_group = int(constants.exc_functional_group_span * constants.exc_synaptic_density / constants.exc_synapses_per_cluster)
+    #cells_per_group = int(constants.exc_functional_group_span * constants.exc_synaptic_density / constants.exc_synapses_per_cluster)
 
     # Distribution of mean firing rates
     mean_fr_dist = partial(exp_levy_dist, alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1)
@@ -359,6 +359,16 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
         if (synapse.get_segment().sec in cell.apic) & (synapse.syn_type in constants.exc_syn_mod) & (synapse.get_segment().sec not in cell.obliques) & (synapse.get_segment().sec.y3d(0)<600):
             for netcon in synapse.ncs:
               netcon.active(False)
+    
+    # Turn of perisomatic inhibitory neurons
+    if not constants.perisomatic_exc_synapses:
+      perisomatic_inputs_disabled=0
+      for synapse in cell.synapses:
+        if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 50) & (synapse.syn_type in constants.inh_syn_mod):
+            for netcon in synapse.ncs:
+              perisomatic_inputs_disabled+=1
+              netcon.active(False)
+      print("perisomatic inputs disabled:",perisomatic_inputs_disabled)
     
     if constants.merge_synapses: # may already be merged if reductor reduced the cell.
         logger.log_section_start("Merging Synapses")
