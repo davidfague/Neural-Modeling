@@ -12,7 +12,7 @@ from Modules.segment import Segment
 
 from Modules.logger import Logger
 
-output_folder = "output/2023-08-15_16-16-09_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn"
+output_folder = "output/2023-08-16_15-44-07_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn"
 
 
 constants.show_electrodes = False
@@ -48,37 +48,40 @@ def reset_segment_assignments(segments):
         seg.presynaptic_cell_names = []
         seg.presynaptic_cell_indices = []
 
-def assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, segments, data):
+def assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, segments, data, logger):
     """Assign FuncGroups and PreCells to segments based on the given cluster_type."""
     max_dists = [] # list for cluster spans
     pc_mean_firing_rates = None
     all_num_synapses = []
     if plotting_mode == 'functional_groups':
       # Iterate over functional groups and assign them to segments
+      logger.log_section_start("Iterating through Functional Groups")
       for _, row in data["functional_groups"][cluster_type].iterrows():
           fg_name = row["name"]
           fg_index = row["functional_group_index"]
           num_synapses=row['num_synapses']
           cleaned_strings = row["target_segment_indices"].replace('[', '').replace(']', '').split(',')
           target_indices = [int(x) for x in cleaned_strings]
-          max_dists.append(max_distance_for_segments(segments))
+          #max_dists.append(max_distance_for_segments(segments))
           all_num_synapses.append(num_synapses)
           for target_seg_index in target_indices:
               seg = segments[target_seg_index]
               seg.functional_group_names.append(fg_name)
               seg.functional_group_indices.append(fg_index)
+      logger.log_section_end("Iterating through Functional Groups")
     # For presynaptic cells
     elif plotting_mode == 'presynaptic_cells':
       # Iterate over presynaptic cells and assign them to segments
       pc_mean_firing_rates = []
+      logger.log_section_start("Iterating through presynaptic cells")
       for _, row in data["presynaptic_cells"][cluster_type].iterrows():
           pc_name = row["name"]
           pc_index = row["presynaptic_cell_index"]
-          pc_mean_firing_rate = row["mean_firing_rate"]
+          pc_mean_firing_rate = float(row["mean_firing_rate"])
           num_synapses=row['num_synapses']
           cleaned_strings = row["target_segment_indices"].replace('[', '').replace(']', '').split(',')
           target_indices = [int(x) for x in cleaned_strings]
-          max_dists.append(max_distance_for_segments(segments))
+          #max_dists.append(max_distance_for_segments(segments))
           all_num_synapses.append(num_synapses)
           pc_mean_firing_rates.append(pc_mean_firing_rate)
           for target_seg_index in target_indices:
@@ -86,19 +89,20 @@ def assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, segm
               seg.presynaptic_cell_names.append(pc_name)
               seg.presynaptic_cell_indices.append(pc_index)
               seg.presynaptic_cell_firing_rate = pc_mean_firing_rate
+      logger.log_section_end("Iterating through presynaptic cells")
             
-    mean_distance = np.mean(max_dists)
-    std_distance = np.std(max_dists)
+    #mean_distance = np.mean(max_dists)
+    #std_distance = np.std(max_dists)
     mean_num_synapses = np.mean(all_num_synapses)
     std_num_synapses = np.std(all_num_synapses)
-    if pc_mean_firing_rates: # only for presynaptic cells
+    if pc_mean_firing_rates is not None: # only for presynaptic cells
       mean_mean_fr = np.mean(pc_mean_firing_rates)
       std_mean_fr = np.std(pc_mean_firing_rates)
     else:
       mean_mean_fr = None
       std_mean_fr = None
     
-    return mean_distance, std_distance, mean_mean_fr, std_mean_fr, mean_num_synapses, std_num_synapses
+    return mean_mean_fr, std_mean_fr, mean_num_synapses, std_num_synapses #, mean_distance, std_distance
 
 
   # Function to compute pairwise distance between segment endpoints
@@ -201,16 +205,17 @@ def main(cluster_types, plotting_modes, output_folder):
   # read detailed seg info and clustering csvs
   data = load_data(cluster_types=cluster_types, output_folder=output_folder)
   save_path = os.path.join(output_folder, "Analysis Clusters")
-  logger = Logger(output_dir = save_path, active = True)
   if os.path.exists(save_path):
+    logger = Logger(output_dir = save_path, active = True)
     logger.log(f'Directory already exists: {save_path}')
   else:
-    logger.log(f'Creating Directory: {save_path}')
     os.mkdir(save_path)
+    logger = Logger(output_dir = save_path, active = True)
+    logger.log(f'Creating Directory: {save_path}')
   
   num_segments = len(data["detailed_seg_info"])
   logger.log(f'number of detailed segments used for clustering:{num_segments}')
-  detailed_sements=[]
+  detailed_segments=[]
   for i in range(num_segments):
       # Build seg_data
       seg_data = {} # placeholder
@@ -224,11 +229,12 @@ def main(cluster_types, plotting_modes, output_folder):
       reset_segment_assignments(detailed_segments)
       logger.log(f'analyzing {cluster_type} {plotting_mode}')
       # Assign segments to FuncGroups or PreCells based on the current cluster_type and plotting mode
-      mean_distance, std_distance, mean_mean_fr, std_mean_fr, mean_num_synapses, std_num_synapses = assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, detailed_segments, data)
+      mean_mean_fr, std_mean_fr, mean_num_synapses, std_num_synapses = assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, detailed_segments, data, logger=logger)
+      #mean_mean_fr, std_mean_fr, mean_num_synapses, std_num_synapses, mean_distance, std_distance = assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, detailed_segments, data, logger=logger)
       with open(os.path.join(save_path, 'info.txt'), 'a') as file:  # 'a' stands for append mode
         print(f"'{cluster_type}' '{plotting_mode}/n':", file=file)
-        print(f"Mean of maximum distances: {mean_distance}", file=file)
-        print(f"Standard deviation of maximum distances: {std_distance}", file=file)
+        #print(f"Mean of maximum distances: {mean_distance}", file=file)
+        #print(f"Standard deviation of maximum distances: {std_distance}", file=file)
         print(f"Mean number of synapses: {mean_num_synapses}", file=file)
         print(f"Standard deviation of number of synapses: {std_num_synapses}/n", file=file)
         if mean_mean_fr:

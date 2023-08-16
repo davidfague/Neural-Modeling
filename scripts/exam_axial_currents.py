@@ -21,7 +21,7 @@ from Modules.logger import Logger
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
 import constants
-output_folder = 'output/2023-08-16_14-13-39_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn' #"output/BenModel/"
+output_folder = 'output/2023-08-16_15-44-07_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn' #"output/BenModel/"
 if 'BenModel' in output_folder:
   constants.save_every_ms = 3000
   constants.h_tstop = 3000
@@ -36,12 +36,13 @@ dt=constants.h_dt
 
 def main():
   save_path = os.path.join(output_folder, "Analysis Currents")
-  logger = Logger(output_dir = save_path, active = True)
   if os.path.exists(save_path):
+    logger = Logger(output_dir = save_path, active = True)
     logger.log(f'Directory already exists: {save_path}')
   else:
-    logger.log(f'Creating Directory: {save_path}')
     os.mkdir(save_path)
+    logger = Logger(output_dir = save_path, active = True)
+    logger.log(f'Creating Directory: {save_path}')
     
   step_size = int(constants.save_every_ms / constants.h_dt) # Timestamps
   steps = range(step_size, int(constants.h_tstop / constants.h_dt) + 1, step_size) # Timestamps

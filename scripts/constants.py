@@ -38,7 +38,7 @@ exc_gmax_clip = (0,0.65)#(0, 0.7)
 inh_gmax_dist = 1#2.25
 soma_gmax_dist = 1#2.25
 inh_scalar = 2.25 # scales weight
-exc_scalar = 0.65 # scales weight
+exc_scalar = 0.6 # scales weight
 
 # synapse density syns/um
 exc_synaptic_density = 2.16

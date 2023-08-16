@@ -323,7 +323,7 @@ class SegmentManager:
     def get_edges(self, lower_bounds, edge_type = "apic", elec_dist_var = 'soma_passive', mag = None, mag_th = None):
         edges = []
         for i in range(self.num_segments):
-            if (len(lower_bounds[i]) > 0) & (edge_type in self.segments[i].sec):
+            if (edge_type in self.segments[i].sec): #& (len(lower_bounds[i]) > 0):
                 if mag is None:
                     edges.append(eval(self.segments[i].seg_elec_distance)['beta'][elec_dist_var])
                 else:

@@ -11,7 +11,7 @@ import constants
 from Modules.logger import Logger
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-08-16_14-13-39_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn"#"output/2023-08-14_18-47-11_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_29543NCs_29543nsyn"
+output_folder = "output/2023-08-16_15-44-07_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn"
 if 'BenModel' in output_folder:
   constants.save_every_ms = 3000
   constants.h_tstop = 3000
@@ -44,12 +44,13 @@ nmda_basal_clip = (-1.5, 1.5)
 nmda_ca_apic_clip = (-2, 2)
 
 save_path = os.path.join(output_folder, "Analysis Dendritic Events")
-logger = Logger(output_dir = save_path, active = True)
 if os.path.exists(save_path):
+  logger = Logger(output_dir = save_path, active = True)
   logger.log(f'Directory already exists: {save_path}')
 else:
-  logger.log(f'Creating Directory: {save_path}')
   os.mkdir(save_path)
+  logger = Logger(output_dir = save_path, active = True)
+  logger.log(f'Creating Directory: {save_path}')
 
 def compute_mean_and_plot_sta(spikes: np.ndarray, edges: np.ndarray, title: str, path: str, 
                               clipping_values: tuple = (None, None), clip: str = "img"):
@@ -97,7 +98,8 @@ def main(random_state):
 
         # Save Na plots
         na_path = os.path.join(save_path, "Na")
-        os.mkdir(na_path)
+        if not os.path.exists(na_path):
+          os.mkdir(na_path)
 
         # Hist of Na peaks
         fig, ax = plt.subplots()
@@ -139,7 +141,8 @@ def main(random_state):
 
         # Save Ca plots
         ca_path = os.path.join(save_path, "Ca")
-        os.mkdir(ca_path)
+        if not os.path.exists(ca_path):
+          os.mkdir(ca_path)
 
         compute_mean_and_plot_sta(ca_apic, edges_ca, 'Ca2+ Spikes - Nexus', ca_path, ca_apic_clip, "img")
 
@@ -159,7 +162,8 @@ def main(random_state):
         
         # Save NMDA plots
         nmda_path = os.path.join(save_path, "NMDA")
-        os.mkdir(nmda_path)
+        if not os.path.exists(nmda_path):
+          os.mkdir(nmda_path)
 
         compute_mean_and_plot_sta(nmda_apic, edges_nmda_apic, 'NMDA Spikes - Apical', nmda_path, nmda_apic_clip, "img")
         compute_mean_and_plot_sta(nmda_dend, edges_nmda_dend, 'NMDA Spikes - Basal', nmda_path, nmda_basal_clip, "img")
@@ -177,7 +181,8 @@ def main(random_state):
         
         # Save Ca-NMDA plots
         ca_nmda_path = os.path.join(save_path, "Ca_NMDA")
-        os.mkdir(ca_nmda_path)
+        if not os.path.exists(ca_nmda_path):
+          os.mkdir(ca_nmda_path)
 
         compute_mean_and_plot_sta(ca_nmda_apic, edges_nmda_apic, 'Ca - NMDA Spikes - Apical', ca_nmda_path, nmda_ca_apic_clip, "img")
 
