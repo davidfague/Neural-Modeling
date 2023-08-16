@@ -534,6 +534,8 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log(f'Simulation time: {round(elapsedtime)} sec.')
     logger.log(f'Total runtime: {round(total_runtime)} sec.')
 
+    os.system(f"mv {logger.log_file_name} {os.path.join(save_folder, logger.log_file_name)}")
+
 if __name__ == "__main__":
     
     if not os.path.exists(constants.save_dir):
