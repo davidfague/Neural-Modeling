@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import os
 
 import matplotlib.animation as animation
-from matplotlib.animation import FuncAnimation
 
 from cell_inference.config import params
 from Modules.segment import SegmentManager
@@ -47,14 +46,12 @@ elev, azim = 10, -45 # 90
 new_property = None #['inmda','iampa','net_exc_i'] # set to None if not using existing property
 
 time_index = 300
-#identify the property being used #check cell.seg_info[0] for dictionary of properties (some are nested)
-#if new_property is None:
-#  if hasattr(constants, "property_list_to_analyze"):
-#    property_list_to_analyze = constants.property_list_to_analyze
-#  else:
-property_list_to_analyze = ['inmda'] # can update here if it is not specified in constants.py
-	# property_list_to_analyze = ['netcon_density_per_seg','exc']
-	# property_list_to_analyze = ['seg_elec_info','beta','passive_soma']
+
+property_list_to_analyze = ['inmda']
+# property_list_to_analyze = ['netcon_density_per_seg','exc']
+# property_list_to_analyze = ['seg_elec_info','beta','passive_soma']
+
+animation_step = int(1 / constants.h_dt)
 	
 def main(property_list_to_analyze):
 
@@ -77,8 +74,6 @@ def main(property_list_to_analyze):
 	# Get label
 	label = '_'.join(property_list_to_analyze)
 	if find_average: label = 'mean_' + label
-	
-	# Get Robust normalized properties
 
 	# Robust normalization
 	lower, upper = np.percentile(seg_prop, [1, 95])
@@ -97,28 +92,11 @@ def main(property_list_to_analyze):
 		fig, ax = plot_morphology(segments = sm.segments, electrodes = elec_pos, move_cell = loc_param, elev = -elev, azim = -azim, figsize = (12, 8), 
 			    				  seg_property = label, segment_colors = segment_colors, sm = smap)
 		return fig, ax
-		
-	
-	# def animate(i, sm, robust_norm,cmap,ax, loc_param,label):
-	# 	seg_prop = np.array([get_nested_property(seg, property_list_to_analyze, i) for seg in sm.segments])
-	# 	normalized_seg_prop = robust_norm(seg_prop)
-	# 	segment_colors = cmap(normalized_seg_prop)
-	# 	smap = plt.cm.ScalarMappable(cmap=cmap, norm=robust_norm)
-	# 	ax.clear()  # clear the plot for the new frame
-	# 	fig, ax = plot_morphology(segments=sm.segments, electrodes=elec_pos, move_cell=loc_param, elev=-elev, azim=-azim, figsize=(12, 8),
-	# 													seg_property = label+str(i), segment_colors = segment_colors, sm=smap)
-	# 	return ax
 	
 	if animate_plot:
-			# # Create initial plot
-			# fig, ax = plot_morphology(segments=sm.segments, electrodes=elec_pos, move_cell=loc_param, elev=-elev, azim=-azim, figsize=(12, 8),
-			# 													seg_property = label, segment_colors = segment_colors, sm=smap)
-			# # Create the animation
-			# ani = FuncAnimation(fig, animate, frames=range(len([get_nested_property(seg, property_list_to_analyze) for seg in [sm.segments[0]]])), interval=200, fargs=(sm,robust_norm,cmap,ax, loc_param,label,))
-			# plt.show()
 			plots = []
-			for i in range(0, 20000, 10):
-				if i==0:
+			for i in range(0, int(constants.h_tstop / constants.h_dt) + 1, animation_step):
+				if i == 0:
 					fig, ax = configure_plot(x = loc_param[0], y = loc_param[1], z = loc_param[2], alpha = 180 / np.pi * loc_param[3], 
 			      							 beta = 180 / np.pi * np.arccos(loc_param[4]), phi = 180 / np.pi * loc_param[5], elev = -elev, azim = -azim)
 				else:
@@ -127,17 +105,16 @@ def main(property_list_to_analyze):
 					segment_colors = cmap(normalized_seg_prop)
 					smap = plt.cm.ScalarMappable(cmap = cmap, norm = robust_norm)
 					dummy_fig, ax = configure_plot(x = loc_param[0], y = loc_param[1], z = loc_param[2], alpha = 180 / np.pi * loc_param[3], 
-										beta = 180 / np.pi * np.arccos(loc_param[4]), phi = 180 / np.pi * loc_param[5], elev = -elev, azim = -azim)
-					ax.set(animated=True)
+				    							   beta = 180 / np.pi * np.arccos(loc_param[4]), phi = 180 / np.pi * loc_param[5], elev = -elev, azim = -azim)
+					ax.set(animated = True)
 					ax.remove()
 					ax.figure = fig
 					fig.add_axes(ax)
 					plt.close(dummy_fig)
 				plots.append([ax])
-				#fig.savefig(os.path.join(output_folder, f"f{i}.png"))
-				
+
 			ani = animation.ArtistAnimation(fig, plots)
-			ani.save("video.mp4")
+			ani.save(os.path.join(output_folder, f"video.mp4"))
 	else:
 		fig, _ = configure_plot(x = loc_param[0], y = loc_param[1], z = loc_param[2], alpha = 180 / np.pi * loc_param[3], 
 		       				 beta = 180 / np.pi * np.arccos(loc_param[4]), phi = 180 / np.pi * loc_param[5], elev = -elev, azim = -azim)
