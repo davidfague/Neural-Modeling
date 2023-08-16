@@ -11,7 +11,7 @@ import constants
 from Modules.segment import Segment
 
 
-output_folder = "output/2023-08-09_20-35-38_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn"
+output_folder = "output/2023-08-15_16-16-09_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn"
 
 
 constants.show_electrodes = False
@@ -84,6 +84,7 @@ def assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, segm
               seg = segments[target_seg_index]
               seg.presynaptic_cell_names.append(pc_name)
               seg.presynaptic_cell_indices.append(pc_index)
+              seg.presynaptic_cell_firing_rate = pc_mean_firing_rate
             
     mean_distance = np.mean(max_dists)
     std_distance = np.std(max_dists)
@@ -107,16 +108,17 @@ def pairwise_distance(point1, point2):
 
 # Function to compute the maximum distance between two segments
 def max_distance_between_segments(seg1, seg2):
+    # updated to only check middle of segments because it takes so long and is just to measure cluster span.
     seg1_points = [
-        (seg1.p0_x3d, seg1.p0_y3d, seg1.p0_z3d),
-        (seg1.p0_5_x3d, seg1.p0_5_y3d, seg1.p0_5_z3d),
-        (seg1.p1_x3d, seg1.p1_y3d, seg1.p1_z3d)
+        #(seg1.p0_x3d, seg1.p0_y3d, seg1.p0_z3d),
+        (seg1.p0_5_x3d, seg1.p0_5_y3d, seg1.p0_5_z3d)
+        #(seg1.p1_x3d, seg1.p1_y3d, seg1.p1_z3d)
     ]
     
     seg2_points = [
-        (seg2.p0_x3d, seg2.p0_y3d, seg2.p0_z3d),
-        (seg2.p0_5_x3d, seg2.p0_5_y3d, seg2.p0_5_z3d),
-        (seg2.p1_x3d, seg2.p1_y3d, seg2.p1_z3d)
+        #(seg2.p0_x3d, seg2.p0_y3d, seg2.p0_z3d),
+        (seg2.p0_5_x3d, seg2.p0_5_y3d, seg2.p0_5_z3d)
+        #(seg2.p1_x3d, seg2.p1_y3d, seg2.p1_z3d)
     ]
     
     # compute all pairwise distances and return the maximum
@@ -154,6 +156,45 @@ def plot_segments(segments, save_name):
     ax.set_box_aspect([1, 3, 1])  # x, y, z
     plt.savefig(save_name)
     plt.close()
+
+
+def plot_segments_mean_firing_rate(segments, save_name):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Find min and max mean_firing_rate for normalization purposes
+    min_rate = min(segment.mean_firing_rate for segment in segments)
+    max_rate = max(segment.mean_firing_rate for segment in segments)
+
+    # Create colormap
+    cmap = plt.cm.viridis
+
+    for segment in segments:
+        p0 = (segment.p0_x3d, segment.p0_y3d, segment.p0_z3d)
+        p0_5 = (segment.p0_5_x3d, segment.p0_5_y3d, segment.p0_5_z3d)
+        p1 = (segment.p1_x3d, segment.p1_y3d, segment.p1_z3d)
+        
+        # Normalize mean_firing_rate to [0, 1] and get the color from the colormap
+        norm_val = (segment.mean_firing_rate - min_rate) / (max_rate - min_rate)
+        color = cmap(norm_val)
+
+        ax.plot([p0[0], p0_5[0]], [p0[1], p0_5[1]], [p0[2], p0_5[2]], color=color)
+        ax.plot([p0_5[0], p1[0]], [p0_5[1], p1[1]], [p0_5[2], p1[2]], color=color)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.view_init(elev=90, azim=-90)
+    ax.set_box_aspect([1, 3, 1])  # x, y, z
+    
+    # Adding colorbar
+    mappable = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=min_rate, vmax=max_rate))
+    cbar = plt.colorbar(mappable, ax=ax, orientation='vertical', fraction=0.03, pad=0.04)
+    cbar.set_label('Mean Firing Rate')
+
+    plt.savefig(save_name)
+    plt.close()
+
 
 def main(cluster_types, plotting_modes, output_folder):
   # read detailed seg info and clustering csvs
@@ -211,6 +252,9 @@ def main(cluster_types, plotting_modes, output_folder):
         print(f'plotting {cluster_type} {plotting_mode}/n/n/n/n',file=file)
       save_name = os.path.join(save_path, f'{cluster_type}_{plotting_mode}.png')
       plot_segments(detailed_segments, save_name)
+      if plotting_mode == 'presynaptic_cell':
+        save_name = os.path.join(save_path, f'mean_fr_{cluster_type}_{plotting_mode}.png')
+        plot_segments_mean_firing_rate(detailed_segments, save_name)
   
 if __name__ == "__main__":
     main(cluster_types, plotting_modes, output_folder)

@@ -23,7 +23,7 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 1000 #55#2500#20400 # Sim runtime (ms)
+h_tstop = 2000 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
@@ -35,8 +35,10 @@ h_i_delay = 400 # (ms)
 exc_gmax_mean_0 = 0.2
 exc_gmax_std_0 = 0.345
 exc_gmax_clip = (0,0.65)#(0, 0.7)
-inh_gmax_dist = 2.25#2.25
-soma_gmax_dist = 2.25#2.25
+inh_gmax_dist = 1#2.25
+soma_gmax_dist = 1#2.25
+inh_scalar = 2.25 # scales weight
+exc_scalar = 0.5 # scales weight
 
 # synapse density syns/um
 exc_synaptic_density = 2.16

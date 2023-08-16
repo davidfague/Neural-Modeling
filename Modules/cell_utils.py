@@ -115,29 +115,30 @@ def calc_seg_coords(cell) -> dict:
             start = seg.x * sec.L - seg_length / 2
             end = seg.x * sec.L + seg_length / 2
             mid = seg.x * sec.L
-
+        
             for i in range(len(arc_lengths) - 1):
                 # Check if segment's middle is between two 3D coordinates
                 if arc_lengths[i] <= mid < arc_lengths[i+1]:
                     t = (mid - arc_lengths[i]) / (arc_lengths[i+1] - arc_lengths[i])
                     pt = coords[i] + (coords[i+1] - coords[i]) * t
-
+        
                     # Calculate the start and end points of the segment
                     direction = (coords[i+1] - coords[i]) / np.linalg.norm(coords[i+1] - coords[i])
                     p0[seg_idx] = pt - direction * seg_length / 2
                     p1[seg_idx] = pt + direction * seg_length / 2
-
-                    # Correct the start and end points if they go beyond 3D coordinates
-                    while start < arc_lengths[i]:
+        
+                    # Correct the start point if it goes before 3D coordinates
+                    while i > 0 and start < arc_lengths[i]:  # Added boundary check i > 0
                         i -= 1
                         direction = (coords[i+1] - coords[i]) / np.linalg.norm(coords[i+1] - coords[i])
                         p0[seg_idx] = coords[i] + direction * (start - arc_lengths[i])
-
+        
+                    # Correct the end point if it goes beyond 3D coordinates
                     while end > arc_lengths[i+1] and i+2 < len(arc_lengths):
                         i += 1
                         direction = (coords[i+1] - coords[i]) / np.linalg.norm(coords[i+1] - coords[i])
                         p1[seg_idx] = coords[i] + direction * (end - arc_lengths[i])
-
+        
                     p05[seg_idx] = pt
                     r[seg_idx] = seg.diam / 2
                     seg_idx += 1

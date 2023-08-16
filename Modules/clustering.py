@@ -249,5 +249,4 @@ def generate_spike_train_for_functional_groups(functional_groups: list,
       presynaptic_cell.spike_train.append(spikes)
       for synapse in presynaptic_cell.synapses:
         netcon = spike_generator.set_spike_train(synapse, spikes)
-        spike_generator.netcons.append(netcon)
         print(functional_group.name, presynaptic_cell.name, synapse.synapse_neuron_obj, netcon)

@@ -1,3 +1,7 @@
+'''
+Note: segment manager computs axial currents from adjacent segment to the target segment. This code flips that directional relationship by multiplying by -1 when plotting axial currents.
+'''
+
 import sys
 sys.path.append("../")
 
@@ -136,7 +140,7 @@ def main():
               
 def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to=None, title_prefix=None, vlines=None):
     '''
-    Plots axial current from segment to adjacent segments,
+    Plots axial current from target segment to adjacent segments, unless it the target segment is soma.
     Plots Vm of segment and adjacent segments,
     Plots Currents of segment
     
@@ -216,7 +220,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
                     total_dend_AC += segment.axial_currents[adj_seg_index] # sum AC from basal dendrites
                   else: # plot axon & apical trunk ACs
                     axial_current = segment.axial_currents[adj_seg_index][indices] if indices is not None else segment.axial_currents[adj_seg_index]
-                    ax.plot(t, axial_current, label=adj_seg.name, color=adj_seg.color) # apical, axon
+                    ax.plot(t, -*axial_current, label=adj_seg.name, color=adj_seg.color) # apical, axon
                 else: # plotting any other segment's ACs, sum axial currents to or away soma.
                   if adj_seg in segment.parent_segs: # parent segs will be closer to soma with our model.
                     total_to_soma_AC += segment.axial_currents[adj_seg_index]
@@ -224,8 +228,8 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
                     total_away_soma_AC += segment.axial_currents[adj_seg_index]
                   
             if segment.type=='soma': # if we are plotting for soma segment, sum basal axial currents
-              dend_data = total_dend_AC[indices] if indices is not None else total_dend_AC
-              ax.plot(t, dend_data, label = 'Summed basal axial currents', color = 'red')
+              basal_axial_current = total_dend_AC[indices] if indices is not None else total_dend_AC
+              ax.plot(t, -*basal_axial_current, label = 'Summed axial currents from basal segments to soma', color = 'red')
               ax.set_ylim([-2,2])
             else: #if not soma, plot axial currents to segments toward soma vs AC to segments away from soma.
               total_to_soma_AC = total_to_soma_AC[indices] if indices is not None else total_to_soma_AC

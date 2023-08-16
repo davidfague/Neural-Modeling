@@ -95,12 +95,12 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     gmax_std = np.sqrt(np.log((exc_gmax_std_0 / exc_gmax_mean_0) ** 2 + 1))
 
     # gmax distribution
-    def log_norm_dist(gmax_mean, gmax_std, size):
+    def log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size):
         val = np.random.lognormal(gmax_mean, gmax_std, size)
-        s = float(np.clip(val, constants.exc_gmax_clip[0], constants.exc_gmax_clip[1]))
+        s = gmax_scalar * float(np.clip(val, constants.exc_gmax_clip[0], constants.exc_gmax_clip[1]))
         return s
 
-    gmax_exc_dist = partial(log_norm_dist, gmax_mean, gmax_std, size = 1)
+    gmax_exc_dist = partial(log_norm_dist, gmax_mean, gmax_std, constants.exc_scalar, size = 1)
 
     # Excitatory firing rate distribution
     def exp_levy_dist(alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1):
@@ -177,6 +177,8 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     inh_P_dist["soma"] = inh_soma_P_dist
     inh_P_dist["apic"] = inh_apic_P_dist
     inh_P_dist["dend"] = inh_basal_P_dist
+    
+    inh_gmax = constants.inh_gmax_dist * constants.inh_scalar
 
     logger.log_memory()
     inh_synapses = synapse_generator.add_synapses(segments = all_segments,
@@ -184,7 +186,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                               density=constants.inh_synaptic_density,
                                               record = True,
                                               vector_length = constants.save_every_ms,
-                                              gmax = constants.inh_gmax_dist,
+                                              gmax = inh_gmax,
                                               random_state=random_state,
                                               neuron_r = neuron_r,
                                               syn_mod = constants.inh_syn_mod,
@@ -204,7 +206,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                               number_of_synapses=150,
                                               record = True,
                                               vector_length = constants.save_every_ms,
-                                              gmax = constants.soma_gmax_dist,
+                                              gmax = inh_gmax,
                                               random_state=random_state,
                                               neuron_r = neuron_r,
                                               syn_mod = constants.inh_syn_mod,
@@ -342,8 +344,8 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_memory()
     
     reductor = Reductor()
-    print('netcons list:',len(spike_generator.netcons))
-    print('unique netcons in list:',len(np.unique(spike_generator.netcons)))
+#    print('netcons list:',len(spike_generator.netcons))
+#    print('unique netcons in list:',len(np.unique(spike_generator.netcons)))
     cell = reductor.reduce_cell(complex_cell = complex_cell, reduce_cell = constants.reduce_cell, 
                                 optimize_nseg = constants.optimize_nseg_by_lambda, synapses_list = all_syns,
                                 netcons_list = spike_generator.netcons, spike_trains = spike_generator.spike_trains,
