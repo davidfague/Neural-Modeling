@@ -475,7 +475,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
 
     # Save constants
     shutil.copy2("constants.py", save_folder)
-    os.rename(os.path.join(save_folder, "constants.py"), os.path.join(save_folder, "constants_image.txt"))
+    os.rename(os.path.join(save_folder, "constants.py"), os.path.join(save_folder, "constants_image.py"))
 
     h.finitialize(h.v_init)
     while h.t <= h.tstop + 1:

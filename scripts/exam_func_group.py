@@ -6,12 +6,14 @@ import h5py, pickle, os
 from multiprocessing import Process
 import constants
 
+from Modules.logger import Logger
+
 from Modules.plotting_utils import plot_simulation_results
 from cell_inference.config import params
 from cell_inference.utils.plotting.plot_results import plot_lfp_heatmap, plot_lfp_traces
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folders = ["output/2023-08-16_13-31-50_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn"]
+output_folders = ["output/2023-08-16_14-13-39_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn"]
 
 # Check shape of each saved file
 analyze = True
@@ -25,11 +27,11 @@ def main(output_folder):
     steps = range(step_size, int(constants.h_tstop / constants.h_dt) + 1, step_size) # Timestamps
     
     # Save folder
-    save_path = os.path.join(output_folder, "Analysis Voltage and LFP")
+    logger = Logger(output_dir = save_path, active = True)
     if os.path.exists(save_path):
-      print('Directory already exists:', save_path)
+      logger.log(f'Directory already exists: {save_path}')
     else:
-      print('Creating Directory:', save_path)
+      logger.log(f'Creating Directory: {save_path}')
       os.mkdir(save_path)
     if analyze:
         for step in steps:
@@ -38,7 +40,7 @@ def main(output_folder):
                 if filename.endswith(".h5"):
                     with h5py.File(os.path.join(dirname, filename)) as file:
                         data = np.array(file["report"]["biophysical"]["data"])
-                        print(f"{os.path.join(f'saved_at_step_{step}', filename)}: {data.shape}")
+                        logger.log(f"{os.path.join(f'saved_at_step_{step}', filename)}: {data.shape}")
     
     if plot_voltage_lfp:
         t = []

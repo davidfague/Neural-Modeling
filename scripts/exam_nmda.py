@@ -8,9 +8,10 @@ from Modules.segment import SegmentManager
 from Modules.plotting_utils import plot_sta, plot_edges
 
 import constants
+from Modules.logger import Logger
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-08-16_13-31-50_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn"#"output/2023-08-14_18-47-11_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_29543NCs_29543nsyn"
+output_folder = "output/2023-08-16_14-13-39_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn"#"output/2023-08-14_18-47-11_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_29543NCs_29543nsyn"
 if 'BenModel' in output_folder:
   constants.save_every_ms = 3000
   constants.h_tstop = 3000
@@ -42,11 +43,12 @@ nmda_basal_clip = (-1.5, 1.5)
 # NMDA Ca
 nmda_ca_apic_clip = (-2, 2)
 
-save_path = os.path.join(output_folder, "Analysis Currents")
+save_path = os.path.join(output_folder, "Analysis Dendritic Events")
+logger = Logger(output_dir = save_path, active = True)
 if os.path.exists(save_path):
-  print('Directory already exists:',save_path)
+  logger.log(f'Directory already exists: {save_path}')
 else:
-  print('Creating Directory:',save_path)
+  logger.log(f'Creating Directory: {save_path}')
   os.mkdir(save_path)
 
 def compute_mean_and_plot_sta(spikes: np.ndarray, edges: np.ndarray, title: str, path: str, 

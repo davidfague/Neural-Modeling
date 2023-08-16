@@ -16,10 +16,12 @@ import scipy.signal as ss
 from mpl_toolkits import mplot3d
 import pdb #python debugger
 
+from Modules.logger import Logger
+
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
 import constants
-output_folder = 'output/2023-08-16_13-31-50_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn' #"output/BenModel/"
+output_folder = 'output/2023-08-16_14-13-39_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn' #"output/BenModel/"
 if 'BenModel' in output_folder:
   constants.save_every_ms = 3000
   constants.h_tstop = 3000
@@ -33,6 +35,14 @@ dt=constants.h_dt
 #print(constants.h_dt, constants.save_every_ms, constants.h_tstop)
 
 def main():
+  save_path = os.path.join(output_folder, "Analysis Currents")
+  logger = Logger(output_dir = save_path, active = True)
+  if os.path.exists(save_path):
+    logger.log(f'Directory already exists: {save_path}')
+  else:
+    logger.log(f'Creating Directory: {save_path}')
+    os.mkdir(save_path)
+    
   step_size = int(constants.save_every_ms / constants.h_dt) # Timestamps
   steps = range(step_size, int(constants.h_tstop / constants.h_dt) + 1, step_size) # Timestamps
   #print(step_size, steps)
@@ -56,9 +66,9 @@ def main():
   #compute axial currents between all segments
   sm.compute_axial_currents()
   
-  print("soma_spiketimes:", sm.soma_spiketimes)
+  logger.log(f"soma_spiketimes: {sm.soma_spiketimes}")
   
-  print('firing_rate:', len(sm.soma_spiketimes) / (len(sm.segments[0].v) * dt / 1000) ) # number of spikes / seconds of simulation
+  logger.log(f'firing_rate: {len(sm.soma_spiketimes) / (len(sm.segments[0].v) * dt / 1000)}') # number of spikes / seconds of simulation
   
   #Find soma segments
   soma_segs = []
@@ -67,16 +77,9 @@ def main():
       soma_segs.append(seg)
       
   if len(soma_segs) != 1:
-    print("Picking 1 out of ",len(soma_segs),"Soma segments.")
+    logger.log(f"Picking 1 out of {len(soma_segs)} Soma segments.")
     #raise(ValueError("There should be only one soma segment."))
     soma_segs=[soma_segs[3]]
-  
-  save_path = os.path.join(output_folder, "Analysis Currents")
-  if os.path.exists(save_path):
-    print('Directory already exists:',save_path)
-  else:
-    print('Creating Directory:',save_path)
-    os.mkdir(save_path)
   
   #Plot segments adjacent to soma
   plot_adjacent_segments(segs=soma_segs, sm=sm, title_prefix="Soma_", save_to=save_path)
@@ -90,7 +93,7 @@ def main():
     nexus_seg_index=seg_indexes["nexus"]
     basal_seg_index=seg_indexes["basal"]
     tuft_seg_index=seg_indexes["tuft"]
-    print("NEXUS SEG:", sm.segments[nexus_seg_index].seg) # to determine matching seg
+    logger.log(f"NEXUS SEG: {sm.segments[nexus_seg_index].seg}") # to determine matching seg
   nexus_segs=[sm.segments[nexus_seg_index]]
   basal_segs=[sm.segments[basal_seg_index]]
   tuft_segs=[sm.segments[tuft_seg_index]]
@@ -154,8 +157,8 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
     if indices is not None:
         t = t[indices]
         vlines = vlines[np.isin(np.round(vlines,1), np.round(t,1))]
-        print("t:",t)
-        print("vlines:", vlines)
+        #print("t:",t)
+        #print("vlines:", vlines)
         
     titles = [
         'Axial Current from [{}] to adjacent segments',

@@ -10,6 +10,7 @@ from cell_inference.config import params
 import constants
 from Modules.segment import Segment
 
+from Modules.logger import Logger
 
 output_folder = "output/2023-08-15_16-16-09_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn"
 
@@ -200,16 +201,16 @@ def main(cluster_types, plotting_modes, output_folder):
   # read detailed seg info and clustering csvs
   data = load_data(cluster_types=cluster_types, output_folder=output_folder)
   save_path = os.path.join(output_folder, "Analysis Clusters")
+  logger = Logger(output_dir = save_path, active = True)
   if os.path.exists(save_path):
-    print('Directory already exists:',save_path)
+    logger.log(f'Directory already exists: {save_path}')
   else:
-    print('Creating Directory:',save_path)
+    logger.log(f'Creating Directory: {save_path}')
     os.mkdir(save_path)
   
   num_segments = len(data["detailed_seg_info"])
-  with open(os.path.join(save_path, 'info.txt'), 'a') as file:  # 'a' stands for append mode
-    print(f'number of detailed segments used for clustering:{num_segments}', file=file)
-  detailed_segments=[]
+  logger.log(f'number of detailed segments used for clustering:{num_segments}')
+  detailed_sements=[]
   for i in range(num_segments):
       # Build seg_data
       seg_data = {} # placeholder
@@ -221,8 +222,7 @@ def main(cluster_types, plotting_modes, output_folder):
       
       # Reset segment assignments
       reset_segment_assignments(detailed_segments)
-      with open(os.path.join(save_path, 'info.txt'), 'a') as file:  # 'a' stands for append mode
-        print(f'analyzing {cluster_type} {plotting_mode}', file=file)
+      logger.log(f'analyzing {cluster_type} {plotting_mode}')
       # Assign segments to FuncGroups or PreCells based on the current cluster_type and plotting mode
       mean_distance, std_distance, mean_mean_fr, std_mean_fr, mean_num_synapses, std_num_synapses = assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, detailed_segments, data)
       with open(os.path.join(save_path, 'info.txt'), 'a') as file:  # 'a' stands for append mode
@@ -248,8 +248,7 @@ def main(cluster_types, plotting_modes, output_folder):
           seg.color = group_colors(seg.presynaptic_cell_indices[0])
       
       # plot
-      with open(os.path.join(save_path, 'info.txt'), 'a') as file:  # 'a' stands for append mode
-        print(f'plotting {cluster_type} {plotting_mode}/n/n/n/n',file=file)
+      logger.log(f'plotting {cluster_type} {plotting_mode}/n/n/n/n')
       save_name = os.path.join(save_path, f'{cluster_type}_{plotting_mode}.png')
       plot_segments(detailed_segments, save_name)
       if plotting_mode == 'presynaptic_cell':
