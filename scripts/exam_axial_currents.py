@@ -19,7 +19,7 @@ import pdb #python debugger
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
 import constants
-output_folder = 'output/2023-08-15_16-16-09_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn' #"output/BenModel/"
+output_folder = 'output/2023-08-16_13-31-50_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn' #"output/BenModel/"
 if 'BenModel' in output_folder:
   constants.save_every_ms = 3000
   constants.h_tstop = 3000

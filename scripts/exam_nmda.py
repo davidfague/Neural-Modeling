@@ -10,7 +10,7 @@ from Modules.plotting_utils import plot_sta, plot_edges
 import constants
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/BenModel"#"output/2023-08-14_18-47-11_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_29543NCs_29543nsyn"
+output_folder = "output/2023-08-16_13-31-50_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn"#"output/2023-08-14_18-47-11_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_29543NCs_29543nsyn"
 if 'BenModel' in output_folder:
   constants.save_every_ms = 3000
   constants.h_tstop = 3000
@@ -41,6 +41,13 @@ nmda_basal_clip = (-1.5, 1.5)
 
 # NMDA Ca
 nmda_ca_apic_clip = (-2, 2)
+
+save_path = os.path.join(output_folder, "Analysis Currents")
+if os.path.exists(save_path):
+  print('Directory already exists:',save_path)
+else:
+  print('Creating Directory:',save_path)
+  os.mkdir(save_path)
 
 def compute_mean_and_plot_sta(spikes: np.ndarray, edges: np.ndarray, title: str, path: str, 
                               clipping_values: tuple = (None, None), clip: str = "img"):
@@ -87,7 +94,7 @@ def main(random_state):
         na_apic = sm.get_sta(sm.soma_spiketimes, na_lower_bounds, edges_apic, "apic", current_type = 'ina', elec_dist_var = 'soma_passive')
 
         # Save Na plots
-        na_path = os.path.join(output_folder, "Na")
+        na_path = os.path.join(save_path, "Na")
         os.mkdir(na_path)
 
         # Hist of Na peaks
@@ -129,7 +136,7 @@ def main(random_state):
         ca_apic = sm.get_sta(sm.soma_spiketimes, ca_lower_bounds, edges_ca, "apic", current_type = 'ica', elec_dist_var = 'soma_passive')
 
         # Save Ca plots
-        ca_path = os.path.join(output_folder, "Ca")
+        ca_path = os.path.join(save_path, "Ca")
         os.mkdir(ca_path)
 
         compute_mean_and_plot_sta(ca_apic, edges_ca, 'Ca2+ Spikes - Nexus', ca_path, ca_apic_clip, "img")
@@ -149,7 +156,7 @@ def main(random_state):
         nmda_dend = sm.get_sta(sm.soma_spiketimes, nmda_lower_bounds, edges_nmda_dend, "dend", current_type = 'inmda', elec_dist_var = 'soma_passive', mag = nmda_mag, mag_th=-0.0001)
         
         # Save NMDA plots
-        nmda_path = os.path.join(output_folder, "NMDA")
+        nmda_path = os.path.join(save_path, "NMDA")
         os.mkdir(nmda_path)
 
         compute_mean_and_plot_sta(nmda_apic, edges_nmda_apic, 'NMDA Spikes - Apical', nmda_path, nmda_apic_clip, "img")
@@ -167,7 +174,7 @@ def main(random_state):
         ca_nmda_apic = sm.get_sta(ca_spiketimes, nmda_lower_bounds, edges_nmda_apic, "apic", current_type='ica', elec_dist_var = 'soma_passive', mag = nmda_mag, mag_th=-0.1)
         
         # Save Ca-NMDA plots
-        ca_nmda_path = os.path.join(output_folder, "Ca_NMDA")
+        ca_nmda_path = os.path.join(save_path, "Ca_NMDA")
         os.mkdir(ca_nmda_path)
 
         compute_mean_and_plot_sta(ca_nmda_apic, edges_nmda_apic, 'Ca - NMDA Spikes - Apical', ca_nmda_path, nmda_ca_apic_clip, "img")

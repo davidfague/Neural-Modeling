@@ -333,7 +333,7 @@ class SegmentManager:
         if len(edges) > 10:
             edges = np.quantile(edges, np.arange(0, 1.1, 0.1))
         else:
-            raise RuntimeError
+            raise(RuntimeError(f"len({edges}) < 10 for edge_type:{edge_type}| elec_dist_var:{elec_dist_var}. This is probably due to a lack of reported dendritic spikes in lower_bounds[seg_index]."))
 
         return edges
 
