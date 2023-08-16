@@ -15,7 +15,7 @@ import pdb #python debugger
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
 import constants
-output_folder = 'output/2023-08-12_09-34-38_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn' #"output/BenModel/"
+output_folder = 'output/2023-08-15_16-16-09_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_31684NCs_15842nsyn' #"output/BenModel/"
 if 'BenModel' in output_folder:
   constants.save_every_ms = 3000
   constants.h_tstop = 3000
@@ -92,7 +92,7 @@ def main():
   tuft_segs=[sm.segments[tuft_seg_index]]
   plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=save_path)
   plot_adjacent_segments(segs=basal_segs, sm=sm, title_prefix="Basal_", save_to=save_path)
-  plot_adjacent_segments(segs=tufts_segs, sm=sm, title_prefix="Tuft_", save_to=save_path)
+  plot_adjacent_segments(segs=tuft_segs, sm=sm, title_prefix="Tuft_", save_to=save_path)
        
   
 #  #Plot Axial Currents
@@ -119,7 +119,7 @@ def main():
 
   def subset_data(t, xlim):
       indices = np.where((t >= xlim[0]) & (t <= xlim[1]))
-      return indices
+      return indices[0]
       
   # Plot around APs
   for i, AP_time in enumerate(np.array(sm.soma_spiketimes)):  # spike time (ms) 
@@ -149,7 +149,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
     '''
     if indices is not None:
         t = t[indices]
-        vlines = vlines[np.isin(vlines, t)]
+        vlines = vlines[np.isin(np.round(vlines,1), np.round(t,1))]
         print("t:",t)
         print("vlines:", vlines)
         
@@ -158,7 +158,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
         'Vm from [{}] and adjacent segments',
         'Currents from [{}]'
     ]
-    
+
     if index:
         for i, title in enumerate(titles):
             titles[i] = 'Spike ' + str(int(index)) + ' ' + title
@@ -173,30 +173,38 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
         ylabel = ylabels[j]
         data_type = data_types[j]
 
-        if type(data_type) == list:
+        if type(data_type) == list: # membrane current plots
             for current in data_type:
                 if '+' in current:
                     currents_to_sum = current.split('+')
-                    data = getattr(segment, currents_to_sum[0])[indices] if indices else getattr(segment, currents_to_sum[0])
+                    max_index = np.max(indices)
+                    array_length = len(getattr(segment, currents_to_sum[0]))
+#                    print(np.shape(indices))
+#                    print(max_index)
+#                    print(array_length)
+                    if max_index >= array_length:
+                        print(f"Error: Trying to access index {max_index} in an array of size {array_length}")
+                    indices = [i for i in indices if i < array_length]
+                    data = getattr(segment, currents_to_sum[0])[indices] if indices is not None else getattr(segment, currents_to_sum[0])
                     for current_to_sum in currents_to_sum[1:]:
-                        data += getattr(segment, current_to_sum)[indices] if indices else getattr(segment, current_to_sum)
+                        data += getattr(segment, current_to_sum)[indices] if indices is not None else getattr(segment, current_to_sum)
                 else:
-                    data = getattr(segment, current)[indices] if indices else getattr(segment, current)
+                    data = getattr(segment, current)[indices] if indices is not None else getattr(segment, current)
                 
                 ax.plot(t, data, label=current)
-        elif data_type == 'v':
-            v_data = segment.v[indices] if indices else segment.v
+        elif data_type == 'v': # Voltage plots
+            v_data = segment.v[indices] if indices is not None else segment.v
             ax.plot(t, v_data, color=segment.color, label=segment.name)
             
             for adj_seg in segment.adj_segs:
-                adj_v_data = adj_seg.v[indices] if indices else adj_seg.v
+                adj_v_data = adj_seg.v[indices] if indices is not None else adj_seg.v
                 
                 if adj_seg.color == segment.color:
                     ax.plot(t, adj_v_data, label=adj_seg.name, color='Magenta')
                 else:
                     ax.plot(t, adj_v_data, label=adj_seg.name, color=adj_seg.color)
-        else:
-            # For 'Axial Current from [{}]'
+        elif data_type == 'axial_currents':
+            # For  axial currents 'Axial Current from [{}]'
             total_AC = np.zeros(len(segment.v))
             total_dend_AC = np.zeros(len(segment.v))
             total_to_soma_AC = np.zeros(len(segment.v))
@@ -207,7 +215,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
                   if adj_seg.type == 'dend': # sum basal currents
                     total_dend_AC += segment.axial_currents[adj_seg_index] # sum AC from basal dendrites
                   else: # plot axon & apical trunk ACs
-                    axial_current = segment.axial_currents[adj_seg_index][indices] if indices else segment.axial_currents[adj_seg_index]
+                    axial_current = segment.axial_currents[adj_seg_index][indices] if indices is not None else segment.axial_currents[adj_seg_index]
                     ax.plot(t, axial_current, label=adj_seg.name, color=adj_seg.color) # apical, axon
                 else: # plotting any other segment's ACs, sum axial currents to or away soma.
                   if adj_seg in segment.parent_segs: # parent segs will be closer to soma with our model.
@@ -215,28 +223,20 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
                   else:
                     total_away_soma_AC += segment.axial_currents[adj_seg_index]
                   
-#                if adj_seg in segment.parent_segs: # if the adjacent segment is closer to soma
-#                  total_to_soma_AC += segment.axial_currents[adj_seg_index]
-#                else:
-#                  total_away_soma_AC += segment.axial_currents[adj_seg_index]
-#                if adj_seg.type == 'dend':
-#                  basals=True
-#                  total_dend_AC += segment.axial_currents[adj_seg_index] # sum AC from basal dendrites
-#                elif segment.type == 'soma': # if we are plotting the soma, plot and label all other segments that are not basal (otherwise will be taken care above.) 
-#                  axial_data = segment.axial_currents[adj_seg_index][indices] if indices else segment.axial_currents[adj_seg_index]
-#                  ax.plot(t, axial_data, label=adj_seg.name, color=adj_seg.color) # apical, axon
             if segment.type=='soma': # if we are plotting for soma segment, sum basal axial currents
-              dend_data = total_dend_AC[indices] if indices else total_dend_AC
+              dend_data = total_dend_AC[indices] if indices is not None else total_dend_AC
               ax.plot(t, dend_data, label = 'Summed basal axial currents', color = 'red')
               ax.set_ylim([-2,2])
             else: #if not soma, plot axial currents to segments toward soma vs AC to segments away from soma.
-              total_to_soma_AC = total_to_soma_AC[indices] if indices else total_to_soma_AC
+              total_to_soma_AC = total_to_soma_AC[indices] if indices is not None else total_to_soma_AC
               ax.plot(t, total_to_soma_AC, label = 'Summed axial currents to segments toward soma', color = 'blue')
-              total_away_soma_AC = total_away_soma_AC[indices] if indices else total_away_soma_AC
+              total_away_soma_AC = total_away_soma_AC[indices] if indices is not None else total_away_soma_AC
               ax.plot(t, total_away_soma_AC, label = 'Summed axial currents to segments away from soma', color = 'red')
               ax.set_ylim([-0.75,0.75])
-            total_AC = total_AC[indices] if indices else total_AC
+            total_AC = total_AC[indices] if indices is not None else total_AC
             ax.plot(t, total_AC, label = 'Summed axial currents', color = 'Magenta')
+        else:
+          raise(ValueError("Cannot analyze {data_type}"))
 
         if vlines is not None: # indicate action potentials via dashed vertical lines
             if j==0: # only the axial currents plot

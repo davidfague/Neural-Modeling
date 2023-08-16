@@ -364,7 +364,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     if not constants.perisomatic_exc_synapses:
       perisomatic_inputs_disabled=0
       for synapse in cell.synapses:
-        if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 50) & (synapse.syn_type in constants.inh_syn_mod):
+        if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 75) & (synapse.syn_type in constants.inh_syn_mod):
             for netcon in synapse.ncs:
               perisomatic_inputs_disabled+=1
               netcon.active(False)
