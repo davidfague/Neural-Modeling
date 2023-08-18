@@ -10,7 +10,7 @@ source /home/shared/L5env/bin/activate
 OUTPUT_FOLDER_PATH='output/2023-08-18_15-26-10_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn'
 
 # List of all exam_something.py scripts to run
-scripts=("exam_func_group.py" "exam_nmda" "exam_axial_currents.py" "exam_clusters.py")
+scripts=("exam_func_group.py" "exam_nmda.py" "exam_axial_currents.py" "exam_clusters.py")
 
 for script in "${scripts[@]}"
 do
