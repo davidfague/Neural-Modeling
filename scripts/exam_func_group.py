@@ -1,10 +1,12 @@
 import sys
 sys.path.append("../")
 
+print("Passed output folder:", sys.argv[1])
+
+
 import numpy as np
 import h5py, pickle, os
 from multiprocessing import Process
-import constants
 
 from Modules.logger import Logger
 
@@ -13,7 +15,26 @@ from cell_inference.config import params
 from cell_inference.utils.plotting.plot_results import plot_lfp_heatmap, plot_lfp_traces
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folders = ["output/2023-08-16_15-44-07_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn"]
+#output_folders = ["output/2023-08-16_16-24-29_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn"]
+
+# Set the output_folder variable based on the command line argument
+output_folders = [sys.argv[1] if len(sys.argv) > 1 else "output/default_path"]
+
+import importlib
+def load_constants_from_folder(output_folder):
+    current_script_path = "/home/drfrbc/Neural-Modeling/scripts/"
+    absolute_path = current_script_path + output_folder
+    sys.path.append(absolute_path)
+    
+    constants_module = importlib.import_module('constants_image')
+    sys.path.remove(absolute_path)
+    return constants_module
+
+
+
+
+
+#constants = load_constants_from_folder(output_folder)
 
 # Check shape of each saved file
 analyze = True
@@ -76,6 +97,7 @@ if __name__ == "__main__":
 
     pool = []
     for folder in output_folders:
+        constants = load_constants_from_folder(folder)
         if constants.parallelize:
             pool.append(Process(target = main, args = [folder]))
         else:

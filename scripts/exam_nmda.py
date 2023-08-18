@@ -6,12 +6,22 @@ import matplotlib.pyplot as plt
 import os
 from Modules.segment import SegmentManager
 from Modules.plotting_utils import plot_sta, plot_edges
-
-import constants
 from Modules.logger import Logger
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = "output/2023-08-16_15-44-07_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/default_path"
+
+import importlib
+def load_constants_from_folder(output_folder):
+    current_script_path = "/home/drfrbc/Neural-Modeling/scripts/"
+    absolute_path = current_script_path + output_folder
+    sys.path.append(absolute_path)
+    
+    constants_module = importlib.import_module('constants_image')
+    sys.path.remove(absolute_path)
+    return constants_module
+constants = load_constants_from_folder(output_folder)
+
 if 'BenModel' in output_folder:
   constants.save_every_ms = 3000
   constants.h_tstop = 3000

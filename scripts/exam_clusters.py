@@ -7,13 +7,22 @@ import os
 import pandas as pd
 
 from cell_inference.config import params
-import constants
 from Modules.segment import Segment
 
 from Modules.logger import Logger
 
-output_folder = "output/2023-08-16_15-44-07_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_15842NCs_15842nsyn"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/default_path"
 
+import importlib
+def load_constants_from_folder(output_folder):
+    current_script_path = "/home/drfrbc/Neural-Modeling/scripts/"
+    absolute_path = current_script_path + output_folder
+    sys.path.append(absolute_path)
+    
+    constants_module = importlib.import_module('constants_image')
+    sys.path.remove(absolute_path)
+    return constants_module
+constants = load_constants_from_folder(output_folder)
 
 constants.show_electrodes = False
 if constants.show_electrodes:
@@ -26,7 +35,8 @@ elev, azim = 90, -90#
   
 # Set up the plotting_modes and cluster_types to iterate over
 plotting_modes = ['functional_groups', 'presynaptic_cells']
-cluster_types = ['exc', 'inh_distributed'] #'inh_soma']  
+cluster_types = ['exc', 'inh_distributed', 'inh_soma']  
+
 
 def load_data(cluster_types, output_folder):
   data = {}
@@ -88,7 +98,7 @@ def assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, segm
               seg = segments[target_seg_index]
               seg.presynaptic_cell_names.append(pc_name)
               seg.presynaptic_cell_indices.append(pc_index)
-              seg.presynaptic_cell_firing_rate = pc_mean_firing_rate
+              seg.presynaptic_cell_mean_firing_rate = pc_mean_firing_rate
       logger.log_section_end("Iterating through presynaptic cells")
             
     #mean_distance = np.mean(max_dists)
@@ -163,13 +173,13 @@ def plot_segments(segments, save_name):
     plt.close()
 
 
-def plot_segments_mean_firing_rate(segments, save_name):
+def plot_segments_mean_firing_rate(segments, save_name, mean_value=None, std_value=None):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     # Find min and max mean_firing_rate for normalization purposes
-    min_rate = min(segment.mean_firing_rate for segment in segments)
-    max_rate = max(segment.mean_firing_rate for segment in segments)
+    min_rate = min(segment.presynaptic_cell_mean_firing_rate for segment in segments)
+    max_rate = max(segment.presynaptic_cell_mean_firing_rate for segment in segments)
 
     # Create colormap
     cmap = plt.cm.viridis
@@ -180,7 +190,10 @@ def plot_segments_mean_firing_rate(segments, save_name):
         p1 = (segment.p1_x3d, segment.p1_y3d, segment.p1_z3d)
         
         # Normalize mean_firing_rate to [0, 1] and get the color from the colormap
-        norm_val = (segment.mean_firing_rate - min_rate) / (max_rate - min_rate)
+        if max_rate == min_rate:
+            norm_val = 0  # or 0.5 or whatever default value you'd like in this scenario
+        else:
+            norm_val = (segment.presynaptic_cell_mean_firing_rate - min_rate) / (max_rate - min_rate)
         color = cmap(norm_val)
 
         ax.plot([p0[0], p0_5[0]], [p0[1], p0_5[1]], [p0[2], p0_5[2]], color=color)
@@ -196,6 +209,31 @@ def plot_segments_mean_firing_rate(segments, save_name):
     mappable = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=min_rate, vmax=max_rate))
     cbar = plt.colorbar(mappable, ax=ax, orientation='vertical', fraction=0.03, pad=0.04)
     cbar.set_label('Mean Firing Rate')
+    
+    #add mean of mean firing rates to color bar
+    if mean_value:
+      # Get current ticks from the colorbar
+      ticks = cbar.get_ticks().tolist()
+      # Add the mean value to the list of ticks
+      ticks.append(mean_value)
+      if std_value:
+        mean_plus_std = mean_value + std_value
+        mean_minus_std = mean_value - std_value
+        ticks.append(mean_plus_std)
+        ticks.append(mean_minus_std)
+      ticks.sort()  # Sort the ticks in increasing order
+      # Remove the highest tick because for some reason introduces one outside of data range
+      ticks = ticks[:-1]
+      # Set the updated ticks to the colorbar
+      cbar.set_ticks(ticks)
+      # Optionally, you can customize the tick labels. For instance, label the mean as 'Mean':
+      if std_value:
+        labels = {mean_value: 'Mean', mean_plus_std: 'Mean + std', mean_minus_std: 'Mean - std'}
+      else:
+        labels = {mean_value: 'Mean'}
+      #print(ticks)
+      #print([labels.get(t, f"{t:.2f}") for t in ticks])
+      cbar.set_ticklabels([labels.get(t, f"{t:.2f}") for t in ticks])
 
     plt.savefig(save_name)
     plt.close()
@@ -216,6 +254,10 @@ def main(cluster_types, plotting_modes, output_folder):
   num_segments = len(data["detailed_seg_info"])
   logger.log(f'number of detailed segments used for clustering:{num_segments}')
   detailed_segments=[]
+  
+  with open(os.path.join(save_path, 'info.txt'), 'w') as file:
+    pass  # This block is simply to truncate (empty) the file
+  
   for i in range(num_segments):
       # Build seg_data
       seg_data = {} # placeholder
@@ -223,45 +265,42 @@ def main(cluster_types, plotting_modes, output_folder):
       detailed_segments.append(seg)
   
   for cluster_type in cluster_types:
+    # Reset segment assignments
+    reset_segment_assignments(detailed_segments)
     for plotting_mode in plotting_modes:
-      
-      # Reset segment assignments
-      reset_segment_assignments(detailed_segments)
       logger.log(f'analyzing {cluster_type} {plotting_mode}')
       # Assign segments to FuncGroups or PreCells based on the current cluster_type and plotting mode
       mean_mean_fr, std_mean_fr, mean_num_synapses, std_num_synapses = assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, detailed_segments, data, logger=logger)
       #mean_mean_fr, std_mean_fr, mean_num_synapses, std_num_synapses, mean_distance, std_distance = assign_funcgroups_and_precells_to_segments(cluster_type, plotting_mode, detailed_segments, data, logger=logger)
-      with open(os.path.join(save_path, 'info.txt'), 'a') as file:  # 'a' stands for append mode
-        print(f"'{cluster_type}' '{plotting_mode}/n':", file=file)
-        #print(f"Mean of maximum distances: {mean_distance}", file=file)
-        #print(f"Standard deviation of maximum distances: {std_distance}", file=file)
-        print(f"Mean number of synapses: {mean_num_synapses}", file=file)
-        print(f"Standard deviation of number of synapses: {std_num_synapses}/n", file=file)
-        if mean_mean_fr:
-          print(f"Mean of PreCell mean firing rates: {mean_mean_fr}", file=file)
-          print(f"Standard deviation of PreCell mean firing rates: {std_mean_fr}/n", file=file)
+      with open(os.path.join(save_path, 'info.txt'), 'a') as file:
+          print(f"'{cluster_type}' '{plotting_mode}':", file=file)  # Added a newline character after the colon
+          print(f"Mean number of synapses: {mean_num_synapses}", file=file)  # Added a newline character after the value
+          print(f"Standard deviation of number of synapses: {std_num_synapses}", file=file)
+          if mean_mean_fr:
+              print(f"Mean of PreCell mean firing rates: {mean_mean_fr}", file=file)
+              print(f"Standard deviation of PreCell mean firing rates: {std_mean_fr}", file=file)
     
       # make color maps for clustering assignment
       num_groups = len(data[plotting_mode][cluster_type])
       group_colors = plt.cm.get_cmap('tab20', num_groups)
       with open(os.path.join(save_path, 'info.txt'), 'a') as file:  # 'a' stands for append mode
         print(f"number of '{cluster_type}' '{plotting_mode}': '{num_groups}'", file=file)
+        # Add a separator for clarity after each block of information
+        print("\n", file=file)
       
       for seg in detailed_segments:
-        if plotting_mode == 'functional_group' and seg.functional_group_indices:
+        if plotting_mode == 'functional_groups' and seg.functional_group_indices:
           seg.color = group_colors(seg.functional_group_indices[0])
-        elif plotting_mode == 'presynaptic_cell' and seg.presynaptic_cell_indices:
+        elif plotting_mode == 'presynaptic_cells' and seg.presynaptic_cell_indices:
           seg.color = group_colors(seg.presynaptic_cell_indices[0])
       
       # plot
-      logger.log(f'plotting {cluster_type} {plotting_mode}/n/n/n/n')
+      logger.log(f'plotting {cluster_type} {plotting_mode}\n\n\n\n')
       save_name = os.path.join(save_path, f'{cluster_type}_{plotting_mode}.png')
       plot_segments(detailed_segments, save_name)
-      if plotting_mode == 'presynaptic_cell':
+      if plotting_mode == 'presynaptic_cells':
         save_name = os.path.join(save_path, f'mean_fr_{cluster_type}_{plotting_mode}.png')
-        plot_segments_mean_firing_rate(detailed_segments, save_name)
+        plot_segments_mean_firing_rate(detailed_segments, save_name, mean_value=mean_mean_fr, std_value=std_mean_fr)
   
 if __name__ == "__main__":
     main(cluster_types, plotting_modes, output_folder)
-    
-    
