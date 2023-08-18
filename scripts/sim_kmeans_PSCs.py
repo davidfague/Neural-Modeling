@@ -492,7 +492,8 @@ def main(numpy_random_state, neuron_random_state, cluster_index_to_stim):
     # Create a folder to save to
     random_seed_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_seeds_" +\
                        str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
-                       
+    if cluster_index_to_stim is not None:
+        random_seed_name += f"_cluster{cluster_index_to_stim}"
     save_folder = os.path.join(constants.save_dir, random_seed_name)
     os.mkdir(save_folder)
 
