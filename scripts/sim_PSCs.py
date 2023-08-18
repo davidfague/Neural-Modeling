@@ -451,6 +451,9 @@ if __name__ == "__main__":
     
     if not os.path.exists(constants.save_dir):
         raise FileNotFoundError("No save folder with the given name.")
+    
+    # make unique output folder for PSCs    
+    constants.save_dir = os.path.join(constants.save_dir, 'PSC_'+datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
     for np_state in constants.numpy_random_states:
         for neuron_state in constants.neuron_random_states:

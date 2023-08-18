@@ -134,7 +134,7 @@ ties_sigma_iv = 1
 ties_pad_aiv = 0
 
 # Post Synaptic Current analysis
-number_of_presynaptic_cells = 6524
+number_of_presynaptic_cells = 2651# old functional groups was: 6524
 PSC_start = 5
 
 # Log, plot and save
