@@ -113,16 +113,16 @@ def create_functional_groups_of_presynaptic_cells(segments_coordinates: np.ndarr
                                                  
     # Cluster cell segments into functional groups
     seg_id_to_functional_group_index, functional_group_cluster_centers = cluster_segments(segments_coordinates=segments_coordinates, n_clusters=n_functional_groups)
-    print("Finish Clustering FuncGroups")
+    #print("Finish Clustering FuncGroups")
     # assemble functional groups and their presynaptic cells
     functional_groups = create_functional_groups(seg_id_to_functional_group_index=seg_id_to_functional_group_index, cell=cell, name_prefix=name_prefix, segments_coordinates=segments_coordinates, n_presynaptic_cells_per_functional_group=n_presynaptic_cells_per_functional_group, functional_group_cluster_centers=functional_group_cluster_centers)
-    print("Finish Creating FuncGroups and PreCells")
+    #print("Finish Creating FuncGroups and PreCells")
     # map synapses to PresynapticCells
     map_synapses_to_PresynapticCells(synapses=synapses, functional_groups=functional_groups, cell=cell)
-    print("Finish Mapping PreCells")
+    #print("Finish Mapping PreCells")
     # Calculate spike train for each cluster (implement this in SpikeGenerator)
     generate_spike_train_for_functional_groups(functional_groups=functional_groups, **kwargs)
-    print("Finish Generating Spike trains for FuncGroups and PreCells")
+    #print("Finish Generating Spike trains for FuncGroups and PreCells")
     return functional_groups
 
 def get_euclidean_distance(point1, point2):
@@ -249,4 +249,4 @@ def generate_spike_train_for_functional_groups(functional_groups: list,
       presynaptic_cell.spike_train.append(spikes)
       for synapse in presynaptic_cell.synapses:
         netcon = spike_generator.set_spike_train(synapse, spikes)
-        print(functional_group.name, presynaptic_cell.name, synapse.synapse_neuron_obj, netcon)
+        #print(functional_group.name, presynaptic_cell.name, synapse.synapse_neuron_obj, netcon)
