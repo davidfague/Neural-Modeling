@@ -5,4 +5,4 @@
 #SBATCH --job-name=l5cell
 
 source /home/shared/L5env/bin/activate
-python sim_PSCs.py
+python sim_kmeans_PSCs_new.py

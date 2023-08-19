@@ -26,9 +26,12 @@ from neuron import h
 
 import constants
 
-def main(numpy_random_state, neuron_random_state, cluster_index_to_stim, logger):
+###
+from Modules.injection import SEClamp
+###
 
-    print(f"Running for seeds ({np_state}, {neuron_state}); CI = {cluster_index_to_stim}...")
+def build_cell(numpy_random_state, neuron_random_state, logger):
+    logger.log_section_start(f"Building Cell for seeds ({np_state}, {neuron_state})...")
 
     # Random seed
     logger.log_section_start(f"Setting random states ({numpy_random_state}, {neuron_random_state})")
@@ -350,10 +353,14 @@ def main(numpy_random_state, neuron_random_state, cluster_index_to_stim, logger)
                                 expand_cable = constants.expand_cable, choose_branches = constants.choose_branches)
                                 
     logger.log_section_end("Initializing Reductor and cell model for simulation |NR:"+str(constants.reduce_cell)+"|optimize nseg:"+str(constants.optimize_nseg_by_lambda)+"|Expand Cable:"+str(constants.expand_cable))
-    
+    logger.log_section_end(f"Building Cell for seeds ({np_state}, {neuron_state})...")
+
+    return cell, exc_functional_groups, inh_distributed_functional_groups, spike_generator, exc_functional_groups_df, exc_presynaptic_cells_df, inh_distributed_functional_groups_df, inh_distributed_presynaptic_cells_df, inh_soma_functional_groups_df, inh_soma_presynaptic_cells_df, detailed_seg_info, all_syns, reductor, runtime_start_time
+
+
+def main(numpy_random_state, neuron_random_state, cluster_index_to_stim, logger, cell, exc_functional_groups, inh_distributed_functional_groups, spike_generator, exc_functional_groups_df, exc_presynaptic_cells_df, inh_distributed_functional_groups_df, inh_distributed_presynaptic_cells_df, inh_soma_functional_groups_df, inh_soma_presynaptic_cells_df, detailed_seg_info, all_syns, reductor, runtime_start_time):
     #####################################################
     logger.log_section_start("Setting simulation for PSC")
-    from Modules.injection import SEClamp
         # Turn off all presynaptic neurons to simulate in vivo                            
     for synapse in cell.synapses:
       for netcon in synapse.ncs:
@@ -361,59 +368,64 @@ def main(numpy_random_state, neuron_random_state, cluster_index_to_stim, logger)
     # Turn on single presynaptic neuron to simulate current injection to presynaptic neuron
     total_num_clusters = {} # count clusters to get numbers for repeated simulations
     total_num_clusters["all"] = 0
-    total_num_clusters["dend"] = 0
-    total_num_clusters["apic"] = 0
-    total_num_clusters["soma"] = 0
-    cluster_distances_from_soma = []
+    total_num_clusters["no_synapses"] = 0
     func_grps = exc_functional_groups + inh_distributed_functional_groups + inh_distributed_functional_groups
     for func_grp in func_grps:
       for pc in func_grp.presynaptic_cells:
-        a_syn = pc.synapses[0]
-        a_seg = a_syn.get_segment()
-        pc_type = a_seg.sec.name().split('.')[1][:4]
-        total_num_clusters[pc_type] += 1 # sort number by type
         total_num_clusters['all'] += 1 # total number
         if total_num_clusters['all'] == cluster_index_to_stim: # this presynaptic cell's turn
-          PSC_sec_type = cluster_type
-          PSC_syn_type = cluster.synapses[0].get_exc_or_inh_from_syn_type()
-          cluster_distance_from_soma = h.distance(cell.soma[0](0.5),a_seg)
-          if cluster_distance_from_soma < 100:
-            perisomatic=True
+          if len(pc.synapses) > 0:
+            a_syn = pc.synapses[0]
+            a_seg = a_syn.get_segment()
+            pc_type = a_seg.sec.name().split('.')[1][:4]
+            PSC_sec_type = pc_type
+            PSC_syn_type = pc.synapses[0].get_exc_or_inh_from_syn_type()
+            # Voltage Clamp Soma.
+            if PSC_syn_type == 'inh':
+              voltage_to_clamp = 0 # (mV) excitatory synapse reversal potential
+            elif PSC_syn_type == 'exc':
+              voltage_to_clamp = -75 # (mV) inhibitory synapse reversal potential
+            else:
+              raise(ValueError("PSC_syn_type must be either 'inh' or 'exc'."))
+            cluster_distance_from_soma = h.distance(cell.soma[0](0.5),a_seg)
+            if cluster_distance_from_soma < 100:
+              perisomatic=True
+            else:
+              perisomatic=False
+            stim = spike_generator.create_netstim(start=constants.PSC_start,number=1,noise=0,interval=100)# create single presynaptic spike input
+            for synapse in pc.synapses:
+              spike_generator.set_netcon(synapse=synapse,stim=stim) # deliver spike to this synapse
           else:
-            perisomatic=False
-          stim = spike_generator.create_netstim(start=constants.PSC_start,number=1,noise=0,interval=100)# create single presynaptic spike input
-          for synapse in cluster.synapses:
-            spike_generator.set_netcon(synapse=synapse,stim=stim) # deliver spike to this synapse
-    print("Total number of clusters:", total_num_clusters['all'])
-    # Voltage Clamp Soma.
-    if PSC_syn_type == 'inh':
-      voltage_to_clamp = 0 # (mV) excitatory synapse reversal potential
-    elif PSC_syn_type == 'exc':
-      voltage_to_clamp = -75 # (mV) inhibitory synapse reversal potential
-    else:
-      raise(ValueError("PSC_syn_type must be either 'inh' or 'exc'."))
+            pc_type = "no_synapses"
+            PSC_sec_type = pc_type
+            PSC_syn_type = "no_synapses"
+            logger.log(f"{cluster_index_to_stim} presynaptic cell has no synapses.")
+            print(f"{cluster_index_to_stim} presynaptic cell has no synapses.")
+        logger.log(f"Getting PSC from presynaptic cell: {cluster_index_to_stim}")
+        print(f"Getting PSC from presynaptic cell: {cluster_index_to_stim}")
+        return
     #Create clamp
     clamp = SEClamp(seg = cell.soma[0](0.5), dur1 = 1000, amp1 = voltage_to_clamp, rs = 0.01, record = True)
     #note: update the simulation reruns to include number_denoting_cluster_ind_to_stimulate
     logger.log_section_end("Setting simulation for PSC")
     ################################################      
     
-#    # Turn off certain presynaptic neurons to simulate in vivo
-#    if not constants.trunk_exc_synapses: # turn off trunk exc synapses.
-#      for synapse in cell.synapses:
-#        if (synapse.get_segment().sec in cell.apic) & (synapse.syn_type in constants.exc_syn_mod) & (synapse.get_segment().sec not in cell.obliques) & (synapse.get_segment().sec.y3d(0)<600):
-#            for netcon in synapse.ncs:
-#              netcon.active(False)
-#    
-#    # Turn of perisomatic inhibitory neurons
-#    if not constants.perisomatic_exc_synapses:
-#      perisomatic_inputs_disabled=0
-#      for synapse in cell.synapses:
-#        if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 75) & (synapse.syn_type in constants.inh_syn_mod):
-#            for netcon in synapse.ncs:
-#              perisomatic_inputs_disabled+=1
-#              netcon.active(False)
-#      print("perisomatic inputs disabled:",perisomatic_inputs_disabled)
+    # Turn off certain presynaptic neurons to simulate in vivo
+    if not constants.trunk_exc_synapses: # turn off trunk exc synapses.
+      for synapse in cell.synapses:
+        if (synapse.get_segment().sec in cell.apic) & (synapse.syn_type in constants.exc_syn_mod) & (synapse.get_segment().sec not in cell.obliques) & (synapse.get_segment().sec.y3d(0)<600):
+            for netcon in synapse.ncs:
+              netcon.active(False)
+    
+    # Turn of perisomatic inhibitory neurons
+    if not constants.perisomatic_exc_synapses:
+      perisomatic_inputs_disabled=0
+      for synapse in cell.synapses:
+        if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 75) & (synapse.syn_type in constants.inh_syn_mod):
+            for netcon in synapse.ncs:
+              perisomatic_inputs_disabled+=1
+              netcon.active(False)
+      print("perisomatic inputs disabled:",perisomatic_inputs_disabled)
     
     if constants.merge_synapses: # may already be merged if reductor reduced the cell.
         logger.log_section_start("Merging Synapses")
@@ -490,7 +502,7 @@ def main(numpy_random_state, neuron_random_state, cluster_index_to_stim, logger)
     time_steps_saved_at = [0]
 
     # Create a folder to save to
-    random_seed_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_seeds_" +\
+    random_seed_name ="seeds_" +\
                        str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
     if cluster_index_to_stim is not None:
         random_seed_name += f"_cluster{cluster_index_to_stim}"
@@ -509,8 +521,6 @@ def main(numpy_random_state, neuron_random_state, cluster_index_to_stim, logger)
     inh_soma_functional_groups_df.to_csv(os.path.join(save_folder, "inh_soma_functional_groups.csv"), index=False)
     inh_soma_presynaptic_cells_df.to_csv(os.path.join(save_folder, "inh_soma_presynaptic_cells.csv"), index=False)
     cell.write_seg_info_to_csv(path=save_folder, seg_info=detailed_seg_info, title_prefix='detailed_')
-    
-    
 
     # Save constants
     shutil.copy2("constants.py", save_folder)
@@ -597,14 +607,18 @@ if __name__ == "__main__":
     h.load_file('stdrun.hoc')
     h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
 
+    
+
     pool = []
     for np_state in constants.numpy_random_states:
         for neuron_state in constants.neuron_random_states:
+            # build cell
+            cell, exc_functional_groups, inh_distributed_functional_groups, spike_generator, exc_functional_groups_df, exc_presynaptic_cells_df, inh_distributed_functional_groups_df, inh_distributed_presynaptic_cells_df, inh_soma_functional_groups_df, inh_soma_presynaptic_cells_df, detailed_seg_info, all_syns, reductor, runtime_start_time = build_cell(np_state, neuron_state, logger)
             for cluster_index_to_stim in range(0,1):#constants.number_of_presynaptic_cells+1):
                     if constants.parallelize:
-                        pool.append(Process(target = main, args=[np_state, neuron_state, cluster_index_to_stim, logger]))
+                        pool.append(Process(target = main, args=[np_state, neuron_state, cluster_index_to_stim, logger, cell, exc_functional_groups, inh_distributed_functional_groups, spike_generator, exc_functional_groups_df, exc_presynaptic_cells_df, inh_distributed_functional_groups_df, inh_distributed_presynaptic_cells_df, inh_soma_functional_groups_df, inh_soma_presynaptic_cells_df, detailed_seg_info, all_syns, reductor, runtime_start_time]))
                     else:
-                        p = Process(target = main, args=[np_state, neuron_state, cluster_index_to_stim, logger])
+                        p = Process(target = main, args=[np_state, neuron_state, cluster_index_to_stim, logger, cell, exc_functional_groups, inh_distributed_functional_groups, spike_generator, exc_functional_groups_df, exc_presynaptic_cells_df, inh_distributed_functional_groups_df, inh_distributed_presynaptic_cells_df, inh_soma_functional_groups_df, inh_soma_presynaptic_cells_df, detailed_seg_info, all_syns, reductor, runtime_start_time])
                         p.start()
                         p.join()
                         p.terminate()

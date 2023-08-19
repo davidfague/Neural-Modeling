@@ -1,9 +1,9 @@
 # Random state
-numpy_random_states = [123]
-neuron_random_states = [87] # Number of calls to MCellRan4()
+numpy_random_states = [127,128,129]
+neuron_random_states = [89,90] # Number of calls to MCellRan4()
 
 # Runtime
-parallelize = False
+parallelize = True
 
 # Modfiles
 modfiles_folder = "../modfiles"
@@ -23,7 +23,7 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 2000 #55#2500#20400 # Sim runtime (ms)
+h_tstop = 150000 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
@@ -37,8 +37,8 @@ exc_gmax_std_0 = 0.345
 exc_gmax_clip = (0,0.65)#(0, 0.7)
 inh_gmax_dist = 1#2.25
 soma_gmax_dist = 1#2.25
-inh_scalar = 1#2.25 # scales weight
-exc_scalar = 0.6/2.25#0.6 # scales weight
+inh_scalar = 2.25 # scales weight
+exc_scalar = 0.6 # scales weight
 
 # synapse density syns/um
 exc_synaptic_density = 2.16

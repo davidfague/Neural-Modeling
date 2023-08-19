@@ -12,7 +12,18 @@ import matplotlib.pyplot as plt
 from multiprocessing import Process
 
 # Output folder should store folders 2023...
-output_folder = "output"
+output_folder = "output" # may have to update
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/default_path"
+import importlib
+def load_constants_from_folder(output_folder):
+    current_script_path = "/home/drfrbc/Neural-Modeling/scripts/"
+    absolute_path = current_script_path + output_folder
+    sys.path.append(absolute_path)
+    
+    constants_module = importlib.import_module('constants_image')
+    sys.path.remove(absolute_path)
+    return constants_module
+constants = load_constants_from_folder(output_folder)
 
 initial_skip = int((300 - 5)/constants.h_dt) # (ms)
 skip = int((constants.PSC_start - 5)/constants.h_dt) # (ms)
