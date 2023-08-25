@@ -20,7 +20,7 @@ from Modules.logger import Logger
 
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/default_path" #"output/BenModel/"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/2023-08-23_13-06-55_seeds_130_90L5PCtemplate[0]_196nseg_108nbranch_16073NCs_16073nsyn" #"output/BenModel/"
 
 import importlib
 def load_constants_from_folder(output_folder):

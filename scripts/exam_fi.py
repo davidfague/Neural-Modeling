@@ -3,12 +3,50 @@ sys.path.append("../")
 
 import numpy as np
 import h5py, os
-import constants
 import matplotlib.pyplot as plt
 
 # Output folder should store folders 2023...
-output_folder = "output"
-skip = 400 # (ms)
+output_folder = "output/FI_2023-08-24_20-17-41"
+
+def load_constants_from_folder(output_folder):
+    # Get the absolute path to the output_folder
+    current_script_path = "/home/drfrbc/Neural-Modeling/scripts/"
+    absolute_path = os.path.join(current_script_path, output_folder)
+    
+    # List all folders in the output_folder
+    all_folders = [f for f in os.listdir(absolute_path) if os.path.isdir(os.path.join(absolute_path, f))]
+    
+    # Sort the folders (optional)
+    all_folders.sort()
+    
+    # Iterate over sorted folders to find the first one that contains 'constants_image.py'
+    for folder in all_folders:
+        folder_path = os.path.join(absolute_path, folder)
+        
+        # Check if 'constants_image.py' exists in this folder
+        if 'constants_image.py' in os.listdir(folder_path):
+            # Update the absolute path to point to this folder
+            absolute_path = folder_path
+            
+            sys.path.append(absolute_path)
+            
+            # Import the constants module
+            try:
+                constants_module = importlib.import_module('constants_image')
+            except ModuleNotFoundError:
+                print(f"Failed to import constants_image from {absolute_path}")
+                sys.path.remove(absolute_path)
+                return None
+            
+            sys.path.remove(absolute_path)
+            return constants_module
+    
+    print("No folders found containing constants_image.py in output directory.")
+    return None
+    
+constants = load_constants_from_folder(output_folder)
+
+skip = constants.h_i_delay#400 # (ms)
 
 def main():
     step_size = int(constants.save_every_ms / constants.h_dt) # Timestamps
@@ -23,7 +61,7 @@ def main():
         #print("amplitude: ", ampl)
         #print(f"_{int(ampl * 1000)}")
         for ampl_dir in os.listdir(output_folder): # list folders in directory
-            if (ampl_dir.endswith(f"_{int(ampl * 1000)}")) & ("_seeds_124_" in ampl_dir): # go over all amplitudes
+            if (ampl_dir.endswith(f"_{int(ampl * 1000)}")): # go over all amplitudes
                 print(ampl, ampl_dir)
                 #print(step_size)
                 for step in steps:

@@ -120,6 +120,9 @@ def create_functional_groups_of_presynaptic_cells(segments_coordinates: np.ndarr
     # map synapses to PresynapticCells
     map_synapses_to_PresynapticCells(synapses=synapses, functional_groups=functional_groups, cell=cell)
     #print("Finish Mapping PreCells")
+    # Assign syn_params to PresynapticCells
+#    if kwards.get('syn_params', None) is not None: # not implemented
+#      assign_syn_params_to_PresynapticCells(synapses=synapses, syn_params=kwargs.get('syn_params', None), syn_mod=kwargs.get('syn_mod', None), cell=kwargs.get('cell', None))
     # Calculate spike train for each cluster (implement this in SpikeGenerator)
     generate_spike_train_for_functional_groups(functional_groups=functional_groups, **kwargs)
     #print("Finish Generating Spike trains for FuncGroups and PreCells")
@@ -206,6 +209,20 @@ def map_synapses_to_PresynapticCells(synapses: list, cell: CellModel, functional
       #print(synapse_seg_index,cell.seg_info[synapse_seg_index])
       raise(RuntimeError("Not able to map synapse to presynaptic cell"))
       
+#def assign_syn_params_to_PresynapticCells(synapses: list, syn_params, syn_mod, cell): # not implemented
+#    for synapse in synapses:
+#        if isinstance(syn_params, list):
+#          if 'AMPA' in syn_mod:
+#            chosen_params = np.random.choice(syn_params, p=[0.9, 0.1]) # PC2PN and PN2PN
+#          elif 'GABA' in syn_mod:
+#            if h.distance(synapse.get_segment(), cell.soma[0](0.5)) > 100: # distal inh
+#              chosen_params = syn_params[1]
+#            elif h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 100: # perisomatic inh
+#              chosen_params = syn_params[0]
+#        else:
+#            chosen_params = syn_params
+#        synapse.set_syn_params(chosen_params)
+      
 
 def generate_spike_train_for_functional_groups(functional_groups: list, 
                                                method: str, 
@@ -250,3 +267,4 @@ def generate_spike_train_for_functional_groups(functional_groups: list,
       for synapse in presynaptic_cell.synapses:
         netcon = spike_generator.set_spike_train(synapse, spikes)
         #print(functional_group.name, presynaptic_cell.name, synapse.synapse_neuron_obj, netcon)
+        

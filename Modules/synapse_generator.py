@@ -12,11 +12,31 @@ class SynapseGenerator:
 
         # Random generators for release probability
         self.randomgenerators = []
+        
+    def create_synapse(self, segment, gmax, syn_mod, record, syn_params, vector_length, neuron_r, cell):
+      if callable(gmax):
+          g = gmax(size=1)
+      else:
+          g = gmax
+      if isinstance(syn_params, list):
+          if 'AMPA' in syn_mod:
+            chosen_params = np.random.choice(syn_params, p=[0.9, 0.1]) # PC2PN and PN2PN
+          elif 'GABA' in syn_mod:
+            if h.distance(segment, cell.soma[0](0.5)) > 100: # distal inh
+              chosen_params = syn_params[1]
+            elif h.distance(segment, cell.soma[0](0.5)) < 100: # perisomatic inh
+              chosen_params = syn_params[0]
+      else:
+          chosen_params = syn_params
+      new_syn = Synapse(segment, syn_mod=syn_mod, gmax=g, record=record, syn_params=chosen_params, vector_length=vector_length)
+      self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj, neuron_r)
+      return new_syn
 
-    def add_synapses(self, segments: list, gmax: object, syn_mod: str, 
-                    random_state: np.random.RandomState, neuron_r: h.Random, density: float = None, 
-                        number_of_synapses: int = None, probs: list = None, record: bool = False, 
-                        syn_params: dict = None, vector_length: int = None, P_dist=None, cell:CellModel=None) -> list:
+
+    def add_synapses(self, segments, gmax, syn_mod, random_state, neuron_r, density=None, 
+                number_of_synapses=None, probs=None, record=False, 
+                syn_params=None, vector_length=None, P_dist=None, cell=None) -> list:
+
         '''
         Creates a list of synapses by specifying density or number of synapses.
 
@@ -59,83 +79,34 @@ class SynapseGenerator:
         # Error checking
         if (density is not None) and (number_of_synapses is not None):
             raise ValueError('Cannot specify both density and number_of_synapses.')
-
+    
         # Calculate probabilities if not given
         if probs is None:
             total_length = sum([seg.sec.L / seg.sec.nseg for seg in segments])
             probs = [(seg.sec.L / seg.sec.nseg) / total_length for seg in segments]
-
-        # Calculate number of synapses if given densities
+    
         if density:
             total_length = sum([seg.sec.L / seg.sec.nseg for seg in segments])
             number_of_synapses = int(total_length * density)
-
-        # Add synapses
-        if P_dist:
-            if callable(P_dist): #P_dist is distribution
-                if callable(gmax): # gmax is distribution
-                    for i in range(number_of_synapses):
-                        P = P_dist(size=1)
-                        P_compare = random_state.uniform(low=0.0,high=1.0,size=1)
-                        if P>=P_compare:
-                            segment = random_state.choice(segments, 1, True, probs / np.sum(probs))[0]
-                            new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax(size = 1), record = record, syn_params = syn_params, vector_length = vector_length)
-                            self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj, neuron_r)
-                            synapses.append(new_syn)
-                else: # gmax is float
-                    for i in range(number_of_synapses):
-                        P = P_dist(size=1)
-                        P_compare = random_state.uniform(low=0.0,high=1.0,size=1)
-                        if P>=P_compare:
-                            segment = random_state.choice(segments, 1, True, probs / np.sum(probs))[0]
-                            new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record, syn_params = syn_params, vector_length = vector_length)
-                            self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj, neuron_r)
-                            synapses.append(new_syn)
-                                        
-            elif isinstance(P_dist, dict): # P_dist is dictionary
-                if callable(gmax): # gmax is distribution
-                    for i in range(number_of_synapses):
-                        segment = random_state.choice(segments, 1, True, probs / np.sum(probs))[0]
-                        if h.distance(segment,cell.soma[0](0.5))<100:
-                            seg_type='soma'
-                        else:
-                            seg_type = segment.sec.name().split('.')[1][:4]
-                        P = P_dist[seg_type](size=1)
-                        P_compare = random_state.uniform(low=0.0,high=1.0,size=1)
-                        if P>=P_compare:
-                            new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax(size = 1), record = record, syn_params = syn_params, vector_length = vector_length)
-                            self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj, neuron_r)
-                            synapses.append(new_syn)
-                else: # gmax is float
-                    for i in range(number_of_synapses):
-                        segment = random_state.choice(segments, 1, True, probs / np.sum(probs))[0]
-                        if h.distance(segment,cell.soma[0](0.5))<100:
-                            seg_type='soma'
-                        else:
-                            seg_type = segment.sec.name().split('.')[1][:4]
-                        P = P_dist[seg_type](size=1)
-                        P_compare = random_state.uniform(low=0.0,high=1.0,size=1)
-                        if P>=P_compare:
-                            new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record, syn_params = syn_params, vector_length = vector_length)
-                            self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj, neuron_r)
-                            synapses.append(new_syn)
-
-        else:
-            if callable(gmax): # gmax is distribution
-                for _ in range(number_of_synapses):
-                    segment = random_state.choice(segments, 1, True, probs / np.sum(probs))[0]
-                    new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax(size = 1), record = record, syn_params = syn_params, vector_length = vector_length)
-                    self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj, neuron_r)
-                    synapses.append(new_syn)
-            else: # gmax is float
-                for _ in range(number_of_synapses):
-                    segment = random_state.choice(segments, 1, True, probs / np.sum(probs))[0]
-                    new_syn = Synapse(segment, syn_mod = syn_mod, gmax = gmax, record = record, syn_params = syn_params, vector_length = vector_length)
-                    self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj, neuron_r)
-                    synapses.append(new_syn)
-
+    
+        synapses = []
+        for i in range(number_of_synapses):
+            P = 1  # default to always creating a synapse
+    
+            segment = random_state.choice(segments, 1, True, probs / np.sum(probs))[0]
+            if P_dist:
+                if isinstance(P_dist, dict):
+                    seg_type = 'soma' if h.distance(segment, cell.soma[0](0.5)) < 100 else segment.sec.name().split('.')[1][:4]
+                    P = P_dist[seg_type](size=1)
+                else:
+                    P = P_dist(size=1)
+            
+            P_compare = random_state.uniform(low=0.0, high=1.0, size=1)
+            if P >= P_compare:
+                new_syn = self.create_synapse(segment, gmax, syn_mod, record, syn_params, vector_length, neuron_r, cell)
+                synapses.append(new_syn)
+    
         self.synapses.append(synapses)
-
         return synapses
 	
     def add_synapses_to_cell(self, cell_to_add_to: CellModel, **kwargs) -> None:

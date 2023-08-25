@@ -26,11 +26,9 @@ from neuron import h
 
 import constants
 
-def main(numpy_random_state, neuron_random_state, i_amplitude):
+def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
     print(f"Running for seeds ({np_state}, {neuron_state}); CI = {i_amplitude}...")
-
-    logger = Logger(output_dir = "./", active = True)
 
     # Random seed
     logger.log_section_start(f"Setting random states ({numpy_random_state}, {neuron_random_state})")
@@ -148,7 +146,8 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                               random_state=random_state,
                                               neuron_r = neuron_r,
                                               syn_mod = constants.exc_syn_mod,
-                                              P_dist=exc_P_dist
+                                              P_dist=exc_P_dist,
+                                              syn_params=constants.exc_syn_params[0]
                                               )
 
     logger.log_memory()
@@ -191,7 +190,8 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                               neuron_r = neuron_r,
                                               syn_mod = constants.inh_syn_mod,
                                               P_dist = inh_P_dist,
-                                              cell=complex_cell
+                                              cell=complex_cell, 
+                                              syn_params=constants.inh_syn_params
                                               )
     
     logger.log_memory()
@@ -252,44 +252,81 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     logger.log_section_start("Reading detailed seg coordinates nseg="+str(len(cell.segments)))
     logger.log_memory()
 
-    # get segmetsncoordinatesCluster cell segments into functional groups
+    # get segment coordinates, and cluster cell segments into functional groups
+    exc_segment_coordinates = []
     segment_coordinates = np.zeros((len(cell.seg_info), 3))
     detailed_seg_info = cell.seg_info.copy()
     soma_coordinates = np.zeros(3)
+    
     for ind, seg in enumerate(cell.seg_info):
         segment_coordinates[ind, 0] = seg['p0.5_x3d']
         segment_coordinates[ind, 1] = seg['p0.5_y3d']
         segment_coordinates[ind, 2] = seg['p0.5_z3d']
+    
+        # segments with exc synapses: trunk segments that not distal oblique sections
+        if (not ((seg['sec'] in cell.apic) and (seg['sec'] not in cell.obliques) and (seg['p0.5_y3d'] < 600))) and (h.distance(seg['seg'], cell.soma[0](0.5)) > 100):
+            # Store the coordinates of the segment that meets the conditions
+            exc_segment_coordinates.append([seg['p0.5_x3d'], seg['p0.5_y3d'], seg['p0.5_z3d']])
+            
         if seg['seg'] == cell.soma[0](0.5):
-          soma_coordinates[0] = seg['p0.5_x3d']
-          soma_coordinates[1] = seg['p0.5_y3d']
-          soma_coordinates[2] = seg['p0.5_z3d']
+            soma_coordinates[0] = seg['p0.5_x3d']
+            soma_coordinates[1] = seg['p0.5_y3d']
+            soma_coordinates[2] = seg['p0.5_z3d']
+    
+    # Convert the list to a numpy array for easier manipulation later on
+    exc_segment_coordinates = np.array(exc_segment_coordinates)
+
     
     logger.log_section_end("Reading detailed seg coordinates nseg="+str(len(cell.segments)))   
     
     logger.log_section_start("Creating Excitatory Functional groups")
     logger.log_memory()
     # create excitatory functional groups
-    exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=constants.exc_n_FuncGroups,n_presynaptic_cells_per_functional_group=constants.exc_n_PreCells_per_FuncGroup,name_prefix='exc',synapses = exc_synapses, cell=cell, mean_firing_rate = mean_fr_dist, spike_generator=spike_generator, t = t, random_state=random_state, method = '1f_noise')
+    exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=exc_segment_coordinates,n_functional_groups=constants.exc_n_FuncGroups,n_presynaptic_cells_per_functional_group=constants.exc_n_PreCells_per_FuncGroup,name_prefix='exc',synapses = exc_synapses, cell=cell, mean_firing_rate = mean_fr_dist, spike_generator=spike_generator, t = t, random_state=random_state, method = '1f_noise')
     
     logger.log_section_end("Creating Excitatory Functional groups")
     
     # get exc spikes for inh delay modulation # further implementation could potentially separate delay modulation by functional group.
     exc_spikes=spike_generator.spike_trains.copy()
-    #print("exc_spikes:",exc_spikes)
-    #print("exc_spikes if there was no copy:",spike_generator.spike_trains)
+    print("exc_spikes:",exc_spikes)
     
     logger.log_section_start("Creating Inhibitory Distributed Functional groups")
     logger.log_memory()
     # generate inh functional groups
     #dendritic
-    inh_distributed_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=constants.inh_distributed_n_FuncGroups,n_presynaptic_cells_per_functional_group=constants.inh_distributed_n_PreCells_per_FuncGroup,name_prefix='inh',cell=cell, synapses = inh_synapses, proximal_fr_dist = proximal_inh_dist, distal_fr_dist=distal_inh_dist, spike_generator=spike_generator, t = t, random_state=random_state, spike_trains_to_delay = exc_spikes, fr_time_shift = constants.inh_firing_rate_time_shift, soma_coordinates=soma_coordinates, method = 'delay')
+    inh_distributed_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,
+                                                                      n_functional_groups=constants.inh_distributed_n_FuncGroups,
+                                                                      n_presynaptic_cells_per_functional_group=constants.inh_distributed_n_PreCells_per_FuncGroup,
+                                                                      name_prefix='inh',cell=cell, 
+                                                                      synapses = inh_synapses, 
+                                                                      proximal_fr_dist = proximal_inh_dist, 
+                                                                      distal_fr_dist=distal_inh_dist, 
+                                                                      spike_generator=spike_generator, 
+                                                                      t = t, 
+                                                                      random_state=random_state, 
+                                                                      spike_trains_to_delay = exc_spikes, 
+                                                                      fr_time_shift = constants.inh_firing_rate_time_shift, 
+                                                                      soma_coordinates=soma_coordinates, 
+                                                                      method = 'delay')
     logger.log_section_end("Creating Inhibitory Distributed Functional groups")
     
     logger.log_section_start("Creating Inhibitory SOMA Functional groups")
     logger.log_memory()
     #somatic
-    inh_soma_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,n_functional_groups=1,n_presynaptic_cells_per_functional_group=1,name_prefix='soma_inh',cell=cell, synapses = soma_inh_synapses, proximal_fr_dist = proximal_inh_dist, distal_fr_dist=distal_inh_dist, spike_generator=spike_generator, t = t, random_state=random_state, spike_trains_to_delay = exc_spikes, fr_time_shift = constants.inh_firing_rate_time_shift, soma_coordinates=soma_coordinates, method = 'delay')
+    inh_soma_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,
+                                                                                n_functional_groups=1,
+                                                                                n_presynaptic_cells_per_functional_group=1,
+                                                                                name_prefix='soma_inh',
+                                                                                cell=cell, 
+                                                                                synapses = soma_inh_synapses, 
+                                                                                proximal_fr_dist = proximal_inh_dist, 
+                                                                                distal_fr_dist=distal_inh_dist, 
+                                                                                spike_generator=spike_generator, 
+                                                                                t = t, random_state=random_state, 
+                                                                                spike_trains_to_delay = exc_spikes, 
+                                                                                fr_time_shift = constants.inh_firing_rate_time_shift, 
+                                                                                soma_coordinates=soma_coordinates, 
+                                                                                method = 'delay')
     logger.log_section_end("Creating Inhibitory SOMA Functional groups")
     
     logger.log_section_start("Storing FuncGroup and PreCell data")
@@ -355,22 +392,22 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
                                 
     logger.log_section_end("Initializing Reductor and cell model for simulation |NR:"+str(constants.reduce_cell)+"|optimize nseg:"+str(constants.optimize_nseg_by_lambda)+"|Expand Cable:"+str(constants.expand_cable))
     
-    # Turn off certain presynaptic neurons to simulate in vivo
-    if not constants.trunk_exc_synapses: # turn off trunk exc synapses.
-      for synapse in cell.synapses:
-        if (synapse.get_segment().sec in cell.apic) & (synapse.syn_type in constants.exc_syn_mod) & (synapse.get_segment().sec not in cell.obliques) & (synapse.get_segment().sec.y3d(0)<600):
-            for netcon in synapse.ncs:
-              netcon.active(False)
+#    # Turn off certain presynaptic neurons to simulate in vivo
+#    if not constants.trunk_exc_synapses: # turn off trunk exc synapses.
+#      for synapse in cell.synapses:
+#        if (synapse.get_segment().sec in cell.apic) & (synapse.syn_type in constants.exc_syn_mod) & (synapse.get_segment().sec not in cell.obliques) & (synapse.get_segment().sec.y3d(0)<600):
+#            for netcon in synapse.ncs:
+#              netcon.active(False)
     
-    # Turn of perisomatic inhibitory neurons
-    if not constants.perisomatic_exc_synapses:
-      perisomatic_inputs_disabled=0
-      for synapse in cell.synapses:
-        if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 75) & (synapse.syn_type in constants.inh_syn_mod):
-            for netcon in synapse.ncs:
-              perisomatic_inputs_disabled+=1
-              netcon.active(False)
-      print("perisomatic inputs disabled:",perisomatic_inputs_disabled)
+#    # Turn off perisomatic exc neurons
+#    if not constants.perisomatic_exc_synapses:
+#      perisomatic_inputs_disabled=0
+#      for synapse in cell.synapses:
+#        if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 75) & (synapse.syn_type in constants.exc_syn_mod):
+#            for netcon in synapse.ncs:
+#              perisomatic_inputs_disabled+=1
+#              netcon.active(False)
+#      print("perisomatic inputs disabled:",perisomatic_inputs_disabled)
     
     if constants.merge_synapses: # may already be merged if reductor reduced the cell.
         logger.log_section_start("Merging Synapses")
@@ -384,7 +421,7 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     
     # Add injections for F/I curve
     if i_amplitude is not None:
-        cell.add_injection(sec_index = cell.all.index(cell.soma[0]), record = True, delay = constants.h_i_delay, dur = constants.h_i_delay, amp = i_amplitude)
+        cell.add_injection(sec_index = cell.all.index(cell.soma[0]), record = True, delay = constants.h_i_delay, dur = constants.h_i_duration, amp = i_amplitude)
 
     # ---- Prepare simulation
 
@@ -537,9 +574,14 @@ def main(numpy_random_state, neuron_random_state, i_amplitude):
     os.system(f"mv {logger.log_file_name} {os.path.join(save_folder, logger.log_file_name)}")
 
 if __name__ == "__main__":
-    
+
+    # make unique output folder for PSCs
+    if constants.CI_on: # F/I curve simulation
+      constants.save_dir = os.path.join(constants.save_dir, 'FI_'+datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     if not os.path.exists(constants.save_dir):
-        raise FileNotFoundError("No save folder with the given name.")
+        os.mkdir(constants.save_dir)
+        #raise FileNotFoundError("No save folder with the given name.")
+    logger = Logger(output_dir = constants.save_dir, active = True)
     
     # Compile and load modfiles
     os.system(f"nrnivmodl {constants.modfiles_folder}")
@@ -549,11 +591,20 @@ if __name__ == "__main__":
     pool = []
     for np_state in constants.numpy_random_states:
         for neuron_state in constants.neuron_random_states:
-            for i_amplitude in constants.h_i_amplitudes:
+            if constants.CI_on:
+                for i_amplitude in constants.h_i_amplitudes:
+                    if constants.parallelize:
+                        pool.append(Process(target = main, args=[np_state, neuron_state, logger, i_amplitude]))
+                    else:
+                        p = Process(target = main, args=[np_state, neuron_state, logger, i_amplitude])
+                        p.start()
+                        p.join()
+                        p.terminate()
+            else:
                 if constants.parallelize:
-                    pool.append(Process(target = main, args=[np_state, neuron_state, i_amplitude]))
+                    pool.append(Process(target = main, args=[np_state, neuron_state, logger]))
                 else:
-                    p = Process(target = main, args=[np_state, neuron_state, i_amplitude])
+                    p = Process(target = main, args=[np_state, neuron_state, logger])
                     p.start()
                     p.join()
                     p.terminate()

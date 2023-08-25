@@ -30,6 +30,10 @@ import constants
 from Modules.injection import SEClamp
 ###
 
+constants.h_tstop = 55
+constants.save_every_ms = 55
+constants.log_every_ms = 55
+
 def build_cell(numpy_random_state, neuron_random_state, logger):
     logger.log_section_start(f"Building Cell for seeds ({np_state}, {neuron_state})...")
 
@@ -147,7 +151,8 @@ def build_cell(numpy_random_state, neuron_random_state, logger):
                                               random_state=random_state,
                                               neuron_r = neuron_r,
                                               syn_mod = constants.exc_syn_mod,
-                                              P_dist=exc_P_dist
+                                              P_dist=exc_P_dist,
+                                              syn_params=constants.exc_syn_params[0]
                                               )
 
     logger.log_memory()
@@ -190,7 +195,8 @@ def build_cell(numpy_random_state, neuron_random_state, logger):
                                               neuron_r = neuron_r,
                                               syn_mod = constants.inh_syn_mod,
                                               P_dist = inh_P_dist,
-                                              cell=complex_cell
+                                              cell=complex_cell,
+                                              syn_params=constants.inh_syn_params
                                               )
     
     logger.log_memory()
@@ -365,11 +371,13 @@ def main(numpy_random_state, neuron_random_state, cluster_index_to_stim, logger,
     for synapse in cell.synapses:
       for netcon in synapse.ncs:
         netcon.active(False)
+        
     # Turn on single presynaptic neuron to simulate current injection to presynaptic neuron
     total_num_clusters = {} # count clusters to get numbers for repeated simulations
     total_num_clusters["all"] = 0
     total_num_clusters["no_synapses"] = 0
     func_grps = exc_functional_groups + inh_distributed_functional_groups + inh_distributed_functional_groups
+    break_outer_loop=False
     for func_grp in func_grps:
       for pc in func_grp.presynaptic_cells:
         total_num_clusters['all'] += 1 # total number
@@ -401,196 +409,261 @@ def main(numpy_random_state, neuron_random_state, cluster_index_to_stim, logger,
             PSC_syn_type = "no_synapses"
             logger.log(f"{cluster_index_to_stim} presynaptic cell has no synapses.")
             print(f"{cluster_index_to_stim} presynaptic cell has no synapses.")
+        else:
+          continue
         logger.log(f"Getting PSC from presynaptic cell: {cluster_index_to_stim}")
         print(f"Getting PSC from presynaptic cell: {cluster_index_to_stim}")
-        return
-    #Create clamp
-    clamp = SEClamp(seg = cell.soma[0](0.5), dur1 = 1000, amp1 = voltage_to_clamp, rs = 0.01, record = True)
-    #note: update the simulation reruns to include number_denoting_cluster_ind_to_stimulate
-    logger.log_section_end("Setting simulation for PSC")
-    ################################################      
-    
-    # Turn off certain presynaptic neurons to simulate in vivo
-    if not constants.trunk_exc_synapses: # turn off trunk exc synapses.
-      for synapse in cell.synapses:
-        if (synapse.get_segment().sec in cell.apic) & (synapse.syn_type in constants.exc_syn_mod) & (synapse.get_segment().sec not in cell.obliques) & (synapse.get_segment().sec.y3d(0)<600):
-            for netcon in synapse.ncs:
-              netcon.active(False)
-    
-    # Turn of perisomatic inhibitory neurons
-    if not constants.perisomatic_exc_synapses:
-      perisomatic_inputs_disabled=0
-      for synapse in cell.synapses:
-        if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 75) & (synapse.syn_type in constants.inh_syn_mod):
-            for netcon in synapse.ncs:
-              perisomatic_inputs_disabled+=1
-              netcon.active(False)
-      print("perisomatic inputs disabled:",perisomatic_inputs_disabled)
-    
-    if constants.merge_synapses: # may already be merged if reductor reduced the cell.
-        logger.log_section_start("Merging Synapses")
-        logger.log_memory()
-        reductor.merge_synapses(cell)
-        logger.log_section_end("Merging Synapses")
-    logger.log_section_start("Setting up cell var recorders")
-    logger.log_memory()
-    cell.setup_recorders(vector_length = constants.save_every_ms)
-    logger.log_section_end("Setting up cell var recorders")
-
-    # ---- Prepare simulation
-
-    logger.log_section_start("Finding segments of interest")
-
-    # find segments of interest
-    soma_seg_index = cell.segments.index(cell.soma[0](0.5))
-    axon_seg_index = cell.segments.index(cell.axon[-1](0.9))
-    basal_seg_index = cell.segments.index(cell.basals[0](0.5))
-    trunk_seg_index = cell.segments.index(cell.apic[0](0.999))
-    # find tuft and nexus
-    if (constants.reduce_cell == True) and (constants.expand_cable == True): # Dendritic reduced model
-        tuft_seg_index = tuft_seg_index=cell.segments.index(cell.tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
-        nexus_seg_index = cell.segments.index(cell.apic[0](0.99))
-    elif (constants.reduce_cell == True) and (constants.expand_cable == False): # NR model
-        tuft_seg_index = cell.segments.index(cell.tufts[0](0.9)) # tufts[0] will be the cable that is both trunk and tuft in this case, so we have to specify near end of cable
-        nexus_seg_index = cell.segments.index(cell.apic[0](0.289004))
-    else: # Complex cell
-        tuft_seg_index=cell.segments.index(cell.tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
-        nexus_seg_index=cell.segments.index(cell.apic[36](0.961538))
-    seg_indexes = {
-        "soma": soma_seg_index,
-        "axon": axon_seg_index,
-        "basal": basal_seg_index,
-        "trunk": trunk_seg_index,
-        "tuft": tuft_seg_index,
-        "nexus": nexus_seg_index
-    }
-    logger.log_section_end("Finding segments of interest")
-    
-    # Compute electrotonic distances from nexus
-    logger.log_section_start("Recomputing elec distance")
-
-    cell.recompute_segment_elec_distance(segment = cell.segments[nexus_seg_index], seg_name = "nexus")
-
-    logger.log_section_end("Recomputing elec distance")
-
-    logger.log_section_start("Initializing t_vec and V_rec recorder")
-
-    # Record time points
-    t_vec = h.Vector(1000 / h.dt).record(h._ref_t)
-
-    # Record membrane voltage of all segments
-    V_rec = Recorder(cell.segments, vector_length = constants.save_every_ms)
-
-    logger.log_section_end("Initializing t_vec and V_rec recorder")
-
-    logger.log_section_start("Creating ecp object")
-
-    elec_pos = params.ELECTRODE_POSITION
-    ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)  # create an ECP object for extracellular potential
-
-    logger.log_section_end("Creating ecp object")
-
-    # ---- Run simulation
-    sim_duration = h.tstop / 1000 # Convert from ms to s
-
-    logger.log_section_start(f"Running sim for {sim_duration} sec")
-    logger.log_memory()
-
-    sim_start_time = time.time()
-
-    time_step = 0 # In time stamps, i.e., ms / dt
-    time_steps_saved_at = [0]
-
-    # Create a folder to save to
-    random_seed_name ="seeds_" +\
-                       str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
-    if cluster_index_to_stim is not None:
-        random_seed_name += f"_cluster{cluster_index_to_stim}"
-    save_folder = os.path.join(constants.save_dir, random_seed_name)
-    os.mkdir(save_folder)
-
-    # Save indexes for plotting
-    with open(os.path.join(save_folder, "seg_indexes.pickle"), "wb") as file:
-        pickle.dump(seg_indexes, file)
+        break
         
-    # Save fg and pc to CSV within the save_folder for plotting
-    exc_functional_groups_df.to_csv(os.path.join(save_folder, "exc_functional_groups.csv"), index=False)
-    exc_presynaptic_cells_df.to_csv(os.path.join(save_folder, "exc_presynaptic_cells.csv"), index=False)
-    inh_distributed_functional_groups_df.to_csv(os.path.join(save_folder, "inh_distributed_functional_groups.csv"), index=False)
-    inh_distributed_presynaptic_cells_df.to_csv(os.path.join(save_folder, "inh_distributed_presynaptic_cells.csv"), index=False)
-    inh_soma_functional_groups_df.to_csv(os.path.join(save_folder, "inh_soma_functional_groups.csv"), index=False)
-    inh_soma_presynaptic_cells_df.to_csv(os.path.join(save_folder, "inh_soma_presynaptic_cells.csv"), index=False)
-    cell.write_seg_info_to_csv(path=save_folder, seg_info=detailed_seg_info, title_prefix='detailed_')
+    # Initialize flag to false
+    break_outer_loop = False
+    
+    # Turn on single presynaptic neuron to simulate current injection to presynaptic neuron
+    total_num_clusters = {}  # count clusters to get numbers for repeated simulations
+    total_num_clusters["all"] = 0
+    total_num_clusters["no_synapses"] = 0
+    func_grps = exc_functional_groups + inh_distributed_functional_groups + inh_distributed_functional_groups
+    
+    for func_grp in func_grps:
+        if break_outer_loop:  # Check the flag at the beginning of the outer loop
+            break
+    
+        for pc in func_grp.presynaptic_cells:
+            total_num_clusters['all'] += 1  # total number
+    
+            if total_num_clusters['all'] == cluster_index_to_stim:  # this presynaptic cell's turn
+                if len(pc.synapses) > 0:
+                    a_syn = pc.synapses[0]
+                    a_seg = a_syn.get_segment()
+                    pc_type = a_seg.sec.name().split('.')[1][:4]
+                    PSC_sec_type = pc_type
+                    PSC_syn_type = pc.synapses[0].get_exc_or_inh_from_syn_type()
+    
+                    # Voltage Clamp Soma
+                    if PSC_syn_type == 'inh':
+                        voltage_to_clamp = 0  # (mV) excitatory synapse reversal potential
+                    elif PSC_syn_type == 'exc':
+                        voltage_to_clamp = -75  # (mV) inhibitory synapse reversal potential
+                    else:
+                        raise ValueError("PSC_syn_type must be either 'inh' or 'exc'.")
+    
+                    cluster_distance_from_soma = h.distance(cell.soma[0](0.5), a_seg)
+                    perisomatic = cluster_distance_from_soma < 100
+    
+                    stim = spike_generator.create_netstim(start=constants.PSC_start, number=1, noise=0, interval=100)  # create single presynaptic spike input
+                    for synapse in pc.synapses:
+                        spike_generator.set_netcon(synapse=synapse, stim=stim)  # deliver spike to this synapse
+                else:
+                    pc_type = "no_synapses"
+                    PSC_sec_type = pc_type
+                    PSC_syn_type = "no_synapses"
+                    logger.log(f"{cluster_index_to_stim} presynaptic cell has no synapses.")
+                    print(f"{cluster_index_to_stim} presynaptic cell has no synapses.")
+    
+                break_outer_loop = True  # set flag to true
+                break  # break the inner loop
+                
+    if pc_type == "no_synapses":
+      logger.log(f"presynaptic cell: {cluster_index_to_stim} has no synapses")
+      print(f"presynaptic cell: {cluster_index_to_stim} has no synapses")
+      random_seed_name ="seeds_" +\
+                         str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
+      if cluster_index_to_stim is not None:
+          random_seed_name += f"_cluster{cluster_index_to_stim}"
+      save_folder = os.path.join(constants.save_dir, random_seed_name)
+      os.mkdir(save_folder)
+    else:
+      logger.log(f"Getting PSC from presynaptic cell: {cluster_index_to_stim}")
+      print(f"Getting PSC from presynaptic cell: {cluster_index_to_stim}")
+      
 
-    # Save constants
-    shutil.copy2("constants.py", save_folder)
-    os.rename(os.path.join(save_folder, "constants.py"), os.path.join(save_folder, "constants_image.py"))
-
-    h.finitialize(h.v_init)
-    while h.t <= h.tstop + 1:
-
-        if time_step % (constants.log_every_ms / constants.h_dt) == 0:
-            logger.log(f"Running simulation step {time_step}")
-            logger.log_memory()
-
-        if (time_step > 0) & (time_step % (constants.save_every_ms / constants.h_dt) == 0):
-            # Save data
-            cell.generate_recorder_data(constants.save_every_ms)
-            cell.write_data(os.path.join(save_folder, f"saved_at_step_{time_step}"))
-
-            # Save lfp
-            loc_param = [0., 0., 45., 0., 1., 0.]
-            lfp = ecp.calc_ecp(move_cell = loc_param).T  # Unit: mV
-
-            with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
-                file.create_dataset("report/biophysical/data", data = lfp)
-            # save net membrane current
-            with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "i_membrane_report.h5"), 'w') as file:
-                file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
-
-            # Save time
-            with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "t.h5"), 'w') as file:
-                file.create_dataset("report/biophysical/data", data = t_vec.as_numpy())
-            
-            ########################
-            # Save clamp current
-            with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", str(cluster_index_to_stim)+'_'+str(perisomatic)+'_'+PSC_syn_type+'_'+PSC_sec_type+"_Vclamp_i.h5"), 'w') as file:
-                file.create_dataset("report/biophysical/data", data = clamp.rec_vec.as_numpy())
-            ########################
-
-            logger.log(f"Saved at time step {time_step}")
-
-            time_steps_saved_at.append(time_step)
-
-            # Reinitialize vectors: https://www.neuron.yale.edu/phpBB/viewtopic.php?t=2579
-            t_vec.resize(0)
-            for vec in V_rec.vectors: vec.resize(0)
-            for vec in cell.Vm.vectors: vec.resize(0)
-            for recorder in cell.recorders.items():
-                for vec in recorder[1].vectors: vec.resize(0)
-            cell.spikes.resize(0)
-
-            for inj in cell.injection: inj.rec_vec.resize(0)
-            ###########################
-            clamp.rec_vec.resize(0)
-            ###########################
-
-            for syn in all_syns:
-                for vec in syn.rec_vec: vec.resize(0)
-            
-            for vec in ecp.im_rec.vectors: vec.resize(0)
-
-        h.fadvance()
-        time_step += 1
-
-    sim_end_time = time.time()
-
-    logger.log_section_end("Running simulation")
-
-    elapsedtime = sim_end_time - sim_start_time
-    total_runtime = sim_end_time - runtime_start_time
-    logger.log(f'Simulation time: {round(elapsedtime)} sec.')
-    logger.log(f'Total runtime: {round(total_runtime)} sec.')
+      #Create clamp
+      clamp = SEClamp(seg = cell.soma[0](0.5), dur1 = 1000, amp1 = voltage_to_clamp, rs = 0.01, record = True)
+      #note: update the simulation reruns to include number_denoting_cluster_ind_to_stimulate
+      logger.log_section_end("Setting simulation for PSC")
+      ################################################      
+      
+      # Turn off certain presynaptic neurons to simulate in vivo
+      if not constants.trunk_exc_synapses: # turn off trunk exc synapses.
+        for synapse in cell.synapses:
+          if (synapse.get_segment().sec in cell.apic) & (synapse.syn_type in constants.exc_syn_mod) & (synapse.get_segment().sec not in cell.obliques) & (synapse.get_segment().sec.y3d(0)<600):
+              for netcon in synapse.ncs:
+                netcon.active(False)
+      
+      # Turn of perisomatic inhibitory neurons
+      if not constants.perisomatic_exc_synapses:
+        perisomatic_inputs_disabled=0
+        for synapse in cell.synapses:
+          if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 75) & (synapse.syn_type in constants.inh_syn_mod):
+              for netcon in synapse.ncs:
+                perisomatic_inputs_disabled+=1
+                netcon.active(False)
+        print("perisomatic inputs disabled:",perisomatic_inputs_disabled)
+      
+      if constants.merge_synapses: # may already be merged if reductor reduced the cell.
+          logger.log_section_start("Merging Synapses")
+          logger.log_memory()
+          reductor.merge_synapses(cell)
+          logger.log_section_end("Merging Synapses")
+      logger.log_section_start("Setting up cell var recorders")
+      logger.log_memory()
+      cell.setup_recorders(vector_length = constants.save_every_ms)
+      logger.log_section_end("Setting up cell var recorders")
+  
+      # ---- Prepare simulation
+  
+      logger.log_section_start("Finding segments of interest")
+  
+      # find segments of interest
+      soma_seg_index = cell.segments.index(cell.soma[0](0.5))
+      axon_seg_index = cell.segments.index(cell.axon[-1](0.9))
+      basal_seg_index = cell.segments.index(cell.basals[0](0.5))
+      trunk_seg_index = cell.segments.index(cell.apic[0](0.999))
+      # find tuft and nexus
+      if (constants.reduce_cell == True) and (constants.expand_cable == True): # Dendritic reduced model
+          tuft_seg_index = tuft_seg_index=cell.segments.index(cell.tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
+          nexus_seg_index = cell.segments.index(cell.apic[0](0.99))
+      elif (constants.reduce_cell == True) and (constants.expand_cable == False): # NR model
+          tuft_seg_index = cell.segments.index(cell.tufts[0](0.9)) # tufts[0] will be the cable that is both trunk and tuft in this case, so we have to specify near end of cable
+          nexus_seg_index = cell.segments.index(cell.apic[0](0.289004))
+      else: # Complex cell
+          tuft_seg_index=cell.segments.index(cell.tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
+          nexus_seg_index=cell.segments.index(cell.apic[36](0.961538))
+      seg_indexes = {
+          "soma": soma_seg_index,
+          "axon": axon_seg_index,
+          "basal": basal_seg_index,
+          "trunk": trunk_seg_index,
+          "tuft": tuft_seg_index,
+          "nexus": nexus_seg_index
+      }
+      logger.log_section_end("Finding segments of interest")
+      
+      # Compute electrotonic distances from nexus
+      logger.log_section_start("Recomputing elec distance")
+  
+      cell.recompute_segment_elec_distance(segment = cell.segments[nexus_seg_index], seg_name = "nexus")
+  
+      logger.log_section_end("Recomputing elec distance")
+  
+      logger.log_section_start("Initializing t_vec and V_rec recorder")
+  
+      # Record time points
+      t_vec = h.Vector(1000 / h.dt).record(h._ref_t)
+  
+      # Record membrane voltage of all segments
+      V_rec = Recorder(cell.segments, vector_length = constants.save_every_ms)
+  
+      logger.log_section_end("Initializing t_vec and V_rec recorder")
+  
+      logger.log_section_start("Creating ecp object")
+  
+      elec_pos = params.ELECTRODE_POSITION
+      ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)  # create an ECP object for extracellular potential
+  
+      logger.log_section_end("Creating ecp object")
+  
+      # ---- Run simulation
+      sim_duration = h.tstop / 1000 # Convert from ms to s
+  
+      logger.log_section_start(f"Running sim for {sim_duration} sec")
+      logger.log_memory()
+  
+      sim_start_time = time.time()
+  
+      time_step = 0 # In time stamps, i.e., ms / dt
+      time_steps_saved_at = [0]
+  
+      # Create a folder to save to
+      random_seed_name ="seeds_" +\
+                         str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
+      if cluster_index_to_stim is not None:
+          random_seed_name += f"_cluster{cluster_index_to_stim}"
+      save_folder = os.path.join(constants.save_dir, random_seed_name)
+      os.mkdir(save_folder)
+  
+      # Save indexes for plotting
+      with open(os.path.join(save_folder, "seg_indexes.pickle"), "wb") as file:
+          pickle.dump(seg_indexes, file)
+          
+      # Save fg and pc to CSV within the save_folder for plotting
+      exc_functional_groups_df.to_csv(os.path.join(save_folder, "exc_functional_groups.csv"), index=False)
+      exc_presynaptic_cells_df.to_csv(os.path.join(save_folder, "exc_presynaptic_cells.csv"), index=False)
+      inh_distributed_functional_groups_df.to_csv(os.path.join(save_folder, "inh_distributed_functional_groups.csv"), index=False)
+      inh_distributed_presynaptic_cells_df.to_csv(os.path.join(save_folder, "inh_distributed_presynaptic_cells.csv"), index=False)
+      inh_soma_functional_groups_df.to_csv(os.path.join(save_folder, "inh_soma_functional_groups.csv"), index=False)
+      inh_soma_presynaptic_cells_df.to_csv(os.path.join(save_folder, "inh_soma_presynaptic_cells.csv"), index=False)
+      cell.write_seg_info_to_csv(path=save_folder, seg_info=detailed_seg_info, title_prefix='detailed_')
+  
+      # Save constants
+      shutil.copy2("constants.py", save_folder)
+      os.rename(os.path.join(save_folder, "constants.py"), os.path.join(save_folder, "constants_image.py"))
+  
+      h.finitialize(h.v_init)
+      while h.t <= h.tstop + 1:
+  
+          if time_step % (constants.log_every_ms / constants.h_dt) == 0:
+              logger.log(f"Running simulation step {time_step}")
+              logger.log_memory()
+  
+          if (time_step > 0) & (time_step % (constants.save_every_ms / constants.h_dt) == 0):
+              # Save data
+              cell.generate_recorder_data(constants.save_every_ms)
+              cell.write_data(os.path.join(save_folder, f"saved_at_step_{time_step}"))
+  
+              # Save lfp
+              loc_param = [0., 0., 45., 0., 1., 0.]
+              lfp = ecp.calc_ecp(move_cell = loc_param).T  # Unit: mV
+  
+              with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
+                  file.create_dataset("report/biophysical/data", data = lfp)
+              # save net membrane current
+              with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "i_membrane_report.h5"), 'w') as file:
+                  file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
+  
+              # Save time
+              with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", "t.h5"), 'w') as file:
+                  file.create_dataset("report/biophysical/data", data = t_vec.as_numpy())
+              
+              ########################
+              # Save clamp current
+              with h5py.File(os.path.join(save_folder, f"saved_at_step_{time_step}", str(cluster_index_to_stim)+'_'+str(perisomatic)+'_'+PSC_syn_type+'_'+PSC_sec_type+"_Vclamp_i.h5"), 'w') as file:
+                  file.create_dataset("report/biophysical/data", data = clamp.rec_vec.as_numpy())
+              ########################
+  
+              logger.log(f"Saved at time step {time_step}")
+  
+              time_steps_saved_at.append(time_step)
+  
+              # Reinitialize vectors: https://www.neuron.yale.edu/phpBB/viewtopic.php?t=2579
+              t_vec.resize(0)
+              for vec in V_rec.vectors: vec.resize(0)
+              for vec in cell.Vm.vectors: vec.resize(0)
+              for recorder in cell.recorders.items():
+                  for vec in recorder[1].vectors: vec.resize(0)
+              cell.spikes.resize(0)
+  
+              for inj in cell.injection: inj.rec_vec.resize(0)
+              ###########################
+              clamp.rec_vec.resize(0)
+              ###########################
+  
+              for syn in all_syns:
+                  for vec in syn.rec_vec: vec.resize(0)
+              
+              for vec in ecp.im_rec.vectors: vec.resize(0)
+  
+          h.fadvance()
+          time_step += 1
+  
+      sim_end_time = time.time()
+  
+      logger.log_section_end("Running simulation")
+  
+      elapsedtime = sim_end_time - sim_start_time
+      total_runtime = sim_end_time - runtime_start_time
+      logger.log(f'Simulation time: {round(elapsedtime)} sec.')
+      logger.log(f'Total runtime: {round(total_runtime)} sec.')
 
     os.system(f"mv {logger.log_file_name} {os.path.join(save_folder, logger.log_file_name)}")
 
@@ -614,7 +687,7 @@ if __name__ == "__main__":
         for neuron_state in constants.neuron_random_states:
             # build cell
             cell, exc_functional_groups, inh_distributed_functional_groups, spike_generator, exc_functional_groups_df, exc_presynaptic_cells_df, inh_distributed_functional_groups_df, inh_distributed_presynaptic_cells_df, inh_soma_functional_groups_df, inh_soma_presynaptic_cells_df, detailed_seg_info, all_syns, reductor, runtime_start_time = build_cell(np_state, neuron_state, logger)
-            for cluster_index_to_stim in range(0,1):#constants.number_of_presynaptic_cells+1):
+            for cluster_index_to_stim in range(0,constants.number_of_presynaptic_cells+1):#constants.number_of_presynaptic_cells+1):
                     if constants.parallelize:
                         pool.append(Process(target = main, args=[np_state, neuron_state, cluster_index_to_stim, logger, cell, exc_functional_groups, inh_distributed_functional_groups, spike_generator, exc_functional_groups_df, exc_presynaptic_cells_df, inh_distributed_functional_groups_df, inh_distributed_presynaptic_cells_df, inh_soma_functional_groups_df, inh_soma_presynaptic_cells_df, detailed_seg_info, all_syns, reductor, runtime_start_time]))
                     else:

@@ -171,7 +171,7 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		plt.savefig('Currents_' + segment_name)  # Use segment_name in the file name
 		plt.close()  # Close the figure after saving it
 
-def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', title = None, filename = None, seg_type = None):
+def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', title = None, filename = None, seg_type = None, freq_name = 'beta'):
 	"""
 	This function creates a plot of segments, colored according to the edge group they belong to.
 	
@@ -199,18 +199,20 @@ def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', tit
 	# Adjust edges array to include 0 and 1
 	adjusted_edges = np.concatenate(([0], edges, [1]))
 
+	adjusted_edges.sort()
+
 	# Iterate over each segment
-	for seg in segments:
-		seg_elec_distance = eval(seg.seg_elec_distance)['beta'][elec_dist_var]
+	for seg in segments: # Get the value of seg_elec_distance for this segment
+		seg_elec_distance = eval(seg.seg_elec_distance)[freq_name][elec_dist_var]
 		
-		# Find the edge this segment is between
+		# Find the bin or range between edges this segment falls into
 		for i in range(len(adjusted_edges) - 1):
 			if adjusted_edges[i] <= seg_elec_distance <= adjusted_edges[i + 1]:  # include segments exactly at edge values
+        # This segment belongs to the bin between adjusted_edges[i] and adjusted_edges[i + 1]
 				edge_indices.append(i)
 				break
 		else:
-			# if segment doesn't fall within any range, assign it to the last group
-			edge_indices.append(len(adjusted_edges) - 2)
+			raise(ValueError("seg_elec_distance {seg_elec_distance} is not between 0 and 1"))
 
 	# Normalize the edge_indices to range 0-1
 	normalized_indices = np.array(edge_indices) / (len(adjusted_edges) - 2)  

@@ -1,6 +1,6 @@
 # Random state
-numpy_random_states = [127,128,129]
-neuron_random_states = [89,90] # Number of calls to MCellRan4()
+numpy_random_states = [130]
+neuron_random_states = [90] # Number of calls to MCellRan4()
 
 # Runtime
 parallelize = True
@@ -23,22 +23,23 @@ complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 150000 #55#2500#20400 # Sim runtime (ms)
+h_tstop = 2000 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
-h_i_amplitudes = [None] #[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
+CI_on = True
+h_i_amplitudes = [-2.0,-1.0,0,1.0,2.0]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,5.0, 10.0] #[None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
 h_i_duration = 5000 # (ms)
 h_i_delay = 400 # (ms)
 
 # gmax distributions
-exc_gmax_mean_0 = 0.2
+exc_gmax_mean_0 = 0.15#0.45
 exc_gmax_std_0 = 0.345
-exc_gmax_clip = (0,0.65)#(0, 0.7)
+exc_gmax_clip = (0,5)#0.65)#(0, 0.7)
 inh_gmax_dist = 1#2.25
 soma_gmax_dist = 1#2.25
-inh_scalar = 2.25 # scales weight
-exc_scalar = 0.6 # scales weight
+inh_scalar = 1#1.75 # scales weight
+exc_scalar = 1 # scales weight
 
 # synapse density syns/um
 exc_synaptic_density = 2.16
@@ -56,7 +57,7 @@ inh_soma_P_release_std = 0.05
 
 # syn_mod
 exc_syn_mod= 'AMPA_NMDA_STP' #'pyr2pyr'
-inh_syn_mod = 'GABA_AB_STP' # 'int2pyr'
+inh_syn_mod = 'GABA_AB_STP' #'int2pyr'
 
 # firing rate distributions
 inh_prox_mean_fr = 16.9
@@ -93,7 +94,8 @@ CP2CP_syn_params = {
                     'Dep': 31.7,
                     'Fac': 519.
                     }
-exc_syn_params=[CS2CP_syn_params,CP2CP_syn_params]
+exc_syn_params=[CS2CP_syn_params,CP2CP_syn_params] # 90%, 10%
+inh_syn_params=[FSI_syn_params, LTS_syn_params]
 
 # kmeans clustering
 exc_n_FuncGroups = 24
@@ -139,5 +141,5 @@ PSC_start = 5
 
 # Log, plot and save
 save_dir = "output"
-log_every_ms = 500
-save_every_ms = 500
+log_every_ms = 1000
+save_every_ms = 1000
