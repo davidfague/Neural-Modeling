@@ -258,7 +258,9 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     detailed_seg_info = cell.seg_info.copy()
     soma_coordinates = np.zeros(3)
     
-    for ind, seg in enumerate(cell.seg_info):
+    exc_segment_indices=[]
+    
+    for ind, seg in enumerate(cell.seg_info): # can probably split perisomatic and distal here.
         segment_coordinates[ind, 0] = seg['p0.5_x3d']
         segment_coordinates[ind, 1] = seg['p0.5_y3d']
         segment_coordinates[ind, 2] = seg['p0.5_z3d']
@@ -267,6 +269,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
         if (not ((seg['sec'] in cell.apic) and (seg['sec'] not in cell.obliques) and (seg['p0.5_y3d'] < 600))) and (h.distance(seg['seg'], cell.soma[0](0.5)) > 100):
             # Store the coordinates of the segment that meets the conditions
             exc_segment_coordinates.append([seg['p0.5_x3d'], seg['p0.5_y3d'], seg['p0.5_z3d']])
+            exc_segment_indices.append(ind)
             
         if seg['seg'] == cell.soma[0](0.5):
             soma_coordinates[0] = seg['p0.5_x3d']
@@ -282,13 +285,22 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     logger.log_section_start("Creating Excitatory Functional groups")
     logger.log_memory()
     # create excitatory functional groups
-    exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=exc_segment_coordinates,n_functional_groups=constants.exc_n_FuncGroups,n_presynaptic_cells_per_functional_group=constants.exc_n_PreCells_per_FuncGroup,name_prefix='exc',synapses = exc_synapses, cell=cell, mean_firing_rate = mean_fr_dist, spike_generator=spike_generator, t = t, random_state=random_state, method = '1f_noise')
+    exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,
+                                                                          n_functional_groups=constants.exc_n_FuncGroups,
+                                                                          n_presynaptic_cells_per_functional_group=constants.exc_n_PreCells_per_FuncGroup,
+                                                                          name_prefix='exc',
+                                                                          synapses = exc_synapses, 
+                                                                          cell=cell, mean_firing_rate = mean_fr_dist, 
+                                                                          spike_generator=spike_generator, 
+                                                                          t = t, 
+                                                                          random_state=random_state, 
+                                                                          method = '1f_noise')
     
     logger.log_section_end("Creating Excitatory Functional groups")
     
     # get exc spikes for inh delay modulation # further implementation could potentially separate delay modulation by functional group.
     exc_spikes=spike_generator.spike_trains.copy()
-    print("exc_spikes:",exc_spikes)
+    #print("exc_spikes:",exc_spikes)
     
     logger.log_section_start("Creating Inhibitory Distributed Functional groups")
     logger.log_memory()
@@ -369,6 +381,91 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
         functional_group_df = pd.DataFrame(functional_group_data)
         presynaptic_cell_df = pd.DataFrame(presynaptic_cell_data)
         return functional_group_df, presynaptic_cell_df
+        
+    import matplotlib.colors as mcolors
+    import matplotlib.pyplot as plt
+
+
+    def plot_spike_rasters(functional_groups, title_prefix=None, save_to=None):
+        fig = plt.figure(figsize=(15, 10))
+    
+        # Initialize counter for y-axis label (for each neuron)
+        y_count = 0
+    
+        # Generate a list of distinct colors based on the number of functional groups
+        colors = plt.cm.viridis(np.linspace(0, 1, len(functional_groups)))
+    
+        for color, functional_group in zip(colors, functional_groups):
+            for cell_index, presynaptic_cell in enumerate(functional_group.presynaptic_cells):
+                y_count += 1
+                spike_train = presynaptic_cell.spike_train
+                
+                # Generate a shade of the group color based on the cell index
+                cell_color = mcolors.to_rgba(color, alpha=(cell_index + 1) / len(functional_group.presynaptic_cells))
+    
+                if len(spike_train) > 0:  # Ensure that there are spikes to plot
+                    for spikes in spike_train:
+                        plt.scatter(spikes, [y_count] * len(spikes), color=cell_color, marker='|')
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Neuron index')
+        plt.title('Spike Raster Plot')
+        if save_to:
+            filename = f"Spikes.png" if title_prefix is None else f"{title_prefix}_spikes.png"
+            fig.savefig(os.path.join(save_to, filename))    
+        plt.close()
+
+    def exam_inc_spikes(functional_groups, tstop, prefix=None, save_to=None):
+        '''
+        Calculates the presynaptic cell firing rates distribution from generated spike trains.
+        tstop (ms)
+        '''
+        spike_trains = []
+        firing_rates = []
+        
+        for func_grp in functional_groups:
+            for pre_cell in func_grp.presynaptic_cells:
+                spike_train = pre_cell.spike_train
+                for syn in pre_cell.synapses:
+                    spike_trains.append(spike_train)
+                    
+        for spike_train in spike_trains:
+            firing_rate = len(spike_train) / (tstop / 1000)
+            firing_rates.append(firing_rate)
+            
+        mean_fr = np.mean(firing_rates)
+        std_fr = np.std(firing_rates)
+        
+        # Plot and save histogram
+        plt.hist(firing_rates, bins=30, alpha=0.75, label='Firing Rate Distribution')
+        plt.xlabel('Firing Rate (Hz)')
+        plt.ylabel('Frequency')
+        plt.title('Firing Rate Distribution')
+        plt.legend()
+        
+        if save_to:
+            # Make sure the directory exists
+            if not os.path.exists(save_to):
+                os.makedirs(save_to)
+            
+            # Save the histogram
+            plt.savefig(os.path.join(save_to, f"{prefix}_firing_rate_histogram.png"))
+            
+            # Save firing rates to a numpy binary file
+            #np.save(os.path.join(save_to, f"{prefix}_firing_rates.npy"), np.array(firing_rates))
+            
+            # Save mean and std of firing rates to a text file
+            with open(os.path.join(save_to, f"{prefix}_firing_rates_stats.txt"), "w") as f:
+                f.write(f"Mean Firing Rate: {mean_fr}\n")
+                f.write(f"Standard Deviation of Firing Rate: {std_fr}\n")
+                
+            # Save firing rates to a CSV file
+            #df = pd.DataFrame({'Firing Rates': firing_rates})
+            #df.to_csv(os.path.join(save_to, f"{prefix}_firing_rates.csv"), index=False)
+            
+        #plt.show()  # Show the plot
+
+
+        
 
     # Convert dictionary to dataframe
     exc_functional_groups_df, exc_presynaptic_cells_df = functional_groups_to_dataframe_with_index(exc_functional_groups)
@@ -392,22 +489,22 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
                                 
     logger.log_section_end("Initializing Reductor and cell model for simulation |NR:"+str(constants.reduce_cell)+"|optimize nseg:"+str(constants.optimize_nseg_by_lambda)+"|Expand Cable:"+str(constants.expand_cable))
     
-#    # Turn off certain presynaptic neurons to simulate in vivo
-#    if not constants.trunk_exc_synapses: # turn off trunk exc synapses.
-#      for synapse in cell.synapses:
-#        if (synapse.get_segment().sec in cell.apic) & (synapse.syn_type in constants.exc_syn_mod) & (synapse.get_segment().sec not in cell.obliques) & (synapse.get_segment().sec.y3d(0)<600):
-#            for netcon in synapse.ncs:
-#              netcon.active(False)
+    # Turn off certain presynaptic neurons to simulate in vivo
+    if not constants.trunk_exc_synapses: # turn off trunk exc synapses.
+      for synapse in cell.synapses:
+        if (synapse.get_segment().sec in cell.apic) & (synapse.syn_type in constants.exc_syn_mod) & (synapse.get_segment().sec not in cell.obliques) & (synapse.get_segment().sec.y3d(0)<600):
+            for netcon in synapse.ncs:
+              netcon.active(False)
     
-#    # Turn off perisomatic exc neurons
-#    if not constants.perisomatic_exc_synapses:
-#      perisomatic_inputs_disabled=0
-#      for synapse in cell.synapses:
-#        if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 75) & (synapse.syn_type in constants.exc_syn_mod):
-#            for netcon in synapse.ncs:
-#              perisomatic_inputs_disabled+=1
-#              netcon.active(False)
-#      print("perisomatic inputs disabled:",perisomatic_inputs_disabled)
+    # Turn off perisomatic exc neurons
+    if not constants.perisomatic_exc_synapses:
+      perisomatic_inputs_disabled=0
+      for synapse in cell.synapses:
+        if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 75) & (synapse.syn_type in constants.exc_syn_mod):
+            for netcon in synapse.ncs:
+              perisomatic_inputs_disabled+=1
+              netcon.active(False)
+      print("perisomatic inputs disabled:",perisomatic_inputs_disabled)
     
     if constants.merge_synapses: # may already be merged if reductor reduced the cell.
         logger.log_section_start("Merging Synapses")
@@ -498,6 +595,15 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     # Save indexes for plotting
     with open(os.path.join(save_folder, "seg_indexes.pickle"), "wb") as file:
         pickle.dump(seg_indexes, file)
+        
+    # examine spikes    
+    plot_spike_rasters(functional_groups=exc_functional_groups, title_prefix="exc", save_to=save_folder)
+    plot_spike_rasters(functional_groups=inh_distributed_functional_groups, title_prefix="inh_distal", save_to=save_folder)
+    plot_spike_rasters(functional_groups=inh_soma_functional_groups, title_prefix="inh_perisomatic", save_to=save_folder)
+    #calculate firing rates
+    exam_inc_spikes(functional_groups=exc_functional_groups, tstop=constants.h_tstop, title_prefix="exc", save_to=save_folder)
+    exam_inc_spikes(functional_groups=inh_distributed_functional_groups, tstop=constants.h_tstop, title_prefix="inh_distal", save_to=save_folder)
+    exam_inc_spikes(functional_groups=inh_soma_functional_groups, tstop=constants.h_tstop, title_prefix="inh_perisomatic", save_to=save_folder)
         
     # Save fg and pc to CSV within the save_folder for plotting
     exc_functional_groups_df.to_csv(os.path.join(save_folder, "exc_functional_groups.csv"), index=False)

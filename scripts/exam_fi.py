@@ -6,7 +6,7 @@ import h5py, os
 import matplotlib.pyplot as plt
 
 # Output folder should store folders 2023...
-output_folder = "output/FI_2023-08-24_20-17-41"
+output_folder = "output/FI_2023-08-25_17-03-56"
 
 def load_constants_from_folder(output_folder):
     # Get the absolute path to the output_folder
