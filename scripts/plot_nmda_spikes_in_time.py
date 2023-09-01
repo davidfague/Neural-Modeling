@@ -22,23 +22,23 @@ def main():
 
     sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt)
 
-    nmda_lower_bounds, _, _, _, _, _ = sm.get_ca_nmda_lower_bounds_durations_and_peaks(lowery = None, uppery = None, random_state = random_state)
+    nmda_lower_bounds, upper_bounds, _, _, _, _ = sm.get_ca_nmda_lower_bounds_durations_and_peaks(lowery = None, uppery = None, random_state = random_state)
     
-    one_branch_seg_inds = [152, 146, 145, 135, 121]
+    one_branch_seg_inds = [152, 146, 145, 135, 121] # [121, 122, 130, 134]
     one_branch_segs = []
     one_brain_lb = []
+    one_brain_ub = []
 
     spikes = np.zeros((len(one_branch_seg_inds), int(constants.h_tstop)))
 
     for ind in one_branch_seg_inds:
         one_branch_segs.append(sm.segments[ind])
         one_brain_lb.append(nmda_lower_bounds[ind])
+        one_brain_ub.append(upper_bounds[ind])
 
-    print(one_brain_lb)
-
-    for ind, lbs in enumerate(one_brain_lb):
-        for lb in lbs:
-            spikes[ind, int(lb * constants.h_dt)] = 1
+    for seg_idx in range(len(one_brain_lb)):
+        for bound_indx in range(len(one_brain_lb[seg_idx])):
+            spikes[seg_idx, int(one_brain_lb[seg_idx][bound_indx] * constants.h_dt) : int(one_brain_ub[seg_idx][bound_indx] * constants.h_dt)] = 1
 
     fig, ax = plt.subplots(2, 1, figsize = (20, 5))
     for seg in one_branch_segs:
