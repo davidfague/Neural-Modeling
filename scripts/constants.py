@@ -5,8 +5,12 @@ neuron_random_states = [90] # Number of calls to MCellRan4()
 # Runtime
 parallelize = True
 
+# Complex cell
+complex_cell_folder = '../complex_cells/L5PC/'
+complex_cell_biophys_hoc_name = 'M1_L5PC_biophys.hoc'
+
 # Modfiles
-modfiles_folder = "../modfiles"
+modfiles_folder = "../modfiles_M1_original_gbar"#"../modfiles"
 
 # Reduction
 reduce_cell = False
@@ -17,9 +21,6 @@ optimize_nseg_by_lambda = True # Whether or not to optimize the number of segmen
 merge_synapses = False # Whether or not to merge synapses after optimizing nseg by lambda. (synapses should already be merged by the reduce_cell_func, but could be merged again if optimize_nseg_by_lambda lowers nseg.)
 segs_per_lambda = 10 # Desired number of segs per length constant
 
-# Complex cell
-complex_cell_folder = '../complex_cells/L5PC/'
-complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 
 # Neuron parameters
 h_celcius = 37
@@ -33,12 +34,12 @@ h_i_duration = 5000 # (ms)
 h_i_delay = 400 # (ms)
 
 # gmax distributions
-exc_gmax_mean_0 = 0.15#0.45
+exc_gmax_mean_0 = 0.1#0.100#0.125#0.15#0.45
 exc_gmax_std_0 = 0.345
 exc_gmax_clip = (0,5)#0.65)#(0, 0.7)
 inh_gmax_dist = 1#2.25
 soma_gmax_dist = 1#2.25
-inh_scalar = 1#1.75 # scales weight
+inh_scalar = 1.1#1.75 # scales weight
 exc_scalar = 1 # scales weight
 
 # synapse density syns/um

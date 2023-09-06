@@ -1,3 +1,4 @@
+# Recently updated from reading csv to reading pickles
 import sys
 sys.path.append("../")
 
@@ -37,6 +38,88 @@ elev, azim = 90, -90#
 plotting_modes = ['functional_groups', 'presynaptic_cells']
 cluster_types = ['exc', 'inh_distributed', 'inh_soma']  
 
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+
+
+def plot_spike_rasters(functional_groups, title_prefix=None, save_to=None): # can be moved to analysis script
+    fig = plt.figure(figsize=(15, 10))
+
+    # Initialize counter for y-axis label (for each neuron)
+    y_count = 0
+
+    # Generate a list of distinct colors based on the number of functional groups
+    colors = plt.cm.viridis(np.linspace(0, 1, len(functional_groups)))
+
+    for color, functional_group in zip(colors, functional_groups):
+        for cell_index, presynaptic_cell in enumerate(functional_group.presynaptic_cells):
+            y_count += 1
+            spike_train = presynaptic_cell.spike_train
+            
+            # Generate a shade of the group color based on the cell index
+            cell_color = mcolors.to_rgba(color, alpha=(cell_index + 1) / len(functional_group.presynaptic_cells))
+
+            if len(spike_train) > 0:  # Ensure that there are spikes to plot
+                for spikes in spike_train:
+                    plt.scatter(spikes, [y_count] * len(spikes), color=cell_color, marker='|')
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Neuron index')
+    plt.title('Spike Raster Plot')
+    if save_to:
+        filename = f"Spikes.png" if title_prefix is None else f"{title_prefix}_spikes.png"
+        fig.savefig(os.path.join(save_to, filename))    
+    plt.close()
+
+def exam_inc_spikes(functional_groups, tstop, prefix=None, save_to=None): # can be moved to analysis script
+    '''
+    Calculates the presynaptic cell firing rates distribution from generated spike trains.
+    tstop (ms)
+    '''
+    spike_trains = []
+    firing_rates = []
+    
+    for func_grp in functional_groups:
+        for pre_cell in func_grp.presynaptic_cells:
+            spike_train = pre_cell.spike_train
+            for syn in pre_cell.synapses:
+                spike_trains.append(spike_train)
+                
+    for spike_train in spike_trains:
+        firing_rate = len(spike_train) / (tstop / 1000)
+        firing_rates.append(firing_rate)
+        
+    mean_fr = np.mean(firing_rates)
+    std_fr = np.std(firing_rates)
+    
+    # Plot and save histogram
+    plt.hist(firing_rates, bins=30, alpha=0.75, label='Firing Rate Distribution')
+    plt.xlabel('Firing Rate (Hz)')
+    plt.ylabel('Frequency')
+    plt.title('Firing Rate Distribution')
+    plt.legend()
+    
+    if save_to:
+        # Make sure the directory exists
+        if not os.path.exists(save_to):
+            os.makedirs(save_to)
+        
+        # Save the histogram
+        plt.savefig(os.path.join(save_to, f"{prefix}_firing_rate_histogram.png"))
+        
+        # Save firing rates to a numpy binary file
+        #np.save(os.path.join(save_to, f"{prefix}_firing_rates.npy"), np.array(firing_rates))
+        
+        # Save mean and std of firing rates to a text file
+        with open(os.path.join(save_to, f"{prefix}_firing_rates_stats.txt"), "w") as f:
+            f.write(f"Mean Firing Rate: {mean_fr}\n")
+            f.write(f"Standard Deviation of Firing Rate: {std_fr}\n")
+            
+        # Save firing rates to a CSV file
+        #df = pd.DataFrame({'Firing Rates': firing_rates})
+        #df.to_csv(os.path.join(save_to, f"{prefix}_firing_rates.csv"), index=False)
+        
+    #plt.show()  # Show the plot
+
 
 def load_data(cluster_types, output_folder):
   data = {}
@@ -45,8 +128,8 @@ def load_data(cluster_types, output_folder):
   data["presynaptic_cells"] = {}
   
   for cluster_type in cluster_types:
-      data["functional_groups"][cluster_type] = pd.read_csv(os.path.join(output_folder, cluster_type + "_functional_groups.csv"))
-      data["presynaptic_cells"][cluster_type] = pd.read_csv(os.path.join(output_folder, cluster_type + "_presynaptic_cells.csv"))
+      data["functional_groups"][cluster_type] = pd.read_pickle(os.path.join(output_folder, cluster_type + "_functional_groups.pkl"))
+      data["presynaptic_cells"][cluster_type] = pd.read_pickle(os.path.join(output_folder, cluster_type + "_presynaptic_cells.pkl"))
   
   return data
 

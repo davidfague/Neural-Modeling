@@ -13,7 +13,7 @@ from Modules.plotting_utils import get_nested_property, plot_morphology
 import constants
 
 
-output_folder = "output/2023-08-14_18-47-11_seeds_123_87L5PCtemplate[0]_196nseg_108nbranch_29543NCs_29543nsyn"
+output_folder = "output/FI_in_vitro2023-09-05_16-55-32/2023-09-05_16-55-36_seeds_130_90CP_Cell[0]_12nseg_0nbranch_0NCs_0nsyn_2000/"
 #output_folder = "output/BenModel"
 # constants.save_every_ms = 200
 # constants.h_tstop = 2500
@@ -24,8 +24,8 @@ output_folder = "output/2023-08-14_18-47-11_seeds_123_87L5PCtemplate[0]_196nseg_
 # skip = 300 # (ms)
 
 find_average = False
-animate_plot = True
-interactive = True
+animate_plot = False
+interactive = False
 constants.cmap_type = 'cool' # 'Greys'
 
 constants.show_electrodes = False
@@ -47,7 +47,7 @@ new_property = None #['inmda','iampa','net_exc_i'] # set to None if not using ex
 
 time_index = 300
 
-property_list_to_analyze = ['inmda']
+property_list_to_analyze = ['v']
 # property_list_to_analyze = ['netcon_density_per_seg','exc']
 # property_list_to_analyze = ['seg_elec_info','beta','passive_soma']
 
@@ -58,7 +58,7 @@ def main(property_list_to_analyze):
 	step_size = int(constants.save_every_ms / constants.h_dt) # Timestamps
 	steps = range(step_size, int(constants.h_tstop / constants.h_dt) + 1, step_size) # Timestamps
 
-	sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt)
+	sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt, no_data=True)
 	sm.compute_axial_currents()
 
 	if new_property is not None:

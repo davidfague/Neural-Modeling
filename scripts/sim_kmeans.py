@@ -345,7 +345,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     logger.log_memory()
     # save fg and pc to csv
     
-    def functional_group_to_dict(functional_group, functional_group_index):
+    def functional_group_to_dict(functional_group, functional_group_index): # REPLACED BY PICKLING
         """Converts a FunctionalGroup object to a dictionary with an index."""
         data = {attr: value for attr, value in functional_group.__dict__.items() if attr != "presynaptic_cells"}
         data['functional_group_index'] = functional_group_index
@@ -381,96 +381,11 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
         functional_group_df = pd.DataFrame(functional_group_data)
         presynaptic_cell_df = pd.DataFrame(presynaptic_cell_data)
         return functional_group_df, presynaptic_cell_df
-        
-    import matplotlib.colors as mcolors
-    import matplotlib.pyplot as plt
 
-
-    def plot_spike_rasters(functional_groups, title_prefix=None, save_to=None):
-        fig = plt.figure(figsize=(15, 10))
-    
-        # Initialize counter for y-axis label (for each neuron)
-        y_count = 0
-    
-        # Generate a list of distinct colors based on the number of functional groups
-        colors = plt.cm.viridis(np.linspace(0, 1, len(functional_groups)))
-    
-        for color, functional_group in zip(colors, functional_groups):
-            for cell_index, presynaptic_cell in enumerate(functional_group.presynaptic_cells):
-                y_count += 1
-                spike_train = presynaptic_cell.spike_train
-                
-                # Generate a shade of the group color based on the cell index
-                cell_color = mcolors.to_rgba(color, alpha=(cell_index + 1) / len(functional_group.presynaptic_cells))
-    
-                if len(spike_train) > 0:  # Ensure that there are spikes to plot
-                    for spikes in spike_train:
-                        plt.scatter(spikes, [y_count] * len(spikes), color=cell_color, marker='|')
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Neuron index')
-        plt.title('Spike Raster Plot')
-        if save_to:
-            filename = f"Spikes.png" if title_prefix is None else f"{title_prefix}_spikes.png"
-            fig.savefig(os.path.join(save_to, filename))    
-        plt.close()
-
-    def exam_inc_spikes(functional_groups, tstop, prefix=None, save_to=None):
-        '''
-        Calculates the presynaptic cell firing rates distribution from generated spike trains.
-        tstop (ms)
-        '''
-        spike_trains = []
-        firing_rates = []
-        
-        for func_grp in functional_groups:
-            for pre_cell in func_grp.presynaptic_cells:
-                spike_train = pre_cell.spike_train
-                for syn in pre_cell.synapses:
-                    spike_trains.append(spike_train)
-                    
-        for spike_train in spike_trains:
-            firing_rate = len(spike_train) / (tstop / 1000)
-            firing_rates.append(firing_rate)
-            
-        mean_fr = np.mean(firing_rates)
-        std_fr = np.std(firing_rates)
-        
-        # Plot and save histogram
-        plt.hist(firing_rates, bins=30, alpha=0.75, label='Firing Rate Distribution')
-        plt.xlabel('Firing Rate (Hz)')
-        plt.ylabel('Frequency')
-        plt.title('Firing Rate Distribution')
-        plt.legend()
-        
-        if save_to:
-            # Make sure the directory exists
-            if not os.path.exists(save_to):
-                os.makedirs(save_to)
-            
-            # Save the histogram
-            plt.savefig(os.path.join(save_to, f"{prefix}_firing_rate_histogram.png"))
-            
-            # Save firing rates to a numpy binary file
-            #np.save(os.path.join(save_to, f"{prefix}_firing_rates.npy"), np.array(firing_rates))
-            
-            # Save mean and std of firing rates to a text file
-            with open(os.path.join(save_to, f"{prefix}_firing_rates_stats.txt"), "w") as f:
-                f.write(f"Mean Firing Rate: {mean_fr}\n")
-                f.write(f"Standard Deviation of Firing Rate: {std_fr}\n")
-                
-            # Save firing rates to a CSV file
-            #df = pd.DataFrame({'Firing Rates': firing_rates})
-            #df.to_csv(os.path.join(save_to, f"{prefix}_firing_rates.csv"), index=False)
-            
-        #plt.show()  # Show the plot
-
-
-        
-
-    # Convert dictionary to dataframe
-    exc_functional_groups_df, exc_presynaptic_cells_df = functional_groups_to_dataframe_with_index(exc_functional_groups)
-    inh_distributed_functional_groups_df, inh_distributed_presynaptic_cells_df = functional_groups_to_dataframe_with_index(inh_distributed_functional_groups)
-    inh_soma_functional_groups_df, inh_soma_presynaptic_cells_df = functional_groups_to_dataframe_with_index(inh_soma_functional_groups)
+    # Convert dictionary to dataframe ######### replaced with pickling
+    #exc_functional_groups_df, exc_presynaptic_cells_df = functional_groups_to_dataframe_with_index(exc_functional_groups)
+    #inh_distributed_functional_groups_df, inh_distributed_presynaptic_cells_df = functional_groups_to_dataframe_with_index(inh_distributed_functional_groups)
+    #inh_soma_functional_groups_df, inh_soma_presynaptic_cells_df = functional_groups_to_dataframe_with_index(inh_soma_functional_groups)
     
     logger.log_section_end("Storing FuncGroup and PreCell data") 
     
@@ -596,25 +511,41 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     with open(os.path.join(save_folder, "seg_indexes.pickle"), "wb") as file:
         pickle.dump(seg_indexes, file)
         
-    # examine spikes    
-    plot_spike_rasters(functional_groups=exc_functional_groups, title_prefix="exc", save_to=save_folder)
-    plot_spike_rasters(functional_groups=inh_distributed_functional_groups, title_prefix="inh_distal", save_to=save_folder)
-    plot_spike_rasters(functional_groups=inh_soma_functional_groups, title_prefix="inh_perisomatic", save_to=save_folder)
-    #calculate firing rates
-    exam_inc_spikes(functional_groups=exc_functional_groups, tstop=constants.h_tstop, title_prefix="exc", save_to=save_folder)
-    exam_inc_spikes(functional_groups=inh_distributed_functional_groups, tstop=constants.h_tstop, title_prefix="inh_distal", save_to=save_folder)
-    exam_inc_spikes(functional_groups=inh_soma_functional_groups, tstop=constants.h_tstop, title_prefix="inh_perisomatic", save_to=save_folder)
+    # examine spikes # needs to be moved to analysis script
+    # logger.log_section_start('plotting spike rasters')
+    # plot_spike_rasters(functional_groups=exc_functional_groups, title_prefix="exc", save_to=save_folder)
+    # plot_spike_rasters(functional_groups=inh_distributed_functional_groups, title_prefix="inh_distal", save_to=save_folder)
+    # plot_spike_rasters(functional_groups=inh_soma_functional_groups, title_prefix="inh_perisomatic", save_to=save_folder)
+    # #calculate firing rates
+    # exam_inc_spikes(functional_groups=exc_functional_groups, tstop=constants.h_tstop, title_prefix="exc", save_to=save_folder)
+    # exam_inc_spikes(functional_groups=inh_distributed_functional_groups, tstop=constants.h_tstop, title_prefix="inh_distal", save_to=save_folder)
+    # exam_inc_spikes(functional_groups=inh_soma_functional_groups, tstop=constants.h_tstop, title_prefix="inh_perisomatic", save_to=save_folder)
+    # logger.log_section_end('plotting spike rasters')
         
-    # Save fg and pc to CSV within the save_folder for plotting
-    exc_functional_groups_df.to_csv(os.path.join(save_folder, "exc_functional_groups.csv"), index=False)
-    exc_presynaptic_cells_df.to_csv(os.path.join(save_folder, "exc_presynaptic_cells.csv"), index=False)
-    inh_distributed_functional_groups_df.to_csv(os.path.join(save_folder, "inh_distributed_functional_groups.csv"), index=False)
-    inh_distributed_presynaptic_cells_df.to_csv(os.path.join(save_folder, "inh_distributed_presynaptic_cells.csv"), index=False)
-    inh_soma_functional_groups_df.to_csv(os.path.join(save_folder, "inh_soma_functional_groups.csv"), index=False)
-    inh_soma_presynaptic_cells_df.to_csv(os.path.join(save_folder, "inh_soma_presynaptic_cells.csv"), index=False)
+    # Save fg and pc to CSV within the save_folder for plotting # has been replaced by pickling
+    # logger.log_section_start('saving seg_info, functional groups, and presynaptic cells to csv') # '\t'
+    # exc_functional_groups_df.to_csv(os.path.join(save_folder, "exc_functional_groups.csv"), index=False, sep = ';')
+    # exc_presynaptic_cells_df.to_csv(os.path.join(save_folder, "exc_presynaptic_cells.csv"), index=False, sep = ';')
+    # inh_distributed_functional_groups_df.to_csv(os.path.join(save_folder, "inh_distributed_functional_groups.csv"), index=False, sep = ';')
+    # inh_distributed_presynaptic_cells_df.to_csv(os.path.join(save_folder, "inh_distributed_presynaptic_cells.csv"), index=False, sep = ';')
+    # inh_soma_functional_groups_df.to_csv(os.path.join(save_folder, "inh_soma_functional_groups.csv"), index=False, sep = ';')
+    # inh_soma_presynaptic_cells_df.to_csv(os.path.join(save_folder, "inh_soma_presynaptic_cells.csv"), index=False, sep = ';')
+    # logger.log_section_end('saving seg_info, functional groups, and presynaptic cells to csv')
+
+    logger.log_section_start('saving seg_info to csv')
     cell.write_seg_info_to_csv(path=save_folder, seg_info=detailed_seg_info, title_prefix='detailed_')
+    logger.log_section_end('saving seg_info to csv')
     
-    
+    # temporarily removed
+    # logger.log_section_start('pickleing functional groups and presynaptic cells')
+    # # Pickle FunctionalGroup objects
+    # with open(os.path.join(save_folder, "exc_functional_groups.pkl"), "wb") as f:
+    #     pickle.dump(exc_functional_groups, f)
+    # with open(os.path.join(save_folder, "inh_distal_functional_groups.pkl"), "wb") as f:
+    #     pickle.dump(inh_distributed_functional_groups, f)
+    # with open(os.path.join(save_folder, "inh_perisomatic_functional_groups.pkl"), "wb") as f:
+    #     pickle.dump(inh_soma_functional_groups, f)
+    # logger.log_section_end('pickleing functional groups and presynaptic cells')
 
     # Save constants
     shutil.copy2("constants.py", save_folder)
@@ -724,5 +655,3 @@ if __name__ == "__main__":
         for p in pool: p.terminate()
 
     os.system("rm -r x86_64")
-
-    

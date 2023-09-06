@@ -18,3 +18,8 @@ def build_L5_cell(cell_folder, biophys = 'L5PCbiophys3.hoc', morph = 'cell1.asc'
 
 
     
+def build_L5_cell_ziao(cell_folder, template='ziao_templates.hoc'):
+    h.load_file(cell_folder + template)
+    complex_cell = h.CP_Cell()
+    
+    return complex_cell

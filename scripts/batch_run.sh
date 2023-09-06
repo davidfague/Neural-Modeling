@@ -5,4 +5,4 @@
 #SBATCH --job-name=cell_sim
 
 source /home/shared/L5env/bin/activate
-python sim_kmeans.py
+python sim_passive.py

@@ -105,16 +105,20 @@ class Segment:
 
 class SegmentManager:
 
-    def __init__(self, output_folder: str, steps: list, dt: float = 0.1, skip: int = 0, transpose = False, build_detailed_seg_info: bool = False):
+    def __init__(self, output_folder: str, steps: list, dt: float = 0.1, skip: int = 0, transpose = False, build_detailed_seg_info: bool = False, no_data=False):
         '''
         skip: ms of simulation to skip
         build_detailed_seg_info: Whether or not to try to read detailed_seg_info.csv, a csv containing much more segmentation
         '''
-        filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
-                     "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
-                     "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "i_membrane_report","spikes_report"]
-        current_names = ["v", "gNaTa", "iampa", "inmda", "igaba","icah", "ical", "ih", "ina", "imembrane"]
-
+        if no_data:
+          filenames = ["Vm_report", "spikes_report"]
+          current_names = ["v"]
+        else:
+          filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
+                       "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
+                       "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "i_membrane_report","spikes_report"]
+          current_names = ["v", "gNaTa", "iampa", "inmda", "igaba","icah", "ical", "ih", "ina", "imembrane"]
+          
         self.segments = []
         self.dt = dt
 
@@ -122,7 +126,7 @@ class SegmentManager:
         data = self.read_data(filenames, output_folder, steps)
 #        if build_detailed_seg_info: # not yet implemented
 #          build_detailed_segments(output_folder, steps)
-        print(data["Vm_report"].shape)
+        #print(data["Vm_report"].shape)
 
         self.num_segments = len(data["seg_info"])
         print("NUM seg", self.num_segments)

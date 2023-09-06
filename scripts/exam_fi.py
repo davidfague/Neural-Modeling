@@ -4,9 +4,12 @@ sys.path.append("../")
 import numpy as np
 import h5py, os
 import matplotlib.pyplot as plt
+import importlib
+
+
 
 # Output folder should store folders 2023...
-output_folder = "output/FI_2023-08-25_17-03-56"
+output_folder = "output/FI_in_vitro2023-09-05_21-57-22"
 
 def load_constants_from_folder(output_folder):
     # Get the absolute path to the output_folder
@@ -90,7 +93,8 @@ def main():
 
     # Save FI curve
     plt.figure(figsize = (7, 8))
-    plt.plot(constants.h_i_amplitudes, firing_rates)
+    plt.plot(constants.h_i_amplitudes, firing_rates, color='blue')
+    plt.scatter(constants.h_i_amplitudes, firing_rates, color='r', marker='*')
     plt.xlabel("Amplitude (nA)")
     plt.ylabel("Hz")
     plt.savefig(os.path.join(output_folder, f"FI.png"))
