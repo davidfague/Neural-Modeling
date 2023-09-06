@@ -65,12 +65,12 @@ proc biophys() {
     gCa_LVAstbar_Ca_LVAst = 0.00343
     gCa_HVAbar_Ca_HVA = 0.000992
     
-    gbar_kdr = 0.693  // From SKv3_1
-    gbar_kap = 0.0812  // From K_Tst
-    gbar_kdmc = 0.00223  // From K_Pst
-//    gbar_kdmc  = kdmc_gbar
-//    gbar_kdr = kdr_gbar
-//    gbar_kap = kap_gbar
+    //gbar_kdr = 0.693  // From SKv3_1
+    //gbar_kap = 0.0812  // From K_Tst
+    //gbar_kdmc = 0.00223  // From K_Pst
+    gbar_kdmc  = kdmc_gbar
+    gbar_kdr = kdr_gbar
+    gbar_kap = kap_gbar
     
     vhalfn_kdr = kdr_vhalfn
     vhalfn_kap = kap_vhalfn
@@ -106,8 +106,7 @@ proc biophys() {
   }
 
  forsec "o1.axonal" {
-    cm = axonCap
-    g_pas = 1.0/axonRM
+    g_pas = 0.0000325
     insert kdmc
     gbar_kdmc = kdmc_gbar * kdmc_gbar_axonm
     insert nax
@@ -120,7 +119,7 @@ proc biophys() {
 }
 endtemplate L5PCbiophys
 
-// second try
+// second try (add ZC gbar, kinetic params, and Na, K reversal potentials)
 //begintemplate L5PCbiophys
 //public biophys
 //
@@ -227,7 +226,9 @@ endtemplate L5PCbiophys
 //
 //endtemplate L5PCbiophys
 
-// first try
+// first try (switch SKv3_1=>kdr, K_Tst=>kap, K_Pst=>kdmc)
+//      gbar_kap = 0.0812  // From K_Tst
+//      gbar_kdmc = 0.00223  // From K_Pst
 //begintemplate L5PCbiophys
 //public biophys
 //

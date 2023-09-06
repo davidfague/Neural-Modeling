@@ -9,7 +9,7 @@ import importlib
 
 
 # Output folder should store folders 2023...
-output_folder = "output/FI_in_vitro2023-09-05_21-57-22"
+output_folder = "output/FI_in_vitro2023-09-05_22-47-55"
 
 def load_constants_from_folder(output_folder):
     # Get the absolute path to the output_folder

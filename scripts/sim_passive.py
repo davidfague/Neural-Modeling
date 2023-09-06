@@ -161,8 +161,27 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
         pickle.dump(seg_indexes, file)
         
     # Save biophys
-    shutil.copy2(complex_cell_biophys_hoc_name, save_folder)
-    os.rename(os.path.join(save_folder, complex_cell_biophys_hoc_name), os.path.join(save_folder, complex_cell_biophys_hoc_name.split('.')[0]+'_image.hoc')
+    #biophys_path = os.path.join(constants.complex_cell_folder, constants.biophys_hoc_name)
+    #shutil.copy2(biophys_path, save_folder)
+    #os.rename(os.path.join(save_folder, biophys_path), os.path.join(save_folder, constants.complex_cell_biophys_hoc_name.split('.')[0]+'_image.hoc'))
+    biophys_path = os.path.join(constants.complex_cell_folder, constants.complex_cell_biophys_hoc_name)
+    # Copy the file
+    if os.path.exists(biophys_path):
+        try:
+            shutil.copy2(biophys_path, save_folder)
+        except Exception as e:
+            print(f"An error occurred while copying: {e}")
+    else:
+        print(f"The file {biophys_path} does not exist.")
+    
+    # Rename the copied file
+    try:
+        destination_path = os.path.join(save_folder, constants.complex_cell_biophys_hoc_name)
+        new_name = os.path.join(save_folder, constants.complex_cell_biophys_hoc_name.split('.')[0] + '_image.hoc')
+        os.rename(destination_path, new_name)
+    except Exception as e:
+        print(f"An error occurred while renaming: {e}")
+        
     
     # Save constants
     shutil.copy2("constants.py", save_folder)

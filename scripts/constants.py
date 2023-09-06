@@ -29,7 +29,7 @@ h_dt = 0.1 # Timestep (ms)
 
 # Current injection
 CI_on = True
-h_i_amplitudes = [-2.0,-1.0,0,1.0,2.0]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,5.0, 10.0] #[None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
+h_i_amplitudes = [-2.0,-1.0,0,0.25,0.5,0.75,1.0,2.0]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,5.0, 10.0] #[None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
 h_i_duration = 5000 # (ms)
 h_i_delay = 400 # (ms)
 
