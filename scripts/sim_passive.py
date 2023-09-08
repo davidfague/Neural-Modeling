@@ -22,7 +22,9 @@ import pandas as pd
 
 from neuron import h
 
-import constants
+import importlib
+import constants  # your constants module
+importlib.reload(constants)
 
 def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
@@ -257,12 +259,18 @@ if __name__ == "__main__":
     if constants.CI_on: # F/I curve simulation
       constants.save_dir = os.path.join(constants.save_dir, 'FI_in_vitro'+datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     if not os.path.exists(constants.save_dir):
-        os.mkdir(constants.save_dir)
-        #raise FileNotFoundError("No save folder with the given name.")
+        try:
+            os.mkdir(constants.save_dir)
+        except Exception as e:
+            print(f"Failed to create directory {constants.save_dir}: {e}")
     logger = Logger(output_dir = constants.save_dir, active = True)
     
     # Compile and load modfiles
-    os.system(f"nrnivmodl {constants.modfiles_folder}")
+    #os.system(f"nrnivmodl {constants.modfiles_folder}")
+    ret_code = os.system(f"nrnivmodl {constants.modfiles_folder}")
+    if ret_code != 0:
+        print(f"Failed to execute nrnivmodl. Return code: {ret_code}")
+
     h.load_file('stdrun.hoc')
     h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
 
@@ -275,17 +283,25 @@ if __name__ == "__main__":
                         pool.append(Process(target = main, args=[np_state, neuron_state, logger, i_amplitude]))
                     else:
                         p = Process(target = main, args=[np_state, neuron_state, logger, i_amplitude])
-                        p.start()
-                        p.join()
+                        try:
+                            p.start()
+                            p.join()
+                        except Exception as e:
+                            print(f"Failed to run process: {e}")
                         p.terminate()
             else:
                 if constants.parallelize:
                     pool.append(Process(target = main, args=[np_state, neuron_state, logger]))
                 else:
                     p = Process(target = main, args=[np_state, neuron_state, logger])
-                    p.start()
-                    p.join()
+                    try:
+                        p.start()
+                        p.join()
+                    except Exception as e:
+                        print(f"Failed to run process: {e}")
                     p.terminate()
+                    
+                    
     
     if constants.parallelize:
         for p in pool:

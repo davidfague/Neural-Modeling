@@ -8,9 +8,10 @@ import importlib
 
 
 
-# Output folder should store folders 2023...
-output_folder = "output/FI_in_vitro2023-09-05_22-47-55"
+# Output folder should store folders 'saved_at_step_xxxx'
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-09-07_19-23-03"
 
+import importlib
 def load_constants_from_folder(output_folder):
     # Get the absolute path to the output_folder
     current_script_path = "/home/drfrbc/Neural-Modeling/scripts/"
