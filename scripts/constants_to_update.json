@@ -3,9 +3,14 @@
         {
             "exc_gmax_mean_0": [0.1],
             "exc_gmax_std_0": [0.345],
-            "inh_scalar": [1.1],
-            "complex_cell_biophys_hoc_name": ["trials1_double_soma_g_pas.hoc","trials2_half_soma_g_pas.hoc", "trials3_add_kap.hoc","trials4_add_kdmc.hoc","trials5_add_all_k_channels.hoc", "trials6_swap_kap_kdmc.hoc"]
-            
+            "complex_cell_biophys_hoc_name": [
+                "trials1_double_soma_g_pas.hoc",
+                "trials2_half_soma_g_pas.hoc",
+                "trials3_add_kap.hoc",
+                "trials4_add_kdmc.hoc",
+                "trials5_add_all_k_channels.hoc",
+                "trials6_swap_kap_kdmc.hoc"
+            ]
         }
     ]
 }

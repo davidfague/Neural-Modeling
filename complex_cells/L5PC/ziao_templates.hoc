@@ -233,25 +233,26 @@ begintemplate CP_Cell
 		define_shape() // builtin fcn: fill in 3d info for sections defined by only L and diam, translate 3d points for consistency with their connections
 	} //end init
 
-	proc insert_mechs() {
-		randseed = $1
-		soma[0]{
-			noiseRandObj=new Random()
-			noiseRandObj.Random123(randseed)
-			noiseRandObj.normal(0,1)
-
-			noise = new Gfluct2(0.5)
-			noise.g_e0 = 0.0052 //0.002
-			noise.g_i0 = 0.004 //0.021
-			noise.std_e = 0.0013 //0.001
-			noise.std_i = 0.002 //0.008
-			noise.E_i = -90.0 //-75
-			// noise.tau_e = 10.0
-			// noise.tau_i = 30.0
-
-			noise.setRandObj(noiseRandObj)
-		}
-	}
+// remove synapstic conductance
+//	proc insert_mechs() {
+//		randseed = $1
+//		soma[0]{
+//			noiseRandObj=new Random()
+//			noiseRandObj.Random123(randseed)
+//			noiseRandObj.normal(0,1)
+//
+//			noise = new Gfluct2(0.5)
+//			noise.g_e0 = 0.0052 //0.002
+//			noise.g_i0 = 0.004 //0.021
+//			noise.std_e = 0.0013 //0.001
+//			noise.std_i = 0.002 //0.008
+//			noise.E_i = -90.0 //-75
+//			// noise.tau_e = 10.0
+//			// noise.tau_i = 30.0
+//
+//			noise.setRandObj(noiseRandObj)
+//		}
+//	}
 endtemplate CP_Cell
 
 // 4-compartment Corticostriatal Cell Model Created by ZC (2023)

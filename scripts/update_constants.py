@@ -26,8 +26,8 @@ def update_constants(json_data):
 if __name__ == '__main__':
     json_str = sys.argv[1]
     print(f"Received json_str: {json_str}")  # Debug statement
-    print(f"The type of json_str is {type(json_str)}")
-    print(f"The content of json_str is {json_str}")
+    #print(f"The type of json_str is {type(json_str)}")
+    #print(f"The content of json_str is {json_str}")
     try:
         json_data = json.loads(json_str)
         update_constants(json_data)

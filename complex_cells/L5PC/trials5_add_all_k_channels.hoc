@@ -17,27 +17,34 @@ proc biophys() {
   }
 
   forsec $o1.somatic {
+      // ZC biophys
+      insert k_ion
+      insert na_ion
       insert kdmc //zc
-  	  insert Ca_LVAst// from hay
-	    insert Ca_HVA // from hay
-      insert CaDynamics_E2
-      insert Ih
-      insert SK_E2
-      
-      insert nax // zc
       insert kdr // zc
       insert kap // zc
+      // hay et all biophys
+      
+  	  //insert Ca_LVAst// from hay
+	    //insert Ca_HVA // from hay
+      //insert CaDynamics_E2
+      //insert Ih
+      //insert SK_E2
+      //ek = -85
+      //ena = 50
+      //gIhbar_Ih = 0.0002
+      //g_pas = 0.0000338
+      //decay_CaDynamics_E2 = 460.0
+      //gamma_CaDynamics_E2 = 0.000501
+      //gCa_LVAstbar_Ca_LVAst = 0.00343
+      //gCa_HVAbar_Ca_HVA = 0.000992
+      // sodium
+   	  //insert Nap_Et2 
+      //insert NaTa_t
+      //gNap_Et2bar_Nap_Et2 = 0.00172 
+      //gNaTa_tbar_NaTa_t = 2.04 
 
-      ek = -85
-      ena = 50
-      gIhbar_Ih = 0.0002
-      g_pas = 0.0000338
-      decay_CaDynamics_E2 = 460.0
-      gamma_CaDynamics_E2 = 0.000501
-      gCa_LVAstbar_Ca_LVAst = 0.00343
-      gCa_HVAbar_Ca_HVA = 0.000992
-
-      // New channel conductances
+      // potassium
       gbar_kdr = 0.693  // From SKv3_1
       gbar_kap = 0.0812  // From K_Tst
       gbar_kdmc = 0.00223  // From K_Pst

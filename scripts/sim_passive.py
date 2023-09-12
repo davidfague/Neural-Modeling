@@ -21,10 +21,13 @@ from multiprocessing import Process
 import pandas as pd
 
 from neuron import h
+h.load_file("stdrun.hoc")
 
 import importlib
 import constants  # your constants module
 importlib.reload(constants)
+
+from Build_M1_cell.build_M1_cell import build_m1_cell
 
 def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
@@ -49,9 +52,22 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     # Build cell
     logger.log_section_start("Building complex cell")
 
-    complex_cell = build_L5_cell(constants.complex_cell_folder, constants.complex_cell_biophys_hoc_name)
-    #complex_cell = build_L5_cell_ziao(constants.complex_cell_folder)
-
+    if constants.build_m1:
+        complex_cell = build_m1_cell()
+    else:
+        complex_cell = build_L5_cell(constants.complex_cell_folder, constants.complex_cell_biophys_hoc_name)
+        #complex_cell = build_L5_cell_ziao(constants.complex_cell_folder) # build ziao simple cell
+    def adjust_soma_and_axon_geometry(cell, axonDiam=1.40966286462, axonL=594.292937602, axon_L_scale=1, somaL=48.4123467666, somaDiam=28.2149102762):
+      #ZC uses axon_L_scale = 0.1 for better LFP?
+      diam = somaDiam
+      cell.soma[0].pt3dclear()
+      cell.soma[0].pt3dadd(0,0,-somaL/2,diam)
+      cell.soma[0].pt3dadd(0,0,somaL/2,diam)
+      diam = axonDiam/axon_L_scale
+      cell.axon[0].pt3dclear()
+      cell.axon[0].pt3dadd(0,0,0,diam)
+      cell.axon[0].pt3dadd(0,0,-axonL*axon_L_scale,diam)
+    adjust_soma_and_axon_geometry(complex_cell)
     logger.log_section_end("Building complex cell")
 
     h.celsius = constants.h_celcius

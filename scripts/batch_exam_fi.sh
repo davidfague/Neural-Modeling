@@ -7,8 +7,7 @@
 source /home/shared/L5env/bin/activate
 
 # Define multiple output folders in an array
-OUTPUT_FOLDERS=("output/FI_in_vitro2023-09-07_19-16-51" "output/FI_in_vitro2023-09-07_19-18-24" "output/FI_in_vitro2023-09-07_19-19-57" "output/FI_in_vitro2023-09-07_19-21-30" "output/FI_in_vitro2023-09-07_19-23-03" "output/FI_in_vitro2023-09-07_19-24-36" "output/FI_in_vitro2023-09-07_19-24-41" "output/FI_in_vitro2023-09-07_19-24-45" "output/FI_in_vitro2023-09-07_19-24-50" "output/FI_in_vitro2023-09-07_19-24-55" "output/FI_in_vitro2023-09-07_19-26-30")
-
+OUTPUT_FOLDERS=("output/FI_in_vitro2023-09-08_17-13-23" "output/FI_in_vitro2023-09-08_17-14-55" "output/FI_in_vitro2023-09-08_17-16-27" "output/FI_in_vitro2023-09-08_17-17-59" "output/FI_in_vitro2023-09-08_17-18-06" "output/FI_in_vitro2023-09-08_17-18-02" "output/FI_in_vitro2023-09-08_17-19-38")
 # List of all exam_something.py scripts to run
 scripts=("exam_fi.py")
 

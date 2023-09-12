@@ -6,8 +6,9 @@ neuron_random_states = [90] # Number of calls to MCellRan4()
 parallelize = False
 
 # Complex cell
+build_m1 = False # WIP denotes whether or not to instead use https://github.com/ModelDBRepository/195615/tree/master cell
 complex_cell_folder = '../complex_cells/L5PC/'
-complex_cell_biophys_hoc_name = "trials6_swap_kap_kdmc.hoc"
+complex_cell_biophys_hoc_name = "M1_soma_L5PC_dendrites.hoc"
 
 # Modfiles
 modfiles_folder = "../modfiles_M1_original_gbar"#"../modfiles"
