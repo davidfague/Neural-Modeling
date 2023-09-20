@@ -57,9 +57,17 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     else:
         complex_cell = build_L5_cell(constants.complex_cell_folder, constants.complex_cell_biophys_hoc_name)
         #complex_cell = build_L5_cell_ziao(constants.complex_cell_folder) # build ziao simple cell
-    def adjust_soma_and_axon_geometry(cell, axonDiam=1.40966286462, axonL=594.292937602, axon_L_scale=1, somaL=48.4123467666, somaDiam=28.2149102762):
+        # old axonDiam=1.40966286462, axonL=594.292937602, axon_L_scale=1, somaL=48.4123467666, somaDiam=28.2149102762
+    def adjust_soma_and_axon_geometry(cell, axonDiam=1.0198477329563544, axonL=549.528226526987, axon_L_scale=1, somaL=28.896601873591436, somaDiam=14.187950175330796):
+      '''
+      Function for updating soma and axon to M1 model.
+      '''
       #ZC uses axon_L_scale = 0.1 for better LFP?
       diam = somaDiam
+      orig_soma_diam = cell.soma[0].diam
+      orig_soma_L = cell.soma[0].L
+      orig_axon_diam = cell.axon[0].diam
+      orig_axon_L = cell.axon[0].L
       cell.soma[0].pt3dclear()
       cell.soma[0].pt3dadd(0,0,-somaL/2,diam)
       cell.soma[0].pt3dadd(0,0,somaL/2,diam)
@@ -67,7 +75,20 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
       cell.axon[0].pt3dclear()
       cell.axon[0].pt3dadd(0,0,0,diam)
       cell.axon[0].pt3dadd(0,0,-axonL*axon_L_scale,diam)
-    adjust_soma_and_axon_geometry(complex_cell)
+      h.a0n_kdr = 0.0075
+      h.nmax_kdr = 20
+      h.nmin_kap = 0.4
+      h.lmin_kap = 5
+      h.erev_ih = 37.0
+#      if cell.axon[0].L != orig_axon_L:
+#        print('axon L updated from',orig_axon_L,'to',cell.axon[0].L)
+#      if cell.axon[0].diam != orig_axon_diam:
+#        print('axon diam updated from',orig_axon_diam,'to',cell.axon[0].diam)
+#      if cell.soma[0].L != orig_soma_L:
+#        print('soma L updated from',orig_soma_L,'to',cell.soma[0].L)
+#      if cell.axon[0].diam != orig_soma_diam:
+#        print('soma diam updated from',orig_soma_diam,'to',cell.soma[0].diam)
+    adjust_soma_and_axon_geometry(complex_cell, somaL = constants.SomaL, somaDiam = constants.SomaDiam, axonDiam = constants.AxonDiam, axonL = constants.AxonL, axon_L_scale = constants.Axon_L_scale)
     logger.log_section_end("Building complex cell")
 
     h.celsius = constants.h_celcius
@@ -91,8 +112,8 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
                                 optimize_nseg = constants.optimize_nseg_by_lambda, synapses_list = [],
                                 netcons_list = [], spike_trains = [],
                                 spike_threshold = constants.spike_threshold, random_state = random_state,
-                                var_names = [], reduction_frequency = constants.reduction_frequency, 
-                                expand_cable = constants.expand_cable, choose_branches = constants.choose_branches)
+                                var_names = constants.channel_names, reduction_frequency = constants.reduction_frequency, 
+                                expand_cable = constants.expand_cable, choose_branches = constants.choose_branches, seg_to_record= constants.seg_to_record)
     
     logger.log_section_start("Setting up cell var recorders")
     logger.log_memory()

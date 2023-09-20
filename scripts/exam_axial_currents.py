@@ -20,7 +20,7 @@ from Modules.logger import Logger
 
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/2023-08-23_13-06-55_seeds_130_90L5PCtemplate[0]_196nseg_108nbranch_16073NCs_16073nsyn" #"output/BenModel/"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-09-20_16-00-54/2023-09-20_16-06-01_seeds_130_90L5PCtemplate[0]_196nseg_108nbranch_0NCs_0nsyn_1000" #"output/BenModel/"
 
 import importlib
 def load_constants_from_folder(output_folder):
@@ -102,21 +102,25 @@ def main():
     nexus_seg_index = []
     basal_seg_index = []
   else:
-    nexus_seg_index=seg_indexes["nexus"]
+#    nexus_seg_index=seg_indexes["nexus"]
     basal_seg_index=seg_indexes["basal"]
-    tuft_seg_index=seg_indexes["tuft"]
-    logger.log(f"NEXUS SEG: {sm.segments[nexus_seg_index].seg}") # to determine matching seg
-  nexus_segs=[sm.segments[nexus_seg_index]]
+    axon_seg_index=seg_indexes["axon"]
+#    tuft_seg_index=seg_indexes["tuft"]
+#    logger.log(f"NEXUS SEG: {sm.segments[nexus_seg_index].seg}") # to determine matching seg
+#  nexus_segs=[sm.segments[nexus_seg_index]]
   basal_segs=[sm.segments[basal_seg_index]]
-  tuft_segs=[sm.segments[tuft_seg_index]]
-  plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=save_path)
+  axon_segs=[sm.segments[axon_seg_index]]
+#  tuft_segs=[sm.segments[tuft_seg_index]]
+#  plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=save_path)
   plot_adjacent_segments(segs=basal_segs, sm=sm, title_prefix="Basal_", save_to=save_path)
-  plot_adjacent_segments(segs=tuft_segs, sm=sm, title_prefix="Tuft_", save_to=save_path)
+#  plot_adjacent_segments(segs=tuft_segs, sm=sm, title_prefix="Tuft_", save_to=save_path)
        
   
 #  #Plot Axial Currents
-#  for seg in soma_segs:
-#      plot_all(seg, t, save_to=save_path, title_prefix ='Soma_')
+  for seg in soma_segs:
+      plot_all(seg, t, save_to=save_path, title_prefix ='Soma_')
+  for seg in axon_segs:
+      plot_all(seg, t, save_to=save_path, title_prefix = 'Axon_')
 #  for seg in nexus_segs:
 #      plot_all(seg, t, save_to=save_path, title_prefix = 'Nexus_')
 #  for seg in basal_segs:
@@ -124,9 +128,9 @@ def main():
       
   segments_to_plot = {
       "Soma_": soma_segs,
-      "Nexus_": nexus_segs,
+      #"Nexus_": nexus_segs,
       "Basal_": basal_segs,
-      "Tuft_": tuft_segs
+      #"Tuft_": tuft_segs
   }
 
   plot_whole_data_length=False
@@ -139,19 +143,19 @@ def main():
   def subset_data(t, xlim):
       indices = np.where((t >= xlim[0]) & (t <= xlim[1]))
       return indices[0]
-      
+  print('number of spikes:',len(sm.soma_spiketimes))
   # Plot around APs
-  for i, AP_time in enumerate(np.array(sm.soma_spiketimes)):  # spike time (ms) 
-      before_AP = AP_time - 100  # ms
-      after_AP = AP_time + 100  # ms
-      xlim = [before_AP, after_AP]  # time range
-    
-      # Subset the data for the time range
-      indices = subset_data(t, xlim)
-
-      for prefix, segments in segments_to_plot.items():
-          for seg in segments:
-              plot_all(segment=seg, t=t, indices=indices, index=i+1, save_to=save_path, title_prefix=prefix, ylim=[-1, 1] if prefix == "Nexus_" else None, vlines=np.array(sm.soma_spiketimes))
+#  for i, AP_time in enumerate(np.array(sm.soma_spiketimes)):  # spike time (ms) 
+#      before_AP = AP_time - 100  # ms
+#      after_AP = AP_time + 100  # ms
+#      xlim = [before_AP, after_AP]  # time range
+#    
+#      # Subset the data for the time range
+#      indices = subset_data(t, xlim)
+#
+#      for prefix, segments in segments_to_plot.items():
+#          for seg in segments:
+#              plot_all(segment=seg, t=t, indices=indices, index=i+1, save_to=save_path, title_prefix=prefix, ylim=[-1, 1] if prefix == "Nexus_" else None, vlines=np.array(sm.soma_spiketimes))
               
 def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to=None, title_prefix=None, vlines=None):
     '''
@@ -183,7 +187,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
             titles[i] = 'Spike ' + str(int(index)) + ' ' + title
             
     ylabels = ['nA', 'mV', 'nA']
-    data_types = ['axial_currents', 'v', ['iampa+inmda', 'iampa+inmda+igaba','inmda', 'iampa','igaba', "imembrane"]]
+    data_types = ['axial_currents', 'v', ['ik_kdr','ik_kap','ik_kdmc','ina_nax','i_pas']]#['iampa+inmda', 'iampa+inmda+igaba','inmda', 'iampa','igaba', "imembrane"]]
 
     fig, axs = plt.subplots(len(titles), figsize=(12.8, 4.8 * len(titles)))
     

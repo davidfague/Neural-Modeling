@@ -1,3 +1,4 @@
+# needs an update to plot axon voltage based on constants.seg_to_record
 import sys
 sys.path.append("../")
 
@@ -9,7 +10,7 @@ import importlib
 
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-09-12_17-59-11"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-09-20_16-00-54"
 
 import importlib
 def load_constants_from_folder(output_folder):

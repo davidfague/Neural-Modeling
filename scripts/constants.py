@@ -25,7 +25,7 @@ segs_per_lambda = 10 # Desired number of segs per length constant
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 2000 #55#2500#20400 # Sim runtime (ms)
+h_tstop = 8000 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
@@ -125,10 +125,18 @@ soma_number_of_groups = 1
 soma_functional_group_span = 100
 
 # Cell model
+seg_to_record = 'axon'
 spike_threshold = 10
-channel_names = ['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et2',
-                 'ik_K_Pst', 'ik_K_Tst', 'ik_SK_E2', 'ik_SKv3_1', 'ica_Ca_HVA', 
-                 'ica_Ca_LVAst', 'ihcn_Ih', 'i_pas']
+channel_names = ['ik_kdr','ik_kap','ik_kdmc','ina_nax', 'i_pas','ihcn_Ih']#['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et2',
+                 #'ik_K_Pst', 'ik_K_Tst', 'ik_SK_E2', 'ik_SKv3_1', 'ica_Ca_HVA', 
+                 #'ica_Ca_LVAst', 'ihcn_Ih', 'i_pas']
+                 
+# morphology
+SomaL = 28.896601873591436
+SomaDiam = 14.187950175330796
+AxonL = 549.528226526987
+AxonDiam = 1.0198477329563544
+Axon_L_scale = 1 # used to adjust axon length while maintaing surface area
 
 # Tiesinga
 ties_a_iv = 10

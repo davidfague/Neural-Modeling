@@ -114,10 +114,14 @@ class SegmentManager:
           filenames = ["Vm_report", "spikes_report"]
           current_names = ["v"]
         else:
-          filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
-                       "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
-                       "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "i_membrane_report","spikes_report"]
-          current_names = ["v", "gNaTa", "iampa", "inmda", "igaba","icah", "ical", "ih", "ina", "imembrane"]
+          #filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
+          #             "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
+          #             "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "i_membrane_report","spikes_report"]
+          #current_names = ["v", "gNaTa", "iampa", "inmda", "igaba","icah", "ical", "ih", "ina", "imembrane"]
+          filenames = ["Vm_report", "ina_nax_data_report", "i_AMPA_report",
+                       "i_NMDA_report", "i_GABA_report", "ik_kap_data_report", "ik_kdmc_data_report", "ik_kdr_data_report",
+                       "ihcn_Ih_data_report", "i_pas_data_report","spikes_report"]
+          current_names = ["v", "ina_nax", "iampa", "inmda", "igaba", "ik_kap","ik_kdmc","ik_kdr", "ih", "i_pas"]
           
         self.segments = []
         self.dt = dt

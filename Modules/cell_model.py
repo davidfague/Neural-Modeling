@@ -28,7 +28,7 @@ FREQS = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
 class CellModel:
     def __init__(self, hoc_model: object, random_state: np.random.RandomState, 
                  synapses: list = [], netcons: list = [], spike_trains: list = [], 
-                 spike_threshold: list = None, var_names: list = []):
+                 spike_threshold: list = None, var_names: list = [], seg_to_record: str = 'soma'):
 	
         # Parse the hoc model
         self.all, self.soma, self.apic, self.dend, self.axon = None, None, None, None, None
@@ -72,7 +72,7 @@ class CellModel:
         self.seg_coords = calc_seg_coords(self)
 
         self.init_segments()
-        self.set_spike_recorder()
+        self.set_spike_recorder(seg_to_record)
 
         self.init_segment_info()
         self.recompute_parent_segment_ids()
@@ -181,10 +181,15 @@ class CellModel:
 
     #TODO: CHECK
     #TODO: check if can transfer to the Recorder class
-    def set_spike_recorder(self) -> None:
+    def set_spike_recorder(self, seg_to_record='soma') -> None:
         if self.spike_threshold:
             vec = h.Vector()
-            nc = h.NetCon(self.soma[0](0.5)._ref_v, None, sec = self.soma[0])
+            if seg_to_record == 'soma':
+              nc = h.NetCon(self.soma[0](0.5)._ref_v, None, sec = self.soma[0])
+            elif seg_to_record == 'axon':
+              nc = h.NetCon(self.axon[0](0.5)._ref_v, None, sec = self.axon[0])
+            else:
+              raise(ValueError(f"{seg_to_record} should be 'soma' or 'axon'"))
             nc.threshold = self.spike_threshold
             nc.record(vec)
             self.spikes = vec
@@ -227,13 +232,20 @@ class CellModel:
                     channels_set.add('_'.join(split_name[2:]))
                 elif var_name.startswith('i'):
                     channels_set.add('_'.join(split_name[1:]))
-        
-        self.CHANNELS = [(channel, f'g{channel}_{channel}', f'g{channel}bar') for channel in channels_set]
+        #print('channels_set:',channels_set) #debug
+        #print(dir(self.soma[0](0.5).nax)) #debug
+        special_channels = ['nax', 'kdmc', 'kap', 'kdr', 'ih'] # have different attribute structure as a result of the modfile
+        self.CHANNELS = [
+            (channel, f'{channel}', f'gbar') if channel in special_channels else (channel, f'g{channel}_{channel}', f'g{channel}bar') 
+            for channel in channels_set
+        ]
+        #print('self.CHANNELS') #debud
 
     def insert_unused_channels(self):
         '''
         Method for allowing recording of channels in sections that do not have the current.
         '''
+        #print(dir(self.soma[0](0.5).ih)) #debug
         for channel, attr, conductance in self.CHANNELS:
             # print(channel, attr, conductance)
             for sec in self.all:
