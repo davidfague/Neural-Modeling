@@ -20,7 +20,7 @@ from Modules.logger import Logger
 
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-09-20_16-00-54/2023-09-20_16-06-01_seeds_130_90L5PCtemplate[0]_196nseg_108nbranch_0NCs_0nsyn_1000" #"output/BenModel/"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-09-21_15-31-59/2023-09-21_15-32-50_seeds_130_90L5PCtemplate[0]_196nseg_108nbranch_0NCs_0nsyn_-1000" #"output/BenModel/"
 
 import importlib
 def load_constants_from_folder(output_folder):
@@ -71,7 +71,7 @@ def main():
 #  print(t)
 
   #random_state = np.random.RandomState(random_state)
-  sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt, skip=300, transpose=transpose)
+  sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt, skip=constants.skip, transpose=transpose)
   t=np.arange(0,len(sm.segments[0].v)*dt,dt) # can probably change this to read the recorded t_vec
   
   #Compute axial currents from each segment toward its adjacent segments.
@@ -249,7 +249,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
             if segment.type=='soma': # if we are plotting for soma segment, sum basal axial currents
               basal_axial_current = total_dend_AC[indices] if indices is not None else total_dend_AC
               ax.plot(t, basal_axial_current, label = 'Summed axial currents from basal segments to soma', color = 'red')
-              ax.set_ylim([-2,2])
+              #ax.set_ylim([-2,2])
             else: #if not soma, plot axial currents to segments toward soma vs AC to segments away from soma.
               total_to_soma_AC = total_to_soma_AC[indices] if indices is not None else total_to_soma_AC
               ax.plot(t, total_to_soma_AC, label = 'Summed axial currents to segments toward soma', color = 'blue')

@@ -7,6 +7,7 @@ parallelize = False
 
 # Complex cell
 build_m1 = False # WIP denotes whether or not to instead use https://github.com/ModelDBRepository/195615/tree/master cell
+build_ziao_cell = False
 complex_cell_folder = '../complex_cells/L5PC/'
 complex_cell_biophys_hoc_name = "M1_soma_L5PC_dendrites.hoc"
 
@@ -30,7 +31,7 @@ h_dt = 0.1 # Timestep (ms)
 
 # Current injection
 CI_on = True
-h_i_amplitudes = [-2.0,-1.0,0,0.25,0.5,0.75,1.0,2.0]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,5.0, 10.0] #[None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
+h_i_amplitudes = [-2.0,-1.0,0,0.25,0.5,0.6,0.75,1.0,2.0]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,5.0, 10.0] #[None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
 h_i_duration = 5000 # (ms)
 h_i_delay = 400 # (ms)
 
@@ -148,6 +149,9 @@ ties_pad_aiv = 0
 # Post Synaptic Current analysis
 number_of_presynaptic_cells = 2651# old functional groups was: 6524
 PSC_start = 5
+
+# analyze output
+skip = 300
 
 # Log, plot and save
 save_dir = "output"

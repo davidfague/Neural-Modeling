@@ -9,7 +9,7 @@ proc biophys() {
   forsec $o1.all {
     insert pas
     cm = 0.700445928608//1
-    Ra = 90//114.510490019// update 137.494564931//114.510490019//orig:100
+    Ra = 137.494564931//90//114.510490019// morph.py: 137.494564931//114.510490019//orig:100
     e_pas = -88.5366550238//-90.220509483//orig:-90
     
     //insert k_ion // zc
@@ -20,9 +20,9 @@ proc biophys() {
   forsec $o1.somatic {
       // ZC biophys
       //e_pas = -88.5366550238
-      //Ra = 137.494564931//114.510490019 //Ra all for M1
-      cm = 1.78829677463 // soma Capictance
-      g_pas = (1/38457.4393085)//(1/18501.7540916) // 1 / soma membrane resistance
+      Ra = 114.510490019//100//137.494564931//114.510490019 //Ra all for M1
+      //cm = 1.78829677463 // soma Capictance
+      g_pas = (1/38457.4393085)*0.75//(1/18501.7540916) // 1 / soma membrane resistance
       // Na
       insert na_ion
       ena = 42.0
@@ -87,7 +87,7 @@ proc biophys() {
 
 	forsec $o1.apical {
 		cm = 1.03418636866 //orig:2
-    g_pas = 1/10751.193413 //orig:0.0000589
+    g_pas = 0.0000589//  neymotin:1/10751.193413 //orig:0.0000589
 		insert Ih
   	insert SK_E2 
   	insert Ca_LVAst 
@@ -119,7 +119,7 @@ proc biophys() {
 	
   forsec $o1.basal {
 		cm = 1.89771901209  //orig:2
-    g_pas = 1/13123.00174  //orig:0.0000467
+    g_pas = 0.0000467//neymotin: 1/13123.00174  //orig:0.0000467
     // original
 		insert Ih
 		gIhbar_Ih = 0.0002
@@ -151,8 +151,8 @@ proc biophys() {
 
   forsec $o1.axonal {
     // ZC biophys
-		//Ra = 137.494564931//114.510490019 //Ra all
-    g_pas = 1/38457.4393085//3945.2107187 //1 / axon membrane resistance
+		Ra = 114.510490019//100//137.494564931//114.510490019 //Ra all
+    g_pas = (1/38457.4393085) * 0.75 //3945.2107187 //1 / axon membrane resistance
     cm = 0.700445928608//1.01280903702 // capacitance
 		//e_pas = -90.220509483//-88.5366550238 // passive reversal (mV)
     // Na
