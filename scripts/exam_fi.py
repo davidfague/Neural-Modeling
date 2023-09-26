@@ -10,7 +10,7 @@ import importlib
 
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-09-21_15-31-59"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-09-26_15-44-56"
 
 import importlib
 def load_constants_from_folder(output_folder):
@@ -87,7 +87,7 @@ def main():
           plt.scatter(spike, 30, color = 'black', marker='*')
         plt.xlabel("Time (ms)")
         plt.ylabel("Vm (mV)")
-        plt.title(str(ampl))
+        plt.title(f"Soma Vm at {ampl}")
         plt.savefig(os.path.join(output_folder, f"{str(ampl)}.png"))
         plt.close()   
         firing_rate = len(spikes[spikes > skip]) / (constants.h_tstop / 1000)
@@ -99,7 +99,8 @@ def main():
     plt.scatter(constants.h_i_amplitudes, firing_rates, color='r', marker='*')
     plt.xlabel("Amplitude (nA)")
     plt.ylabel("Hz")
-    plt.savefig(os.path.join(output_folder, f"FI.png"))
+    plt.title(f"{constants.seg_to_record} FI curve")
+    plt.savefig(os.path.join(output_folder, f"FI_{constants.seg_to_record}.png"))
 
     # Save firing rates
     with open(os.path.join(output_folder, "firing_rates.csv"), "a") as file:

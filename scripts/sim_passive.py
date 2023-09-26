@@ -194,8 +194,8 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     time_step = 0 # In time stamps, i.e., ms / dt
     time_steps_saved_at = [0]
 
-    # Create a folder to save to
-    random_seed_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_seeds_" +\
+    # Create a folder to save to#datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_seeds_" +\
+    random_seed_name = "_seeds_" + \
                        str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
     if i_amplitude is not None:
         random_seed_name += f"_{int(i_amplitude * 1000)}"

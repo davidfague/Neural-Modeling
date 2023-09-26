@@ -3,7 +3,7 @@ numpy_random_states = [130]
 neuron_random_states = [90] # Number of calls to MCellRan4()
 
 # Runtime
-parallelize = False
+parallelize = True
 
 # Complex cell
 build_m1 = False # WIP denotes whether or not to instead use https://github.com/ModelDBRepository/195615/tree/master cell
@@ -31,7 +31,7 @@ h_dt = 0.1 # Timestep (ms)
 
 # Current injection
 CI_on = True
-h_i_amplitudes = [-2.0,-1.0,0,0.25,0.5,0.6,0.75,1.0,2.0]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,5.0, 10.0] #[None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
+h_i_amplitudes = [-2.0,-1.0,0,0.25,0.3,0.5,0.6,0.75,1.0]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,5.0, 10.0] #[None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
 h_i_duration = 5000 # (ms)
 h_i_delay = 400 # (ms)
 
@@ -126,17 +126,23 @@ soma_number_of_groups = 1
 soma_functional_group_span = 100
 
 # Cell model
-seg_to_record = 'axon'
+seg_to_record = 'soma'
 spike_threshold = 10
 channel_names = ['ik_kdr','ik_kap','ik_kdmc','ina_nax', 'i_pas','ihcn_Ih']#['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et2',
                  #'ik_K_Pst', 'ik_K_Tst', 'ik_SK_E2', 'ik_SKv3_1', 'ica_Ca_HVA', 
                  #'ica_Ca_LVAst', 'ihcn_Ih', 'i_pas']
                  
 # morphology
-SomaL = 28.896601873591436
-SomaDiam = 14.187950175330796
-AxonL = 549.528226526987
-AxonDiam = 1.0198477329563544
+# morph.py
+#SomaL = 28.896601873591436
+#SomaDiam = 14.187950175330796
+#AxonL = 549.528226526987
+#AxonDiam = 1.0198477329563544
+# ziao reduced
+SomaL = 48.4123467666
+SomaDiam = 28.2149102762
+AxonL = 594.292937602
+AxonDiam =  1.40966286462
 Axon_L_scale = 1 # used to adjust axon length while maintaing surface area
 
 # Tiesinga

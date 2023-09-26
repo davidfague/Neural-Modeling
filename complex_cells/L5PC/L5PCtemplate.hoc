@@ -79,25 +79,25 @@ proc biophys() {localobj bp
 // deleting axon, keeping only first 60 micrometers
 proc delete_axon(){
     forsec axonal{delete_section()}
-    create axon[2]
+    create axon[1]
     access axon[0]{
-      L= 30
+      L= 60
       diam = 1
       nseg = 1+2*int(L/40)
       all.append()
       axonal.append()
     }
-    access axon[1]{
-      L= 30
-      diam = 1
-      nseg = 1+2*int(L/40)
-      all.append()
-      axonal.append()
-    }
+//    access axon[1]{
+//      L= 30
+//      diam = 1
+//      nseg = 1+2*int(L/40)
+//      all.append()
+//      axonal.append()
+//    }
 
-  nSecAxonal = 2
+  nSecAxonal = 1
   connect axon(0), soma(0.5)
-  connect axon[1](0), axon[0](1) 
+  //connect axon[1](0), axon[0](1) 
   access soma
 }
 
