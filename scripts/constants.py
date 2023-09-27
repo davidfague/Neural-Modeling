@@ -141,7 +141,7 @@ channel_names = ['ik_kdr','ik_kap','ik_kdmc','ina_nax', 'i_pas','ihcn_Ih']#['gNa
 # ziao reduced
 SomaL = 48.4123467666
 SomaDiam = 28.2149102762
-AxonL = 594.292937602
+AxonL = 594.292937602 #549.528226526987
 AxonDiam =  1.40966286462
 Axon_L_scale = 1 # used to adjust axon length while maintaing surface area
 
