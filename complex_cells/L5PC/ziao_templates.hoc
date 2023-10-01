@@ -112,7 +112,7 @@ begintemplate CP_Cell
 
 		/////// geometry ///////
 		// dendrites along z axis
-		axon_L_scale = 0.1 // shorten axon to not infuence LFP much while keeping the same membrane area
+		axon_L_scale = 1 //0.1 // shorten axon to not infuence LFP much while keeping the same membrane area
 		soma[0] {
 			nseg = 1
 			diam = somaDiam
