@@ -93,8 +93,9 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     elif constants.build_ziao_cell:
         complex_cell = build_L5_cell_ziao(constants.complex_cell_folder) # build ziao simple cell
     elif constants.build_cell_reports_cell:
-        #params = unpickle_params() # can change file in complex_cell.py
-        #inspect_pickle() # can change file in complex_cell.py
+        params = unpickle_params() # can change file in complex_cell.py
+        print(params)
+        inspect_pickle() # can change file in complex_cell.py
         complex_cell = build_cell_reports_cell(1.0) # can change file in complex_cell.py
         # May need to update to use the unpickled params
     else:

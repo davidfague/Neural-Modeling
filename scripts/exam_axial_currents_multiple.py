@@ -22,7 +22,7 @@ from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
 #list_of_output_folders = [sys.argv[i] for i in range(1, len(sys.argv))] if len(sys.argv) > 1 else [["output/FI_in_vitro_ziao_axon/_seeds_130_90CP_Cell[0]_12nseg_0nbranch_0NCs_0nsyn_-1000", "output/FI_in_vitro2023-10-03_15-21-18/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_-1000"],["output/FI_in_vitro_ziao_axon/_seeds_130_90CP_Cell[0]_12nseg_0nbranch_0NCs_0nsyn_1000", "output/FI_in_vitro2023-10-03_15-21-18/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_1000"]]
 
-list_of_output_folders = [sys.argv[i] for i in range(1, len(sys.argv))] if len(sys.argv) > 1 else [["output/FI_in_vitro2023-10-03_15-55-43/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_-1000", "output/FI_in_vitro2023-10-03_15-55-43/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_0"],["output/FI_in_vitro2023-10-03_15-55-43/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_1000", "output/FI_in_vitro2023-10-03_15-55-43/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_600"]]
+list_of_output_folders = [sys.argv[i] for i in range(1, len(sys.argv))] if len(sys.argv) > 1 else [["output/FI_in_vitro2023-10-03_16-08-06/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_-1000", "output/FI_in_vitro2023-10-03_16-08-06/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_0"],["output/FI_in_vitro2023-10-03_16-08-06/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_1000", "output/FI_in_vitro2023-10-03_16-08-06/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_600"]]
 
 import importlib
 def load_constants_from_folder(output_folder):

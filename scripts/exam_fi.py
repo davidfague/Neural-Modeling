@@ -10,7 +10,7 @@ import importlib
 
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-10-03_15-55-43"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-10-03_16-08-06"
 
 import importlib
 def load_constants_from_folder(output_folder):
@@ -83,12 +83,17 @@ def main():
         #print("spikes:", spikes)
         plt.figure(figsize = (7,8))
         if constants.seg_to_record == 'axon':
-          seg_index = 194
-          title_prefix= "Axon"
+          if constants.build_ziao_model:
+            seg_index = 194
+          elif constants.build_cell_reports_cell:
+            seg_index = 1#194
+          else:
+            raise('find axon seg index (can be done using exam_axial_currents)')
+          title_prefix = "Axon"
         else:
           seg_index=0
-          title_prefix= "Soma"
-        seg_index=0
+          title_prefix = "Soma"
+        #seg_index=0
         plt.plot(t, Vm[seg_index])
         for spike in spikes:
           plt.scatter(spike, 30, color = 'black', marker='*')
