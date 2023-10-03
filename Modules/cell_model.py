@@ -81,7 +81,7 @@ class CellModel:
         self.compute_adjacent_segments()
 
         self.get_channels_from_var_names() # get channel and attribute names from recorded channel name
-        self.insert_unused_channels()
+        #self.insert_unused_channels()
 
         # PRAGMA MARK: Section Generation
 
@@ -515,6 +515,14 @@ class CellModel:
             file.create_dataset("report/biophysical/data", data = data)
 
     def generate_seg_info(self, seg, sec, sec_type, seg_index_global, bmtk_index, seg_id_in_sec) -> dict:
+           # Extract section index from section name
+        sec_name_parts = sec.name().split('.')
+        last_part = sec_name_parts[-1]
+    
+        if '[' in last_part:
+            sec_index = int(last_part.split('[')[1].split(']')[0])
+        else:
+            sec_index = 0  # or any other default value or handling you prefer
         info = {
             'seg': seg,
             'seg_index_global': seg_index_global,
@@ -532,7 +540,7 @@ class CellModel:
             'x': seg.x,
             'sec': seg.sec,
             'type': sec_type,
-            'sec_index': int(sec.name().split('[')[2].split(']')[0]),
+            'sec_index': sec_index,
             'sec_diam': sec.diam,
             'sec_nseg': seg.sec.nseg,
             'sec_Ra': seg.sec.Ra,

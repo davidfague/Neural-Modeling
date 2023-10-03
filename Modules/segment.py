@@ -111,48 +111,80 @@ class SegmentManager:
         build_detailed_seg_info: Whether or not to try to read detailed_seg_info.csv, a csv containing much more segmentation
         '''
         if no_data:
-          filenames = ["Vm_report", "spikes_report"]
-          current_names = ["v"]
+          self.filenames = ["Vm_report", "spikes_report"]
+          self.current_names = ["v"]
         else:
           #filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
           #             "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
           #             "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "i_membrane_report","spikes_report"]
           #current_names = ["v", "gNaTa", "iampa", "inmda", "igaba","icah", "ical", "ih", "ina", "imembrane"]
-          filenames = ["Vm_report", "ina_nax_data_report", "i_AMPA_report",
+          self.filenames = ["Vm_report", "ina_nax_data_report", "i_AMPA_report",
                        "i_NMDA_report", "i_GABA_report", "ik_kap_data_report", "ik_kdmc_data_report", "ik_kdr_data_report",
                        "ihcn_Ih_data_report", "i_pas_data_report","spikes_report"]
-          current_names = ["v", "ina_nax", "iampa", "inmda", "igaba", "ik_kap","ik_kdmc","ik_kdr", "ih", "i_pas"]
+          self.current_names = ["v", "ina_nax", "iampa", "inmda", "igaba", "ik_kap","ik_kdmc","ik_kdr", "ih", "i_pas"]
           
         self.segments = []
         self.dt = dt
+        self.skip = skip
+        self.transpose = transpose
+
 
         # Read datafiles
-        data = self.read_data(filenames, output_folder, steps)
+        self.data = self.read_data(output_folder, steps)
 #        if build_detailed_seg_info: # not yet implemented
 #          build_detailed_segments(output_folder, steps)
         #print(data["Vm_report"].shape)
-
-        self.num_segments = len(data["seg_info"])
+                
+        self.num_segments = len(self.data["seg_info"])
         print("NUM seg", self.num_segments)
-
-        for i in range(self.num_segments):
-            # Build seg_data
-            seg_data = {}
-            for filename, current_name in zip(filenames[:-1], current_names):
-                if transpose:
-                    seg_data[current_name] = data[filename].T[i, int(skip / dt):]
-                else:
-                    seg_data[current_name] = data[filename][i, int(skip / dt):]
-
-            seg = Segment(seg_info = data["seg_info"].iloc[i], seg_data = seg_data)
-            self.segments.append(seg)
+        self.build_segments()
+        # build_segments replaces below
+#        for i in range(self.num_segments):
+#            # Build seg_data
+#            seg_data = {}
+#            for filename, current_name in zip(filenames[:-1], current_names):
+#                if transpose:
+#                    if len(data[filename].shape) == 1:
+#                        seg_data[current_name] = data[filename][int(skip / dt):]  # If 1D
+#                    else:
+#                        seg_data[current_name] = data[filename][i, int(skip / dt):]  # If 2D
+#                else:
+#                    seg_data[current_name] = data[filename][i, int(skip / dt):]
+#
+#            seg = Segment(seg_info = data["seg_info"].iloc[i], seg_data = seg_data)
+#            self.segments.append(seg)
             
         self.compute_adj_segs_from_pseg_indices()
         
         # Soma spikes (ms)
-        self.soma_spiketimes = np.array([(i-skip) for i in data[filenames[-1]][:] if i >= skip])
+        self.soma_spiketimes = np.array([(i-self.skip) for i in self.data[self.filenames[-1]][:] if i >= self.skip])
         # Soma spikes (inds)
-        self.soma_spiketimestamps = np.sort((self.soma_spiketimes / dt).astype(int))
+        self.soma_spiketimestamps = np.sort((self.soma_spiketimes / self.dt).astype(int))
+        
+    def _extract_data(self, data, filename, i, skip, dt, transpose):
+        # Default indexing
+        indices = (i, slice(int(skip / dt), None))
+    
+        # Check for 1D and if transpose flag is active
+        print(filename, type(filename))
+        if data[filename].ndim == 1 or not transpose:
+            indices = (slice(int(skip / dt), None), )
+        
+        return data[filename][indices]
+    
+    def build_segments(self):
+        for i in range(self.num_segments):
+            seg_data = {}
+            for filename, current_name in zip(self.filenames[:-1], self.current_names):
+            
+                try:
+                  extracted_data = self._extract_data(self.data, self.filenames, i, self.skip, self.dt, self.transpose)
+                  seg_data[current_name] = extracted_data
+                except:
+                  continue
+    
+            seg = Segment(seg_info=self.data["seg_info"].iloc[i], seg_data=seg_data)
+            self.segments.append(seg)
 
     def compute_adj_segs_from_pseg_indices(self):
       '''
@@ -167,13 +199,13 @@ class SegmentManager:
             seg.parent_segs.append(self.segments[psegid])
             seg.adj_segs.append(self.segments[psegid])
 
-    def read_data(self, filenames: list, output_folder: str, steps: list) -> list:
+    def read_data(self, output_folder: str, steps: list) -> list:
 
-        data = {name : [] for name in filenames}
+        data = {name : [] for name in self.filenames}
         
         for step in steps:
             dirname = os.path.join(output_folder, f"saved_at_step_{step}")
-            for name in filenames:
+            for name in self.filenames:
               with h5py.File(os.path.join(dirname, name + ".h5"), 'r') as file:
                 if name == 'spikes_report':
                     if "spikes" in file and "biophysical" in file["spikes"]:

@@ -10,7 +10,7 @@ import importlib
 
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-09-26_23-40-06"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-10-02_21-16-45"
 
 import importlib
 def load_constants_from_folder(output_folder):
@@ -82,15 +82,24 @@ def main():
         spikes = np.hstack(spikes)
         #print("spikes:", spikes)
         plt.figure(figsize = (7,8))
-        plt.plot(t, Vm[0])
+        if constants.seg_to_record == 'axon':
+          seg_index = 194
+          title_prefix= "Axon"
+        else:
+          seg_index=0
+          title_prefix= "Soma"
+        seg_index=0
+        plt.plot(t, Vm[seg_index])
         for spike in spikes:
           plt.scatter(spike, 30, color = 'black', marker='*')
         plt.xlabel("Time (ms)")
         plt.ylabel("Vm (mV)")
-        plt.title(f"Soma Vm at {ampl}")
-        plt.savefig(os.path.join(output_folder, f"{str(ampl)}.png"))
+        plt.title(f"{title_prefix} Vm at {ampl}")
+        plt.savefig(os.path.join(output_folder, f"{title_prefix}_{str(ampl)}.png"))
         plt.close()   
-        firing_rate = len(spikes[spikes > skip]) / (constants.h_tstop / 1000)
+        print(len(spikes))
+        print(len(spikes[(spikes > skip) & (spikes < (skip + constants.h_i_duration))]))
+        firing_rate = len(spikes[(spikes > skip) & (spikes < (skip + constants.h_i_duration))]) / (constants.h_i_duration / 1000)
         firing_rates.append(firing_rate)
 
     # Save FI curve

@@ -20,7 +20,7 @@ from Modules.logger import Logger
 
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
-list_of_output_folders = [sys.argv[i] for i in range(1, len(sys.argv))] if len(sys.argv) > 1 else [["output/FI_in_vitro_ziao_axon/_seeds_130_90CP_Cell[0]_12nseg_0nbranch_0NCs_0nsyn_-1000", "output/FI_in_vitro2023-09-26_23-16-52/_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_-1000"],["output/FI_in_vitro_ziao_axon/_seeds_130_90CP_Cell[0]_12nseg_0nbranch_0NCs_0nsyn_1000", "output/FI_in_vitro2023-09-26_23-16-52/_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_1000"]]
+list_of_output_folders = [sys.argv[i] for i in range(1, len(sys.argv))] if len(sys.argv) > 1 else [["output/FI_in_vitro_ziao_axon/_seeds_130_90CP_Cell[0]_12nseg_0nbranch_0NCs_0nsyn_-1000", "output/FI_in_vitro2023-10-02_21-16-45/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_-1000"],["output/FI_in_vitro_ziao_axon/_seeds_130_90CP_Cell[0]_12nseg_0nbranch_0NCs_0nsyn_1000", "output/FI_in_vitro2023-10-02_21-16-45/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_1000"]]
 
 import importlib
 def load_constants_from_folder(output_folder):
@@ -125,6 +125,8 @@ def plot_for_folder(output_folder, axs, prefix):
     if 'axon' in seg.seg:
       if '[0](0.5)' in seg.seg:
         axon_seg = seg
+        
+  print(f"axon seg index: {sm.segments.index(axon_seg)}")
 #  tuft_segs=[sm.segments[tuft_seg_index]]
 #  plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=save_path)
   #plot_adjacent_segments(segs=basal_segs, sm=sm, title_prefix="Basal_", save_to=save_path)

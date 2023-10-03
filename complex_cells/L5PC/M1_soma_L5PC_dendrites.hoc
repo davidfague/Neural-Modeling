@@ -11,6 +11,7 @@ proc biophys() {
     cm = 0.700445928608//1
     Ra = 114.51049//137.494564931//90//114.510490019// morph.py: 137.494564931//114.510490019//orig:100
     e_pas = -88.5366550238//-90.220509483//orig:-90
+    g_pas = (1/38457.4393085)
     
     //insert k_ion // zc
     //insert na_ion // zc
@@ -22,7 +23,7 @@ proc biophys() {
       //e_pas = -88.5366550238
       //Ra = 100//137.494564931//114.510490019 //Ra all for M1
       //cm = 1.78829677463 // soma Capictance
-      g_pas = (1/38457.4393085)//*0.01//(1/38457.4393085)//(1/18501.7540916) // 1 / soma membrane resistance
+      //g_pas = (1/38457.4393085)//*0.01//(1/38457.4393085)//(1/18501.7540916) // 1 / soma membrane resistance
       // Na
       insert na_ion
       ena = 42.0
@@ -32,10 +33,10 @@ proc biophys() {
       insert k_ion
       ek = -104.0
       insert kdr // K delayed rectifier current
-      gbar_kdr = 0.0084715576279 //* 5.0//* 7.5//0.0131103978049
+      gbar_kdr = 0.0084715576279 * (5 * 1.5)//* 5.0//* 7.5//0.0131103978049
       vhalfn_kdr = 13//11.6427471384// KDR kinetics
       insert kdmc //zc K-D current in soma & axon only
-      gbar_kdmc = 0.000404311891107 //* 20 //0.00110907315064 * 30//0.000404311891107
+      gbar_kdmc = 0.000404311891107 * 5//* 20 //0.00110907315064 * 30//0.000404311891107
       insert kap // zc K-A current
       gbar_kap = 0.089860024639 * (5 * 1.05) //0.0614003391814 * 7.5//0.0898600246397
       vhalfn_kap = 35//32.7885075379// K-A kinetics
@@ -154,27 +155,27 @@ proc biophys() {
   forsec $o1.axonal {
     // ZC biophys
 		//Ra = 100//114.510490019//50//137.494564931//114.510490019 //Ra all
-    g_pas = (1/38457.4393085) //* 0.01//0.75 //3945.2107187 //1 / axon membrane resistance
-    cm = 0.700445928608//1.01280903702 // capacitance
+    //g_pas = (1/38457.4393085) //* 0.01//0.75 //3945.2107187 //1 / axon membrane resistance
+    //cm = 0.700445928608//1.01280903702 // capacitance
 		//e_pas = -90.220509483//-88.5366550238 // passive reversal (mV)
     // Na
     insert na_ion
 		ena = 42.0 // Na+ current reversal potential (mV)
     insert nax
-    gbar_nax = 0.0345117294903 * 5.0//0.0153130368342 * 7.5 //0.0345117294903 * 5.0//nax_gbar_axonm
+    gbar_nax = 0.0345117294903 (5.0 * 4)//0.0153130368342 * 7.5 //0.0345117294903 * 5.0//nax_gbar_axonm
     // K
     insert k_ion
     ek = -104.0  // K+ current reversal potential (mV)
     insert kdmc
-    gbar_kdmc = 0.000404311891107 * (20 *0.75) //0.00110907315064 * 0.75//0.000404311891107 * 20//kdmc_gbar_axonm
+    gbar_kdmc = 0.000404311891107 * 0.9//(20 *0.15) //0.00110907315064 * 0.75//0.000404311891107 * 20//kdmc_gbar_axonm
     insert kdr
-    gbar_kdr = 0.0084715576279 * (5.0 * 0.75) //* 0.25 //0.0131103978049 * 5.0//kdr_gbar * kdr_gbar_axonm
+    gbar_kdr = 0.0084715576279 * (5 * 0.05) //* 0.25 //0.0131103978049 * 5.0//kdr_gbar * kdr_gbar_axonm
     vhalfn_kdr = 13//11.6427471384 // KDR kinetics
     insert kap
-    gbar_kap = 0.0898600246397 * 5.0//0.0614003391814 * 7.5 //0.0898600246397 * 5.0//kap_gbar * kap_gbar_axonm
+    gbar_kap = 0.0898600246397 * (5/5)//0.0614003391814 * 7.5 //0.0898600246397 * 5.0//kap_gbar * kap_gbar_axonm
 		vhalfn_kap = 35//32.7885075379 // K-A kinetics
-		vhalfl_kap = -56//-59.7867409796
-		tq_kap = -45//-52.0967985869
+		vhalfl_kap = -56//-59.7867409796//-56//-59.7867409796
+		tq_kap = -45//-52.0967985869//-45//-52.0967985869
    
     // L5PC original biophys
     // g_pas = 0.0000325

@@ -2,14 +2,14 @@ import sys
 sys.path.append("../")
 
 
-from Modules.complex_cell import build_L5_cell, build_L5_cell_ziao
+from Modules.complex_cell import build_L5_cell, build_L5_cell_ziao, build_cell_reports_cell, unpickle_params, inspect_pickle
 from Modules.cell_utils import get_segments_and_len_per_segment
 from Modules.logger import Logger
 from Modules.recorder import Recorder
 from Modules.reduction import Reductor
 from Modules.cell_model import CellModel
 
-from cell_inference.config import params
+from cell_inference.config import params as ecp_params
 from cell_inference.utils.currents.ecp import EcpMod
 
 import numpy as np
@@ -91,6 +91,11 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
         complex_cell = build_m1_cell()
     elif constants.build_ziao_cell:
         complex_cell = build_L5_cell_ziao(constants.complex_cell_folder) # build ziao simple cell
+    elif constants.build_cell_reports_cell:
+        #params = unpickle_params() # can change file in complex_cell.py
+        #inspect_pickle() # can change file in complex_cell.py
+        complex_cell = build_cell_reports_cell(1.0) # can change file in complex_cell.py
+        # May need to update to use the unpickled params
     else:
         complex_cell = build_L5_cell(constants.complex_cell_folder, constants.complex_cell_biophys_hoc_name)
         adjust_soma_and_axon_geometry(complex_cell, somaL = constants.SomaL, somaDiam = constants.SomaDiam, axonDiam = constants.AxonDiam, axonL = constants.AxonL, axon_L_scale = constants.Axon_L_scale)
@@ -99,7 +104,11 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     logger.log_section_end("Building complex cell")
 
     h.celsius = constants.h_celcius
-    h.v_init = complex_cell.soma[0].e_pas
+    
+    try:h.v_init = complex_cell.soma[0].e_pas
+    except:
+      h.v_init = complex_cell.soma.e_pas
+      print(f"warning soma is h.Section {complex_cell.soma} and not list")
 
     # Sim runtime
     h.tstop = constants.h_tstop
@@ -115,6 +124,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     logger.log_section_start("Initializing Reductor and cell model for simulation |NR:"+str(constants.reduce_cell)+"|optimize nseg:"+str(constants.optimize_nseg_by_lambda)+"|Expand Cable:"+str(constants.expand_cable))
     logger.log_memory()
     reductor = Reductor()
+    
     cell = reductor.reduce_cell(complex_cell = complex_cell, reduce_cell = constants.reduce_cell, 
                                 optimize_nseg = constants.optimize_nseg_by_lambda, synapses_list = [],
                                 netcons_list = [], spike_trains = [],
@@ -178,8 +188,8 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
     logger.log_section_start("Creating ecp object")
 
-    elec_pos = params.ELECTRODE_POSITION
-    ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)  # create an ECP object for extracellular potential
+    elec_pos = ecp_params.ELECTRODE_POSITION
+    ecp = EcpMod(cell, elec_pos, min_distance = ecp_params.MIN_DISTANCE)  # create an ECP object for extracellular potential
 
     logger.log_section_end("Creating ecp object")
 

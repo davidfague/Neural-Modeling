@@ -20,7 +20,7 @@ from Modules.logger import Logger
 
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-09-22_18-22-59/2023-09-22_18-35-24_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_1000" #"output/BenModel/"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-09-29_18-35-47/_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_600" #"output/BenModel/"
 
 import importlib
 def load_constants_from_folder(output_folder):
