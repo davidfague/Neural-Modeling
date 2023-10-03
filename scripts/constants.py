@@ -131,8 +131,8 @@ soma_functional_group_span = 100
 
 # Cell model
 seg_to_record = 'axon' # used to set spike recorder
-spike_threshold = 0 # used to be 10
-channel_names = ['ik_kdr','ik_kap','ik_kdmc','ina_nax', 'i_pas','ihcn_Ih']#['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et2',
+spike_threshold = 1.0 # mV # used to be 10
+channel_names = ['ik_kdr','ik_kap','ik_kdmc','ina_nax', 'i_pas','i_hd']#'ihcn_Ih']#['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et2',
                  #'ik_K_Pst', 'ik_K_Tst', 'ik_SK_E2', 'ik_SKv3_1', 'ica_Ca_HVA', 
                  #'ica_Ca_LVAst', 'ihcn_Ih', 'i_pas']
                  

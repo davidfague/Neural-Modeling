@@ -66,7 +66,7 @@ def adjust_soma_and_axon_geometry(cell, axonDiam=1.0198477329563544, axonL=549.5
 
 def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
-    print(f"Running for seeds ({np_state}, {neuron_state}); CI = {i_amplitude}...")
+    print(f"Running for seeds ({numpy_random_state}, {neuron_random_state}); CI = {i_amplitude}...")
 
     # Random seed
     logger.log_section_start(f"Setting random states ({numpy_random_state}, {neuron_random_state})")

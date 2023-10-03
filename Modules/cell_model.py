@@ -81,7 +81,7 @@ class CellModel:
         self.compute_adjacent_segments()
 
         self.get_channels_from_var_names() # get channel and attribute names from recorded channel name
-        #self.insert_unused_channels()
+        self.insert_unused_channels()
 
         # PRAGMA MARK: Section Generation
 
@@ -234,7 +234,7 @@ class CellModel:
                     channels_set.add('_'.join(split_name[1:]))
         #print('channels_set:',channels_set) #debug
         #print(dir(self.soma[0](0.5).nax)) #debug
-        special_channels = ['nax', 'kdmc', 'kap', 'kdr', 'ih'] # have different attribute structure as a result of the modfile
+        special_channels = ['nax', 'kdmc', 'kap', 'kdr', 'hd'] # have different attribute structure as a result of the modfile
         self.CHANNELS = [
             (channel, f'{channel}', f'gbar') if channel in special_channels else (channel, f'g{channel}_{channel}', f'g{channel}bar') 
             for channel in channels_set
@@ -251,6 +251,8 @@ class CellModel:
             for sec in self.all:
                 if not hasattr(sec(0.5), attr):
                     sec.insert(channel) # insert this channel into
+                    #print(f"dir(sec): {dir(sec)}")
+                    #print(f"dir(sec(0.5)): {dir(sec(0.5))}")
                     for seg in sec:
                         setattr(getattr(seg, channel), conductance, 0) # set the maximum conductance to zero
 
