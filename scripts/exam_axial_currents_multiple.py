@@ -22,7 +22,7 @@ from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
 #list_of_output_folders = [sys.argv[i] for i in range(1, len(sys.argv))] if len(sys.argv) > 1 else [["output/FI_in_vitro_ziao_axon/_seeds_130_90CP_Cell[0]_12nseg_0nbranch_0NCs_0nsyn_-1000", "output/FI_in_vitro2023-10-03_15-21-18/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_-1000"],["output/FI_in_vitro_ziao_axon/_seeds_130_90CP_Cell[0]_12nseg_0nbranch_0NCs_0nsyn_1000", "output/FI_in_vitro2023-10-03_15-21-18/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_1000"]]
 
-list_of_output_folders = [sys.argv[i] for i in range(1, len(sys.argv))] if len(sys.argv) > 1 else [["output/FI_in_vitro2023-10-03_15-36-17/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_-1000", "output/FI_in_vitro2023-10-03_15-36-17/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_0"],["output/FI_in_vitro2023-10-03_15-21-18/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_1000", "output/FI_in_vitro2023-10-03_15-21-18/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_600"]]
+list_of_output_folders = [sys.argv[i] for i in range(1, len(sys.argv))] if len(sys.argv) > 1 else [["output/FI_in_vitro2023-10-03_15-55-43/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_-1000", "output/FI_in_vitro2023-10-03_15-55-43/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_0"],["output/FI_in_vitro2023-10-03_15-55-43/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_1000", "output/FI_in_vitro2023-10-03_15-55-43/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_600"]]
 
 import importlib
 def load_constants_from_folder(output_folder):
@@ -123,11 +123,19 @@ def plot_for_folder(output_folder, axs, prefix):
 #  nexus_segs=[sm.segments[nexus_seg_index]]
   basal_segs=[sm.segments[basal_seg_index]]
   axon_segs=[sm.segments[axon_seg_index]]
+  found = False
   for seg in sm.segments:
     if 'axon' in seg.seg:
-      print(seg.seg)
+      #print(seg.seg)
       if '[0](0.5)' in seg.seg:
         axon_seg = seg
+        found = True
+  if not found:
+    for seg in sm.segments:
+      if 'axon' in seg.seg:
+        #print(seg.seg)
+        if '(0.5)' in seg.seg:
+          axon_seg = seg
         
   print(f"axon seg index: {sm.segments.index(axon_seg)}")
 #  tuft_segs=[sm.segments[tuft_seg_index]]

@@ -1,7 +1,6 @@
 from neuron import h
 import pickle
 import pickletools
-import netpyne
 
 def build_L5_cell(cell_folder, biophys = 'L5PCbiophys3.hoc', morph = 'cell1.asc', template = 'L5PCtemplate.hoc'):
     '''

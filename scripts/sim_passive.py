@@ -3,6 +3,7 @@ sys.path.append("../")
 
 
 from Modules.complex_cell import build_L5_cell, build_L5_cell_ziao, build_cell_reports_cell, unpickle_params, inspect_pickle
+from Modules.complex_cell import build_cell_reports_cell
 from Modules.cell_utils import get_segments_and_len_per_segment
 from Modules.logger import Logger
 from Modules.recorder import Recorder
