@@ -34,7 +34,7 @@ h_tstop = 8000 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
-CI_on = False
+CI_on = True
 h_i_amplitudes = [-2.0,-1.0,0,0.25,0.3,0.5,0.6,0.75,1.0]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,5.0, 10.0] #[None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
 h_i_duration = 5000 # (ms)
 h_i_delay = 400 # (ms)
@@ -130,7 +130,7 @@ soma_number_of_groups = 1
 soma_functional_group_span = 100
 
 # Cell model
-seg_to_record = 'axon' # used to set spike recorder
+seg_to_record = 'soma' # used to set spike recorder
 spike_threshold = -10 # mV # used to be 10
 channel_names = ['ik_kdr','ik_kap','ik_kdmc','ina_nax', 'i_pas','i_hd']#'ihcn_Ih']#['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et2',
                  #'ik_K_Pst', 'ik_K_Tst', 'ik_SK_E2', 'ik_SKv3_1', 'ica_Ca_HVA', 
@@ -164,6 +164,6 @@ PSC_start = 5
 skip = 300
 
 # Log, plot and save
-save_dir = "output"
+save_dir = "output/"
 log_every_ms = 1000
 save_every_ms = 1000
