@@ -22,10 +22,16 @@ class SynapseGenerator:
           if 'AMPA' in syn_mod:
             chosen_params = np.random.choice(syn_params, p=[0.9, 0.1]) # PC2PN and PN2PN
           elif 'GABA' in syn_mod:
-            if h.distance(segment, cell.soma[0](0.5)) > 100: # distal inh
-              chosen_params = syn_params[1]
-            elif h.distance(segment, cell.soma[0](0.5)) < 100: # perisomatic inh
-              chosen_params = syn_params[0]
+            if str(type(cell.soma)) != "<class 'nrn.Section'>":
+              if h.distance(segment, cell.soma[0](0.5)) > 100: # distal inh
+                chosen_params = syn_params[1]
+              elif h.distance(segment, cell.soma[0](0.5)) < 100: # perisomatic inh
+                chosen_params = syn_params[0]
+            else:
+              if h.distance(segment, cell.soma(0.5)) > 100: # distal inh
+                chosen_params = syn_params[1]
+              elif h.distance(segment, cell.soma(0.5)) < 100: # perisomatic inh
+                chosen_params = syn_params[0]
       else:
           chosen_params = syn_params
       new_syn = Synapse(segment, syn_mod=syn_mod, gmax=g, record=record, syn_params=chosen_params, vector_length=vector_length)
@@ -96,7 +102,10 @@ class SynapseGenerator:
             segment = random_state.choice(segments, 1, True, probs / np.sum(probs))[0]
             if P_dist:
                 if isinstance(P_dist, dict):
-                    seg_type = 'soma' if h.distance(segment, cell.soma[0](0.5)) < 100 else segment.sec.name().split('.')[1][:4]
+                    if str(type(cell.soma)) != "<class 'nrn.Section'>":
+                      seg_type = 'soma' if h.distance(segment, cell.soma[0](0.5)) < 100 else segment.sec.name().split('.')[1][:4]
+                    else:
+                      seg_type = 'soma' if h.distance(segment, cell.soma(0.5)) < 100 else segment.sec.name().split('.')[1][:4]
                     P = P_dist[seg_type](size=1)
                 else:
                     P = P_dist(size=1)

@@ -1,6 +1,9 @@
 import sys
 sys.path.append("../")
 
+from Modules.complex_cell import build_L5_cell, build_L5_cell_ziao, build_cell_reports_cell, unpickle_params, inspect_pickle, set_hoc_params, adjust_soma_and_axon_geometry
+from Modules.complex_cell import build_cell_reports_cell, assign_parameters_to_section, create_cell_from_template_and_pickle
+
 from Modules.synapse_generator import SynapseGenerator
 from Modules.spike_generator import SpikeGenerator
 from Modules.complex_cell import build_L5_cell
@@ -48,13 +51,26 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
     # Build cell
     logger.log_section_start("Building complex cell")
-
-    complex_cell = build_L5_cell(constants.complex_cell_folder, constants.complex_cell_biophys_hoc_name)
+    #complex_cell = build_L5_cell(constants.complex_cell_folder, constants.complex_cell_biophys_hoc_name)
+    # decide which cell to build
+    if constants.build_m1:
+        complex_cell = build_m1_cell() # use older Neymotin detailed cell template
+    elif constants.build_ziao_cell:
+        complex_cell = build_L5_cell_ziao(constants.complex_cell_folder) # build Neymotin reduced from ziao template
+    elif constants.build_cell_reports_cell: # build Neymotin detailed cell from template and pickled params # *********** current use mainly
+        complex_cell = create_cell_from_template_and_pickle()
+    else: # Build Hay et al model then replace axon & soma with Neymotin detailed
+        complex_cell = build_L5_cell(constants.complex_cell_folder, constants.complex_cell_biophys_hoc_name)
+        adjust_soma_and_axon_geometry(complex_cell, somaL = constants.SomaL, somaDiam = constants.SomaDiam, axonDiam = constants.AxonDiam, axonL = constants.AxonL, axon_L_scale = constants.Axon_L_scale)
+        set_hoc_params()
 
     logger.log_section_end("Building complex cell")
 
     h.celsius = constants.h_celcius
-    h.v_init = complex_cell.soma[0].e_pas
+    try:h.v_init = complex_cell.soma[0].e_pas
+    except:
+      h.v_init = complex_cell.soma.e_pas
+      #print(f"warning soma is h.Section {complex_cell.soma} and not list")
 
     # Sim runtime
     h.tstop = constants.h_tstop
@@ -128,12 +144,21 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     # New list to change probabilty of exc functional group nearing soma
     adjusted_no_soma_len_per_segment = []
     for i, seg in enumerate(no_soma_segments):
-        if h.distance(seg, complex_cell.soma[0](0.5)) < 75:
-            adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
-        elif seg in complex_cell.apic[0]: # trunk
-            adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
-        else:
-            adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
+        #print(str(type(complex_cell.soma)))
+        if str(type(complex_cell.soma)) != "<class 'nrn.Section'>": # cell.soma is a list of sections
+          if h.distance(seg, complex_cell.soma[0](0.5)) < 75:
+              adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
+          elif seg in complex_cell.apic[0]: # trunk
+              adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
+          else:
+              adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
+        else: # cell.soma is a section
+          if h.distance(seg, complex_cell.soma(0.5)) < 75:
+              adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
+          elif seg in complex_cell.apic[0]: # trunk
+              adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
+          else:
+              adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
 
     logger.log_memory()
 

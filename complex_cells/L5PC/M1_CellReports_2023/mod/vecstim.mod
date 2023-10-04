@@ -3,7 +3,7 @@
 
 NEURON {
   THREADSAFE
-       ARTIFICIAL_CELL VecStim 
+       ARTIFICIAL_CELL VecStim1 
 }
 
 ASSIGNED {

@@ -1,5 +1,5 @@
 import numpy as np
-import networkx as nx
+#import networkx as nx
 from sklearn.cluster import KMeans
 from neuron_reduce.reducing_methods import (_get_subtree_biophysical_properties, find_space_const_in_cm)
 from Modules.spike_generator import SpikeGenerator

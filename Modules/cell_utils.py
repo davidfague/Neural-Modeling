@@ -29,10 +29,10 @@ def get_segments_and_len_per_segment(cell):
 
     i= 0 #seg index
     for sec in cell.all:
-        if sec in cell.axon:
+        if 'axon' in sec.name():#(sec in cell.axon) or (sec is cell.axon):
             for seg in sec:
                 i+=1
-        elif sec in cell.soma:
+        elif 'soma' in sec.name():#(sec in cell.soma) or (sec is cell.soma):
             for seg in sec:
                 soma_segments.append(seg)
                 soma_len_per_segment.append(seg.sec.L / seg.sec.nseg)

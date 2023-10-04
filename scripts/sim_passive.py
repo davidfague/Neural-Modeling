@@ -72,7 +72,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     try:h.v_init = complex_cell.soma[0].e_pas
     except:
       h.v_init = complex_cell.soma.e_pas
-      print(f"warning soma is h.Section {complex_cell.soma} and not list")
+      #print(f"warning soma is h.Section {complex_cell.soma} and not list")
 
     # Sim runtime
     h.tstop = constants.h_tstop
