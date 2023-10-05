@@ -65,6 +65,8 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
         set_hoc_params()
 
     logger.log_section_end("Building complex cell")
+    soma = complex_cell.soma
+    print(f"dir(soma) : {dir(soma)} | dir(soma(0.5)) : {dir(soma(0.5))} |  dir(soma(0.5).na_ion) : {dir(soma(0.5).na_ion)}")
 
     h.celsius = constants.h_celcius
     try:h.v_init = complex_cell.soma[0].e_pas

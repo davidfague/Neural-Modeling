@@ -9,7 +9,7 @@ from Modules.plotting_utils import plot_sta, plot_edges
 from Modules.logger import Logger
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_2023-08-30_14-40-40/2023-08-30_14-56-25_seeds_130_90L5PCtemplate[0]_196nseg_108nbranch_16073NCs_16073nsyn_0/"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/2023-10-04_18-13-14_seeds_130_90PTcell[0]_174nseg_102nbranch_14055NCs_14055nsyn/"
 
 import importlib
 def load_constants_from_folder(output_folder):
