@@ -27,10 +27,23 @@ optimize_nseg_by_lambda = True # Whether or not to optimize the number of segmen
 merge_synapses = False # Whether or not to merge synapses after optimizing nseg by lambda. (synapses should already be merged by the reduce_cell_func, but could be merged again if optimize_nseg_by_lambda lowers nseg.)
 segs_per_lambda = 10 # Desired number of segs per length constant
 
+# morphology parameters used if build_m1
+#SomaL = 28.896601873591436
+#SomaDiam = 14.187950175330796
+#AxonL = 549.528226526987
+#AxonDiam = 1.0198477329563544
+# ziao reduced
+SomaL = 48.4123467666
+SomaDiam = 28.2149102762
+AxonL = 594.292937602 #549.528226526987
+AxonDiam =  1.40966286462
+Axon_L_scale = 1 # used to adjust axon length while maintaing surface area
+
+
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 8000 #55#2500#20400 # Sim runtime (ms)
+h_tstop = 150000 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
@@ -39,18 +52,39 @@ h_i_amplitudes = [-2.0,-1.0,0,0.25,0.3,0.5,0.6,0.75,1.0]#[-2.0,-1.8,-1.6,-1.4,-1
 h_i_duration = 5000 # (ms)
 h_i_delay = 400 # (ms)
 
+## on/off switches
+#trunk_exc_synapses = True # on/off switch
+#perisomatic_exc_synapses = False
+#add_soma_inh_synapses = True
+
+# on/off switches
+trunk_exc_synapses = True # on/off switch
+perisomatic_exc_synapses = False
+add_soma_inh_synapses = True
+num_soma_inh_syns = 300
+
 # gmax distributions
-exc_gmax_mean_0 = 0.1
+exc_gmax_mean_0 = 0.45#0.2#0.1
 exc_gmax_std_0 = 0.345
-exc_gmax_clip = (0,5)#0.65)#(0, 0.7)
+exc_gmax_clip = (0, 10)#(0,5)#0.65)#(0, 0.7)
 inh_gmax_dist = 1#2.25
-soma_gmax_dist = 1#2.25
-inh_scalar = 1.1
+soma_gmax_dist = 1.5*20#2.25
+inh_scalar = 1#1.1
 exc_scalar = 1 # scales weight
 
-# synapse density syns/um
-exc_synaptic_density = 2.16
-inh_synaptic_density = 0.22
+## gmax distributions
+#exc_gmax_mean_0 = 0.35#0.45#0.2#0.1
+#exc_gmax_std_0 = 0.345
+#exc_gmax_clip = (0, 1)#(0,5)#0.65)#(0, 0.7)
+#inh_gmax_dist = 1#2.25
+#soma_gmax_dist = 30#2.25
+#inh_scalar = 1#1.1
+#exc_scalar = 1 # scales weight
+
+# synapse density syns/um # current densities taken from literature on apical main bifurcation, and extrapolated to entire cell.
+exc_synaptic_density = 2.16 # syn/micron of path length
+inh_synaptic_density = 0.22 # syn/micron of path length
+use_SA_exc = True # use surface area instead of lengths for the synapse's segment assignment probabilities
 
 # release probability distributions
 exc_P_release_mean = 0.53
@@ -114,8 +148,6 @@ inh_distributed_n_PreCells_per_FuncGroup = 50
 exc_functional_group_span = 100
 exc_cluster_span = 10
 exc_synapses_per_cluster = 5
-trunk_exc_synapses = False # on/off switch
-perisomatic_exc_synapses = False
 
 # Inhibitory dend
 inh_cluster_span = 10
@@ -132,23 +164,13 @@ soma_functional_group_span = 100
 # Cell model
 seg_to_record = 'soma' # used to set spike recorder
 spike_threshold = -10 # mV # used to be 10
-channel_names = ['ik_kdr','ik_kap','ik_kdmc','ina_nax', 'i_pas','i_hd']#'ihcn_Ih']#['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et2',
+channel_names = ['i_pas', 'i_hd', 'ina', 'ik_kdr','ik_kap','ik_kdmc','ina_nax', 'ica_cal', 'ica_can', 'ica','g_nax']
+
+#'ik_kdr','ik_kap','ik_kdmc','ina_nax', 'ica_cal'
+#'ihcn_Ih']#['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et2',
                  #'ik_K_Pst', 'ik_K_Tst', 'ik_SK_E2', 'ik_SKv3_1', 'ica_Ca_HVA', 
                  #'ica_Ca_LVAst', 'ihcn_Ih', 'i_pas']
                  
-# morphology
-# morph.py
-#SomaL = 28.896601873591436
-#SomaDiam = 14.187950175330796
-#AxonL = 549.528226526987
-#AxonDiam = 1.0198477329563544
-# ziao reduced
-SomaL = 48.4123467666
-SomaDiam = 28.2149102762
-AxonL = 594.292937602 #549.528226526987
-AxonDiam =  1.40966286462
-Axon_L_scale = 1 # used to adjust axon length while maintaing surface area
-
 # Tiesinga
 ties_a_iv = 10
 ties_P = 1

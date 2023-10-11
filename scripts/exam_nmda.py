@@ -9,7 +9,7 @@ from Modules.plotting_utils import plot_sta, plot_edges
 from Modules.logger import Logger
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/2023-10-04_18-13-14_seeds_130_90PTcell[0]_174nseg_102nbranch_14055NCs_14055nsyn/"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/2023-10-10_23-06-37_seeds_130_90PTcell[0]_174nseg_102nbranch_14134NCs_14134nsyn"
 
 import importlib
 def load_constants_from_folder(output_folder):
@@ -30,20 +30,20 @@ else:
   transpose=False
 
 what_to_plot = {
-    "Na": True,
+    "Na": False,
     "Ca": True,
     "NMDA": True,
     "Ca_NMDA": True
 }
 
 # Na
-threshold = 0.003 / 1000
+threshold = 0.003 / 1000 # hay model: 0.003 / 1000
 ms_within_somatic_spike = 2
 na_apic_clip = (-5, 5)
 na_basal_clip = (-1, 1)
 
 # Ca
-lowery, uppery = 500, 1500
+lowery, uppery = -1300, -100 # cell reports cell is below y axis #Hay bounds #500, 1500
 ca_apic_clip = (-0.25, 1.5)
 
 # NMDA
@@ -103,8 +103,8 @@ def main(random_state):
         edges_apic = sm.get_edges(na_lower_bounds, "apic")
 
         # Get STA for Na
-        na_dend = sm.get_sta(sm.soma_spiketimes, na_lower_bounds, edges_dend, "dend", current_type = 'ina', elec_dist_var = 'soma_passive')
-        na_apic = sm.get_sta(sm.soma_spiketimes, na_lower_bounds, edges_apic, "apic", current_type = 'ina', elec_dist_var = 'soma_passive')
+        na_dend = sm.get_sta(sm.soma_spiketimes, na_lower_bounds, edges_dend, "dend", current_type = 'gna', elec_dist_var = 'soma_passive')
+        na_apic = sm.get_sta(sm.soma_spiketimes, na_lower_bounds, edges_apic, "apic", current_type = 'gna', elec_dist_var = 'soma_passive')
 
         # Save Na plots
         na_path = os.path.join(save_path, "Na")
@@ -120,10 +120,12 @@ def main(random_state):
 
         # Check for na_lower_bounds
         fig, ax = plt.subplots()
-        ax.plot(np.arange(0, len(sm.segments[0].v)*0.1, 0.1), sm.segments[0].gNaTa)
+        #ax.plot(np.arange(0, len(sm.segments[0].v)*0.1, 0.1), sm.segments[0].gNaTa)
+        ax.plot(np.arange(0, len(sm.segments[0].v)*0.1, 0.1), sm.segments[0].gna)
         for bound in na_lower_bounds[0]:
             ax.vlines(bound * 0.1, ymin = 0, ymax = 0.1, color = 'black', label = "Na lower bounds")
-        for i, val in enumerate(np.diff(sm.segments[0].gNaTa > threshold)): # threshold crossings
+        #for i, val in enumerate(np.diff(sm.segments[0].gNaTa > threshold)): # threshold crossings
+        for i, val in enumerate(np.diff(sm.segments[0].gna > threshold)): # threshold crossings
             if val == True:
                 ax.vlines(i * 0.1, ymin = 0, ymax = 0.05, color = 'red', label = "Threshold crossings")
         ax.legend()

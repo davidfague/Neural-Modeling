@@ -13,7 +13,7 @@ from Modules.plotting_utils import get_nested_property, plot_morphology
 import constants
 
 
-output_folder = "output/FI_in_vitro2023-09-05_16-55-32/2023-09-05_16-55-36_seeds_130_90CP_Cell[0]_12nseg_0nbranch_0NCs_0nsyn_2000/"
+output_folder = "output/2023-10-10_13-37-26_seeds_130_90PTcell[0]_174nseg_102nbranch_13999NCs_13999nsyn"
 #output_folder = "output/BenModel"
 # constants.save_every_ms = 200
 # constants.h_tstop = 2500
@@ -47,8 +47,9 @@ new_property = None #['inmda','iampa','net_exc_i'] # set to None if not using ex
 
 time_index = 300
 
-property_list_to_analyze = ['v']
-# property_list_to_analyze = ['netcon_density_per_seg','exc']
+#property_list_to_analyze = ['seg_gcanbar']#['v']
+
+property_list_to_analyze = ['netcon_SA_density_per_seg','exc']
 # property_list_to_analyze = ['seg_elec_info','beta','passive_soma']
 
 animation_step = int(1 / constants.h_dt)
@@ -58,7 +59,8 @@ def main(property_list_to_analyze):
 	step_size = int(constants.save_every_ms / constants.h_dt) # Timestamps
 	steps = range(step_size, int(constants.h_tstop / constants.h_dt) + 1, step_size) # Timestamps
 
-	sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt, no_data=True)
+	#sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt, no_data=True)
+	sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt, no_data=False)
 	sm.compute_axial_currents()
 
 	if new_property is not None:

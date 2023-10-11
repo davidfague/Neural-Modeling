@@ -81,7 +81,7 @@ class CellModel:
         self.compute_adjacent_segments()
 
         self.get_channels_from_var_names() # get channel and attribute names from recorded channel name
-        self.insert_unused_channels()
+        self.insert_unused_channels() #need to update with var_names
 
         # PRAGMA MARK: Section Generation
 
@@ -226,7 +226,7 @@ class CellModel:
         # Identifying unique channels
         channels_set = set()
         for var_name in self.var_names:
-            if var_name != 'i_pas':
+            if (var_name != 'i_pas') and ('ion' not in var_name):
                 split_name = var_name.split('_')
                 if var_name.startswith('g'):
                     channels_set.add('_'.join(split_name[2:]))
@@ -240,6 +240,7 @@ class CellModel:
             for channel in channels_set
         ]
         #print('self.CHANNELS') #debud
+        print(f"self.CHANNELS : {self.CHANNELS}")
 
     def insert_unused_channels(self):
         '''
@@ -247,14 +248,21 @@ class CellModel:
         '''
         #print(dir(self.soma[0](0.5).ih)) #debug
         for channel, attr, conductance in self.CHANNELS:
-            # print(channel, attr, conductance)
+        # print(channel, attr, conductance)
             for sec in self.all:
                 if not hasattr(sec(0.5), attr):
-                    sec.insert(channel) # insert this channel into
+                    print(f"channel : {channel}")
+                    try:sec.insert(channel) # insert this channel into
+                    except Exception as e:
+                        print(f"Unhandled error in setting ion params {sec.name()}: {str(e)}")
                     #print(f"dir(sec): {dir(sec)}")
                     #print(f"dir(sec(0.5)): {dir(sec(0.5))}")
-                    for seg in sec:
-                        setattr(getattr(seg, channel), conductance, 0) # set the maximum conductance to zero
+                    
+                    try:
+                        for seg in sec:
+                            setattr(getattr(seg, channel), conductance, 0) # set the maximum conductance to zero
+                    except Exception as e:
+                        print(f"Unhandled error in setting ion params {sec.name()}: {str(e)}")
 
     def write_seg_info_to_csv(self, path, seg_info=None, title_prefix:str = None):
         if seg_info is  None:
@@ -554,7 +562,9 @@ class CellModel:
             'pseg_index': None,
             'seg_elec_distance': {},
             'adjacent_segments': [],
-            'seg_id_in_sec': seg_id_in_sec
+            'seg_id_in_sec': seg_id_in_sec,
+            'seg_gcanbar': seg.can.gcanbar if hasattr(seg, 'can') else 0,
+            'seg_gcalbar': seg.cal.gcalbar if hasattr(seg, 'cal') else 0
         }
         return info
         

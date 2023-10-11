@@ -123,8 +123,9 @@ class SegmentManager:
           #             "ihcn_Ih_data_report", "i_pas_data_report","spikes_report"]
           filenames = ["Vm_report", "ina_nax_data_report", "i_AMPA_report",
                        "i_NMDA_report", "i_GABA_report", "ik_kap_data_report", "ik_kdmc_data_report", "ik_kdr_data_report",
-                       "i_hd_data_report", "i_pas_data_report","spikes_report"]
-          current_names = ["v", "ina_nax", "iampa", "inmda", "igaba", "ik_kap","ik_kdmc","ik_kdr", "ih", "i_pas"]
+                       "i_hd_data_report", "g_nax_data_report","ica_data_report","i_pas_data_report","spikes_report"]
+          current_names = ["v", "ina_nax", "iampa", "inmda", "igaba", "ik_kap","ik_kdmc","ik_kdr", 
+          "ih", "gna", "ica","i_pas"]
           
         self.segments = []
         self.dt = dt
@@ -211,6 +212,7 @@ class SegmentManager:
         bAP_lower_bounds = []
         peak_values = []
         flattened_peak_values = []
+        print(dir(self.segments[0]))
     
         for seg in self.segments:
             lb, bAPs = self.get_na_lower_bounds_for_seg(seg, threshold, ms_within_somatic_spike)
@@ -224,8 +226,10 @@ class SegmentManager:
             failed_indices = []
             for index in peak_indices:
                 # Check if the index is within the bounds of the data
-                if index < len(seg.gNaTa):
-                    peak = seg.gNaTa[index]
+                #if index < len(seg.gNaTa):
+                if index < len(seg.gna):
+                    #peak = seg.gNaTa[index]
+                    peak = (seg.gna[index])
                     peak_values.append(peak)
                     flattened_peak_values.append(peak)
                 else:
@@ -239,10 +243,12 @@ class SegmentManager:
 
     def get_na_lower_bounds_for_seg(self, seg, threshold: float, ms_within_somatic_spike: float) -> np.ndarray:
         # Find bounds (crossings)
-        threshold_crossings = np.diff(seg.gNaTa > threshold)
+        #threshold_crossings = np.diff(seg.gNaTa > threshold)
+        threshold_crossings = np.diff(seg.gna > threshold)
 
         # Determine if the trace starts above or below threshold to get upward crossings
-        if seg.gNaTa[0] < threshold:
+        #if seg.gNaTa[0] < threshold:
+        if seg.gna[0] < threshold:
             upward_crossings = np.argwhere(threshold_crossings)[::2]
         else:
             upward_crossings = np.argwhere(threshold_crossings)[1::2]
@@ -267,30 +273,35 @@ class SegmentManager:
         segIDs, lower_bounds, upper_bounds, mag, segments_for_condition = [], [], [], [], []
         for i, seg in enumerate(self.segments):
             current_type = None
+            
             if (lowery is not None) & (uppery is not None):
                 cond = (seg.type == "apic") & (seg.p0_5_y3d > lowery) & (seg.p0_5_y3d < uppery)
-                current_type = "icah"
+                #current_type = "icah"
+                current_type = "ica"
             else:
                 cond = (seg.type == "dend") | (seg.type == "apic")
                 current_type = "inmda"
-
+            print(f"cond: {cond} | seg.type: {seg.type} | seg.p0_5_y3d: {seg.p0_5_y3d} | lowery: {lowery} | uppery: {uppery}")
             if cond:
                 segIDs.append(i)
                 bounds = self.get_ca_lower_bounds_for_seg(seg, i, current_type)
+                print(f"bounds: {bounds}")
                 lower_bounds.append(bounds[0]), upper_bounds.append(bounds[1]), mag.append(np.array(bounds[2]))
 
                 # Prepare for the next step, peak calculation
                 for bound in bounds[0]:
+                    #print(f"bound: {bound}")
                     if (bound > 20) & (bound < 1400000): #TODO: ca_upper_bounds??
                         segments_for_condition.append(i) # (i) will be appended multiple times, that's intended
             else:
                 lower_bounds.append([]), upper_bounds.append([]), mag.append([])
-
+        print(f"segments_for_condition {current_type}: {list(np.unique(segments_for_condition))}")
         random_segments_ids = random_state.choice(segments_for_condition, 100)
 
         # Not used in notebooks @DEPRECATION
         duration_low, duration_high, peak_values = [], [], []
-        if current_type == 'icah':
+        #if current_type == 'icah':
+        if current_type == 'ica':
             for rand_seg_id in random_segments_ids:
                 spike_times = lower_bounds[rand_seg_id]
                 duration_low_seg, duration_high_seg, peak_values_seg = self.get_duration_and_peak_for_seg(self.segments[rand_seg_id], spike_times)
@@ -302,7 +313,8 @@ class SegmentManager:
         duration_low, duration_high, peak_values = [], [], []
         for spike_time in spike_times:
             if spike_time > 100:
-                trace = seg.icah[spike_time - 100 : spike_time + 200] + seg.ical[spike_time - 100 : spike_time + 200] +\
+                #trace = seg.icah[spike_time - 100 : spike_time + 200] + seg.ical[spike_time - 100 : spike_time + 200] +\
+                trace = seg.ica[spike_time - 100 : spike_time + 200] +\
                 seg.ih[spike_time - 100 : spike_time + 200]
                 peak_value = np.max(trace)
                 half_peak = peak_value / 2
@@ -317,9 +329,11 @@ class SegmentManager:
 
         ca_lower_bound, ca_upper_bound, ca_mag = [], [], []
         
-        if current_type == "icah":
+        #if current_type == "icah":
+        if current_type == "ica":
             v_thresh, time_thresh = -40, 200
-            trace = seg.icah + seg.ical + seg.ih
+            #trace = seg.icah + seg.ical + seg.ih
+            trace = seg.ica + seg.ih
         elif current_type == "inmda":
             v_thresh, time_thresh = -40, 260
             trace = seg.inmda

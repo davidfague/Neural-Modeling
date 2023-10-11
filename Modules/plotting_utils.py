@@ -204,6 +204,9 @@ def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', tit
 	# Iterate over each segment
 	for seg in segments: # Get the value of seg_elec_distance for this segment
 		seg_elec_distance = eval(seg.seg_elec_distance)[freq_name][elec_dist_var]
+		if seg_elec_distance > 1:
+			print(f"Warning: {seg.seg} seg_elec_distance > 1 : {seg_elec_distance}. Setting to 1.") 
+			seg_elec_distance = 1
 		
 		# Find the bin or range between edges this segment falls into
 		for i in range(len(adjusted_edges) - 1):
@@ -212,7 +215,7 @@ def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', tit
 				edge_indices.append(i)
 				break
 		else:
-			raise(ValueError("seg_elec_distance {seg_elec_distance} is not between 0 and 1"))
+			raise(ValueError(f"seg_elec_distance {seg_elec_distance} is not between 0 and 1"))
 
 	# Normalize the edge_indices to range 0-1
 	normalized_indices = np.array(edge_indices) / (len(adjusted_edges) - 2)  
@@ -476,7 +479,7 @@ def get_nested_property(seg, properties, time_index = None):
 	elif hasattr(seg, property):
 		prop_value = getattr(seg, property)
 	else:
-		raise ValueError(f"Property '{property}' not found in segment. Please specify a proper path in seg_info.")
+		raise ValueError(f"Property '{property}' not found in segment. Please specify a proper path in seg_info. Options from dir(seg): {dir(seg)}")
 
 	# Attempt to convert string representation of dictionary into dictionary
 	if isinstance(prop_value, str):

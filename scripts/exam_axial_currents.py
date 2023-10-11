@@ -20,7 +20,11 @@ from Modules.logger import Logger
 
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_in_vitro2023-09-29_18-35-47/_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_600" #"output/BenModel/"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/2023-10-10_23-06-37_seeds_130_90PTcell[0]_174nseg_102nbranch_14134NCs_14134nsyn/" #"output/BenModel/"
+
+plot_APs = True # Create a zoomed in plot around every AP.
+plot_CA_NMDA = False # used to plot the trace from segments that have Ca or NMDA spikes
+process_ca_nmda_inds = False # used to reduce segments_for_condition from exam_nmda.py to a list of unique segments
 
 import importlib
 def load_constants_from_folder(output_folder):
@@ -103,22 +107,62 @@ def main():
     nexus_seg_index = []
     basal_seg_index = []
   else:
-#    nexus_seg_index=seg_indexes["nexus"]
+    nexus_seg_index=seg_indexes["nexus"]
     basal_seg_index=seg_indexes["basal"]
     axon_seg_index=seg_indexes["axon"]
-#    tuft_seg_index=seg_indexes["tuft"]
+    tuft_seg_index=seg_indexes["tuft"]
 #    logger.log(f"NEXUS SEG: {sm.segments[nexus_seg_index].seg}") # to determine matching seg
-#  nexus_segs=[sm.segments[nexus_seg_index]]
+  nexus_segs=[sm.segments[nexus_seg_index]]
   basal_segs=[sm.segments[basal_seg_index]]
   axon_segs=[sm.segments[axon_seg_index]]
+  found = False
+# get axon segment
   for seg in sm.segments:
     if 'axon' in seg.seg:
+      #print(seg.seg)
       if '[0](0.5)' in seg.seg:
         axon_seg = seg
-#  tuft_segs=[sm.segments[tuft_seg_index]]
-#  plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=save_path)
+        found = True
+  if not found:
+    for seg in sm.segments:
+      if 'axon' in seg.seg:
+        #print(seg.seg)
+        if '(0.5)' in seg.seg:
+          axon_seg = seg
+# get nexus segment
+  found = False
+  if constants.build_cell_reports_cell:
+    for seg in sm.segments:
+      if 'apic' in seg.seg:
+        #print(seg.seg)
+        if '[24]' in seg.seg:
+          nexus_seg = seg
+          found = True
+#    if not found:
+#      for seg in sm.segments:
+#        if 'axon' in seg.seg:
+#          #print(seg.seg)
+#          if '(0.5)' in seg.seg:
+#            axon_seg = seg
+
+  # taken from exam_NMDA
+  ca_inds=[71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 159, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173]
+  nmda_inds= [2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173]
+  if process_ca_nmda_inds:
+    ca_inds = list(np.unique(ca_inds))
+    nmda_inds = list(np.unique(nmda_inds))
+    print(f"ca_inds: {ca_inds}")
+    print(f"nmda_inds: {nmda_inds}")
+  nexus_segs=[nexus_seg]
+  tuft_segs=[sm.segments[tuft_seg_index]]
+  ca_segs=[sm.segments[ca_ind] for ca_ind in ca_inds]
+  nmda_segs=[sm.segments[nmda_ind] for nmda_ind in nmda_inds]
+  plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=save_path)
   plot_adjacent_segments(segs=basal_segs, sm=sm, title_prefix="Basal_", save_to=save_path)
-#  plot_adjacent_segments(segs=tuft_segs, sm=sm, title_prefix="Tuft_", save_to=save_path)
+  plot_adjacent_segments(segs=tuft_segs, sm=sm, title_prefix="Tuft_", save_to=save_path)
+  if plot_CA_NMDA:
+    plot_adjacent_segments(segs=ca_segs, sm=sm, title_prefix="CA_", save_to=save_path) # segment with calcium spike
+    plot_adjacent_segments(segs=nmda_segs, sm=sm, title_prefix="NMDA_", save_to=save_path) # segment with NMDA spike
        
   
 #  #Plot Axial Currents
@@ -126,16 +170,21 @@ def main():
       plot_all(seg, t, save_to=save_path, title_prefix ='Soma_')
   for seg in [axon_seg]:
       plot_all(seg, t, save_to=save_path, title_prefix = 'Axon_')
-#  for seg in nexus_segs:
-#      plot_all(seg, t, save_to=save_path, title_prefix = 'Nexus_')
-#  for seg in basal_segs:
-#      plot_all(seg, t, save_to=save_path, title_prefix = 'Basal_')
+  for seg in nexus_segs:
+      plot_all(seg, t, save_to=save_path, title_prefix = 'Nexus_')
+  for seg in basal_segs:
+      plot_all(seg, t, save_to=save_path, title_prefix = 'Basal_')
+  if plot_CA_NMDA:
+      for seg in ca_segs:
+          plot_all(seg, t, save_to=save_path, title_prefix = 'CA_')
+      for seg in nmda_segs:
+          plot_all(seg, t, save_to=save_path, title_prefix = 'NMDA_')
       
   segments_to_plot = {
       "Soma_": soma_segs,
-      #"Nexus_": nexus_segs,
+      "Nexus_": nexus_segs,
       "Basal_": basal_segs,
-      #"Tuft_": tuft_segs
+      "Tuft_": tuft_segs
   }
 
   plot_whole_data_length=False
@@ -150,19 +199,20 @@ def main():
       return indices[0]
   print('number of spikes:',len(sm.soma_spiketimes))
   # Plot around APs
-#  for i, AP_time in enumerate(np.array(sm.soma_spiketimes)):  # spike time (ms) 
-#      before_AP = AP_time - 100  # ms
-#      after_AP = AP_time + 100  # ms
-#      xlim = [before_AP, after_AP]  # time range
-#    
-#      # Subset the data for the time range
-#      indices = subset_data(t, xlim)
-#
-#      for prefix, segments in segments_to_plot.items():
-#          for seg in segments:
-#              plot_all(segment=seg, t=t, indices=indices, index=i+1, save_to=save_path, title_prefix=prefix, ylim=[-1, 1] if prefix == "Nexus_" else None, vlines=np.array(sm.soma_spiketimes))
+  if plot_APs:
+      for i, AP_time in enumerate(np.array(sm.soma_spiketimes)):  # spike time (ms) 
+          before_AP = AP_time - 100  # ms
+          after_AP = AP_time + 100  # ms
+          xlim = [before_AP, after_AP]  # time range
+        
+          # Subset the data for the time range
+          indices = subset_data(t, xlim)
+    
+          for prefix, segments in segments_to_plot.items():
+              for seg in segments:
+                  plot_all(segment=seg, t=t, indices=indices, index=i+1, save_to=save_path, title_prefix=prefix, ylim=[-1, 1] if prefix == "Nexus_" else None, vlines=np.array(sm.soma_spiketimes))
               
-def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to=None, title_prefix=None, vlines=None):
+def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to=None, title_prefix=None, vlines=None, plot_adj_Vm=True):
     '''
     Plots axial current from target segment to adjacent segments, unless it the target segment is soma.
     Plots Vm of segment and adjacent segments,
@@ -192,7 +242,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
             titles[i] = 'Spike ' + str(int(index)) + ' ' + title
             
     ylabels = ['nA', 'mV', 'nA']
-    data_types = ['axial_currents', 'v', ['ik_kdr','ik_kap','ik_kdmc','ina_nax','i_pas']]#['iampa+inmda', 'iampa+inmda+igaba','inmda', 'iampa','igaba', "imembrane"]]
+    data_types = ['axial_currents', 'v', ['ik_kdr','ik_kap','ik_kdmc','ina_nax','i_pas', 'ica']]#['iampa+inmda', 'iampa+inmda+igaba','inmda', 'iampa','igaba', "imembrane"]]
 
     fig, axs = plt.subplots(len(titles), figsize=(12.8, 4.8 * len(titles)))
     
@@ -223,14 +273,14 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
         elif data_type == 'v': # Voltage plots
             v_data = segment.v[indices] if indices is not None else segment.v
             ax.plot(t, v_data, color=segment.color, label=segment.name)
-            
-            for adj_seg in segment.adj_segs:
-                adj_v_data = adj_seg.v[indices] if indices is not None else adj_seg.v
-                
-                if adj_seg.color == segment.color:
-                    ax.plot(t, adj_v_data, label=adj_seg.name, color='Magenta')
-                else:
-                    ax.plot(t, adj_v_data, label=adj_seg.name, color=adj_seg.color)
+            if plot_adj_Vm:
+                for adj_seg in segment.adj_segs:
+                    adj_v_data = adj_seg.v[indices] if indices is not None else adj_seg.v
+                    
+                    if adj_seg.color == segment.color:
+                        ax.plot(t, adj_v_data, label=adj_seg.name, color='Magenta')
+                    else:
+                        ax.plot(t, adj_v_data, label=adj_seg.name, color=adj_seg.color)
         elif data_type == 'axial_currents':
             # For  axial currents 'Axial Current from [{}]'
             total_AC = np.zeros(len(segment.v))

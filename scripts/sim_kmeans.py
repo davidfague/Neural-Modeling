@@ -66,7 +66,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
     logger.log_section_end("Building complex cell")
     soma = complex_cell.soma
-    print(f"dir(soma) : {dir(soma)} | dir(soma(0.5)) : {dir(soma(0.5))} |  dir(soma(0.5).na_ion) : {dir(soma(0.5).na_ion)}")
+    print(f"dir(soma) : {dir(soma)} | dir(soma(0.5)) : {dir(soma(0.5))} | dir(soma(0.5).na_ion) : {dir(soma(0.5).na_ion)} | dir(soma(0.5).nax) : {dir(soma(0.5).nax)}")
 
     h.celsius = constants.h_celcius
     try:h.v_init = complex_cell.soma[0].e_pas
@@ -164,7 +164,22 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
     logger.log_memory()
 
-    exc_synapses = synapse_generator.add_synapses(segments = no_soma_segments,
+    if constants.use_SA_exc: # use surface area instead of lengths for probabilities
+        exc_synapses = synapse_generator.add_synapses(segments = all_segments,
+                                                  probs = all_SA_per_segment,
+                                                  density=constants.exc_synaptic_density,
+                                                  record = True,
+                                                  vector_length = constants.save_every_ms,
+                                                  gmax = gmax_exc_dist,
+                                                  random_state=random_state,
+                                                  neuron_r = neuron_r,
+                                                  syn_mod = constants.exc_syn_mod,
+                                                  P_dist=exc_P_dist,
+                                                  syn_params=constants.exc_syn_params[0]
+                                                  )
+                                                  
+    else: # use lengths as probabilities
+        exc_synapses = synapse_generator.add_synapses(segments = no_soma_segments,
                                               probs = no_soma_len_per_segment,
                                               density=constants.exc_synaptic_density,
                                               record = True,
@@ -208,7 +223,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
     logger.log_memory()
     inh_synapses = synapse_generator.add_synapses(segments = all_segments,
-                                              probs = all_len_per_segment,
+                                              probs = all_SA_per_segment,
                                               density=constants.inh_synaptic_density,
                                               record = True,
                                               vector_length = constants.save_every_ms,
@@ -228,17 +243,18 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
     logger.log_section_start("Generating inhibitory func groups for soma")
     logger.log_memory()
-    soma_inh_synapses = synapse_generator.add_synapses(segments = soma_segments,
-                                              probs = soma_SA_per_segment,
-                                              number_of_synapses=150,
-                                              record = True,
-                                              vector_length = constants.save_every_ms,
-                                              gmax = inh_gmax,
-                                              random_state=random_state,
-                                              neuron_r = neuron_r,
-                                              syn_mod = constants.inh_syn_mod,
-                                              P_dist=inh_soma_P_dist
-                                              )
+    if constants.add_soma_inh_synapses:
+      soma_inh_synapses = synapse_generator.add_synapses(segments = soma_segments,
+                                                probs = soma_SA_per_segment,
+                                                number_of_synapses=constants.num_soma_inh_syns,
+                                                record = True,
+                                                vector_length = constants.save_every_ms,
+                                                gmax = inh_gmax,
+                                                random_state=random_state,
+                                                neuron_r = neuron_r,
+                                                syn_mod = constants.inh_syn_mod,
+                                                P_dist=inh_soma_P_dist
+                                                )
     
     logger.log_memory()
     logger.log_section_end("Generating inhibitory func groups for soma")
@@ -260,8 +276,9 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
       excit_synapses.append(synapse.synapse_neuron_obj)
     for synapse in inh_synapses:
       inhib_synapses.append(synapse.synapse_neuron_obj)
-    for synapse in soma_inh_synapses:
-      soma_inhib_synapses.append(synapse.synapse_neuron_obj)
+    if constants.add_soma_inh_synapses:
+      for synapse in soma_inh_synapses:
+        soma_inhib_synapses.append(synapse.synapse_neuron_obj)
             
     #print("exc_synapses:", excit_synapses)
     #print("inh_synapses:", inhib_synapses)
@@ -352,20 +369,21 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     logger.log_section_start("Creating Inhibitory SOMA Functional groups")
     logger.log_memory()
     #somatic
-    inh_soma_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,
-                                                                                n_functional_groups=1,
-                                                                                n_presynaptic_cells_per_functional_group=1,
-                                                                                name_prefix='soma_inh',
-                                                                                cell=cell, 
-                                                                                synapses = soma_inh_synapses, 
-                                                                                proximal_fr_dist = proximal_inh_dist, 
-                                                                                distal_fr_dist=distal_inh_dist, 
-                                                                                spike_generator=spike_generator, 
-                                                                                t = t, random_state=random_state, 
-                                                                                spike_trains_to_delay = exc_spikes, 
-                                                                                fr_time_shift = constants.inh_firing_rate_time_shift, 
-                                                                                soma_coordinates=soma_coordinates, 
-                                                                                method = 'delay')
+    if constants.add_soma_inh_synapses:
+      inh_soma_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,
+                                                                                  n_functional_groups=1,
+                                                                                  n_presynaptic_cells_per_functional_group=1,
+                                                                                  name_prefix='soma_inh',
+                                                                                  cell=cell, 
+                                                                                  synapses = soma_inh_synapses, 
+                                                                                  proximal_fr_dist = proximal_inh_dist, 
+                                                                                  distal_fr_dist=distal_inh_dist, 
+                                                                                  spike_generator=spike_generator, 
+                                                                                  t = t, random_state=random_state, 
+                                                                                  spike_trains_to_delay = exc_spikes, 
+                                                                                  fr_time_shift = constants.inh_firing_rate_time_shift, 
+                                                                                  soma_coordinates=soma_coordinates, 
+                                                                                  method = 'delay')
     logger.log_section_end("Creating Inhibitory SOMA Functional groups")
     
     logger.log_section_start("Storing FuncGroup and PreCell data")
@@ -480,7 +498,10 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
         nexus_seg_index = cell.segments.index(cell.apic[0](0.289004))
     else: # Complex cell
         tuft_seg_index=cell.segments.index(cell.tufts[0](0.5)) # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
-        nexus_seg_index=cell.segments.index(cell.apic[36](0.961538))
+        if constants.build_cell_reports_cell:
+          nexus_seg_index = cell.segments.index(cell.apic[24](0.99)) # may need to adjust
+        else:
+          nexus_seg_index=cell.segments.index(cell.apic[36](0.961538))
     seg_indexes = {
         "soma": soma_seg_index,
         "axon": axon_seg_index,
