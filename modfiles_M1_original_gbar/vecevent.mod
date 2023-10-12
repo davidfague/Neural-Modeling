@@ -2,13 +2,15 @@
 
 NEURON {
 	ARTIFICIAL_CELL VecStim
+	POINTER ptr
 }
 
 ASSIGNED {
 	index
 	etime (ms)
-	space
+	ptr
 }
+
 
 INITIAL {
 	index = 0
@@ -28,29 +30,12 @@ NET_RECEIVE (w) {
 	}
 }
 
-VERBATIM
-extern double* vector_vec();
-extern int vector_capacity();
-extern void* vector_arg();
-//extern void hoc_obj_ref(void*);
-//extern void hoc_obj_unref(void*);
-//extern void** vector_pobj(void*);
-ENDVERBATIM
-
 DESTRUCTOR {
-VERBATIM {
-  void** vv;
-  void* vtmp;
-  if (ifarg(1)) {
-    vtmp = vector_arg(1);
-    hoc_obj_ref(*vector_pobj(vtmp));
-  }
-  vv = (void**)(&space);
-  if (*vv) {
-    hoc_obj_unref(*vector_pobj(*vv));
-  }
-if (vtmp) { *vv = vtmp; }  
-}
+VERBATIM
+	void* vv = (void*)(_p_ptr);  
+        if (vv) {
+		hoc_obj_unref(*vector_pobj(vv));
+	}
 ENDVERBATIM
 }
 
@@ -59,7 +44,7 @@ VERBATIM
   { void* vv; int i, size; double* px;
 	i = (int)index;
 	if (i >= 0) {
-		vv = *((void**)(&space));
+		vv = (void*)(_p_ptr);
 		if (vv) {
 			size = vector_capacity(vv);
 			px = vector_vec(vv);
@@ -79,14 +64,16 @@ ENDVERBATIM
 
 PROCEDURE play() {
 VERBATIM
-	void** vv;
-	vv = (void**)(&space);
-	*vv = (void*)0;
+	void** pv;
+	void* ptmp = NULL;
 	if (ifarg(1)) {
-		*vv = vector_arg(1);
-	hoc_obj_ref(*vector_pobj(*vv));
+		ptmp = vector_arg(1);
+		hoc_obj_ref(*vector_pobj(ptmp));
 	}
+	pv = (void**)(&_p_ptr);
+	if (*pv) {
+		hoc_obj_unref(*vector_pobj(*pv));
+	}
+	*pv = ptmp;
 ENDVERBATIM
 }
-        
-

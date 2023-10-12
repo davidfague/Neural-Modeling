@@ -6,12 +6,18 @@ neuron_random_states = [90] # Number of calls to MCellRan4()
 parallelize = True
 
 # Complex cell
+# Pick one and make sure that the rest are False
+build_L5_cell = True # original
+swap_soma = True
 build_m1 = False # WIP denotes whether or not to instead use https://github.com/ModelDBRepository/195615/tree/master cell
 build_ziao_cell = False
-build_cell_reports_cell = True # latest
+build_cell_reports_cell = False # latest
 complex_cell_folder = '../complex_cells/L5PC/'
-complex_cell_biophys_hoc_name = "M1_soma_L5PC_dendrites.hoc"
-
+if swap_soma:
+  complex_cell_biophys_hoc_name = "M1_soma_L5PC_dendrites.hoc"
+#complex_cell_folder = '../complex_cells/L5PC/'
+else:
+  complex_cell_biophys_hoc_name = 'L5PCbiophys3ActiveBasal.hoc'
 # Modfiles
 if build_cell_reports_cell:
   modfiles_folder = "../complex_cells/L5PC/M1_CellReports_2023/mod/"
@@ -43,13 +49,13 @@ Axon_L_scale = 1 # used to adjust axon length while maintaing surface area
 
 # Neuron parameters
 h_celcius = 37
-h_tstop = 150000 #55#2500#20400 # Sim runtime (ms)
+h_tstop = 10400 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 
 # Current injection
-CI_on = False
+CI_on = True
 h_i_amplitudes = [-2.0,-1.0,0,0.25,0.3,0.5,0.6,0.75,1.0]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,5.0, 10.0] #[None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
-h_i_duration = 5000 # (ms)
+h_i_duration = 10000 # (ms)
 h_i_delay = 400 # (ms)
 
 ## on/off switches
@@ -61,14 +67,14 @@ h_i_delay = 400 # (ms)
 trunk_exc_synapses = True # on/off switch
 perisomatic_exc_synapses = False
 add_soma_inh_synapses = True
-num_soma_inh_syns = 300
+num_soma_inh_syns = 150
 
 # gmax distributions
-exc_gmax_mean_0 = 0.45#0.2#0.1
+exc_gmax_mean_0 = 0.2#0.45#0.2#0.1
 exc_gmax_std_0 = 0.345
-exc_gmax_clip = (0, 10)#(0,5)#0.65)#(0, 0.7)
+exc_gmax_clip = (0, 0.65)#(0, 10)#(0,5)#0.65)#(0, 0.7)
 inh_gmax_dist = 1#2.25
-soma_gmax_dist = 1.5*20#2.25
+soma_gmax_dist = 1#2.25
 inh_scalar = 1#1.1
 exc_scalar = 1 # scales weight
 

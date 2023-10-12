@@ -9,7 +9,7 @@ from Modules.plotting_utils import plot_sta, plot_edges
 from Modules.logger import Logger
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/2023-10-10_23-06-37_seeds_130_90PTcell[0]_174nseg_102nbranch_14134NCs_14134nsyn"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/2023-10-11_22-39-48_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_16071NCs_16071nsyn"
 
 import importlib
 def load_constants_from_folder(output_folder):
@@ -43,7 +43,7 @@ na_apic_clip = (-5, 5)
 na_basal_clip = (-1, 1)
 
 # Ca
-lowery, uppery = -1300, -100 # cell reports cell is below y axis #Hay bounds #500, 1500
+lowery, uppery = 500, 1500#-1300, -100 # cell reports cell is below y axis #Hay bounds #500, 1500
 ca_apic_clip = (-0.25, 1.5)
 
 # NMDA

@@ -333,6 +333,28 @@ def create_cell_from_template_and_pickle():
     #inspect_pickle()
     # May need to update to use more of the unpickled params
     return complex_cell
+    
+def set_pickled_parameters_to_sections(sections):
+    params = unpickle_params()
+    for sec in sections:
+        cell_section_name = sec.name()
+        section_name = sec.name().split(".")[1]  # Remove Cell from name
+
+        if "[" in section_name:
+            section_type, section_type_index = section_name.split("[")
+            section_type_index = section_type_index.strip("]")
+            
+            # Concatenate with "_"
+            section_name_as_stored_in_pickle = f"{section_type}"#_{section_type_index}"
+    
+        else:
+            section_name_as_stored_in_pickle = section_name  # For sections like soma and axon
+    
+        if section_name_as_stored_in_pickle in params['secs']:
+            assign_parameters_to_section(sec, params['secs'][section_name_as_stored_in_pickle])
+        else:
+            raise ValueError(f"No parameters found for {section_name_as_stored_in_pickle}.")
+
       
 
 #################################################################################################################
@@ -372,3 +394,60 @@ def adjust_soma_and_axon_geometry(cell, axonDiam=1.0198477329563544, axonL=549.5
       print('soma L updated from',orig_soma_L,'to',cell.soma[0].L)
     if cell.axon[0].diam != orig_soma_diam:
       print('soma diam updated from',orig_soma_diam,'to',cell.soma[0].diam)
+
+import pandas as pd
+
+def is_indexable(obj):
+    """Check if the object is indexable."""
+    try:
+        _ = obj[0]
+        return True
+    except (TypeError, IndexError):
+        return False
+
+def assign_parameters_from_csv(cell, filename='assignments_1593562.csv'):
+    df = pd.read_csv(filename)
+
+    for index, row in df.iterrows():
+        section_name = row['Section']
+
+        if "soma" in section_name:
+            section = cell.soma[0] if is_indexable(cell.soma) else cell.soma
+        elif "axon" in section_name:
+            section = cell.axon[0] if is_indexable(cell.axon) else cell.axon
+        else:
+            continue
+
+        for col, value in row.items():
+            if col == "Section":
+                continue
+
+            categories = col.split('.')
+            
+            if len(categories) < 2:
+                continue
+
+            category, attr_name = categories[:2]
+            param = categories[-1]
+            
+            if category == "geom":
+                setattr(section, attr_name, value)
+            elif category == "ions":
+                ion_name = categories[1]
+                if attr_name in ["i", "e", "o"]:
+                    actual_attr_name = f"{ion_name}{attr_name}"
+                    setattr(section, actual_attr_name, value)
+            elif category == "mechs":
+                mechanism_name = categories[1]
+                actual_attr_name = f"{mechanism_name}_{param}"  # e.g., "kBK_tau"
+
+                # Before attempting to set, check if the attribute exists using getattr
+                for seg in section:
+                    try:
+                        _ = getattr(seg, actual_attr_name)  # This will throw an error if attribute doesn't exist
+                        setattr(seg, actual_attr_name, value)
+                    except AttributeError as e:
+                        print(f"Attribute {actual_attr_name} not found in {section_name} with mechanism {mechanism_name}.")
+                        continue  # Optionally raise the error if needed
+
+

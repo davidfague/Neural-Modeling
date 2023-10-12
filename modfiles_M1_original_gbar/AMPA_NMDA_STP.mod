@@ -26,7 +26,7 @@ NEURON {
     POINT_PROCESS AMPA_NMDA_STP
     RANGE initW     : synaptic scaler for large scale networks added by Greg
     RANGE tau_r_AMPA, tau_d_AMPA, tau_r_NMDA, tau_d_NMDA
-    RANGE Use, Dep, Fac, u0, mg, NMDA_ratio
+    RANGE Use, u, Dep, Fac, u0, mg, NMDA_ratio
     RANGE i, i_AMPA, i_NMDA, g_AMPA, g_NMDA, g, e
     RANGE gmax_AMPA, gmax_NMDA
     NONSPECIFIC_CURRENT i
@@ -35,12 +35,11 @@ NEURON {
     GLOBAL nc_type_param
     : For debugging
     :RANGE sgid, tgid
-    RANGE record_use, record_Pr
 }
 
 
 PARAMETER {
-    initW      = 1.0         : added by Greg Glickert to scale synaptic weight for large scale modeling
+    initW         = 1.0      : added by Greg Glickert to scale synaptic weight for large scale modeling
     tau_r_AMPA = 0.2   (ms)  : Dual-exponential conductance profile
     tau_d_AMPA = 1.7   (ms)  : IMPORTANT: tau_r < tau_d
     tau_r_NMDA = 0.29  (ms)  : Dual-exponential conductance profile
@@ -50,7 +49,7 @@ PARAMETER {
     Fac = 10           (ms)  : Relaxation time constant from facilitation
     e = 0              (mV)  : AMPA and NMDA reversal potential
     mg = 1             (mM)  : Initial concentration of mg2+
-    gmax_NMDA = .001   (uS)  : Weight conversion factor (from nS to uS)
+    gmax_NMDA = .001        (uS)  : Weight conversion factor (from nS to uS)
     gmax_AMPA = .001
     u0 = 0                   : Initial value of u, which is the running value of Use
     NMDA_ratio = 0.71  (1)   : The ratio of NMDA to AMPA
@@ -74,8 +73,6 @@ ASSIGNED {
     factor_AMPA
     factor_NMDA
     mggate
-    record_use
-    record_Pr
 }
 
 
@@ -105,8 +102,6 @@ INITIAL{
     factor_NMDA = -exp(-tp_NMDA/tau_r_NMDA)+exp(-tp_NMDA/tau_d_NMDA) :NMDA Normalization factor - so that when t = tp_NMDA, gsyn = gpeak
     factor_NMDA = 1/factor_NMDA
 
-    record_use = u0
-    record_Pr = u0
 }
 
 
@@ -131,6 +126,7 @@ DERIVATIVE state{
 
 
 NET_RECEIVE (weight, weight_AMPA, weight_NMDA, R, Pr, u, tsyn (ms), nc_type){
+    LOCAL result
     weight_AMPA = weight
     weight_NMDA = weight * NMDA_ratio
 
@@ -158,26 +154,21 @@ NET_RECEIVE (weight, weight_AMPA, weight_NMDA, R, Pr, u, tsyn (ms), nc_type){
     : calc u at event-
     if (Fac > 0) {
         u = u*exp(-(t - tsyn)/Fac) :update facilitation variable if Fac>0 Eq. 2 in Fuhrmann et al.
-        u = u + Use*(1-u) :update facilitation variable if Fac>0 Eq. 2 in Fuhrmann et al.
     } else {
         u = Use
     }
+    if(Fac > 0){
+        u = u + Use*(1-u) :update facilitation variable if Fac>0 Eq. 2 in Fuhrmann et al.
+    }
 
-    if (Dep > 0) {
-        R  = 1 - (1-R) * exp(-(t-tsyn)/Dep) :Probability R for a vesicle to be available for release, analogous to the pool of synaptic
+    R  = 1 - (1-R) * exp(-(t-tsyn)/Dep) :Probability R for a vesicle to be available for release, analogous to the pool of synaptic
                                         :resources available for release in the deterministic model. Eq. 3 in Fuhrmann et al.
-        Pr = u * R                      :Pr is calculated as R * u (running value of Use)
-        R  = R - u * R                  :update R as per Eq. 3 in Fuhrmann et al.
-    } else {
-        Pr = u 
-    }
+    Pr  = u * R                         :Pr is calculated as R * u (running value of Use)
+    R  = R - u * R                      :update R as per Eq. 3 in Fuhrmann et al.
 
-    record_use = u
-    record_Pr = Pr
-
-    if( verboseLevel > 0 ) {
-        printf("Synapse %f at time %g: R = %g Pr = %g\n", synapseID, t, R, Pr )
-    }
+    :if( verboseLevel > 0 ) {
+        :printf("Synapse %f at time %g: R = %g Pr = %g erand = %g\n", synapseID, t, R, Pr, result )
+    :}
 
     tsyn = t
 

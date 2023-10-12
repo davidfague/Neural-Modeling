@@ -20,7 +20,7 @@ from Modules.logger import Logger
 
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/2023-10-10_23-06-37_seeds_130_90PTcell[0]_174nseg_102nbranch_14134NCs_14134nsyn/" #"output/BenModel/"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_2023-10-11_23-07-18/2023-10-11_23-12-00_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_1000/" #"output/BenModel/"
 
 plot_APs = True # Create a zoomed in plot around every AP.
 plot_CA_NMDA = False # used to plot the trace from segments that have Ca or NMDA spikes
@@ -153,7 +153,7 @@ def main():
     nmda_inds = list(np.unique(nmda_inds))
     print(f"ca_inds: {ca_inds}")
     print(f"nmda_inds: {nmda_inds}")
-  nexus_segs=[nexus_seg]
+  #nexus_segs=[nexus_seg]
   tuft_segs=[sm.segments[tuft_seg_index]]
   ca_segs=[sm.segments[ca_ind] for ca_ind in ca_inds]
   nmda_segs=[sm.segments[nmda_ind] for nmda_ind in nmda_inds]
@@ -242,7 +242,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
             titles[i] = 'Spike ' + str(int(index)) + ' ' + title
             
     ylabels = ['nA', 'mV', 'nA']
-    data_types = ['axial_currents', 'v', ['ik_kdr','ik_kap','ik_kdmc','ina_nax','i_pas', 'ica']]#['iampa+inmda', 'iampa+inmda+igaba','inmda', 'iampa','igaba', "imembrane"]]
+    data_types = ['axial_currents', 'v', ['ik_kdr','ik_kap','ik_kdmc','ina_nax','i_pas', 'ica', 'iampa','inmda','igaba']]#['iampa+inmda', 'iampa+inmda+igaba','inmda', 'iampa','igaba', "imembrane"]]
 
     fig, axs = plt.subplots(len(titles), figsize=(12.8, 4.8 * len(titles)))
     
@@ -268,8 +268,12 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
                         data += getattr(segment, current_to_sum)[indices] if indices is not None else getattr(segment, current_to_sum)
                 else:
                     data = getattr(segment, current)[indices] if indices is not None else getattr(segment, current)
-                
-                ax.plot(t, data, label=current)
+                if np.shape(t) != np.shape(data):
+                  print(np.shape(t), np.shape(data))
+                  ax.plot(t[:-1], data, label=current)
+                else:
+                  ax.plot(t, data, label=current)
+                ax.set_ylim([-0.5,0.5])
         elif data_type == 'v': # Voltage plots
             v_data = segment.v[indices] if indices is not None else segment.v
             ax.plot(t, v_data, color=segment.color, label=segment.name)
@@ -310,7 +314,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
               ax.plot(t, total_to_soma_AC, label = 'Summed axial currents to segments toward soma', color = 'blue')
               total_away_soma_AC = total_away_soma_AC[indices] if indices is not None else total_away_soma_AC
               ax.plot(t, total_away_soma_AC, label = 'Summed axial currents to segments away from soma', color = 'red')
-              ax.set_ylim([-0.75,0.75])
+              #ax.set_ylim([-0.75,0.75])
             total_AC = total_AC[indices] if indices is not None else total_AC
             ax.plot(t, total_AC, label = 'Summed axial currents', color = 'Magenta')
         else:
