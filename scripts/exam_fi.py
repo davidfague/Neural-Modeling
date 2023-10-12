@@ -10,7 +10,7 @@ import importlib
 
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_2023-10-11_23-07-18"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_2023-10-12_16-20-23"
 
 import importlib
 def load_constants_from_folder(output_folder):

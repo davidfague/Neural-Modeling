@@ -7,11 +7,11 @@ parallelize = True
 
 # Complex cell
 # Pick one and make sure that the rest are False
-build_L5_cell = True # original
-swap_soma = True
+build_L5_cell = False # original
+swap_soma = False
 build_m1 = False # WIP denotes whether or not to instead use https://github.com/ModelDBRepository/195615/tree/master cell
 build_ziao_cell = False
-build_cell_reports_cell = False # latest
+build_cell_reports_cell = True # latest
 complex_cell_folder = '../complex_cells/L5PC/'
 if swap_soma:
   complex_cell_biophys_hoc_name = "M1_soma_L5PC_dendrites.hoc"
@@ -23,6 +23,9 @@ if build_cell_reports_cell:
   modfiles_folder = "../complex_cells/L5PC/M1_CellReports_2023/mod/"
 else:
   modfiles_folder = "../modfiles_M1_original_gbar"#"../modfiles"
+  
+indicate_soma_and_axon_updates = True
+decrease_axon_Ra_with_update = True # also changes soma g_pas
 
 # Reduction
 reduce_cell = False
@@ -48,7 +51,7 @@ Axon_L_scale = 1 # used to adjust axon length while maintaing surface area
 
 
 # Neuron parameters
-h_celcius = 37
+h_celcius = 34#37
 h_tstop = 10400 #55#2500#20400 # Sim runtime (ms)
 h_dt = 0.1 # Timestep (ms)
 

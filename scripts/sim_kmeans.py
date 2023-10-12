@@ -57,7 +57,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
         if constants.swap_soma:
             soma = complex_cell.soma[0] if is_indexable(complex_cell.soma) else complex_cell.soma
             axon = complex_cell.axon[0] if is_indexable(complex_cell.axon) else complex_cell.axon
-            set_pickled_parameters_to_sections([soma, axon])
+            set_pickled_parameters_to_sections([soma, axon], constants.indicate_soma_and_axon_updates, constants.decrease_axon_Ra_with_update)
             #assign_parameters_from_csv(cell=complex_cell)
             #adjust_soma_and_axon_geometry(complex_cell, somaL = constants.SomaL, somaDiam = constants.SomaDiam, axonDiam = constants.AxonDiam, axonL = constants.AxonL, axon_L_scale = constants.Axon_L_scale)
     elif constants.build_m1:
@@ -65,7 +65,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     elif constants.build_ziao_cell:
         complex_cell = build_L5_cell_ziao(constants.complex_cell_folder) # build Neymotin reduced from ziao template
     elif constants.build_cell_reports_cell: # build Neymotin detailed cell from template and pickled params # *********** current use mainly
-        complex_cell = create_cell_from_template_and_pickle()
+        complex_cell = create_cell_from_template_and_pickle(constants.indicate_soma_and_axon_updates)
     else: # Build Hay et al model then replace axon & soma with Neymotin detailed
         set_hoc_params()
 

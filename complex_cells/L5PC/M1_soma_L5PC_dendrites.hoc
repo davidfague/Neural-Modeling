@@ -9,9 +9,24 @@ proc biophys() {
   forsec $o1.all {
     insert pas
     cm = 0.700445928608//1
-    Ra = 114.51049//137.494564931//90//114.510490019// morph.py: 137.494564931//114.510490019//orig:100
+    Ra = 137.494564931//114.51049//137.494564931//90//114.510490019// morph.py: 137.494564931//114.510490019//orig:100
     e_pas = -88.5366550238//-90.220509483//orig:-90
     g_pas = (1/38457.4393085)
+    
+    insert na_ion
+    insert k_ion
+    insert ca_ion
+    
+    ena = 42
+    ina = 10
+    ona = 40
+    eca = 132.4579342
+    ica = 5.00E-05 //axon is diff
+    ik = 54.4
+    ek = -104
+    ok = 2.5
+
+
     
     //insert k_ion // zc
     //insert na_ion // zc
@@ -25,7 +40,7 @@ proc biophys() {
       //cm = 1.78829677463 // soma Capictance
       //g_pas = (1/38457.4393085)//*0.01//(1/38457.4393085)//(1/18501.7540916) // 1 / soma membrane resistance
       // Na
-      insert na_ion
+      //insert na_ion
       ena = 42.0
       insert nax
       gbar_nax = 0.0345117294903 * (5.0 * 1.05)//5.0 // 0.0153130368342 * 7.5//0.0345117294903
@@ -55,9 +70,9 @@ proc biophys() {
 			depth_cadad = 0.102468419281//0.119408607923
 			taur_cadad = 16.0181691392//99.1146852282
       // h-current
-      insert ih
-			erev_ih = -37.0 // Ih
-			gbar_ih = 6.6129403774e-05//0.000140956438043
+      //insert ih
+			//rev_ih = -37.0 // Ih
+			//gbar_ih = 6.6129403774e-05//0.000140956438043
       
       
       // hay et all biophys
@@ -121,8 +136,12 @@ proc biophys() {
 	$o1.distribute_channels("apic","gCa_HVAbar_Ca_HVA",3,1.000000,0.100000,685.000000,885.000000,0.0005550000) 
 	
   forsec $o1.basal {
-		cm = cm = 1.48057846279 * 0.700445928608 // spinecapfactor * cap 1.03418636866 //1.89771901209  //orig:2
+		cm = 1.48057846279 * 0.700445928608 // spinecapfactor * cap 1.03418636866 //1.89771901209  //orig:2
     g_pas = 1.48057846279 / 38457.4393085 //spinecapfactor/rm //0.0000467//neymotin: 1/13123.00174  //orig:0.0000467
+    ica = 54.4
+    eca = -104
+    oca = 2.5
+    ik = 0.022181463
     // original
 		insert Ih
 		gIhbar_Ih = 0.0002
@@ -159,7 +178,7 @@ proc biophys() {
     //cm = 0.700445928608//1.01280903702 // capacitance
 		//e_pas = -90.220509483//-88.5366550238 // passive reversal (mV)
     // Na
-    insert na_ion
+    //insert na_ion
 		ena = 42.0 // Na+ current reversal potential (mV)
     insert nax
     gbar_nax = 0.0345117294903 (5.0 * 4)//0.0153130368342 * 7.5 //0.0345117294903 * 5.0//nax_gbar_axonm

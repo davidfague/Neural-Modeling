@@ -70,7 +70,7 @@ import os
 import csv
 import glob
 
-def assign_parameters_to_section(sec, section_data):
+def assign_parameters_to_section(sec, section_data, indicate_soma_and_axon_updates, decrease_axon_Ra_with_update = False):
     '''
     assigns parameters to section/segments from data that was stored in pickle
     #TODO add these
@@ -99,8 +99,13 @@ def assign_parameters_to_section(sec, section_data):
     geom = section_data.get('geom', {})
     for param, value in geom.items():
         if str(param) not in ['pt3d']:
+            if (decrease_axon_Ra_with_update) and (str(param) == 'Ra') and ('axon' in sec.name()):
+              value = value/2
+              print(f"Axon Ra halved")
             setattr(sec, param, value)
             section_row[f"geom.{param}"] = value
+            if (('soma' in sec.name()) or ('axon' in sec.name()) or ('apic[0]' in sec.name()) or ('dend[0]' in sec.name())) and (indicate_soma_and_axon_updates): # sanity check
+                print(f"Setting {sec.name()} {param} to {value}.")
     
     # Set and record ion parameters
     try:
@@ -109,16 +114,16 @@ def assign_parameters_to_section(sec, section_data):
             for param, value in params.items():
                 if param not in state_variables:
                     main_attr_name = f"{ion}_ion"
-                    
                     if param[-1] == 'o':
                         sub_attr_name = f"{ion}{param}"
                     else:
                         sub_attr_name = f"{param}{ion}"
-    
                     try:
                         for seg in sec:
                             ion_obj = getattr(seg, main_attr_name)
                             setattr(ion_obj, sub_attr_name, value)
+                        if (('soma' in sec.name()) or ('axon' in sec.name()) or ('apic[0]' in sec.name()) or ('dend[0]' in sec.name())) and (indicate_soma_and_axon_updates): # sanity check
+                            print(f"Setting {sec.name()} {ion_obj} {sub_attr_name}to {value}.")
                     except AttributeError as e:
                         print(f"AttributeError in {sec.name()}: {str(e)}")
                     except ValueError as e:
@@ -134,12 +139,17 @@ def assign_parameters_to_section(sec, section_data):
         sec.insert(mech)
         for param, value in params.items():
             if param not in state_variables:
+                if (decrease_axon_Ra_with_update) and (str(mech) == 'pas') and ('soma' in sec.name()) and (str(param) == 'g'):
+                    value = value/2
+                    print(f"Soma g_pas halved")
+                if (('soma' in sec.name()) or ('axon' in sec.name()) or ('apic[0]' in sec.name()) or ('dend[0]' in sec.name())) and (indicate_soma_and_axon_updates): # sanity check
+                    print(f"Setting {sec.name()} {mech} {param} to {value}.")
                 for i, seg in enumerate(sec):
                     if isinstance(value, list):
                         try:
                             setattr(seg, f"{param}_{mech}", value[i])
                         except Exception as e:
-                            print(f"Warning: Issue setting {mech} {param} in {sec.name()} to {value[i]}. {e} | value type: {type(value[i])} | nseg: {sec.nseg}; len(value): {len(value)}")
+                            print(f"Warning: Issue setting {mech} {param} in {seg} to {value[i]}. {e} | value type: {type(value[i])} | nseg: {sec.nseg}; len(value): {len(value)}")
                     else:
                         try:
                             setattr(seg, f"{param}_{mech}", value)
@@ -202,102 +212,8 @@ def merge_csv_files(output_filename):
             os.remove(filename)
 
       
-#def assign_parameters_to_section(sec, section_data):
-#    '''
-#    assigns parameters to section/segments from data that was stored in pickle
-#    '''
-#    # List of common state variables
-#    state_variables = []#'o_na', 'o_k', 'o_ca', 'm', 'h', 'n', 'i_na', ]
-#
-#    import csv
-#    
-#    # List to hold the rows for the CSV
-#    rows = []
-#    
-#    # Initialize a dictionary for the section
-#    section_row = {'Section': sec.name()}
-#    
-#    # Set and record geometry parameters
-#    geom = section_data.get('geom', {})
-#    for param, value in geom.items():
-#        if str(param) not in ['pt3d']:
-#            setattr(sec, param, value)
-#            section_row[f"geom.{param}"] = value
-#    
-#    # Set and record ion parameters
-#    try:
-#        ions = section_data.get('ions', {})
-#        for ion, params in ions.items():
-#            for param, value in params.items():
-#                if param not in state_variables:
-#                    main_attr_name = f"{ion}_ion"
-#                    
-#                    if param[-1] == 'o':
-#                        sub_attr_name = f"{ion}{param}"
-#                    else:
-#                        sub_attr_name = f"{param}{ion}"
-#    
-#                    try:
-#                        for seg in sec:
-#                            ion_obj = getattr(seg, main_attr_name)
-#                            setattr(ion_obj, sub_attr_name, value)
-#                    except AttributeError as e:
-#                        print(f"AttributeError in {sec.name()}: {str(e)}")
-#                    except ValueError as e:
-#                        print(f"ValueError in {sec.name()}: {str(e)}")
-#                    
-#                    section_row[f"ions.{ion}.{param}"] = value
-#    except Exception as e:
-#        print(f"Unhandled error in setting ion params {sec.name()}: {str(e)}")
-#    
-#    # Set and record mechanism parameters
-#    mechs = section_data.get('mechs', {})
-#    for mech, params in mechs.items():
-#        sec.insert(mech)
-#        for param, value in params.items():
-#            if param not in state_variables:
-#                for i, seg in enumerate(sec):
-#                    if isinstance(value, list):
-#                        try:
-#                            setattr(seg, f"{param}_{mech}", value[i])
-#                        except Exception as e:
-#                            print(f"Warning: Issue setting {mech} {param} in {sec.name()} to {value[i]}. {e} | value type: {type(value[i])} | nseg: {sec.nseg}; len(value): {len(value)}")
-#                    else:
-#                        try:
-#                            setattr(seg, f"{param}_{mech}", value)
-#                        except Exception as e:
-#                            print(f"Warning: Issue setting {mech} {param} in {sec.name()} to {value}. {e} value type {type(value)}")
-#    
-#                section_row[f"mechs.{mech}.{param}"] = value
-#    
-#    # Check if the file exists to determine if we should write headers
-#    file_exists = os.path.isfile('assignments.csv')
-#    
-#    # Append the section dictionary to the rows list
-#    rows.append(section_row)
-#    
-#    # Write the rows to a CSV
-#    keys = rows[0].keys()  # get the headers (parameter names)
-#    # Append the data to the CSV
-#    with open('assignments.csv', 'a', newline='') as csvfile:
-#        writer = csv.DictWriter(csvfile, fieldnames=keys)
-#        if not file_exists:
-#            writer.writeheader()
-#    writer.writerows(rows)
-#
-#
-#        #except AttributeError:
-#            #    print(f"Warning: Issue with inserting mechanism {mech} in {sec.name()}.")
-#    #except Exception as e:
-#    #    print(f"Unhandled error in setting mechanism params {sec.name()}: {str(e)} {type(e)}")
-#       
-#    #TODO add these
-#    #pt3d = section_data.get('pt3d', {})
-#    # pt3d_data = geom.get('pt3d', {})
-#    # set section attributes: 'parentseg', 'psection', 'pt3dadd', 'pt3dchange', 'pt3dclear', 'pt3dinsert' 'x3d', 'y3d', 'z3d']
-#    #topol = section_data.get('topol', {}) #{childX: 0.0, parentSec: 'apic_0', parentX: 1.0}
     
-def create_cell_from_template_and_pickle():
+def create_cell_from_template_and_pickle(indicate_soma_and_axon_updates):
     '''
     Main Function that uses the above functions related to the latest Neymotin detailed model from Cell Reports 2023
     '''
@@ -324,7 +240,7 @@ def create_cell_from_template_and_pickle():
     
         if section_name_as_stored_in_pickle in params['secs']:
             #try:
-            assign_parameters_to_section(sec, params['secs'][section_name_as_stored_in_pickle])
+            assign_parameters_to_section(sec, params['secs'][section_name_as_stored_in_pickle], indicate_soma_and_axon_updates)
             #except Exception as e:
             #    print(f"Error in assigning parameters to {section_name_as_stored_in_pickle}: {e}. Parameters: {params['secs'][section_name_as_stored_in_pickle]}")
         else:
@@ -334,7 +250,7 @@ def create_cell_from_template_and_pickle():
     # May need to update to use more of the unpickled params
     return complex_cell
     
-def set_pickled_parameters_to_sections(sections):
+def set_pickled_parameters_to_sections(sections, indicate_soma_and_axon_updates, decrease_axon_Ra_with_update):
     params = unpickle_params()
     for sec in sections:
         cell_section_name = sec.name()
@@ -351,7 +267,7 @@ def set_pickled_parameters_to_sections(sections):
             section_name_as_stored_in_pickle = section_name  # For sections like soma and axon
     
         if section_name_as_stored_in_pickle in params['secs']:
-            assign_parameters_to_section(sec, params['secs'][section_name_as_stored_in_pickle])
+            assign_parameters_to_section(sec, params['secs'][section_name_as_stored_in_pickle], indicate_soma_and_axon_updates, decrease_axon_Ra_with_update)
         else:
             raise ValueError(f"No parameters found for {section_name_as_stored_in_pickle}.")
 
@@ -451,3 +367,98 @@ def assign_parameters_from_csv(cell, filename='assignments_1593562.csv'):
                         continue  # Optionally raise the error if needed
 
 
+# OLD
+#def assign_parameters_to_section(sec, section_data):
+#    '''
+#    assigns parameters to section/segments from data that was stored in pickle
+#    '''
+#    # List of common state variables
+#    state_variables = []#'o_na', 'o_k', 'o_ca', 'm', 'h', 'n', 'i_na', ]
+#
+#    import csv
+#    
+#    # List to hold the rows for the CSV
+#    rows = []
+#    
+#    # Initialize a dictionary for the section
+#    section_row = {'Section': sec.name()}
+#    
+#    # Set and record geometry parameters
+#    geom = section_data.get('geom', {})
+#    for param, value in geom.items():
+#        if str(param) not in ['pt3d']:
+#            setattr(sec, param, value)
+#            section_row[f"geom.{param}"] = value
+#    
+#    # Set and record ion parameters
+#    try:
+#        ions = section_data.get('ions', {})
+#        for ion, params in ions.items():
+#            for param, value in params.items():
+#                if param not in state_variables:
+#                    main_attr_name = f"{ion}_ion"
+#                    
+#                    if param[-1] == 'o':
+#                        sub_attr_name = f"{ion}{param}"
+#                    else:
+#                        sub_attr_name = f"{param}{ion}"
+#    
+#                    try:
+#                        for seg in sec:
+#                            ion_obj = getattr(seg, main_attr_name)
+#                            setattr(ion_obj, sub_attr_name, value)
+#                    except AttributeError as e:
+#                        print(f"AttributeError in {sec.name()}: {str(e)}")
+#                    except ValueError as e:
+#                        print(f"ValueError in {sec.name()}: {str(e)}")
+#                    
+#                    section_row[f"ions.{ion}.{param}"] = value
+#    except Exception as e:
+#        print(f"Unhandled error in setting ion params {sec.name()}: {str(e)}")
+#    
+#    # Set and record mechanism parameters
+#    mechs = section_data.get('mechs', {})
+#    for mech, params in mechs.items():
+#        sec.insert(mech)
+#        for param, value in params.items():
+#            if param not in state_variables:
+#                for i, seg in enumerate(sec):
+#                    if isinstance(value, list):
+#                        try:
+#                            setattr(seg, f"{param}_{mech}", value[i])
+#                        except Exception as e:
+#                            print(f"Warning: Issue setting {mech} {param} in {sec.name()} to {value[i]}. {e} | value type: {type(value[i])} | nseg: {sec.nseg}; len(value): {len(value)}")
+#                    else:
+#                        try:
+#                            setattr(seg, f"{param}_{mech}", value)
+#                        except Exception as e:
+#                            print(f"Warning: Issue setting {mech} {param} in {sec.name()} to {value}. {e} value type {type(value)}")
+#    
+#                section_row[f"mechs.{mech}.{param}"] = value
+#    
+#    # Check if the file exists to determine if we should write headers
+#    file_exists = os.path.isfile('assignments.csv')
+#    
+#    # Append the section dictionary to the rows list
+#    rows.append(section_row)
+#    
+#    # Write the rows to a CSV
+#    keys = rows[0].keys()  # get the headers (parameter names)
+#    # Append the data to the CSV
+#    with open('assignments.csv', 'a', newline='') as csvfile:
+#        writer = csv.DictWriter(csvfile, fieldnames=keys)
+#        if not file_exists:
+#            writer.writeheader()
+#    writer.writerows(rows)
+#
+#
+#        #except AttributeError:
+#            #    print(f"Warning: Issue with inserting mechanism {mech} in {sec.name()}.")
+#    #except Exception as e:
+#    #    print(f"Unhandled error in setting mechanism params {sec.name()}: {str(e)} {type(e)}")
+#       
+#    #TODO add these
+#    #pt3d = section_data.get('pt3d', {})
+#    # pt3d_data = geom.get('pt3d', {})
+#    # set section attributes: 'parentseg', 'psection', 'pt3dadd', 'pt3dchange', 'pt3dclear', 'pt3dinsert' 'x3d', 'y3d', 'z3d']
+#    #topol = section_data.get('topol', {}) #{childX: 0.0, parentSec: 'apic_0', parentX: 1.0}

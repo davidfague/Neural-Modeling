@@ -20,7 +20,7 @@ from Modules.logger import Logger
 
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_2023-10-11_23-07-18/2023-10-11_23-12-00_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_1000/" #"output/BenModel/"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_2023-10-12_16-20-23/2023-10-12_16-24-44_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_1000/" #"output/BenModel/"
 
 plot_APs = True # Create a zoomed in plot around every AP.
 plot_CA_NMDA = False # used to plot the trace from segments that have Ca or NMDA spikes
@@ -273,7 +273,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
                   ax.plot(t[:-1], data, label=current)
                 else:
                   ax.plot(t, data, label=current)
-                ax.set_ylim([-0.5,0.5])
+                ax.set_ylim([-0.1,0.1])
         elif data_type == 'v': # Voltage plots
             v_data = segment.v[indices] if indices is not None else segment.v
             ax.plot(t, v_data, color=segment.color, label=segment.name)
@@ -308,7 +308,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
             if segment.type=='soma': # if we are plotting for soma segment, sum basal axial currents
               basal_axial_current = total_dend_AC[indices] if indices is not None else total_dend_AC
               ax.plot(t, basal_axial_current, label = 'Summed axial currents from basal segments to soma', color = 'red')
-              #ax.set_ylim([-2,2])
+              ax.set_ylim([-0.2,0.1])
             else: #if not soma, plot axial currents to segments toward soma vs AC to segments away from soma.
               total_to_soma_AC = total_to_soma_AC[indices] if indices is not None else total_to_soma_AC
               ax.plot(t, total_to_soma_AC, label = 'Summed axial currents to segments toward soma', color = 'blue')

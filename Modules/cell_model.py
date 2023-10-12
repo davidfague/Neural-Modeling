@@ -240,7 +240,7 @@ class CellModel:
             for channel in channels_set
         ]
         #print('self.CHANNELS') #debud
-        print(f"self.CHANNELS : {self.CHANNELS}")
+        #print(f"self.CHANNELS : {self.CHANNELS}")
 
     def insert_unused_channels(self):
         '''
@@ -249,20 +249,21 @@ class CellModel:
         #print(dir(self.soma[0](0.5).ih)) #debug
         for channel, attr, conductance in self.CHANNELS:
         # print(channel, attr, conductance)
-            for sec in self.all:
-                if not hasattr(sec(0.5), attr):
-                    print(f"channel : {channel}")
-                    try:sec.insert(channel) # insert this channel into
-                    except Exception as e:
-                        print(f"Unhandled error in setting ion params {sec.name()}: {str(e)}")
-                    #print(f"dir(sec): {dir(sec)}")
-                    #print(f"dir(sec(0.5)): {dir(sec(0.5))}")
-                    
-                    try:
-                        for seg in sec:
-                            setattr(getattr(seg, channel), conductance, 0) # set the maximum conductance to zero
-                    except Exception as e:
-                        print(f"Unhandled error in setting ion params {sec.name()}: {str(e)}")
+            if not (str(channel) == ''): # for some reason '' was getting added? Need to check how self.channels is formed.
+              for sec in self.all:
+                  if not hasattr(sec(0.5), attr):
+                      #print(f"channel : {channel}")
+                      try:sec.insert(channel) # insert this channel into
+                      except Exception as e:
+                          print(f"Unhandled error in setting ion params {sec.name()}: {str(e)}")
+                      #print(f"dir(sec): {dir(sec)}")
+                      #print(f"dir(sec(0.5)): {dir(sec(0.5))}")
+                      
+                      try:
+                          for seg in sec:
+                              setattr(getattr(seg, channel), conductance, 0) # set the maximum conductance to zero
+                      except Exception as e:
+                          print(f"Unhandled error in setting ion params {sec.name()}: {str(e)}")
 
     def write_seg_info_to_csv(self, path, seg_info=None, title_prefix:str = None):
         if seg_info is  None:
