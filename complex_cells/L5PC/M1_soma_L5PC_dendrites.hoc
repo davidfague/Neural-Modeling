@@ -9,7 +9,7 @@ proc biophys() {
   forsec $o1.all {
     insert pas
     cm = 0.700445928608//1
-    Ra = 137.494564931//114.51049//137.494564931//90//114.510490019// morph.py: 137.494564931//114.510490019//orig:100
+    Ra = 100//137.494564931//114.51049//137.494564931//90//114.510490019// morph.py: 137.494564931//114.510490019//orig:100
     e_pas = -88.5366550238//-90.220509483//orig:-90
     g_pas = (1/38457.4393085)
     
@@ -22,6 +22,7 @@ proc biophys() {
     ona = 40
     eca = 132.4579342
     ica = 5.00E-05 //axon is diff
+    oca = 2
     ik = 54.4
     ek = -104
     ok = 2.5
@@ -61,7 +62,7 @@ proc biophys() {
 		  gpeak_kBK = 7.25128017201e-05//5.09733585163e-05//7.25128017201e-05//5.09733585163e-05
 			caVhmin_kBK = -46.08 + 46.9679440782//43.8900261407 //kBK_caVhminShift
       // Ca
-      insert ca_ion
+      //insert ca_ion
       insert cal
       gcalbar_cal = 4.41583533572e-06
       insert can
@@ -104,8 +105,8 @@ proc biophys() {
 	forsec $o1.apical {
     //spinecapfactor = 1.48057846279
     // cap = 0.700445928608
-		cm = 1.48057846279 * 0.700445928608 // spinecapfactor * cap 1.03418636866 //orig:2
-    g_pas = 1.48057846279 / 38457.4393085 //spinecapfactor/rm 1/38457.4393085 //0.0000589//  neymotin:1/10751.193413 //orig:0.0000589
+		cm = 1.48057846279 * 0.700445928608//2//Neymotin detailed:1.48057846279 * 0.700445928608 // spinecapfactor * cap 1.03418636866 //orig:2
+    g_pas = 0.0000589//Neymotin_detailed:1.48057846279 / 38457.4393085 //spinecapfactor/rm 1/38457.4393085 //0.0000589//  neymotin:1/10751.193413 //orig:0.0000589
 		insert Ih
   	insert SK_E2 
   	insert Ca_LVAst 
@@ -136,12 +137,8 @@ proc biophys() {
 	$o1.distribute_channels("apic","gCa_HVAbar_Ca_HVA",3,1.000000,0.100000,685.000000,885.000000,0.0005550000) 
 	
   forsec $o1.basal {
-		cm = 1.48057846279 * 0.700445928608 // spinecapfactor * cap 1.03418636866 //1.89771901209  //orig:2
-    g_pas = 1.48057846279 / 38457.4393085 //spinecapfactor/rm //0.0000467//neymotin: 1/13123.00174  //orig:0.0000467
-    ica = 54.4
-    eca = -104
-    oca = 2.5
-    ik = 0.022181463
+		cm = 1.48057846279 * 0.700445928608//2//Neymotin detailed: 1.48057846279 * 0.700445928608 // spinecapfactor * cap 1.03418636866 //1.89771901209  //orig:2
+    g_pas = 0.0000467//Neymotin detailed: 1.48057846279 / 38457.4393085 //spinecapfactor/rm //0.0000467//neymotin: 1/13123.00174  //orig:0.0000467
     // original
 		insert Ih
 		gIhbar_Ih = 0.0002
@@ -179,7 +176,11 @@ proc biophys() {
 		//e_pas = -90.220509483//-88.5366550238 // passive reversal (mV)
     // Na
     //insert na_ion
-		ena = 42.0 // Na+ current reversal potential (mV)
+    ica = 54.4
+    eca = -104
+    oca = 2.5
+    ik = 0.022181463
+		//ena = 42.0 // Na+ current reversal potential (mV)
     insert nax
     gbar_nax = 0.0345117294903 (5.0 * 4)//0.0153130368342 * 7.5 //0.0345117294903 * 5.0//nax_gbar_axonm
     // K

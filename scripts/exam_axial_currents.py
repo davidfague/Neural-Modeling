@@ -20,11 +20,21 @@ from Modules.logger import Logger
 
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_2023-10-12_16-20-23/2023-10-12_16-24-44_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_1000/" #"output/BenModel/"
+
+PT_Cell=False # true: Neymotin cell; false: Neymotin_Hay
+if PT_Cell:
+  output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_Neymotin/2023-10-12_21-10-22_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_300"
+else:
+  output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_Neymotin_Hay4/_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_300/"
+
+#FI_Neymotin/2023-10-12_21-10-22_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_300"
+#FI_Neymotin_Hay2/_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_300/" 
+#"output/BenModel/"
 
 plot_APs = True # Create a zoomed in plot around every AP.
 plot_CA_NMDA = False # used to plot the trace from segments that have Ca or NMDA spikes
 process_ca_nmda_inds = False # used to reduce segments_for_condition from exam_nmda.py to a list of unique segments
+print_steady_state_values = True
 
 import importlib
 def load_constants_from_folder(output_folder):
@@ -48,6 +58,35 @@ else:
 dt=constants.h_dt
 
 #print(constants.h_dt, constants.save_every_ms, constants.h_tstop)
+
+def create_segment_types(soma):
+    """
+    Create a dictionary of segment types based on the segments that are adjacent to the soma
+    and includes the soma itself.
+
+    Parameters:
+    - soma: The soma segment object, expected to have a property 'adj_segs' listing all its adjacent segments.
+
+    Returns:
+    A dictionary with keys being segment type names (inferred from segment names) and values being lists of segments.
+    """
+    segment_types = {"Soma_": [soma]}  # Initialize with the soma
+    
+    # Iterate over each adjacent segment
+    for adj_seg in soma.adj_segs:
+        # Use the segment's type as key (assuming there's a 'type' property in the segment object)
+        seg_type = adj_seg.type + "_"
+        
+        # If this type hasn't been added to the dictionary, initialize it with an empty list
+        if seg_type not in segment_types:
+            segment_types[seg_type] = []
+        
+        # Append the segment to its corresponding type
+        segment_types[seg_type].append(adj_seg)
+    
+    return segment_types
+
+
 
 def main():
   save_path = os.path.join(output_folder, "Analysis Currents")
@@ -164,6 +203,28 @@ def main():
     plot_adjacent_segments(segs=ca_segs, sm=sm, title_prefix="CA_", save_to=save_path) # segment with calcium spike
     plot_adjacent_segments(segs=nmda_segs, sm=sm, title_prefix="NMDA_", save_to=save_path) # segment with NMDA spike
        
+
+  #  desired_real_time is the time at which you want to print the current values
+  desired_real_time = 8000  # the desired time in ms
+  steady_state_index = int(desired_real_time / constants.h_dt)
+  
+#  # Loop over all segment types and call print_steady_state_values
+#  segment_types = {
+#      'Soma_': soma_segs,
+#      'Axon_': [axon_seg],  # Making it a list to be consistent with the loop
+#      'Nexus_': nexus_segs,
+#      'Basal_': basal_segs
+#  }
+  segment_types = create_segment_types(soma_segs[0])
+  if print_steady_state_values:
+        # Filter segment_types to only include Soma and Axon
+    filtered_segment_types = {k: v for k, v in segment_types.items() if k in ["Soma_", "axon_"]}
+    
+    # Loop over the filtered segment types and call print_steady_state_values
+    for title_prefix, segments in filtered_segment_types.items():
+        for seg in segments:
+            print_steady_state_values(seg, t, steady_state_index, title_prefix=title_prefix)
+  return
   
 #  #Plot Axial Currents
   for seg in soma_segs:
@@ -273,7 +334,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
                   ax.plot(t[:-1], data, label=current)
                 else:
                   ax.plot(t, data, label=current)
-                ax.set_ylim([-0.1,0.1])
+                #ax.set_ylim([-0.1,0.1])
         elif data_type == 'v': # Voltage plots
             v_data = segment.v[indices] if indices is not None else segment.v
             ax.plot(t, v_data, color=segment.color, label=segment.name)
@@ -308,7 +369,7 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
             if segment.type=='soma': # if we are plotting for soma segment, sum basal axial currents
               basal_axial_current = total_dend_AC[indices] if indices is not None else total_dend_AC
               ax.plot(t, basal_axial_current, label = 'Summed axial currents from basal segments to soma', color = 'red')
-              ax.set_ylim([-0.2,0.1])
+              #ax.set_ylim([-0.2,0.1])
             else: #if not soma, plot axial currents to segments toward soma vs AC to segments away from soma.
               total_to_soma_AC = total_to_soma_AC[indices] if indices is not None else total_to_soma_AC
               ax.plot(t, total_to_soma_AC, label = 'Summed axial currents to segments toward soma', color = 'blue')
@@ -347,6 +408,58 @@ def plot_all(segment, t, indices=None, xlim=None, ylim=None, index=None, save_to
             fig.savefig(os.path.join(save_to, "AP_" + "_{}".format(index) + ".png"))
     plt.close()
 
+def print_steady_state_values(segment, t, steady_state_time_index, title_prefix=None):
+    '''
+    Print the steady state values of currents and axial currents for a given segment at a specific time index.
+    
+    Segment: SegmentManager Segment object
+    t: time vector
+    steady_state_time_index: Index at which the steady state values should be printed
+    title_prefix: Prefix for the title (typically denotes the segment)
+    '''
+
+    # Current types present in the segment
+    data_types = ['v','ik_kdr','ik_kap','ik_kdmc','ina_nax','i_pas', 'ica', 'iampa','inmda','igaba']
+
+    # Print title
+    if title_prefix:
+        print(f"{title_prefix} - Steady State Values at time {t[steady_state_time_index]}ms:")
+    else:
+        print(f"Steady State Values at time {t[steady_state_time_index]}ms:")
+
+    for current in data_types:
+        data = getattr(segment, current)
+        if current == 'v':
+          units = 'mV'
+        else:
+          units = 'nA'
+        print(f"{current}: {data[steady_state_time_index]} {units}")
+
+    # If there are axial currents
+    if hasattr(segment, 'axial_currents'):
+        axial_current_by_type = {}  # Store summed axial currents by type
+        for idx, adj_seg in enumerate(segment.adj_segs):
+            axial_current_value = segment.axial_currents[idx][steady_state_time_index]
+            print(f"Axial current from {segment.name} to {adj_seg.name} (Type: {adj_seg.type}): {axial_current_value} nA")
+
+            # Sum the axial currents by type
+            if adj_seg.type in axial_current_by_type:
+                axial_current_by_type[adj_seg.type] += axial_current_value
+            else:
+                axial_current_by_type[adj_seg.type] = axial_current_value
+
+        for seg_type, axial_current_sum in axial_current_by_type.items():
+            print(f"Total axial current to {seg_type} type segments: {axial_current_sum} nA")
+
+        total_AC = sum(axial_current_by_type.values())
+        print(f"Total summed axial currents: {total_AC} nA")
+
+    print("\n")  # For readability
+
+# Example usage
+# print_steady_state_values(segment_object, t, 100, title_prefix="Segment 1")
+
+  
 
 #def plot_all(segment, t, xlim=None, ylim=None, index=None, save_to=None, title_prefix=None, vlines = None):
 #    '''

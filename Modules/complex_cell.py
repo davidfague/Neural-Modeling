@@ -70,7 +70,7 @@ import os
 import csv
 import glob
 
-def assign_parameters_to_section(sec, section_data, indicate_soma_and_axon_updates, decrease_axon_Ra_with_update = False):
+def assign_parameters_to_section(sec, section_data, indicate_soma_and_axon_updates, decrease_axon_Ra_with_update = False, write_to_csv=False):
     '''
     assigns parameters to section/segments from data that was stored in pickle
     #TODO add these
@@ -100,8 +100,8 @@ def assign_parameters_to_section(sec, section_data, indicate_soma_and_axon_updat
     for param, value in geom.items():
         if str(param) not in ['pt3d']:
             if (decrease_axon_Ra_with_update) and (str(param) == 'Ra') and ('axon' in sec.name()):
-              value = value/2
-              print(f"Axon Ra halved")
+              #value = value/2
+              print(f"Axon Ra not halved")
             setattr(sec, param, value)
             section_row[f"geom.{param}"] = value
             if (('soma' in sec.name()) or ('axon' in sec.name()) or ('apic[0]' in sec.name()) or ('dend[0]' in sec.name())) and (indicate_soma_and_axon_updates): # sanity check
@@ -136,12 +136,13 @@ def assign_parameters_to_section(sec, section_data, indicate_soma_and_axon_updat
     # Set and record mechanism parameters
     mechs = section_data.get('mechs', {})
     for mech, params in mechs.items():
-        sec.insert(mech)
+        if not hasattr(sec(0.5), mech):
+            sec.insert(mech)
         for param, value in params.items():
             if param not in state_variables:
-                if (decrease_axon_Ra_with_update) and (str(mech) == 'pas') and ('soma' in sec.name()) and (str(param) == 'g'):
-                    value = value/2
-                    print(f"Soma g_pas halved")
+                if (decrease_axon_Ra_with_update) and (str(mech) == 'pas') and ('axon' in sec.name()) and (str(param) == 'g'):
+                    #value = value*2
+                    print(f"axon g_pas not doubled")
                 if (('soma' in sec.name()) or ('axon' in sec.name()) or ('apic[0]' in sec.name()) or ('dend[0]' in sec.name())) and (indicate_soma_and_axon_updates): # sanity check
                     print(f"Setting {sec.name()} {mech} {param} to {value}.")
                 for i, seg in enumerate(sec):
@@ -163,23 +164,23 @@ def assign_parameters_to_section(sec, section_data, indicate_soma_and_axon_updat
     #except Exception as e:
     #    print(f"Unhandled error in setting mechanism params {sec.name()}: {str(e)} {type(e)}")
        
-    
-    # Name the file based on the current process ID to avoid conflicts
-    filename = f'assignments_{os.getpid()}.csv'
-    
-    # Check if the file exists to determine if we should write headers
-    file_exists = os.path.isfile(filename)
-    
-    # Append the section dictionary to the rows list
-    rows.append(section_row)
-    
-    # Write the rows to the CSV
-    keys = rows[0].keys()  # get the headers (parameter names)
-    with open(filename, 'a', newline='') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=keys)
-        if not file_exists:
-            writer.writeheader()
-        writer.writerows(rows)
+    if write_to_csv:
+      # Name the file based on the current process ID to avoid conflicts
+      filename = f'assignments_{os.getpid()}.csv'
+      
+      # Check if the file exists to determine if we should write headers
+      file_exists = os.path.isfile(filename)
+      
+      # Append the section dictionary to the rows list
+      rows.append(section_row)
+      
+      # Write the rows to the CSV
+      keys = rows[0].keys()  # get the headers (parameter names)
+      with open(filename, 'a', newline='') as csvfile:
+          writer = csv.DictWriter(csvfile, fieldnames=keys)
+          if not file_exists:
+              writer.writeheader()
+          writer.writerows(rows)
 
 def create_cell_from_template_and_pickle():
     '''

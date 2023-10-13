@@ -567,8 +567,12 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     time_steps_saved_at = [0]
 
     # Create a folder to save to
-    random_seed_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_seeds_" +\
-                       str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
+    if constants.CI_on:
+        random_seed_name = "_seeds_" +\
+                           str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
+    else:
+        random_seed_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_seeds_" +\
+                           str(numpy_random_state) + "_" + str(neuron_random_state) + cell.get_output_folder_name()
     if i_amplitude is not None:
         random_seed_name += f"_{int(i_amplitude * 1000)}"
     save_folder = os.path.join(constants.save_dir, random_seed_name)

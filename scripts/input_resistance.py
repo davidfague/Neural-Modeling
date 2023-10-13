@@ -20,7 +20,7 @@ from Modules.logger import Logger
 
 from Modules.plotting_utils import plot_adjacent_segments
 from Modules.segment import SegmentManager
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_2023-08-23_21-30-16/2023-08-23_21-46-06_seeds_130_90L5PCtemplate[0]_196nseg_108nbranch_16073NCs_16073nsyn_-1000" #"output/BenModel/"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_Neytomin_Hay/2023-10-12_21-17-43_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_-1000/" #"output/BenModel/"
 
 
 
