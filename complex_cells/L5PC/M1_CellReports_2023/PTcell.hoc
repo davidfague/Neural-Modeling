@@ -3890,7 +3890,7 @@ proc init () {local b,i,ihMod
   access soma
   distance()
   init_once()
-  setsyns()
+  //setsyns()
 }
 
 endtemplate PTcell

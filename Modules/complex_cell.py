@@ -138,8 +138,9 @@ def assign_parameters_to_section(sec, section_data, indicate_soma_and_axon_updat
     for mech, params in mechs.items():
         if not hasattr(sec(0.5), mech):
             sec.insert(mech)
+            print(f"{mech} inserted into {sec} during unpickling")
         for param, value in params.items():
-            if param not in state_variables:
+            if len(str(value)) > 0:
                 if (decrease_axon_Ra_with_update) and (str(mech) == 'pas') and ('axon' in sec.name()) and (str(param) == 'g'):
                     #value = value*2
                     print(f"axon g_pas not doubled")
@@ -147,6 +148,8 @@ def assign_parameters_to_section(sec, section_data, indicate_soma_and_axon_updat
                     print(f"Setting {sec.name()} {mech} {param} to {value}.")
                 for i, seg in enumerate(sec):
                     if isinstance(value, list):
+                        if (len(value) != sec.nseg):
+                          raise(ValueError(f"sec.nseg != len(value) {sec.nseg}, {len(value)}"))
                         try:
                             setattr(seg, f"{param}_{mech}", value[i])
                         except Exception as e:
@@ -158,6 +161,8 @@ def assign_parameters_to_section(sec, section_data, indicate_soma_and_axon_updat
                             print(f"Warning: Issue setting {mech} {param} in {sec.name()} to {value}. {e} value type {type(value)}")
     
                 section_row[f"mechs.{mech}.{param}"] = value
+            else:
+                print(f"len(str(value)) < 0 for {sec} {mech} {param} {value}. A default value may be used instead.")
                 
     #except AttributeError:
     #    print(f"Warning: Issue with inserting mechanism {mech} in {sec.name()}.")
@@ -282,7 +287,7 @@ def set_hoc_params():
     h.nmax_kdr = 20
     h.nmin_kap = 0.4
     h.lmin_kap = 5
-    h.erev_ih = 37.0
+    h.erev_ih = -37.0
     
 # old is from Ziao model or BS02.., current is from BS0489
 # old axonDiam=1.40966286462, axonL=594.292937602, axon_L_scale=1, somaL=48.4123467666, somaDiam=28.2149102762
