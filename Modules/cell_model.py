@@ -455,7 +455,7 @@ class CellModel:
       '''
       Method for calculating net synaptic currents and getting data after simulation
       '''
-      numTstep = int(vector_length / h.dt)
+      numTstep = int(vector_length)
       i_NMDA_bySeg = [[0] * (numTstep)] * len(self.segments)
       i_AMPA_bySeg = [[0] * (numTstep)] * len(self.segments)
       i_GABA_bySeg = [[0] * (numTstep)] * len(self.segments)
@@ -492,7 +492,7 @@ class CellModel:
       self.data_dict = {}
       # Dynamically add recorded data to data_dict
       for var_name, recorder in self.recorders.items():
-            self.data_dict[var_name + '_data'] = recorder.as_numpy()
+            self.data_dict[var_name] = recorder.as_numpy()
       self.data_dict['spikes'] = self.get_spike_time()
       # self.data_dict['ih_data'] = self.ihcn_Ih.as_numpy()
       # self.data_dict['gNaTa_T_data'] = self.gNaTa_T.as_numpy()

@@ -102,54 +102,83 @@ class Segment:
         self.functional_group_names = []
         self.presynaptic_cell_indices = []
         self.presynaptic_cell_names = []
-
+        
 class SegmentManager:
 
-    def __init__(self, output_folder: str, steps: list, dt: float = 0.1, skip: int = 0, transpose = False, build_detailed_seg_info: bool = False, no_data=False):
+    def __init__(self, output_folder: str, steps: list, dt: float = 0.1, skip: int = 0, 
+                 transpose = False, build_detailed_seg_info: bool = False, no_current_data=False,
+                 synaptic_currents=True, channel_names=None):
         '''
         skip: ms of simulation to skip
         build_detailed_seg_info: Whether or not to try to read detailed_seg_info.csv, a csv containing much more segmentation
         '''
-        if no_data:
-          filenames = ["Vm_report", "spikes_report"]
-          current_names = ["v"]
+                
+        # Base reports that will always be present
+        self.base_filenames = ["Vm_report", "spikes_report"]
+        self.base_current_names = ["v"]
+        
+        # Synaptic currents
+        self.synaptic_filenames = ["i_AMPA_report", "i_NMDA_report", "i_GABA_report"]
+        self.synaptic_current_names = ["iampa", "inmda", "igaba"]
+        
+        # Transmembrane current
+        self.membrane_filename = "i_membrane_report"
+        self.membrane_current_name = "imembrane"
+
+        if no_current_data:
+            self.filenames = self.base_filenames
+            self.current_names = self.base_current_names
         else:
-          #filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
-          #             "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
-          #             "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "i_membrane_report","spikes_report"]
-          #current_names = ["v", "gNaTa", "iampa", "inmda", "igaba","icah", "ical", "ih", "ina", "imembrane"]
-          #filenames = ["Vm_report", "ina_nax_data_report", "i_AMPA_report",
-          #             "i_NMDA_report", "i_GABA_report", "ik_kap_data_report", "ik_kdmc_data_report", "ik_kdr_data_report",
-          #             "ihcn_Ih_data_report", "i_pas_data_report","spikes_report"]
-          filenames = ["Vm_report", "ina_nax_data_report", "i_AMPA_report",
-                       "i_NMDA_report", "i_GABA_report", "ik_kap_data_report", "ik_kdmc_data_report", "ik_kdr_data_report",
-                       "i_hd_data_report", "g_nax_data_report","ica_data_report","i_pas_data_report","spikes_report"]
-          current_names = ["v", "ina_nax", "iampa", "inmda", "igaba", "ik_kap","ik_kdmc","ik_kdr", 
-          "ih", "gna", "ica","i_pas"]
+            self.filenames = self.base_filenames.copy()
+            self.current_names = self.base_current_names.copy()
+            
+            # Append synaptic currents if necessary
+            if synaptic_currents:
+                self.filenames.extend(self.synaptic_filenames)
+                self.current_names.extend(self.synaptic_current_names)
+                
+            # Append transmembrane current if necessary
+            if channel_names and self.membrane_filename not in channel_names:
+                self.filenames.append(self.membrane_filename)
+                self.current_names.append(self.membrane_current_name)
+                
+            # Add channels based on passed channel names
+            if channel_names:
+                for channel in channel_names:
+                    self.filenames.append(channel + "_report")
+                    self.current_names.append(channel)
+
+        self.output_folder = output_folder
+        self.steps = steps
+        self.dt = dt
+        self.skip = skip
+        self.transpose = transpose
+        self.build_detailed_seg_info = build_detailed_seg_info                        
           
         self.segments = []
-        self.dt = dt
-
+        #print(f" SegmentManager.steps: {self.steps}")
+        #print(f" SegmentManager.filenames: {self.filenames}")
         # Read datafiles
-        data = self.read_data(filenames, output_folder, steps)
-        
+        data = self.read_data(self.filenames, self.output_folder, self.steps)
+        #print(f" SegmentManager.data: {data}")
         #debugging
-        print(f" len(data.keys()): {len(data.keys())}")
-        print(f" len(filenames): {len(filenames)}")
-        print(f" len(data[filenames[0]]): {len(data[filenames[0]])}")
-        for key in data.keys():
-          print(f" len(data[{key}]): {len(data[key])}")
-#        if build_detailed_seg_info: # not yet implemented
-#          build_detailed_segments(output_folder, steps)
+        #print(f" len(data.keys()): {len(data.keys())}")
+        #print(f" len(self.filenames): {len(self.filenames)}")
+        #print(f" len(data[self.filenames[0]]): {len(data[self.filenames[0]])}")
+        
+        #for key in data.keys():
+        #  if ("spike" not in key) or ("seg_info" not in key):
+        #      print(key)
+        #      print(f" len(data[{key}]): {len(data[key])} |")# len(data[{key}][0]): {len(data[key][0])}")
         #print(data["Vm_report"].shape)
 
         self.num_segments = len(data["seg_info"])
-        print("NUM seg", self.num_segments)
+        #print("NUM seg", self.num_segments)
 
         for i in range(self.num_segments):
             # Build seg_data
-            seg_data = {}
-            for filename, current_name in zip(filenames[:-1], current_names):
+            seg_data = {} # dictionary of data values
+            for filename, current_name in zip([f for f in self.filenames if f != "spikes_report"], self.current_names):
                 if transpose:
                     seg_data[current_name] = data[filename].T[i, int(skip / dt):]
                 else:
@@ -161,7 +190,7 @@ class SegmentManager:
         self.compute_adj_segs_from_pseg_indices()
         
         # Soma spikes (ms)
-        self.soma_spiketimes = np.array([(i-skip) for i in data[filenames[-1]][:] if i >= skip])
+        self.soma_spiketimes = np.array([(i-skip) for i in data["spikes_report"][:] if i >= skip])
         # Soma spikes (inds)
         self.soma_spiketimestamps = np.sort((self.soma_spiketimes / dt).astype(int))
 
@@ -212,7 +241,7 @@ class SegmentManager:
         bAP_lower_bounds = []
         peak_values = []
         flattened_peak_values = []
-        print(dir(self.segments[0]))
+        #print(dir(self.segments[0]))
     
         for seg in self.segments:
             lb, bAPs = self.get_na_lower_bounds_for_seg(seg, threshold, ms_within_somatic_spike)
