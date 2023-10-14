@@ -206,7 +206,7 @@ class Synapse:
         return gmax
     
     def setup_recorder(self, vector_length) -> None:
-        size = round(vector_length / h.dt) + 1
+        size = vector_length + 1
         
         if self.current_type == "i":
             self.rec_vec.append(h.Vector(size).record(self.synapse_neuron_obj._ref_i))

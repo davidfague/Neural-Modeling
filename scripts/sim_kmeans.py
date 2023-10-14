@@ -14,6 +14,8 @@ from Modules.reduction import Reductor
 from Modules.clustering import create_functional_groups_of_presynaptic_cells
 from Modules.cell_model import CellModel
 
+from Modules.compare_cells import *
+
 from cell_inference.config import params
 from cell_inference.utils.currents.ecp import EcpMod
 
@@ -28,6 +30,10 @@ import pandas as pd
 from neuron import h
 
 import constants
+
+
+
+
 
 def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
@@ -58,6 +64,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
             soma = complex_cell.soma[0] if is_indexable(complex_cell.soma) else complex_cell.soma
             axon = complex_cell.axon[0] if is_indexable(complex_cell.axon) else complex_cell.axon
             set_pickled_parameters_to_sections([soma, axon], constants.indicate_soma_and_axon_updates, constants.decrease_axon_Ra_with_update)
+            set_hoc_params() # globals
             #assign_parameters_from_csv(cell=complex_cell)
             #adjust_soma_and_axon_geometry(complex_cell, somaL = constants.SomaL, somaDiam = constants.SomaDiam, axonDiam = constants.AxonDiam, axonL = constants.AxonL, axon_L_scale = constants.Axon_L_scale)
     elif constants.build_m1:
@@ -66,17 +73,51 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
         complex_cell = build_L5_cell_ziao(constants.complex_cell_folder) # build Neymotin reduced from ziao template
     elif constants.build_cell_reports_cell: # build Neymotin detailed cell from template and pickled params # *********** current use mainly
         complex_cell = create_cell_from_template_and_pickle(constants.indicate_soma_and_axon_updates)
+        complex_cell.axon.insert('ca_ion')
     else: # Build Hay et al model then replace axon & soma with Neymotin detailed
         set_hoc_params()
+        
+    if constants.compare_two_cells: # should have identical soma/axon between models
+        complex_cell_h_globals = capture_h_globals(h)
+        neymotin_cell = create_cell_from_template_and_pickle(constants.indicate_soma_and_axon_updates)
+        neymotin_cell_h_globals = capture_h_globals(h)
+        # compare nrn sec and seg attributes
+        print(f"comparing neymotin and neymotin/hay SOMA:")
+        diff = compare_sections(neymotin_cell.soma, complex_cell.soma[0])
+        print(f" diff: {diff}")
+        # axon
+        print(f"comparing neymotin and neymotin/hay AXON:")
+        diff = compare_sections(neymotin_cell.axon, complex_cell.axon[0])
+        print(f" diff: {diff}")
+        
+        #remedy differences:
+        adjust_axon_diameter(complex_cell, diff) # cell on the left when computing diff will be seen as correct
+        
+        print(f"comparing neymotin and neymotin/hay AXON AFTER ADJUSTMENT:")
+        diff = compare_sections(neymotin_cell.axon, complex_cell.axon[0])
+        print(f" diff: {diff}")
+        
+        # Compare global variables from `h` for both cells
+        h_globals_diff = compare_dictionaries(complex_cell_h_globals, neymotin_cell_h_globals)
+        if h_globals_diff:
+            print("Differences in global variables found:")
+            for key, (val1, val2) in h_globals_diff.items():
+                print(f"{key}: {val1} vs {val2}")
+        else:
+            print("No differences in global variables.")
+        
+        #print(f"comparing neymotin SOMA and neymotin/hay AXON:")
+        #diff = compare_sections(neymotin_cell.soma, complex_cell.axon[0])
+        #print(f" diff: {diff}")
+        
 
     logger.log_section_end("Building complex cell")
     soma = complex_cell.soma[0] if is_indexable(complex_cell.soma) else complex_cell.soma
     print(f"dir(soma) : {dir(soma)} | dir(soma(0.5)) : {dir(soma(0.5))} | dir(soma(0.5).na_ion) : {dir(soma(0.5).na_ion)} | dir(soma(0.5).nax) : {dir(soma(0.5).nax)}")
 
     h.celsius = constants.h_celcius
-    try:h.v_init = complex_cell.soma[0].e_pas
-    except:
-      h.v_init = complex_cell.soma.e_pas
+    h.v_init = soma.e_pas
+
       #print(f"warning soma is h.Section {complex_cell.soma} and not list")
 
     # Sim runtime
@@ -166,15 +207,15 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
               adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
           else:
               adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
-
+    
     logger.log_memory()
-    if not constants.CI_on:
+    if constants.synapses_on:
       if constants.use_SA_exc: # use surface area instead of lengths for probabilities
           exc_synapses = synapse_generator.add_synapses(segments = all_segments,
                                                     probs = all_SA_per_segment,
                                                     density=constants.exc_synaptic_density,
                                                     record = True,
-                                                    vector_length = constants.save_every_ms,
+                                                    vector_length = constants.vector_length,
                                                     gmax = gmax_exc_dist,
                                                     random_state=random_state,
                                                     neuron_r = neuron_r,
@@ -188,7 +229,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
                                                 probs = no_soma_len_per_segment,
                                                 density=constants.exc_synaptic_density,
                                                 record = True,
-                                                vector_length = constants.save_every_ms,
+                                                vector_length = constants.vector_length,
                                                 gmax = gmax_exc_dist,
                                                 random_state=random_state,
                                                 neuron_r = neuron_r,
@@ -229,12 +270,12 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     inh_gmax = constants.inh_gmax_dist * constants.inh_scalar
 
     logger.log_memory()
-    if not constants.CI_on:
+    if constants.synapses_on:
       inh_synapses = synapse_generator.add_synapses(segments = all_segments,
                                                 probs = all_SA_per_segment,
                                                 density=constants.inh_synaptic_density,
                                                 record = True,
-                                                vector_length = constants.save_every_ms,
+                                                vector_length = constants.vector_length,
                                                 gmax = inh_gmax,
                                                 random_state=random_state,
                                                 neuron_r = neuron_r,
@@ -253,13 +294,13 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
     logger.log_section_start("Generating inhibitory func groups for soma")
     logger.log_memory()
-    if not constants.CI_on:
+    if constants.synapses_on:
       if constants.add_soma_inh_synapses:
         soma_inh_synapses = synapse_generator.add_synapses(segments = soma_segments,
                                                   probs = soma_SA_per_segment,
                                                   number_of_synapses=constants.num_soma_inh_syns,
                                                   record = True,
-                                                  vector_length = constants.save_every_ms,
+                                                  vector_length = constants.vector_length,
                                                   gmax = inh_gmax,
                                                   random_state=random_state,
                                                   neuron_r = neuron_r,
@@ -296,62 +337,63 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     #print("exc_synapses:", excit_synapses)
     #print("inh_synapses:", inhib_synapses)
     #print("soma_inh_synapses:", soma_inhib_synapses)
-    logger.log_section_end("Adding all synapses")
-
-    logger.log_section_start("Initializing detailed cell model for kmeans clustering")
-    logger.log_memory()
-    
-    # get segment coordinates # can also increase the number of segments here for better clustering resolution.
-    cell = CellModel(hoc_model = complex_cell, random_state = random_state)
-
-    logger.log_section_end("Initializing detailed cell model for kmeans clustering")
-
-    logger.log_section_start("Reading detailed seg coordinates nseg="+str(len(cell.segments)))
-    logger.log_memory()
-
-    # get segment coordinates, and cluster cell segments into functional groups
-    exc_segment_coordinates = []
-    segment_coordinates = np.zeros((len(cell.seg_info), 3))
-    detailed_seg_info = cell.seg_info.copy()
-    soma_coordinates = np.zeros(3)
-    
-    exc_segment_indices=[]
-    
-    for ind, seg in enumerate(cell.seg_info): # can probably split perisomatic and distal here.
-        segment_coordinates[ind, 0] = seg['p0.5_x3d']
-        segment_coordinates[ind, 1] = seg['p0.5_y3d']
-        segment_coordinates[ind, 2] = seg['p0.5_z3d']
-    
-        # segments with exc synapses: trunk segments that not distal oblique sections
-        if (not ((seg['sec'] in cell.apic) and (seg['sec'] not in cell.obliques) and (seg['p0.5_y3d'] < 600))) and (h.distance(seg['seg'], cell.soma[0](0.5)) > 100):
-            # Store the coordinates of the segment that meets the conditions
-            exc_segment_coordinates.append([seg['p0.5_x3d'], seg['p0.5_y3d'], seg['p0.5_z3d']])
-            exc_segment_indices.append(ind)
-            
-        if seg['seg'] == cell.soma[0](0.5):
-            soma_coordinates[0] = seg['p0.5_x3d']
-            soma_coordinates[1] = seg['p0.5_y3d']
-            soma_coordinates[2] = seg['p0.5_z3d']
-    
-    # Convert the list to a numpy array for easier manipulation later on
-    exc_segment_coordinates = np.array(exc_segment_coordinates)
-
-    
-    logger.log_section_end("Reading detailed seg coordinates nseg="+str(len(cell.segments)))   
-    
-    logger.log_section_start("Creating Excitatory Functional groups")
-    logger.log_memory()
+    if constants.synapses_on:
+      logger.log_section_end("Adding all synapses")
+  
+      logger.log_section_start("Initializing detailed cell model for kmeans clustering")
+      logger.log_memory()
+      
+      # get segment coordinates # can also increase the number of segments here for better clustering resolution.
+      cell = CellModel(hoc_model = complex_cell, random_state = random_state)
+  
+      logger.log_section_end("Initializing detailed cell model for kmeans clustering")
+  
+      logger.log_section_start("Reading detailed seg coordinates nseg="+str(len(cell.segments)))
+      logger.log_memory()
+  
+      # get segment coordinates, and cluster cell segments into functional groups
+      exc_segment_coordinates = []
+      segment_coordinates = np.zeros((len(cell.seg_info), 3))
+      detailed_seg_info = cell.seg_info.copy()
+      soma_coordinates = np.zeros(3)
+      
+      exc_segment_indices=[]
+      
+      for ind, seg in enumerate(cell.seg_info): # can probably split perisomatic and distal here.
+          segment_coordinates[ind, 0] = seg['p0.5_x3d']
+          segment_coordinates[ind, 1] = seg['p0.5_y3d']
+          segment_coordinates[ind, 2] = seg['p0.5_z3d']
+      
+          # segments with exc synapses: trunk segments that not distal oblique sections
+          if (not ((seg['sec'] in cell.apic) and (seg['sec'] not in cell.obliques) and (seg['p0.5_y3d'] < 600))) and (h.distance(seg['seg'], cell.soma[0](0.5)) > 100):
+              # Store the coordinates of the segment that meets the conditions
+              exc_segment_coordinates.append([seg['p0.5_x3d'], seg['p0.5_y3d'], seg['p0.5_z3d']])
+              exc_segment_indices.append(ind)
+              
+          if seg['seg'] == cell.soma[0](0.5):
+              soma_coordinates[0] = seg['p0.5_x3d']
+              soma_coordinates[1] = seg['p0.5_y3d']
+              soma_coordinates[2] = seg['p0.5_z3d']
+      
+      # Convert the list to a numpy array for easier manipulation later on
+      exc_segment_coordinates = np.array(exc_segment_coordinates)
+  
+      
+      logger.log_section_end("Reading detailed seg coordinates nseg="+str(len(cell.segments)))   
+      
+      logger.log_section_start("Creating Excitatory Functional groups")
+      logger.log_memory()
     # create excitatory functional groups
-    exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,
-                                                                          n_functional_groups=constants.exc_n_FuncGroups,
-                                                                          n_presynaptic_cells_per_functional_group=constants.exc_n_PreCells_per_FuncGroup,
-                                                                          name_prefix='exc',
-                                                                          synapses = exc_synapses, 
-                                                                          cell=cell, mean_firing_rate = mean_fr_dist, 
-                                                                          spike_generator=spike_generator, 
-                                                                          t = t, 
-                                                                          random_state=random_state, 
-                                                                          method = '1f_noise')
+      exc_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,
+                                                                            n_functional_groups=constants.exc_n_FuncGroups,
+                                                                            n_presynaptic_cells_per_functional_group=constants.exc_n_PreCells_per_FuncGroup,
+                                                                            name_prefix='exc',
+                                                                            synapses = exc_synapses, 
+                                                                            cell=cell, mean_firing_rate = mean_fr_dist, 
+                                                                            spike_generator=spike_generator, 
+                                                                            t = t, 
+                                                                            random_state=random_state, 
+                                                                            method = '1f_noise')
     
     logger.log_section_end("Creating Excitatory Functional groups")
     
@@ -363,7 +405,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     logger.log_memory()
     # generate inh functional groups
     #dendritic
-    if not constants.CI_on:
+    if constants.synapses_on:
       inh_distributed_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,
                                                                         n_functional_groups=constants.inh_distributed_n_FuncGroups,
                                                                         n_presynaptic_cells_per_functional_group=constants.inh_distributed_n_PreCells_per_FuncGroup,
@@ -385,7 +427,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     logger.log_section_start("Creating Inhibitory SOMA Functional groups")
     logger.log_memory()
     #somatic
-    if not constants.CI_on:
+    if constants.synapses_on:
       if constants.add_soma_inh_synapses:
         inh_soma_functional_groups = create_functional_groups_of_presynaptic_cells(segments_coordinates=segment_coordinates,
                                                                                     n_functional_groups=1,
@@ -467,7 +509,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
                                 expand_cable = constants.expand_cable, choose_branches = constants.choose_branches)
                                 
     logger.log_section_end("Initializing Reductor and cell model for simulation |NR:"+str(constants.reduce_cell)+"|optimize nseg:"+str(constants.optimize_nseg_by_lambda)+"|Expand Cable:"+str(constants.expand_cable))
-    if not constants.CI_on:
+    if constants.synapses_on:
       # Turn off certain presynaptic neurons to simulate in vivo
       if not constants.trunk_exc_synapses: # turn off trunk exc synapses.
         for synapse in cell.synapses:
@@ -492,7 +534,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
           logger.log_section_end("Merging Synapses")
       logger.log_section_start("Setting up cell var recorders")
       logger.log_memory()
-    cell.setup_recorders(vector_length = constants.save_every_ms)
+    cell.setup_recorders(vector_length = constants.vector_length)
     logger.log_section_end("Setting up cell var recorders")
     
     # Add injections for F/I curve
@@ -541,10 +583,10 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     logger.log_section_start("Initializing t_vec and V_rec recorder")
 
     # Record time points
-    t_vec = h.Vector(1000 / h.dt).record(h._ref_t)
+    t_vec = h.Vector(constants.vector_length).record(h._ref_t)
 
     # Record membrane voltage of all segments
-    V_rec = Recorder(cell.segments, vector_length = constants.save_every_ms)
+    V_rec = Recorder(cell.segments, vector_length = (constants.vector_length))
 
     logger.log_section_end("Initializing t_vec and V_rec recorder")
 
@@ -604,7 +646,9 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     # logger.log_section_end('saving seg_info, functional groups, and presynaptic cells to csv')
 
     logger.log_section_start('saving seg_info to csv')
-    cell.write_seg_info_to_csv(path=save_folder, seg_info=detailed_seg_info, title_prefix='detailed_')
+    if constants.synapses_on:
+      cell.write_seg_info_to_csv(path=save_folder, seg_info=detailed_seg_info, title_prefix='detailed_')
+    cell.write_seg_info_to_csv(path=save_folder)
     logger.log_section_end('saving seg_info to csv')
     
     # temporarily removed
@@ -625,13 +669,13 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     h.finitialize(h.v_init)
     while h.t <= h.tstop + 1:
 
-        if time_step % (constants.log_every_ms / constants.h_dt) == 0:
+        if time_step % (constants.log_every_ms / h.dt) == 0:
             logger.log(f"Running simulation step {time_step}")
             logger.log_memory()
 
-        if (time_step > 0) & (time_step % (constants.save_every_ms / constants.h_dt) == 0):
+        if (time_step > 0) & (time_step % (constants.save_every_ms / h.dt) == 0):
             # Save data
-            cell.generate_recorder_data(constants.save_every_ms)
+            cell.generate_recorder_data(constants.vector_length)
             cell.write_data(os.path.join(save_folder, f"saved_at_step_{time_step}"))
 
             # Save lfp
@@ -653,6 +697,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
             time_steps_saved_at.append(time_step)
 
             # Reinitialize vectors: https://www.neuron.yale.edu/phpBB/viewtopic.php?t=2579
+            # may be able to extract and resign their sizes after clearing
             t_vec.resize(0)
             for vec in V_rec.vectors: vec.resize(0)
             for vec in cell.Vm.vectors: vec.resize(0)
