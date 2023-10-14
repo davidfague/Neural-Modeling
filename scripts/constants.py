@@ -6,9 +6,10 @@ neuron_random_states = [90] # Number of calls to MCellRan4()
 parallelize = True
 
 # Complex cell
+compare_two_cells = False # compares the chosen built cell (complex_cell) with cell_reports_cell (neymotin_cell)
 # Pick one and make sure that the rest are False
 build_L5_cell = True # original
-swap_soma = True # brings Neymoting soma and axon into L5 cell
+swap_soma = False # brings Neymoting soma and axon into L5 cell
 build_m1 = False # WIP denotes whether or not to instead use https://github.com/ModelDBRepository/195615/tree/master cell
 build_ziao_cell = False
 build_cell_reports_cell = False # latest
@@ -24,11 +25,13 @@ if build_cell_reports_cell:
 else:
   modfiles_folder = "../modfiles_M1_original_gbar"#"../modfiles"
   
+synapses_on = False  
+  
 # for when parameters are read from pickle
-indicate_soma_and_axon_updates = True
+indicate_soma_and_axon_updates = False
 
 # for updating the L5 cell with swapped soma and axon
-decrease_axon_Ra_with_update = True # also changes soma g_pas
+decrease_axon_Ra_with_update = False # also changes soma g_pas
 
 # Reduction
 reduce_cell = False
@@ -176,7 +179,7 @@ soma_functional_group_span = 100
 # Cell model
 seg_to_record = 'soma' # used to set spike recorder
 spike_threshold = -10 # mV # used to be 10
-channel_names = ['i_pas', 'i_hd', 'ina', 'ik_kdr','ik_kap','ik_kdmc','ina_nax', 'ica_cal', 'ica_can', 'ica','g_nax']
+channel_names = ['ik', 'ica', 'ina', 'i_pas', 'i_hd']#['i_pas', 'i_hd', 'ina', 'ik_kdr','ik_kap','ik_kdmc','ina_nax', 'ica_cal', 'ica_can', 'ica','g_nax', 'ina', 'ik'] #'ik_SKv3_1', 'ik_K_Tst', 'ik_K_Pst', 'ik_SK_E2'
 
 #'ik_kdr','ik_kap','ik_kdmc','ina_nax', 'ica_cal'
 #'ihcn_Ih']#['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et2',
@@ -201,3 +204,4 @@ skip = 300
 save_dir = "output/"
 log_every_ms = 1000
 save_every_ms = 1000
+vector_length = int(save_every_ms/h_dt)
