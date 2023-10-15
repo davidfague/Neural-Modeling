@@ -9,7 +9,7 @@ parallelize = True
 compare_two_cells = False # compares the chosen built cell (complex_cell) with cell_reports_cell (neymotin_cell)
 # Pick one and make sure that the rest are False
 build_L5_cell = True # original
-swap_soma = False # brings Neymoting soma and axon into L5 cell
+swap_soma = True # brings Neymoting soma and axon into L5 cell
 build_m1 = False # WIP denotes whether or not to instead use https://github.com/ModelDBRepository/195615/tree/master cell
 build_ziao_cell = False
 build_cell_reports_cell = False # latest
@@ -25,7 +25,7 @@ if build_cell_reports_cell:
 else:
   modfiles_folder = "../modfiles_M1_original_gbar"#"../modfiles"
   
-synapses_on = False  
+synapses_on = True  
   
 # for when parameters are read from pickle
 indicate_soma_and_axon_updates = False
@@ -55,17 +55,6 @@ AxonDiam =  1.40966286462
 Axon_L_scale = 1 # used to adjust axon length while maintaing surface area
 
 
-
-# Neuron parameters
-h_celcius = 34#37
-h_tstop = 10400 #55#2500#20400 # Sim runtime (ms)
-h_dt = 0.1 # Timestep (ms)
-
-# Current injection
-CI_on = True
-h_i_amplitudes = [-2.0,-1.0,0,0.25,0.3,0.5,0.6,0.75,1.0]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,5.0, 10.0] #[None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
-h_i_duration = 10000 # (ms)
-h_i_delay = 400 # (ms)
 
 ## on/off switches
 #trunk_exc_synapses = True # on/off switch
@@ -179,7 +168,21 @@ soma_functional_group_span = 100
 # Cell model
 seg_to_record = 'soma' # used to set spike recorder
 spike_threshold = -10 # mV # used to be 10
-channel_names = ['ik', 'ica', 'ina', 'i_pas', 'i_hd']#['i_pas', 'i_hd', 'ina', 'ik_kdr','ik_kap','ik_kdmc','ina_nax', 'ica_cal', 'ica_can', 'ica','g_nax', 'ina', 'ik'] #'ik_SKv3_1', 'ik_K_Tst', 'ik_K_Pst', 'ik_SK_E2'
+Base_channels = ['i_pas', 'ik', 'ica', 'ina', 'i_hd']
+Hay_channels = ['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'ina_Nap_Et2', 'ik_SKv3_1', 'ik_SK_E2', 'ik_Im', 'ica_Ca_HVA', 'ica_Ca_LVAst']
+Hay_soma_extra_channels = ['ik_K_Tst', 'ik_K_Pst']
+Neymotin_channels = ['ina_nax', 'ik_kap', 'ik_kdr', 'ik_kdmc', 'ica_cal', 'ica_can']
+channel_names = []
+channel_names += Base_channels
+if build_L5_cell:
+  channel_names += Hay_channels
+  if not swap_soma:
+    channel_names += Hay_soma_extra_channels
+channel_names += Neymotin_channels
+hay_neymotin_dend_channels = Base_channels+Hay_channels
+#'ik_kdr','ik_kap','ik_kdmc','ina_nax', 'ica_cal', 'ica_can', 'ik_SK_E2', 'ik_SKv3_1', 'ik_K_Tst', 'ik_K_Pst', ]
+
+#['i_pas', 'i_hd', 'ina', 'ik_kdr','ik_kap','ik_kdmc','ina_nax', 'ica_cal', 'ica_can', 'ica','g_nax', 'ina', 'ik'] #'ik_SKv3_1', 'ik_K_Tst', 'ik_K_Pst', 'ik_SK_E2'
 
 #'ik_kdr','ik_kap','ik_kdmc','ina_nax', 'ica_cal'
 #'ihcn_Ih']#['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'gNap_Et2_Nap_Et2', 'ina_Nap_Et2',
@@ -196,6 +199,21 @@ ties_pad_aiv = 0
 # Post Synaptic Current analysis
 number_of_presynaptic_cells = 2651# old functional groups was: 6524
 PSC_start = 5
+
+
+# Current injection
+CI_on = False
+h_i_amplitudes = [-2.0,-1.0,0,0.25,0.3,0.5,0.6,0.75,1.0]#[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,5.0, 10.0] #[None] # CI amplitudes (nA); to disable external injection, set to [None] (also disables h_i params below)
+h_i_duration = 10000 # (ms)
+h_i_delay = 400 # (ms)
+
+# Neuron parameters
+h_celcius = 34#37
+if CI_on:
+  h_tstop = 10400 #55#2500#20400 # Sim runtime (ms)
+else:
+  h_tstop = 150000
+h_dt = 0.1 # Timestep (ms)
 
 # analyze output
 skip = 300

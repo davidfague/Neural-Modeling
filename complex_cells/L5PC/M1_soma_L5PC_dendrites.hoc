@@ -8,7 +8,7 @@ proc biophys() {
     insert hd
     
     cm = 0.700445928608//1
-    Ra = 100//137.494564931//114.51049//137.494564931//90//114.510490019// morph.py: 137.494564931//114.510490019//orig:100
+    Ra = 114.51049//137.494564931//114.51049//100//137.494564931//114.51049//137.494564931//90//114.510490019// morph.py: 137.494564931//114.510490019//orig:100
     e_pas = -90.220509483//-88.5366550238//-90.220509483//orig:-90
     g_pas = (1/38457.4393085)
     
@@ -136,8 +136,9 @@ proc biophys() {
 	forsec $o1.apical {
     //spinecapfactor = 1.48057846279
     // cap = 0.700445928608
-		cm = 2//Neymotin detailed:1.48057846279 * 0.700445928608 // spinecapfactor * cap 1.03418636866 //orig:2
-    g_pas = 0.0000589//Neymotin_detailed:1.48057846279 / 38457.4393085 //spinecapfactor/rm 1/38457.4393085 //0.0000589//  neymotin:1/10751.193413 //orig:0.0000589
+    Ra = 137
+		cm = 1.48057846279 * 0.700445928608//2//Neymotin detailed:1.48057846279 * 0.700445928608 // spinecapfactor * cap 1.03418636866 //orig:2
+    g_pas = 1.48057846279 / 38457.4393085//0.0000589//Neymotin_detailed:1.48057846279 / 38457.4393085 //spinecapfactor/rm 1/38457.4393085 //0.0000589//  neymotin:1/10751.193413 //orig:0.0000589
 		insert Ih
   	insert SK_E2 
   	insert Ca_LVAst 
@@ -150,16 +151,23 @@ proc biophys() {
 		ena = 42.0//orig:50
     decay_CaDynamics_E2 = 122 
     gamma_CaDynamics_E2 = 0.000509 
-    gSK_E2bar_SK_E2 = 0.0012 
-  	gSKv3_1bar_SKv3_1 = 0.000261 
-  	gNaTa_tbar_NaTa_t = 0.0213 //* 3
-  	gImbar_Im = 0.0000675
+    gSK_E2bar_SK_E2 = 0.0012 //* 2 // calcium-gated potassium channel
+  	gSKv3_1bar_SKv3_1 = 0.000261 * 2//* 3 // voltage-gated potassium channel
+  	gNaTa_tbar_NaTa_t = 0.0213 * 1.25//* 1.25 //* 2//* 3
+  	gImbar_Im = 0.0000675 * 3
     //insert kdr
     gbar_kdr = 0
-    //insert kap
-    gbar_kap = 0
+    //insert kap // K-A current
+    gbar_kap = 0//0.00000614003391814 * 1.25// 100 //-45
+    //vhalfn_kap  = -56 //35 // def 11
+    //vhalfl_kap  = 0   //-56
+    //nmin_kap    = 0.4
+    //lmin_kap    = 5
+    //tq_kap = -3.85E-05
+    //sh_kap = 0.061400339
     insert nax
     gbar_nax = 0
+    //sh_nax = 16.01816914
     insert kdmc
     gbar_kdmc = 0 
     
@@ -185,8 +193,9 @@ proc biophys() {
 	$o1.distribute_channels("apic","gCa_HVAbar_Ca_HVA",3,1.000000,0.100000,685.000000,885.000000,0.0005550000) 
 	
   forsec $o1.basal {
-		cm = 2//Neymotin detailed: 1.48057846279 * 0.700445928608 // spinecapfactor * cap 1.03418636866 //1.89771901209  //orig:2
-    g_pas = 0.0000467//Neymotin detailed: 1.48057846279 / 38457.4393085 //spinecapfactor/rm //0.0000467//neymotin: 1/13123.00174  //orig:0.0000467
+    Ra = 137.494564931
+		cm = 1.48057846279 * 0.700445928608//2//Neymotin detailed: 1.48057846279 * 0.700445928608 // spinecapfactor * cap 1.03418636866 //1.89771901209  //orig:2
+    g_pas = 1.48057846279 / 38457.4393085//0.0000467//Neymotin detailed: 1.48057846279 / 38457.4393085 //spinecapfactor/rm //0.0000467//neymotin: 1/13123.00174  //orig:0.0000467
     // original
 		insert Ih
 		gIhbar_Ih = 0.0002
@@ -202,10 +211,10 @@ proc biophys() {
 		ena = 42.0 //orig:50
     decay_CaDynamics_E2 = 122 
     gamma_CaDynamics_E2 = 0.000509 
-    gSK_E2bar_SK_E2 = 0.0012 
-  	gSKv3_1bar_SKv3_1 = 0.000261 
-  	gNaTa_tbar_NaTa_t = 0.0213 //* 3
-  	gImbar_Im = 0.0000675
+    gSK_E2bar_SK_E2 = 0.0012 * 2 //* 2
+  	gSKv3_1bar_SKv3_1 = 0.000261 * 2//* 6//* 3
+  	gNaTa_tbar_NaTa_t = 0.0213 * 1.25 //* 1.25//* 3
+  	gImbar_Im = 0.0000675 * 4
    
     // Neymotin channels
     insert ca_ion
@@ -214,10 +223,17 @@ proc biophys() {
     oca = 2
     //insert kdr
     gbar_kdr = 0
-    //insert kap
-    gbar_kap = 0
+    //insert kap // K-A current
+    gbar_kap = 0 //0.00000614003391814 * 1.25// 100 //-45
+    //vhalfn_kap  = -56 //35 // def 11
+    //vhalfl_kap  = 0   //-56
+    //nmin_kap    = 0.4
+    //lmin_kap    = 5
+    //tq_kap = -3.85E-05
+    //sh_kap = 0.061400339
     insert nax
     gbar_nax = 0
+    //sh_nax = 16.01816914
     insert kdmc
     gbar_kdmc = 0
     // Migliore H current
