@@ -344,7 +344,7 @@ class SegmentManager:
             if spike_time > 100:
                 #trace = seg.icah[spike_time - 100 : spike_time + 200] + seg.ical[spike_time - 100 : spike_time + 200] +\
                 trace = seg.ica[spike_time - 100 : spike_time + 200] +\
-                seg.ih[spike_time - 100 : spike_time + 200]
+                seg.i_hd[spike_time - 100 : spike_time + 200]#seg.ih[spike_time - 100 : spike_time + 200]
                 peak_value = np.max(trace)
                 half_peak = peak_value / 2
                 duration = np.arange(len(trace))[trace > half_peak] + spike_time - 10
@@ -362,7 +362,7 @@ class SegmentManager:
         if current_type == "ica":
             v_thresh, time_thresh = -40, 200
             #trace = seg.icah + seg.ical + seg.ih
-            trace = seg.ica + seg.ih
+            trace = seg.ica + seg.i_hd
         elif current_type == "inmda":
             v_thresh, time_thresh = -40, 260
             trace = seg.inmda

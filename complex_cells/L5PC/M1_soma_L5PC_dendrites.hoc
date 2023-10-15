@@ -155,6 +155,23 @@ proc biophys() {
   	gSKv3_1bar_SKv3_1 = 0.000261 * 2//* 3 // voltage-gated potassium channel
   	gNaTa_tbar_NaTa_t = 0.0213 * 1.25//* 1.25 //* 2//* 3
   	gImbar_Im = 0.0000675 * 3
+ 
+// for F/I 
+    for (x,0) { 
+        xdist = distance(x)
+        if (xdist > 100){
+          gSK_E2bar_SK_E2 = 0.0012 //* 2
+        	gSKv3_1bar_SKv3_1 = 0.000261//* 6//* 3
+        	gNaTa_tbar_NaTa_t = 0.0213 * 3//* 1.25//* 3
+        	gImbar_Im = 0.0000675
+        } else {
+          gSK_E2bar_SK_E2 = 0.0012 //* 2 // calcium-gated potassium channel
+        	gSKv3_1bar_SKv3_1 = 0.000261 * 2//* 3 // voltage-gated potassium channel
+        	gNaTa_tbar_NaTa_t = 0.0213 * 1.25//* 1.25 //* 2//* 3
+        	gImbar_Im = 0.0000675 * 3
+        }
+      }
+   
     //insert kdr
     gbar_kdr = 0
     //insert kap // K-A current
@@ -215,6 +232,22 @@ proc biophys() {
   	gSKv3_1bar_SKv3_1 = 0.000261 * 2//* 6//* 3
   	gNaTa_tbar_NaTa_t = 0.0213 * 1.25 //* 1.25//* 3
   	gImbar_Im = 0.0000675 * 4
+ 
+// control
+//    for (x,0) { 
+//        xdist = distance(x)
+//        if (xdist > 100){
+//          gSK_E2bar_SK_E2 = 0.0012 //* 2
+//        	gSKv3_1bar_SKv3_1 = 0.000261//* 6//* 3
+//        	gNaTa_tbar_NaTa_t = 0.0213 * 3//* 1.25//* 3
+//        	gImbar_Im = 0.0000675
+//        } else {
+//          gSK_E2bar_SK_E2 = 0.0012 * 2 //* 2
+//        	gSKv3_1bar_SKv3_1 = 0.000261 * 2//* 6//* 3
+//        	gNaTa_tbar_NaTa_t = 0.0213 * 1.25 //* 1.25//* 3
+//        	gImbar_Im = 0.0000675 * 4
+//        }
+//      }
    
     // Neymotin channels
     insert ca_ion

@@ -9,7 +9,7 @@ from Modules.plotting_utils import plot_sta, plot_edges
 from Modules.logger import Logger
 
 # Output folder should store folders 'saved_at_step_xxxx'
-output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/2023-10-11_22-39-48_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_16071NCs_16071nsyn"
+output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/L5PCtemplate[0]_150min_195nseg_108nbranch_16071NCs_16071nsyn"
 
 import importlib
 def load_constants_from_folder(output_folder):
@@ -30,8 +30,8 @@ else:
   transpose=False
 
 what_to_plot = {
-    "Na": False,
-    "Ca": True,
+    "Na": True,
+    "Ca": False,
     "NMDA": True,
     "Ca_NMDA": True
 }
@@ -90,7 +90,7 @@ def main(random_state):
     steps = range(step_size, int(constants.h_tstop / constants.h_dt) + 1, step_size) # Timestamps
 
     random_state = np.random.RandomState(random_state)
-    sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt, transpose=transpose)
+    sm = SegmentManager(output_folder, steps = steps, dt = constants.h_dt, transpose=transpose, channel_names=constants.channel_names)
     
 
     if what_to_plot["Na"]:
@@ -120,12 +120,12 @@ def main(random_state):
 
         # Check for na_lower_bounds
         fig, ax = plt.subplots()
-        #ax.plot(np.arange(0, len(sm.segments[0].v)*0.1, 0.1), sm.segments[0].gNaTa)
-        ax.plot(np.arange(0, len(sm.segments[0].v)*0.1, 0.1), sm.segments[0].gna)
+        ax.plot(np.arange(0, len(sm.segments[0].v)*0.1, 0.1), sm.segments[0].gNaTa)
+        #ax.plot(np.arange(0, len(sm.segments[0].v)*0.1, 0.1), sm.segments[0].gna)
         for bound in na_lower_bounds[0]:
             ax.vlines(bound * 0.1, ymin = 0, ymax = 0.1, color = 'black', label = "Na lower bounds")
-        #for i, val in enumerate(np.diff(sm.segments[0].gNaTa > threshold)): # threshold crossings
-        for i, val in enumerate(np.diff(sm.segments[0].gna > threshold)): # threshold crossings
+        for i, val in enumerate(np.diff(sm.segments[0].gNaTa > threshold)): # threshold crossings
+        #for i, val in enumerate(np.diff(sm.segments[0].gna > threshold)): # threshold crossings
             if val == True:
                 ax.vlines(i * 0.1, ymin = 0, ymax = 0.05, color = 'red', label = "Threshold crossings")
         ax.legend()

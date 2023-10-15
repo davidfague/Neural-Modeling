@@ -65,14 +65,14 @@ Axon_L_scale = 1 # used to adjust axon length while maintaing surface area
 trunk_exc_synapses = True # on/off switch
 perisomatic_exc_synapses = False
 add_soma_inh_synapses = True
-num_soma_inh_syns = 150
+num_soma_inh_syns = 300
 
 # gmax distributions
-exc_gmax_mean_0 = 0.2#0.45#0.2#0.1
+exc_gmax_mean_0 = 0.45#0.2#0.1
 exc_gmax_std_0 = 0.345
-exc_gmax_clip = (0, 0.65)#(0, 10)#(0,5)#0.65)#(0, 0.7)
+exc_gmax_clip = (0, 0.7)#(0, 10)#(0,5)#0.65)#(0, 0.7)
 inh_gmax_dist = 1#2.25
-soma_gmax_dist = 1#2.25
+soma_gmax_dist = 2#2.25
 inh_scalar = 1#1.1
 exc_scalar = 1 # scales weight
 
@@ -166,12 +166,12 @@ soma_number_of_groups = 1
 soma_functional_group_span = 100
 
 # Cell model
-seg_to_record = 'soma' # used to set spike recorder
+seg_to_record = 'soma' # used to set spike recorder # can be axon
 spike_threshold = -10 # mV # used to be 10
 Base_channels = ['i_pas', 'ik', 'ica', 'ina', 'i_hd']
 Hay_channels = ['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'ina_Nap_Et2', 'ik_SKv3_1', 'ik_SK_E2', 'ik_Im', 'ica_Ca_HVA', 'ica_Ca_LVAst']
 Hay_soma_extra_channels = ['ik_K_Tst', 'ik_K_Pst']
-Neymotin_channels = ['ina_nax', 'ik_kap', 'ik_kdr', 'ik_kdmc', 'ica_cal', 'ica_can']
+Neymotin_channels = ['ina_nax', 'ik_kap', 'ik_kdr', 'ik_kdmc', 'ica_cal', 'ica_can', 'g_nax']
 channel_names = []
 channel_names += Base_channels
 if build_L5_cell:
