@@ -7,7 +7,7 @@ from Modules.complex_cell import build_cell_reports_cell, assign_parameters_to_s
 from Modules.synapse_generator import SynapseGenerator
 from Modules.spike_generator import SpikeGenerator
 from Modules.complex_cell import build_L5_cell
-from Modules.cell_utils import get_segments_and_len_per_segment
+
 from Modules.logger import Logger
 from Modules.recorder import Recorder
 from Modules.reduction import Reductor
@@ -18,8 +18,7 @@ from cell_inference.config import params
 from cell_inference.utils.currents.ecp import EcpMod
 
 import numpy as np
-from functools import partial
-import scipy.stats as st
+
 import time, datetime
 import os, h5py, pickle, shutil
 from multiprocessing import Process
@@ -49,25 +48,9 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     # Time vector for generating inputs
     t = np.arange(0, constants.h_tstop, 1)
 
-    # Build cell
-    logger.log_section_start("Building complex cell")
-    # decide which cell to build
-    if constants.build_L5_cell:
-        complex_cell = build_L5_cell(constants.complex_cell_folder, constants.complex_cell_biophys_hoc_name)
-        if constants.swap_soma:
-            soma = complex_cell.soma[0] if is_indexable(complex_cell.soma) else complex_cell.soma
-            axon = complex_cell.axon[0] if is_indexable(complex_cell.axon) else complex_cell.axon
-            set_pickled_parameters_to_sections([soma, axon], constants.indicate_soma_and_axon_updates, constants.decrease_axon_Ra_with_update)
-            #assign_parameters_from_csv(cell=complex_cell)
-            #adjust_soma_and_axon_geometry(complex_cell, somaL = constants.SomaL, somaDiam = constants.SomaDiam, axonDiam = constants.AxonDiam, axonL = constants.AxonL, axon_L_scale = constants.Axon_L_scale)
-    elif constants.build_m1:
-        complex_cell = build_m1_cell() # use older Neymotin detailed cell template
-    elif constants.build_ziao_cell:
-        complex_cell = build_L5_cell_ziao(constants.complex_cell_folder) # build Neymotin reduced from ziao template
-    elif constants.build_cell_reports_cell: # build Neymotin detailed cell from template and pickled params # *********** current use mainly
-        complex_cell = create_cell_from_template_and_pickle(constants.indicate_soma_and_axon_updates)
-    else: # Build Hay et al model then replace axon & soma with Neymotin detailed
-        set_hoc_params()
+    # Unaccounted for: 
+    # - build_m1_cell()
+    # - set_hoc_params()
 
     logger.log_section_end("Building complex cell")
     soma = complex_cell.soma[0] if is_indexable(complex_cell.soma) else complex_cell.soma
@@ -92,15 +75,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
     # Get segments and lengths
     logger.log_section_start("Getting segments and lengths")
     
-    # increase nseg for complex cell # for clustering of synapses by kmeans on segments
-    for sec in complex_cell.all:
-      sec.nseg=int(sec.L)+1#sec.nseg=int(sec.L*2)+1
-
-    all_segments, all_len_per_segment, all_SA_per_segment,\
-    all_segments_center, soma_segments, soma_len_per_segment,\
-    soma_SA_per_segment, soma_segments_center, no_soma_segments,\
-    no_soma_len_per_segment, no_soma_SA_per_segment, no_soma_segments_center =\
-    get_segments_and_len_per_segment(complex_cell)
+    
 
     logger.log_section_end("Getting segments and lengths")
 
@@ -108,97 +83,10 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
     logger.log_section_start("Generating Excitatory func groups")
 
-    # Excitatory gmax distribution
-    exc_gmax_mean_0 = constants.exc_gmax_mean_0
-    exc_gmax_std_0 = constants.exc_gmax_std_0
-
-    gmax_mean = np.log(exc_gmax_mean_0) - 0.5 * np.log((exc_gmax_std_0 / exc_gmax_mean_0) ** 2 + 1)
-    gmax_std = np.sqrt(np.log((exc_gmax_std_0 / exc_gmax_mean_0) ** 2 + 1))
-
-    # gmax distribution
-    def log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size):
-        val = np.random.lognormal(gmax_mean, gmax_std, size)
-        s = gmax_scalar * float(np.clip(val, constants.exc_gmax_clip[0], constants.exc_gmax_clip[1]))
-        return s
-
-    gmax_exc_dist = partial(log_norm_dist, gmax_mean, gmax_std, constants.exc_scalar, size = 1)
-
-    # Excitatory firing rate distribution
-    def exp_levy_dist(alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1):
-        return np.exp(st.levy_stable.rvs(alpha = alpha, beta = beta, 
-                                         loc = loc, scale = scale, size = size)) + 1e-15
     
-    spike_generator = SpikeGenerator()
-    synapse_generator = SynapseGenerator()
-
-    #exc_number_of_groups = int(sum(all_len_per_segment) / constants.exc_functional_group_span)
-
-    # Number of presynaptic cells
-    #cells_per_group = int(constants.exc_functional_group_span * constants.exc_synaptic_density / constants.exc_synapses_per_cluster)
-
-    # Distribution of mean firing rates
-    mean_fr_dist = partial(exp_levy_dist, alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1)
-    
-    # release probability distribution
-    def P_release_dist(P_mean, P_std, size):
-        val = np.random.normal(P_mean, P_std, size)
-        s = float(np.clip(val, 0, 1))
-        return s
-    
-    # exc release probability distribution everywhere
-    exc_P_dist = partial(P_release_dist, P_mean=constants.exc_P_release_mean, P_std=constants.exc_P_release_std, size=1)
-    
-    # New list to change probabilty of exc functional group nearing soma
-    adjusted_no_soma_len_per_segment = []
-    for i, seg in enumerate(no_soma_segments):
-        #print(str(type(complex_cell.soma)))
-        if str(type(complex_cell.soma)) != "<class 'nrn.Section'>": # cell.soma is a list of sections
-          if h.distance(seg, complex_cell.soma[0](0.5)) < 75:
-              adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
-          elif seg in complex_cell.apic[0]: # trunk
-              adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
-          else:
-              adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
-        else: # cell.soma is a section
-          if h.distance(seg, complex_cell.soma(0.5)) < 75:
-              adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
-          elif seg in complex_cell.apic[0]: # trunk
-              adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
-          else:
-              adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
 
     logger.log_memory()
-    if not constants.CI_on:
-      if constants.use_SA_exc: # use surface area instead of lengths for probabilities
-          exc_synapses = synapse_generator.add_synapses(segments = all_segments,
-                                                    probs = all_SA_per_segment,
-                                                    density=constants.exc_synaptic_density,
-                                                    record = True,
-                                                    vector_length = constants.save_every_ms,
-                                                    gmax = gmax_exc_dist,
-                                                    random_state=random_state,
-                                                    neuron_r = neuron_r,
-                                                    syn_mod = constants.exc_syn_mod,
-                                                    P_dist=exc_P_dist,
-                                                    syn_params=constants.exc_syn_params[0]
-                                                    )
-                                                    
-      else: # use lengths as probabilities
-          exc_synapses = synapse_generator.add_synapses(segments = no_soma_segments,
-                                                probs = no_soma_len_per_segment,
-                                                density=constants.exc_synaptic_density,
-                                                record = True,
-                                                vector_length = constants.save_every_ms,
-                                                gmax = gmax_exc_dist,
-                                                random_state=random_state,
-                                                neuron_r = neuron_r,
-                                                syn_mod = constants.exc_syn_mod,
-                                                P_dist=exc_P_dist,
-                                                syn_params=constants.exc_syn_params[0]
-                                                )
-    else:
-      exc_synapses=[]
-
+    
     logger.log_memory()
     logger.log_section_end("Generating Excitatory func groups")
 
