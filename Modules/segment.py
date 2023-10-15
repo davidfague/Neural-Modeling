@@ -164,13 +164,13 @@ class SegmentManager:
         #debugging
         #print(f" len(data.keys()): {len(data.keys())}")
         #print(f" len(self.filenames): {len(self.filenames)}")
-        #print(f" len(data[self.filenames[0]]): {len(data[self.filenames[0]])}")
-        
-        #for key in data.keys():
-        #  if ("spike" not in key) or ("seg_info" not in key):
-        #      print(key)
-        #      print(f" len(data[{key}]): {len(data[key])} |")# len(data[{key}][0]): {len(data[key][0])}")
-        #print(data["Vm_report"].shape)
+#        print(f" len(data[self.filenames[0]]): {len(data[self.filenames[0]])}")
+#        
+#        for key in data.keys():
+#          if ("spike" not in key) or ("seg_info" not in key):
+#              print(key)
+#              print(f" len(data[{key}]): {len(data[key])} |")# len(data[{key}][0]): {len(data[key][0])}")
+#        print(data["Vm_report"].shape)
 
         self.num_segments = len(data["seg_info"])
         #print("NUM seg", self.num_segments)

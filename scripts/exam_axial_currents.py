@@ -23,25 +23,15 @@ from Modules.segment import SegmentManager
 
 PT_Cell=False # true: Neymotin cell; false: Neymotin_Hay
 if PT_Cell:
-  output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_Neymotin3/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_500/"
+  output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_Neymotin4/_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_500/"
 else:
-  output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_Neymotin_Hay22/_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_500/"
+  output_folder = sys.argv[1] if len(sys.argv) > 1 else "output/FI_Neymotin_Hay56/_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_500/"
 
 #FI_Neymotin/2023-10-12_21-10-22_seeds_130_90PTcell[0]_174nseg_102nbranch_0NCs_0nsyn_300"
 #FI_Neymotin_Hay2/_seeds_130_90L5PCtemplate[0]_195nseg_108nbranch_0NCs_0nsyn_300/" 
 #"output/BenModel/"
 
-number_of_AP_to_plot = 5
-types_to_analyze = ["Soma_", "Axon_", "Dend_", "Apic_"]
-soma_adj = True # switches analysis between distal and soma adj segments
-plot_APs = True # Create a zoomed in plot around every AP.
-plot_CA_NMDA = False # used to plot the trace from segments that have Ca or NMDA spikes
-process_ca_nmda_inds = False # used to reduce segments_for_condition from exam_nmda.py to a list of unique segments
-print_steady_state_values = False
-plot_whole_data_length=False
-current_types = ['ik', 'ica', 'ina', 'i_pas', 'i_hd']
-#['ik_kdr','ik_kap','ik_kdmc','ina_nax','i_pas', 'ica', 'iampa','inmda','igaba']
-
+# load constants
 import importlib
 def load_constants_from_folder(output_folder):
     current_script_path = "/home/drfrbc/Neural-Modeling/scripts/"
@@ -52,6 +42,31 @@ def load_constants_from_folder(output_folder):
     sys.path.remove(absolute_path)
     return constants_module
 constants = load_constants_from_folder(output_folder)
+
+# settings
+number_of_AP_to_plot = 1
+specific_time = 500# ms # arbitrary   # zoom in plot #title will end in -1
+#  desired_real_time is the time at which you want to print the current values
+desired_real_time = 500  # the desired time in ms #8000 for 0.3 nA
+types_to_analyze = ["Soma", "Axon", "Dend", "Apic"]
+soma_adj = True # switches analysis between distal and soma adj segments
+plot_APs = True # Create a zoomed in plot around every AP.
+plot_CA_NMDA = False # used to plot the trace from segments that have Ca or NMDA spikes
+process_ca_nmda_inds = False # used to reduce segments_for_condition from exam_nmda.py to a list of unique segments
+print_steady_state_values = False
+plot_whole_data_length=False
+Hay_model = constants.build_L5_cell
+current_types = constants.channel_names
+if PT_Cell:
+  dend_current_types = current_types
+else:
+  dend_current_types = constants.Base_channels + constants.Hay_channels
+  if 'gNaTa_t_NaTa_t' in dend_current_types:
+      dend_current_types.remove('gNaTa_t_NaTa_t')
+
+#['ik', 'ica', 'ina', 'i_pas', 'i_hd']
+#['ik_kdr','ik_kap','ik_kdmc','ina_nax','i_pas', 'ica', 'iampa','inmda','igaba']
+
 
 if 'BenModel' in output_folder:
   constants.save_every_ms = 3000
@@ -76,12 +91,12 @@ def create_segment_types(soma):
     Returns:
     A dictionary with keys being segment type names (inferred from segment names) and values being lists of segments.
     """
-    segment_types = {"Soma_": [soma]}  # Initialize with the soma
+    segment_types = {"Soma": [soma]}  # Initialize with the soma
     
     # Iterate over each adjacent segment
     for adj_seg in soma.adj_segs:
         # Use the segment's type as key (assuming there's a 'type' property in the segment object)
-        seg_type = adj_seg.type.capitalize() + "_"
+        seg_type = adj_seg.type.capitalize() #+ "_"
         
         # If this type hasn't been added to the dictionary, initialize it with an empty list
         if seg_type not in segment_types:
@@ -219,7 +234,7 @@ def main():
     soma_segs=[soma_segs[3]]
   
   #Plot segments adjacent to soma
-  plot_adjacent_segments(segs=soma_segs, sm=sm, title_prefix="Soma_", save_to=save_path)
+#  plot_adjacent_segments(segs=soma_segs, sm=sm, title_prefix="Soma_", save_to=save_path)
   #Plot segments adjacent to nexus
   with open(os.path.join(output_folder, "seg_indexes.pickle"), "rb") as file:
       seg_indexes = pickle.load(file)
@@ -277,16 +292,14 @@ def main():
   tuft_segs=[sm.segments[tuft_seg_index]]
   ca_segs=[sm.segments[ca_ind] for ca_ind in ca_inds]
   nmda_segs=[sm.segments[nmda_ind] for nmda_ind in nmda_inds]
-  plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=save_path)
-  plot_adjacent_segments(segs=basal_segs, sm=sm, title_prefix="Basal_", save_to=save_path)
-  plot_adjacent_segments(segs=tuft_segs, sm=sm, title_prefix="Tuft_", save_to=save_path)
+#  plot_adjacent_segments(segs=nexus_segs, sm=sm, title_prefix="Nexus_", save_to=save_path)
+#  plot_adjacent_segments(segs=basal_segs, sm=sm, title_prefix="Basal_", save_to=save_path)
+#  plot_adjacent_segments(segs=tuft_segs, sm=sm, title_prefix="Tuft_", save_to=save_path)
   if plot_CA_NMDA:
     plot_adjacent_segments(segs=ca_segs, sm=sm, title_prefix="CA_", save_to=save_path) # segment with calcium spike
     plot_adjacent_segments(segs=nmda_segs, sm=sm, title_prefix="NMDA_", save_to=save_path) # segment with NMDA spike
        
 
-  #  desired_real_time is the time at which you want to print the current values
-  desired_real_time = 8000  # the desired time in ms
   steady_state_index = int(desired_real_time / constants.h_dt)
   
 #  # Loop over all segment types and call print_steady_state_values
@@ -308,7 +321,7 @@ def main():
   # Loop over the filtered segment types and call print_steady_state_values
   for title_prefix, segments in filtered_segment_types.items():
       for seg in segments:
-          if title_prefix == "Dend_":
+          if title_prefix == "Dend":
               dend_currents = print_steady_state_values(seg, t, steady_state_index, data_types=current_types, return_values=True)
               
               for channel, current in dend_currents.items():
@@ -325,33 +338,33 @@ def main():
       
   axon_segs=[axon_seg]
 #  #Plot Axial Currents
-  for seg in soma_segs:
-      plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix ='Soma_')
-  for seg in axon_segs:
-      plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix = 'Axon_')
-  for seg in nexus_segs:
-      plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix = 'Nexus_')
-  for seg in basal_segs:
-      plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix = 'Basal_')
-  if plot_CA_NMDA:
-      for seg in ca_segs:
-          plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix = 'CA_')
-      for seg in nmda_segs:
-          plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix = 'NMDA_')
+#  for seg in soma_segs:
+#      plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix ='Soma_')
+#  for seg in axon_segs:
+#      plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix = 'Axon_')
+#  for seg in nexus_segs:
+#      plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix = 'Nexus_')
+#  for seg in basal_segs:
+#      plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix = 'Basal_')
+#  if plot_CA_NMDA:
+#      for seg in ca_segs:
+#          plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix = 'CA_')
+#      for seg in nmda_segs:
+#          plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix = 'NMDA_')
   if soma_adj:
     segments_to_plot = segment_types
   else:    
     segments_to_plot = {
-        "Soma_": soma_segs,
-        "Axon_": axon_segs,
-        "Nexus_": nexus_segs,
-        "Basal_": basal_segs,
-        "Tuft_": tuft_segs
+        "Soma": soma_segs,
+        "Axon": axon_segs,
+        "Nexus": nexus_segs,
+        "Basal": basal_segs,
+        "Tuft": tuft_segs
     }
-  if plot_whole_data_length:
-    for prefix, segments in segments_to_plot.items():
-        for seg in segments:
-            plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix=prefix)
+#  if plot_whole_data_length:
+#    for prefix, segments in segments_to_plot.items():
+#        for seg in segments:
+#            plot_all(seg, t, current_types=current_types, save_to=save_path, title_prefix=prefix)
 
 
   def subset_data(t, xlim):
@@ -368,10 +381,26 @@ def main():
         
           # Subset the data for the time range
           indices = subset_data(t, xlim)
-    
           for prefix, segments in segments_to_plot.items():
-              for seg in segments:
-                  plot_all(segment=seg, t=t, current_types=current_types, indices=indices, index=i+1, save_to=save_path, title_prefix=prefix, ylim=[-1, 1] if prefix == "Nexus_" else None, vlines=np.array(sm.soma_spiketimes))
+              for j,seg in enumerate(segments):
+                  plot_all(segment=seg, t=t, current_types=current_types, indices=indices, index=i+1, save_to=save_path, title_prefix=prefix+str(j), ylim=[-1, 1] if prefix == "Nexus" else None, vlines=np.array(sm.soma_spiketimes))
+               
+  before_specific_time = specific_time - 100  # ms
+  after_specific_time = specific_time + 100  # ms
+  xlim = [before_specific_time, after_specific_time]  # time range
+  
+  # Subset the data for the time range
+  indices = subset_data(t, xlim)
+
+  for prefix, segments in segments_to_plot.items(): # plot entire trace and specific part from latest AP_time assignment
+      for i,seg in enumerate(segments):
+          if (prefix == 'Dend') or (prefix == 'Apic'): # use dend current types only
+              plot_all(segment=seg, t=t, current_types=dend_current_types, indices=indices, index=-1, save_to=save_path, title_prefix=prefix+str(i), ylim=[-1, 1] if prefix == "Nexus_" else None, vlines=np.array(sm.soma_spiketimes)) # plot entire trace
+              plot_all(segment=seg, t=t, current_types=dend_current_types, indices=None, index=None, save_to=save_path, title_prefix=prefix, ylim=[-1, 1] if prefix == "Nexus" else None, vlines=np.array(sm.soma_spiketimes)) # plot entire trace
+          else:
+              plot_all(segment=seg, t=t, current_types=current_types, indices=indices, index=-1, save_to=save_path, title_prefix=prefix+str(i), ylim=[-1, 1] if prefix == "Nexus_" else None, vlines=np.array(sm.soma_spiketimes)) # plot entire trace
+              plot_all(segment=seg, t=t, current_types=current_types, indices=None, index=None, save_to=save_path, title_prefix=prefix, ylim=[-1, 1] if prefix == "Nexus" else None, vlines=np.array(sm.soma_spiketimes)) # plot entire trace
+
               
 def plot_all(segment, t, current_types=[], indices=None, xlim=None, ylim=None, index=None, save_to=None, title_prefix=None, vlines=None, plot_adj_Vm=True):
     '''
@@ -386,6 +415,7 @@ def plot_all(segment, t, current_types=[], indices=None, xlim=None, ylim=None, i
     ylim: limits for y axis (used to zoom in on currents that may be minimized by larger magnitude currents)
     index: Used to label spike index of soma_spiketimes
     '''
+    
     if indices is not None:
         t = t[indices]
         vlines = vlines[np.isin(np.round(vlines,1), np.round(t,1))]
@@ -503,10 +533,14 @@ def plot_all(segment, t, current_types=[], indices=None, xlim=None, ylim=None, i
     plt.tight_layout()
 
     if save_to:
-        if title_prefix:
-            fig.savefig(os.path.join(save_to, title_prefix + "AP_" + "_{}".format(index) + ".png"))
+        if index is None:
+            index = "wholesim_" # plotting entire sim.
         else:
-            fig.savefig(os.path.join(save_to, "AP_" + "_{}".format(index) + ".png"))
+            index = "AP" + "{}_".format(index)
+        if title_prefix:
+            fig.savefig(os.path.join(save_to, index + title_prefix + ".png"))
+        else:
+            fig.savefig(os.path.join(save_to, index + ".png"))
     plt.close()
 
 
