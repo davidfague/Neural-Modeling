@@ -2,6 +2,10 @@ from dataclasses import dataclass
 import numpy as np
 
 @dataclass
+class CellParameters:
+	pass
+
+@dataclass
 class SimulationParameters:
 
 	# Random state

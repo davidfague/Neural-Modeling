@@ -41,7 +41,7 @@ class CellModel:
         self.spike_threshold = spike_threshold
         self.injection = []
         self.var_names = var_names  # variables to be recorded
-        self.terminal_apic_sections=self.find_terminal_sections('apic')
+        self.terminal_apic_sections = self.find_terminal_sections('apic')
         self.tufts=[sec for sec in self.terminal_apic_sections if (h.distance(self.soma[0](0.5),sec(0.5)) > 800)]
         self.obliques=[sec for sec in self.terminal_apic_sections if (h.distance(self.soma[0](0.5),sec(0.5)) < 800)]
         self.basals=self.find_terminal_sections('dend')

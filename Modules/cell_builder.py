@@ -11,9 +11,13 @@ from spike_generator import SpikeGenerator
 
 from functools import partial
 import scipy.stats as st
-from constants import SimulationParameters
+from self.parameters import SimulationParameters
 
-class CellType(Enum):
+from cell_model import CellModel
+from clustering import create_functional_groups_of_presynaptic_cells
+from reduction import Reductor
+
+class SkeletonCell(Enum):
 	Hay = {
 		"biophys": "L5PCbiophys3ActiveBasal.hoc",
 		"morph": "cell1.asc",
@@ -39,11 +43,26 @@ class CellType(Enum):
 		"pickle": None
 	}
 
+def log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip):
+	val = np.random.lognormal(gmax_mean, gmax_std, size)
+	s = gmax_scalar * float(np.clip(val, clip[0], clip[1]))
+	return s
+
+# Firing rate distribution
+def exp_levy_dist(alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1):
+	return np.exp(st.levy_stable.rvs(alpha = alpha, beta = beta, loc = loc, scale = scale, size = size)) + 1e-15
+
+# Release probability distribution
+def P_release_dist(P_mean, P_std, size):
+	val = np.random.normal(P_mean, P_std, size)
+	s = float(np.clip(val, 0, 1))
+	return s
+
 class CellBuilder:
 
 	templates_folder = "../cells/templates"
 
-	def __init__(self, cell_type: CellType, parameters: SimulationParameters, logger: Logger) -> None:
+	def __init__(self, cell_type: SkeletonCell, parameters: SimulationParameters, logger: Logger) -> None:
 
 		self.cell_type = cell_type
 		self.parameters = parameters
@@ -58,25 +77,340 @@ class CellBuilder:
 		# Build complex cell
 		self.logger.log(f"Building {self.cell_type}.")
 
-		if self.cell_type == CellType.Hay:
-			complex_cell = self.build_Hay_cell()
+		if self.cell_type == SkeletonCell.Hay:
+			skeleton_cell = self.build_Hay_cell()
 
-		elif self.cell_type == CellType.HayNeymotin:
-			complex_cell = self.build_HayNeymotin_cell()
+		elif self.cell_type == SkeletonCell.HayNeymotin:
+			skeleton_cell = self.build_HayNeymotin_cell()
 
-		elif self.cell_type == CellType.NeymotinDetailed:
-			complex_cell = self.build_Neymotin_detailed_cell()
+		elif self.cell_type == SkeletonCell.NeymotinDetailed:
+			skeleton_cell = self.build_Neymotin_detailed_cell()
 
 		# Increase nseg for complex cell for clustering of synapses by kmeans on segments
-		for sec in complex_cell.all:
-			sec.nseg = int(sec.L)+1
+		for sec in skeleton_cell.all:
+			sec.nseg = int(sec.L) + 1
 
-			all_segments, all_len_per_segment, all_SA_per_segment,\
-			all_segments_center, soma_segments, soma_len_per_segment,\
-			soma_SA_per_segment, soma_segments_center, no_soma_segments,\
-			no_soma_len_per_segment, no_soma_SA_per_segment, no_soma_segments_center =\
-			get_segments_and_len_per_segment(complex_cell)
+		# Get segments to apply trains to
+		(all_segments, all_len_per_segment, all_SA_per_segment, 
+   		 all_segments_center, soma_segments, soma_len_per_segment, 
+		 soma_SA_per_segment, soma_segments_center, no_soma_segments, 
+		 no_soma_len_per_segment, no_soma_SA_per_segment, no_soma_segments_center) = get_segments_and_len_per_segment(skeleton_cell)
 		
+		synapse_generator = SynapseGenerator()
+
+		# Build synapses
+		exc_synapses = self.build_excitatory_synapses(
+			skeleton_cell = skeleton_cell,
+			synapse_generator = synapse_generator,
+			no_soma_segments = no_soma_segments,
+			no_soma_len_per_segment = no_soma_len_per_segment,
+			all_segments = all_segments,
+			all_SA_per_segment = all_SA_per_segment,
+			random_state = random_state,
+			neuron_r = neuron_r
+		)
+
+		inh_synapses = self.build_inhibitory_synapses(
+			skeleton_cell = skeleton_cell,
+			synapse_generator = synapse_generator,
+			all_segments = all_segments,
+			all_SA_per_segment = all_SA_per_segment,
+			random_state = random_state,
+			neuron_r = neuron_r
+		)
+
+		soma_inh_synapses = self.build_soma_synapses(
+			synapse_generator = synapse_generator,
+			soma_segments = soma_segments,
+			soma_SA_per_segment = soma_SA_per_segment,
+			random_state = random_state,
+			neuron_r = neuron_r
+		)
+
+		# Get all synapses
+		all_syns = []
+		for synapse_list in synapse_generator.synapses: # synapse_generator.synapses is a list of synapse lists
+			for synapse in synapse_list:
+				all_syns.append(synapse)
+		
+		# Initialize the dummy cell model used for calculating coordinates and 
+		# generating functional groups
+		dummy_cell = CellModel(hoc_model = skeleton_cell, random_state = random_state)
+
+		# Create functional groups
+		spike_generator = SpikeGenerator()
+
+		_ = self.build_excitatory_functional_groups(
+			cell = dummy_cell,
+			exc_synapses = exc_synapses,
+			spike_generator = spike_generator,
+			random_state = random_state
+		)
+		exc_spikes = spike_generator.spike_trains.copy()
+
+		_ = self.build_inhibitory_functional_groups(
+			cell = dummy_cell,
+			inh_synapses = inh_synapses,
+			spike_generator = spike_generator,
+			random_state = random_state,
+			exc_spikes = exc_spikes
+		)
+
+		_ = self.build_soma_functional_groups(
+			cell = dummy_cell,
+			soma_inh_synapses = soma_inh_synapses,
+			spike_generator = spike_generator,
+			random_state = random_state,
+			exc_spikes = exc_spikes
+		)
+
+		# Build the final cell
+		reductor = Reductor()
+		cell = reductor.reduce_cell(
+			complex_cell = skeleton_cell, 
+			reduce_cell = self.parameters.reduce_cell, 
+			optimize_nseg = self.parameters.optimize_nseg_by_lambda, 
+			synapses_list = all_syns,
+			netcons_list = spike_generator.netcons, 
+			spike_trains = spike_generator.spike_trains,
+			spike_threshold = self.parameters.spike_threshold, 
+			random_state = random_state,
+			var_names = self.parameters.channel_names, 
+			reduction_frequency = self.parameters.reduction_frequency, 
+			expand_cable = self.parameters.expand_cable, 
+			choose_branches = self.parameters.choose_branches)
+									
+		
+		if (not self.parameters.CI_on) and (not self.parameters.trunk_exc_synapses):
+			# Turn off certain presynaptic neurons to simulate in vivo
+			for synapse in cell.synapses:
+				if (synapse.get_segment().sec in cell.apic) and (synapse.syn_type in self.parameters.exc_syn_mod) and (synapse.get_segment().sec not in cell.obliques) and (synapse.get_segment().sec.y3d(0) < 600):
+					for netcon in synapse.ncs: netcon.active(False)
+		
+		# Turn off perisomatic exc neurons
+		if not self.parameters.perisomatic_exc_synapses:
+			for synapse in cell.synapses:
+				if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 75) and (synapse.syn_type in self.parameters.exc_syn_mod):
+					for netcon in synapse.ncs: netcon.active(False)
+		
+		# Merge synapses
+		if self.parameters.merge_synapses:
+			reductor.merge_synapses(cell)
+
+		# Set recorders
+		cell.setup_recorders(vector_length = self.parameters.save_every_ms)
+
+		return cell
+
+	def build_soma_functional_groups(self, cell, soma_inh_synapses, spike_generator, random_state, exc_spikes):
+
+		soma_coordinates = np.zeros(3)
+		segment_coordinates = np.zeros((len(cell.seg_info), 3))
+
+		for ind, seg in enumerate(cell.seg_info):
+			segment_coordinates[ind, 0] = seg['p0.5_x3d']
+			segment_coordinates[ind, 1] = seg['p0.5_y3d']
+			segment_coordinates[ind, 2] = seg['p0.5_z3d']
+	
+			if seg['seg'] == cell.soma[0](0.5):
+				soma_coordinates[0] = seg['p0.5_x3d']
+				soma_coordinates[1] = seg['p0.5_y3d']
+				soma_coordinates[2] = seg['p0.5_z3d']
+
+		# Proximal inh mean_fr distribution
+		mean_fr, std_fr = self.parameters.inh_prox_mean_fr, self.parameters.inh_prox_std_fr
+		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
+		proximal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
+
+		# Distal inh mean_fr distribution
+		mean_fr, std_fr = self.parameters.inh_distal_mean_fr, self.parameters.inh_distal_std_fr
+		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
+		distal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
+
+		t = np.arange(0, self.parameters.h_tstop, 1)
+
+		inh_soma_functional_groups = create_functional_groups_of_presynaptic_cells(
+			segments_coordinates = segment_coordinates,
+			n_functional_groups = 1,
+			n_presynaptic_cells_per_functional_group = 1,
+			name_prefix = 'soma_inh',
+			cell = cell, 
+			synapses = soma_inh_synapses, 
+			proximal_fr_dist = proximal_inh_dist, 
+			distal_fr_dist=distal_inh_dist, 
+			spike_generator=spike_generator, 
+			t = t, 
+			random_state = random_state, 
+			spike_trains_to_delay = exc_spikes, 
+			fr_time_shift = self.parameters.inh_firing_rate_time_shift, 
+			soma_coordinates = soma_coordinates, 
+			method = 'delay')
+		
+		return inh_soma_functional_groups
+
+
+	def build_inhibitory_functional_groups(self, cell, inh_synapses, spike_generator, random_state, exc_spikes):
+
+		soma_coordinates = np.zeros(3)
+		segment_coordinates = np.zeros((len(cell.seg_info), 3))
+
+		for ind, seg in enumerate(cell.seg_info):
+			segment_coordinates[ind, 0] = seg['p0.5_x3d']
+			segment_coordinates[ind, 1] = seg['p0.5_y3d']
+			segment_coordinates[ind, 2] = seg['p0.5_z3d']
+	
+			if seg['seg'] == cell.soma[0](0.5):
+				soma_coordinates[0] = seg['p0.5_x3d']
+				soma_coordinates[1] = seg['p0.5_y3d']
+				soma_coordinates[2] = seg['p0.5_z3d']
+
+		# Proximal inh mean_fr distribution
+		mean_fr, std_fr = self.parameters.inh_prox_mean_fr, self.parameters.inh_prox_std_fr
+		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
+		proximal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
+
+		# Distal inh mean_fr distribution
+		mean_fr, std_fr = self.parameters.inh_distal_mean_fr, self.parameters.inh_distal_std_fr
+		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
+		distal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
+
+		t = np.arange(0, self.parameters.h_tstop, 1)
+
+		inh_distributed_functional_groups = create_functional_groups_of_presynaptic_cells(
+			segments_coordinates = segment_coordinates,
+			n_functional_groups = self.parameters.inh_distributed_n_FuncGroups,
+			n_presynaptic_cells_per_functional_group = self.parameters.inh_distributed_n_PreCells_per_FuncGroup,
+			name_prefix = 'inh',
+			cell = cell, 
+			synapses = inh_synapses,
+			proximal_fr_dist = proximal_inh_dist, 
+			distal_fr_dist = distal_inh_dist, 
+			spike_generator = spike_generator, 
+			t = t, 
+			random_state = random_state, 
+			spike_trains_to_delay = exc_spikes, 
+			fr_time_shift = self.parameters.inh_firing_rate_time_shift, 
+			soma_coordinates = soma_coordinates, 
+			method = 'delay')
+		
+		return inh_distributed_functional_groups
+
+
+	def build_excitatory_functional_groups(self, cell, exc_synapses, spike_generator, random_state):
+		
+		soma_coordinates = np.zeros(3)
+		segment_coordinates = np.zeros((len(cell.seg_info), 3))
+
+		for ind, seg in enumerate(cell.seg_info):
+			segment_coordinates[ind, 0] = seg['p0.5_x3d']
+			segment_coordinates[ind, 1] = seg['p0.5_y3d']
+			segment_coordinates[ind, 2] = seg['p0.5_z3d']
+	
+			if seg['seg'] == cell.soma[0](0.5):
+				soma_coordinates[0] = seg['p0.5_x3d']
+				soma_coordinates[1] = seg['p0.5_y3d']
+				soma_coordinates[2] = seg['p0.5_z3d']
+
+		# Distribution of mean firing rates
+		mean_fr_dist = partial(exp_levy_dist, alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1)
+
+		t = np.arange(0, self.parameters.h_tstop, 1)
+
+		exc_functional_groups = create_functional_groups_of_presynaptic_cells(
+			segments_coordinates = segment_coordinates,
+			n_functional_groups = self.parameters.exc_n_FuncGroups,
+			n_presynaptic_cells_per_functional_group = self.parameters.exc_n_PreCells_per_FuncGroup,
+			name_prefix = 'exc',
+			synapses = exc_synapses, 
+			cell = cell, 
+			mean_firing_rate = mean_fr_dist, 
+			spike_generator = spike_generator, 
+			t = t, 
+			random_state = random_state, 
+			method = '1f_noise')
+		
+		return exc_functional_groups
+
+				
+	def build_soma_synapses(
+			self, 
+			synapse_generator, 
+			soma_segments, 
+			soma_SA_per_segment, 
+			random_state, 
+			neuron_r) -> list:
+		
+		if (self.parameters.CI_on) or (not self.parameters.add_soma_inh_synapses):
+			return []
+		
+		inh_gmax = self.parameters.inh_gmax_dist * self.parameters.inh_scalar
+		inh_soma_P_dist = partial(P_release_dist, P_mean = self.parameters.inh_soma_P_release_mean, P_std = self.parameters.inh_soma_P_release_std, size = 1)
+		
+		soma_inh_synapses = synapse_generator.add_synapses(
+			segments = soma_segments,
+			probs = soma_SA_per_segment,
+			number_of_synapses = self.parameters.num_soma_inh_syns,
+			record = True,
+			vector_length = self.parameters.save_every_ms,
+			gmax = inh_gmax,
+			random_state=random_state,
+			neuron_r = neuron_r,
+			syn_mod = self.parameters.inh_syn_mod,
+			P_dist = inh_soma_P_dist)
+	
+		return soma_inh_synapses
+			
+	def build_inhibitory_synapses(
+			self, 
+			skeleton_cell, 
+			synapse_generator, 
+			all_segments, 
+			all_SA_per_segment, 
+			random_state, 
+			neuron_r) -> list:
+		
+		# Inhibitory release probability distributions
+		inh_soma_P_dist = partial(P_release_dist, P_mean = self.parameters.inh_soma_P_release_mean, P_std = self.parameters.inh_soma_P_release_std, size = 1)
+		inh_apic_P_dist = partial(P_release_dist, P_mean = self.parameters.inh_apic_P_release_mean, P_std = self.parameters.inh_apic_P_release_std, size = 1)
+		inh_basal_P_dist = partial(P_release_dist, P_mean = self.parameters.inh_basal_P_release_mean, P_std = self.parameters.inh_basal_P_release_std, size = 1)
+		
+		inh_P_dist = {}
+		inh_P_dist["soma"] = inh_soma_P_dist
+		inh_P_dist["apic"] = inh_apic_P_dist
+		inh_P_dist["dend"] = inh_basal_P_dist
+		
+		inh_gmax = self.parameters.inh_gmax_dist * self.parameters.inh_scalar
+
+		if self.parameters.CI_on:
+			return []
+		
+		inh_synapses = synapse_generator.add_synapses(
+			segments = all_segments, 
+			probs = all_SA_per_segment, 
+			density = self.parameters.inh_synaptic_density,
+			record = True,
+			vector_length = self.parameters.save_every_ms,
+			gmax = inh_gmax,
+			random_state = random_state,
+			neuron_r = neuron_r,
+			syn_mod = self.parameters.inh_syn_mod,
+			P_dist = inh_P_dist,
+			cell = skeleton_cell, # Redundant?
+			syn_params = self.parameters.inh_syn_params)
+		
+		return inh_synapses
+			
+	def build_excitatory_synapses(
+			self, 
+			skeleton_cell,
+			synapse_generator,
+			no_soma_segments, 
+			no_soma_len_per_segment,
+			all_segments,
+			all_SA_per_segment,
+			random_state,
+			neuron_r) -> list:
+
 		# Excitatory gmax distribution
 		exc_gmax_mean_0 = self.parameters.exc_gmax_mean_0
 		exc_gmax_std_0 = self.parameters.exc_gmax_std_0
@@ -85,117 +419,110 @@ class CellBuilder:
 		gmax_std = np.sqrt(np.log((exc_gmax_std_0 / exc_gmax_mean_0) ** 2 + 1))
 
 		# gmax distribution
-		def log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size):
-			val = np.random.lognormal(gmax_mean, gmax_std, size)
-			s = gmax_scalar * float(np.clip(val, self.parameters.exc_gmax_clip[0], self.parameters.exc_gmax_clip[1]))
-			return s
-
-		gmax_exc_dist = partial(log_norm_dist, gmax_mean, gmax_std, self.parameters.exc_scalar, size = 1)
-
-		# Excitatory firing rate distribution
-		def exp_levy_dist(alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1):
-			return np.exp(st.levy_stable.rvs(alpha = alpha, beta = beta, 
-											loc = loc, scale = scale, size = size)) + 1e-15
-		
-		spike_generator = SpikeGenerator()
-		synapse_generator = SynapseGenerator()
-
-		# Distribution of mean firing rates
-		mean_fr_dist = partial(exp_levy_dist, alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1)
-		
-		# release probability distribution
-		def P_release_dist(P_mean, P_std, size):
-			val = np.random.normal(P_mean, P_std, size)
-			s = float(np.clip(val, 0, 1))
-			return s
+		gmax_exc_dist = partial(
+			log_norm_dist, 
+			gmax_mean, 
+			gmax_std, 
+			self.parameters.exc_scalar, 
+			size = 1, 
+			clip = self.parameters.exc_gmax_clip)
 		
 		# exc release probability distribution everywhere
-		exc_P_dist = partial(P_release_dist, P_mean = self.parameters.exc_P_release_mean, P_std = self.parameters.exc_P_release_std, size = 1)
+		exc_P_dist = partial(
+			P_release_dist, 
+			P_mean = self.parameters.exc_P_release_mean, 
+			P_std = self.parameters.exc_P_release_std, 
+			size = 1)
 		
 		# New list to change probabilty of exc functional group nearing soma
 		adjusted_no_soma_len_per_segment = []
 		for i, seg in enumerate(no_soma_segments):
-			if str(type(complex_cell.soma)) != "<class 'nrn.Section'>": # cell.soma is a list of sections
-				if h.distance(seg, complex_cell.soma[0](0.5)) < 75:
+			if str(type(skeleton_cell.soma)) != "<class 'nrn.Section'>": # cell.soma is a list of sections
+				if h.distance(seg, skeleton_cell.soma[0](0.5)) < 75:
 					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
-				elif seg in complex_cell.apic[0]: # trunk
+				elif seg in skeleton_cell.apic[0]: # trunk
 					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
 				else:
 					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
 			else: # cell.soma is a section
-				if h.distance(seg, complex_cell.soma(0.5)) < 75:
+				if h.distance(seg, skeleton_cell.soma(0.5)) < 75:
 					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
-				elif seg in complex_cell.apic[0]: # trunk
+				elif seg in skeleton_cell.apic[0]: # trunk
 					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
 				else:
 					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
 
 		if self.parameters.CI_on:
-			exc_synapses = []
+			return []
+		
+		if self.parameters.use_SA_exc: # Use surface area instead of lengths for probabilities
+			segments = all_segments
+			probs = all_SA_per_segment
 		else:
-			if self.parameters.use_SA_exc: # Use surface area instead of lengths for probabilities
-				exc_synapses = synapse_generator.add_synapses(segments = all_segments, probs = all_SA_per_segment, 
-												  density = self.parameters.exc_synaptic_density, record = True, 
-												  vector_length = self.parameters.save_every_ms, gmax = gmax_exc_dist,
-												  random_state = random_state, neuron_r = neuron_r,
-												  syn_mod = self.parameters.exc_syn_mod,
-												  P_dist = exc_P_dist, syn_params = self.parameters.exc_syn_params[0])
-                                                    
-			else: # Use lengths as probabilities
-				exc_synapses = synapse_generator.add_synapses(segments = no_soma_segments, probs = no_soma_len_per_segment,
-												  density = self.parameters.exc_synaptic_density, record = True,
-												  vector_length = self.parameters.save_every_ms, gmax = gmax_exc_dist,
-												  random_state = random_state, neuron_r = neuron_r,
-												  syn_mod = self.parameters.exc_syn_mod,
-												  P_dist = exc_P_dist, syn_params = self.parameters.exc_syn_params[0])
+			segments = no_soma_segments
+			probs = no_soma_len_per_segment
 
+		exc_synapses = synapse_generator.add_synapses(
+			segments = segments, 
+			probs = probs, 
+			density = self.parameters.exc_synaptic_density, 
+			record = True, 
+			vector_length = self.parameters.save_every_ms, 
+			gmax = gmax_exc_dist,
+			random_state = random_state, 
+			neuron_r = neuron_r,
+			syn_mod = self.parameters.exc_syn_mod,
+			P_dist = exc_P_dist, 
+			syn_params = self.parameters.exc_syn_params[0])
+		
+		return exc_synapses
 
 	def build_Hay_cell(self) -> object:
 		# Load biophysics
-		h.load_file(os.path.join(self.templates_folder, CellType.Hay.value["biophys"]))
+		h.load_file(os.path.join(self.templates_folder, SkeletonCell.Hay.value["biophys"]))
 
 		# Load morphology
 		h.load_file("import3d.hoc")
 
 		# Load template
-		h.load_file(os.path.join(self.templates_folder, CellType.Hay.value["template"]))
+		h.load_file(os.path.join(self.templates_folder, SkeletonCell.Hay.value["template"]))
 
-		# Build complex_cell object
-		complex_cell = h.L5PCtemplate(os.path.join(self.templates_folder, CellType.Hay.value["morph"]))
+		# Build skeleton_cell object
+		skeleton_cell = h.L5PCtemplate(os.path.join(self.templates_folder, SkeletonCell.Hay.value["morph"]))
 
-		return complex_cell
+		return skeleton_cell
 
 	def build_HayNeymotin_cell(self) -> object:
 		# Load biophysics
-		h.load_file(os.path.join(self.templates_folder, CellType.HayNeymotin.value["biophys"]))
+		h.load_file(os.path.join(self.templates_folder, SkeletonCell.HayNeymotin.value["biophys"]))
 
 		# Load morphology
 		h.load_file("import3d.hoc")
 
 		# Load template
-		h.load_file(os.path.join(self.templates_folder, CellType.HayNeymotin.value["template"]))
+		h.load_file(os.path.join(self.templates_folder, SkeletonCell.HayNeymotin.value["template"]))
 
-		# Build complex_cell object
-		complex_cell = h.L5PCtemplate(os.path.join(self.templates_folder, CellType.HayNeymotin.value["morph"]))
+		# Build skeleton_cell object
+		skeleton_cell = h.L5PCtemplate(os.path.join(self.templates_folder, SkeletonCell.HayNeymotin.value["morph"]))
 
 		# Swap soma and axon with the parameters from the pickle
-		soma = complex_cell.soma[0] if self.is_indexable(complex_cell.soma) else complex_cell.soma
-		axon = complex_cell.axon[0] if self.is_indexable(complex_cell.axon) else complex_cell.axon
-		self.set_pickled_parameters_to_sections((soma, axon), CellType.HayNeymotin["pickle"])
+		soma = skeleton_cell.soma[0] if self.is_indexable(skeleton_cell.soma) else skeleton_cell.soma
+		axon = skeleton_cell.axon[0] if self.is_indexable(skeleton_cell.axon) else skeleton_cell.axon
+		self.set_pickled_parameters_to_sections((soma, axon), SkeletonCell.HayNeymotin["pickle"])
 
-		return complex_cell
+		return skeleton_cell
 
 	def build_Neymotin_detailed_cell(self) -> object:
-		h.load_file(os.path.join(self.templates_folder, CellType.NeymotinDetailed.value["template"]))
-		complex_cell = h.CP_Cell(3, 3, 3)
+		h.load_file(os.path.join(self.templates_folder, SkeletonCell.NeymotinDetailed.value["template"]))
+		skeleton_cell = h.CP_Cell(3, 3, 3)
 
-		return complex_cell
+		return skeleton_cell
 
 	def build_Neymotin_reduced_cell(self) -> object:
-		h.load_file(os.path.join(self.templates_folder, CellType.NeymotinReduced.value["template"]))
-		complex_cell = h.CP_Cell()
+		h.load_file(os.path.join(self.templates_folder, SkeletonCell.NeymotinReduced.value["template"]))
+		skeleton_cell = h.CP_Cell()
 
-		return complex_cell
+		return skeleton_cell
 
 	def is_indexable(self, obj: object):
 		"""

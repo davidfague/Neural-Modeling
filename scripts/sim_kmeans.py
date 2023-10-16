@@ -94,45 +94,6 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
     logger.log_section_start("Generating inhibitory func groups for dendrites")
 
-    # Proximal inh mean_fr distribution
-    mean_fr, std_fr = constants.inh_prox_mean_fr, constants.inh_prox_std_fr
-    a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
-    proximal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
-
-    # Distal inh mean_fr distribution
-    mean_fr, std_fr = constants.inh_distal_mean_fr, constants.inh_distal_std_fr
-    a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
-    distal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
-    
-    # inh release probability distributions
-    inh_soma_P_dist = partial(P_release_dist, P_mean=constants.inh_soma_P_release_mean, P_std=constants.inh_soma_P_release_std, size=1)
-    inh_apic_P_dist = partial(P_release_dist, P_mean=constants.inh_apic_P_release_mean, P_std=constants.inh_apic_P_release_std, size=1)
-    inh_basal_P_dist = partial(P_release_dist, P_mean=constants.inh_basal_P_release_mean, P_std=constants.inh_basal_P_release_std, size=1)
-    
-    inh_P_dist ={}
-    inh_P_dist["soma"] = inh_soma_P_dist
-    inh_P_dist["apic"] = inh_apic_P_dist
-    inh_P_dist["dend"] = inh_basal_P_dist
-    
-    inh_gmax = constants.inh_gmax_dist * constants.inh_scalar
-
-    logger.log_memory()
-    if not constants.CI_on:
-      inh_synapses = synapse_generator.add_synapses(segments = all_segments,
-                                                probs = all_SA_per_segment,
-                                                density=constants.inh_synaptic_density,
-                                                record = True,
-                                                vector_length = constants.save_every_ms,
-                                                gmax = inh_gmax,
-                                                random_state=random_state,
-                                                neuron_r = neuron_r,
-                                                syn_mod = constants.inh_syn_mod,
-                                                P_dist = inh_P_dist,
-                                                cell=complex_cell, 
-                                                syn_params=constants.inh_syn_params
-                                                )
-    else:
-      inh_synapses = []
     
     logger.log_memory()
     logger.log_section_end("Generating inhibitory func groups for dendrites")
@@ -141,21 +102,7 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
 
     logger.log_section_start("Generating inhibitory func groups for soma")
     logger.log_memory()
-    if not constants.CI_on:
-      if constants.add_soma_inh_synapses:
-        soma_inh_synapses = synapse_generator.add_synapses(segments = soma_segments,
-                                                  probs = soma_SA_per_segment,
-                                                  number_of_synapses=constants.num_soma_inh_syns,
-                                                  record = True,
-                                                  vector_length = constants.save_every_ms,
-                                                  gmax = inh_gmax,
-                                                  random_state=random_state,
-                                                  neuron_r = neuron_r,
-                                                  syn_mod = constants.inh_syn_mod,
-                                                  P_dist=inh_soma_P_dist
-                                                  )
-    else:
-      soma_inh_synapses=[]
+    
     
     logger.log_memory()
     logger.log_section_end("Generating inhibitory func groups for soma")
@@ -170,20 +117,6 @@ def main(numpy_random_state, neuron_random_state, logger, i_amplitude=None):
         for synapse in synapse_list:
             all_syns.append(synapse)
     
-    excit_synapses=[]
-    inhib_synapses=[]
-    soma_inhib_synapses=[]
-    for synapse in exc_synapses:
-      excit_synapses.append(synapse.synapse_neuron_obj)
-    for synapse in inh_synapses:
-      inhib_synapses.append(synapse.synapse_neuron_obj)
-    if constants.add_soma_inh_synapses:
-      for synapse in soma_inh_synapses:
-        soma_inhib_synapses.append(synapse.synapse_neuron_obj)
-            
-    #print("exc_synapses:", excit_synapses)
-    #print("inh_synapses:", inhib_synapses)
-    #print("soma_inh_synapses:", soma_inhib_synapses)
     logger.log_section_end("Adding all synapses")
 
     logger.log_section_start("Initializing detailed cell model for kmeans clustering")
