@@ -71,6 +71,7 @@ class CellBuilder:
 	def build_cell(self):
 
 		random_state = np.random.RandomState(self.parameters.numpy_random_state)
+		np.random.seed(self.parameters.numpy_random_statenumpy_random_state)
 		neuron_r = h.Random()
 		neuron_r.MCellRan4(self.parameters.neuron_random_state)
 
@@ -199,6 +200,15 @@ class CellBuilder:
 
 		# Set recorders
 		cell.setup_recorders(vector_length = self.parameters.save_every_ms)
+
+		# Add current injection
+		if self.parameters.CI_on:
+			cell.add_injection(
+				sec_index = cell.all.index(cell.soma[0]), 
+				record = True, 
+				delay = self.parameters.h_i_delay, 
+				dur = self.parameters.h_i_duration, 
+				amp = self.parameters.h_i_amplitude)
 
 		return cell
 

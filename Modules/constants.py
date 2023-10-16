@@ -1,12 +1,10 @@
 from dataclasses import dataclass
-import numpy as np
-
-@dataclass
-class CellParameters:
-	pass
 
 @dataclass
 class SimulationParameters:
+
+	# Name: required argument
+	sim_name: str
 
 	# Random state
 	numpy_random_state = 130
@@ -179,6 +177,6 @@ class SimulationParameters:
 	skip = 300
 
 	# Log, plot and save
-	save_dir = "output/"
 	log_every_ms = 1000
 	save_every_ms = 1000
+	path = ''

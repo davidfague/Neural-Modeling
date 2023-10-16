@@ -21,7 +21,7 @@ import numpy as np
 
 import time, datetime
 import os, h5py, pickle, shutil
-from multiprocessing import Process
+from multiprocessing import Process, cpu_count
 import pandas as pd
 
 from neuron import h
