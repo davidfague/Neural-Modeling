@@ -23,21 +23,17 @@ class Recorder:
         size = round(vector_length / h.dt) + 1
         attr_name = '_ref_' + self.var_name
         self.vectors = []
-    
-        for obj in self.obj_list:
-            #try:
-            # Attempt to get the attribute and record it
-            attribute = getattr(obj, attr_name)
-            vec = h.Vector(size)
-            vec.record(attribute)
-            self.vectors.append(vec)
-#            except AttributeError:
-#                # Handle the exception with an informative error message
-#                print(f"Attribute '{attr_name}' not found for object '{obj}'.")
-#            except Exception as e:
-#                # Handle any other unexpected exceptions
-#                print(f"An error occurred while setting up the recorder for object '{obj}': {str(e)}")
 
+        # Attempt to get the attribute and record it
+        # This is the easiest way to deal with arbitrary hoc files
+        for obj in self.obj_list:
+            try:
+                attribute = getattr(obj, attr_name)
+                vec = h.Vector(size)
+                vec.record(attribute)
+                self.vectors.append(vec)
+            except:
+                continue
 
     #TODO: why copy?
     def as_numpy(self, copy: bool = True) -> np.ndarray:

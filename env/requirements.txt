@@ -4,4 +4,4 @@ matplotlib
 psutil
 neuron_reduce
 h5py
-scikit-learn (sklearn)
+scikit-learn

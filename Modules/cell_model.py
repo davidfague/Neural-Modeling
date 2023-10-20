@@ -51,7 +51,7 @@ class CellModel:
             self._nbranch = len(self.tufts) - 1 + len(self.basals) # trunk is not branch
             
         if self.soma[0].nseg != 1:
-          warnings.warn(f"Changed Soma nseg from {self.soma[0].nseg} to 1",RuntimeWarning)
+          warnings.warn(f"Changed Soma nseg from {self.soma[0].nseg} to 1", RuntimeWarning)
           self.soma[0].nseg=1
 
         # Angles and rotations that were used to branch the cell
@@ -80,8 +80,8 @@ class CellModel:
         self.recompute_netcons_per_seg()
         self.compute_adjacent_segments()
 
-        self.get_channels_from_var_names() # get channel and attribute names from recorded channel name
-        self.insert_unused_channels() #need to update with var_names
+        self.get_channels_from_var_names() # Get channel and attribute names from recorded channel name
+        self.errors_in_setting_params = self.insert_unused_channels() # Need to update with var_names
 
         # PRAGMA MARK: Section Generation
 
@@ -246,24 +246,23 @@ class CellModel:
         '''
         Method for allowing recording of channels in sections that do not have the current.
         '''
-        #print(dir(self.soma[0](0.5).ih)) #debug
+        errors_in_setting_params = []
         for channel, attr, conductance in self.CHANNELS:
-        # print(channel, attr, conductance)
             if not (str(channel) == ''): # for some reason '' was getting added? Need to check how self.channels is formed.
               for sec in self.all:
                   if not hasattr(sec(0.5), attr):
-                      #print(f"channel : {channel}")
-                      try:sec.insert(channel) # insert this channel into
+                      try: 
+                          # Insert this channel into
+                          sec.insert(channel)
                       except Exception as e:
-                          print(f"Unhandled error in setting ion params {sec.name()}: {str(e)}")
-                      #print(f"dir(sec): {dir(sec)}")
-                      #print(f"dir(sec(0.5)): {dir(sec(0.5))}")
+                          errors_in_setting_params.append((sec.name(), e))
                       
                       try:
                           for seg in sec:
                               setattr(getattr(seg, channel), conductance, 0) # set the maximum conductance to zero
                       except Exception as e:
-                          print(f"Unhandled error in setting ion params {sec.name()}: {str(e)}")
+                          errors_in_setting_params.append((sec.name(), e))
+        return errors_in_setting_params
 
     def write_seg_info_to_csv(self, path, seg_info=None, title_prefix:str = None):
         if seg_info is  None:

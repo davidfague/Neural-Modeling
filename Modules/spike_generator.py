@@ -6,6 +6,8 @@ import warnings
 import math
 
 def minmax(x):
+	if np.min(x) == np.max(x):
+		return x
 	return (x - np.min(x)) / (np.max(x) - np.min(x))
 
 class SpikeGenerator:
@@ -69,54 +71,85 @@ class SpikeGenerator:
 		'''
 	
 		spike_trains = []
-		netcons_list = [] # returned temporary list for this go around
+
+		# Returned temporary list for this go around
+		netcons_list = []
+
+		# Ensure the firing rate is a float
+		mean_fr = self.get_mean_fr(mean_firing_rate)
 
 		if origin == "same_presynaptic_cell": # Same fr profile, Same spike train, Same mean fr
-			# Ensure the firing rate is a float
-			mean_fr = self.get_mean_fr(mean_firing_rate)
-			fr_profile = self.get_firing_rate_profile(t = t, method = method, random_state = random_state,
-													  rhythmicity = rhythmicity, rhythmic_mod = rhythmic_mod,
-					     							  rhythmic_f = rhythmic_f, 
-													  spike_trains_to_delay = spike_trains_to_delay,
-													  fr_time_shift = fr_time_shift, spike_train_dt = spike_train_dt)
-			spikes = self.generate_spikes_from_profile(fr_profile, mean_fr, random_state)
+			
+			fr_profile = self.get_firing_rate_profile(
+				t = t, 
+				method = method, 
+				random_state = random_state,
+				mean_fr = mean_fr,
+				rhythmicity = rhythmicity, 
+				rhythmic_mod = rhythmic_mod,
+				rhythmic_f = rhythmic_f, 
+				spike_trains_to_delay = spike_trains_to_delay,
+				fr_time_shift = fr_time_shift, 
+				spike_train_dt = spike_train_dt)
+			spikes = self.generate_spikes_from_profile(fr_profile, random_state)
 			for synapse in synapses:
 				spike_trains.append(spikes)
 				netcon = self.set_spike_train(synapse, spikes)
 				netcons_list.append(netcon)
 		  
 		elif origin == "same_presynaptic_region": # Same fr profile, Unique spike train, Unique mean fr
-			fr_profile = self.get_firing_rate_profile(t = t, method = method, random_state = random_state, rhythmicity = rhythmicity, 
-					     							  rhythmic_mod = rhythmic_mod, rhythmic_f = rhythmic_f, 
-													  spike_trains_to_delay = spike_trains_to_delay,
-													  fr_time_shift = fr_time_shift, spike_train_dt = spike_train_dt)
+			fr_profile = self.get_firing_rate_profile(
+				t = t, 
+				method = method, 
+				random_state = random_state,
+				mean_fr = mean_fr,
+				rhythmicity = rhythmicity, 
+				rhythmic_mod = rhythmic_mod, 
+				rhythmic_f = rhythmic_f, 
+				spike_trains_to_delay = spike_trains_to_delay,
+				fr_time_shift = fr_time_shift, 
+				spike_train_dt = spike_train_dt)
+			
 			for synapse in synapses:
-				mean_fr = self.get_mean_fr(mean_firing_rate)
-				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr, random_state)
+				spikes = self.generate_spikes_from_profile(fr_profile, random_state)
 				spike_trains.append(spikes)
 				netcon = self.set_spike_train(synapse, spikes)
 				netcons_list.append(netcon)
 			
 		else: # Unique fr profile, Unique spike train, Unqiue mean fr
 			for synapse in synapses:
-				fr_profile = self.get_firing_rate_profile(t = t, method = method, random_state = random_state, 
-					      								  rhythmicity = rhythmicity,
-					      								  rhythmic_mod = rhythmic_mod, rhythmic_f = rhythmic_f,
-														  spike_trains_to_delay = spike_trains_to_delay,
-														  fr_time_shift = fr_time_shift, spike_train_dt = spike_train_dt)
-				mean_fr = self.get_mean_fr(mean_firing_rate)
-				spikes = self.generate_spikes_from_profile(fr_profile, mean_fr, random_state)
+				fr_profile = self.get_firing_rate_profile(
+					t = t, 
+					method = method, 
+					random_state = random_state,
+					mean_fr = mean_fr,
+					rhythmicity = rhythmicity,
+					rhythmic_mod = rhythmic_mod, 
+					rhythmic_f = rhythmic_f,
+					spike_trains_to_delay = spike_trains_to_delay,
+					fr_time_shift = fr_time_shift, 
+					spike_train_dt = spike_train_dt)
+				spikes = self.generate_spikes_from_profile(fr_profile, random_state)
 				netcon = self.set_spike_train(synapse, spikes)
 				spike_trains.append(spikes)
 				netcons_list.append(netcon)
 			
 		return netcons_list, spike_trains
 
-	def get_firing_rate_profile(self, t: np.ndarray, method: str, random_state: np.random.RandomState,
-								rhythmicity: bool = False, rhythmic_mod = None, rhythmic_f = None,
-								spike_trains_to_delay = None, fr_time_shift = None, 
-								spike_train_dt: float = 1e-3, bounds: tuple = (0.5, 1.5),
-								tiesinga_params: tuple = ()) -> np.ndarray:
+	def get_firing_rate_profile(
+			self, 
+			t: np.ndarray, 
+			method: str, 
+			random_state: np.random.RandomState,
+			mean_fr: float = None,
+			rhythmicity: bool = False, 
+			rhythmic_mod = None, 
+			rhythmic_f = None,
+			spike_trains_to_delay = None, 
+			fr_time_shift = None, 
+			spike_train_dt: float = 1e-3, 
+			bounds: tuple = (0.5, 1.5),
+			tiesinga_params: tuple = ()) -> np.ndarray:
 		'''
 		Parameters:
 		----------
@@ -151,7 +184,7 @@ class SpikeGenerator:
 
 		# Create the firing rate profile
 		if method == '1f_noise':
-			fr_profile = self.noise_modulation(num_obs = len(t), random_state = random_state)
+			fr_profile = self.generate_pink_noise(num_obs = len(t), random_state = random_state, mean = mean_fr)
 		elif method == 'delay':
 			fr_profile = self.delay_modulation(spike_trains_to_delay = spike_trains_to_delay, fr_time_shift = fr_time_shift, 
 				      						   spike_train_t = t, spike_train_dt = spike_train_dt)
@@ -173,9 +206,13 @@ class SpikeGenerator:
 		
 		return fr_profile
 	
-	def noise_modulation(self, random_state: np.random.RandomState, 
-		      			 num_obs: int, A: list = None, B: list = None, 
-						 bounds: tuple = (0.5, 1.5)) -> np.ndarray:
+	def generate_pink_noise(
+			self, 
+			random_state: np.random.RandomState, 
+			num_obs: int, 
+			mean: float = 1,
+			std: float = 0.5,
+			bounds: tuple = (0.5, 1.5)) -> np.ndarray:
 		'''
 		Produce pink ("1/f") noise out of the white noise.
 		The idea is to generate a white noise and then filter it to impose autocovariance structure with
@@ -203,13 +240,11 @@ class SpikeGenerator:
 		fr_profile: np.ndarray
 			Firing rate profile.
 		'''
-		# Default values from a previous implementation.
-		if A is None:
-			A = [1, -2.494956002, 2.017265875, -0.522189400]
-		if B is None:
-			B = [0.049922035, -0.095993537, 0.050612699, -0.004408786]
+		# These values produce stable pink noise
+		A = [1, -2.494956002, 2.017265875, -0.522189400]
+		B = [0.049922035, -0.095993537, 0.050612699, -0.004408786]
 		
-		white_noise = random_state.normal(loc = 1, scale = 0.5, size = num_obs + 2000)
+		white_noise = random_state.normal(loc = mean, scale = std, size = num_obs + 2000)
 
 		# Apply the FIR/IIR filter to create the 1/f noise, minmax and shift to bounds
 		fr_profile = minmax(lfilter(B, A, white_noise)[2000:]) * (bounds[1] - bounds[0]) + bounds[0]
@@ -246,7 +281,6 @@ class SpikeGenerator:
 		'''
 		if fr_time_shift is None:
 			raise TypeError('fr_time_shift must be an integer.')
-		#print("spike_trains_to_delay:",spike_trains_to_delay)
    
 		# Flatten all the spike trains, because otherwise np.histogram doesn't work
 		# Ignore spike trains without spikes
@@ -262,7 +296,6 @@ class SpikeGenerator:
 		fr_profile[0:fr_time_shift] = wrap
 
 		# Minmax and shift to bounds
-		#print("fr_profile right before minmax:",fr_profile)
 		fr_profile = minmax(fr_profile) * (bounds[1] - bounds[0]) + bounds[0]
 
 		return fr_profile
@@ -355,11 +388,17 @@ class SpikeGenerator:
 
 		return fr_profile
 	
-	#TODO: check division by 1000
-	def generate_spikes_from_profile(self, fr_profile: np.ndarray, mean_fr: float, random_state: np.random.RandomState) -> np.ndarray:
-		fr_profile = fr_profile * mean_fr
-		sample_values = random_state.poisson(fr_profile / 1000)
-		spike_times = np.where(sample_values > 0)[0]
+	def generate_spikes_from_profile(
+			self, 
+			fr_profile: np.ndarray,
+			random_state: np.random.RandomState) -> np.ndarray:
+		
+		t = np.zeros(len(fr_profile))
+		for i, lambd in enumerate(fr_profile):
+			num_points = random_state.poisson(lambd / 1000)
+			if num_points > 0: t[i] = 1
+
+		spike_times = np.where(t > 0)[0]
 		return spike_times
    
 	def create_netstim(self, frequency=None, interval=None, number=None, duration=None, start=None, noise=0):

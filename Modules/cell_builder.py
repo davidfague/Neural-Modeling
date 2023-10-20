@@ -4,25 +4,26 @@ import pickle
 import os
 import numpy as np
 
-from logger import Logger
-from cell_utils import get_segments_and_len_per_segment
-from synapse_generator import SynapseGenerator
-from spike_generator import SpikeGenerator
+from Modules.logger import Logger
+from Modules.cell_utils import get_segments_and_len_per_segment
+from Modules.synapse_generator import SynapseGenerator
+from Modules.spike_generator import SpikeGenerator
 
 from functools import partial
 import scipy.stats as st
-from self.parameters import SimulationParameters
 
-from cell_model import CellModel
-from clustering import create_functional_groups_of_presynaptic_cells
-from reduction import Reductor
+from Modules.constants import SimulationParameters
+from Modules.cell_model import CellModel
+from Modules.clustering import create_functional_groups_of_presynaptic_cells
+from Modules.reduction import Reductor
 
 class SkeletonCell(Enum):
 	Hay = {
 		"biophys": "L5PCbiophys3ActiveBasal.hoc",
 		"morph": "cell1.asc",
 		"template": "L5PCtemplate.hoc",
-		"pickle": None
+		"pickle": None,
+		"modfiles": "../modfiles/hay"
 		}
 	HayNeymotin = {
 		"biophys": "M1_soma_L5PC_dendrites.hoc",
@@ -71,7 +72,7 @@ class CellBuilder:
 	def build_cell(self):
 
 		random_state = np.random.RandomState(self.parameters.numpy_random_state)
-		np.random.seed(self.parameters.numpy_random_statenumpy_random_state)
+		np.random.seed(self.parameters.numpy_random_state)
 		neuron_r = h.Random()
 		neuron_r.MCellRan4(self.parameters.neuron_random_state)
 
@@ -133,6 +134,8 @@ class CellBuilder:
 		for synapse_list in synapse_generator.synapses: # synapse_generator.synapses is a list of synapse lists
 			for synapse in synapse_list:
 				all_syns.append(synapse)
+
+		self.all_syns = all_syns
 		
 		# Initialize the dummy cell model used for calculating coordinates and 
 		# generating functional groups
@@ -164,6 +167,8 @@ class CellBuilder:
 			random_state = random_state,
 			exc_spikes = exc_spikes
 		)
+
+		self.detailed_seg_info = dummy_cell.seg_info.copy()
 
 		# Build the final cell
 		reductor = Reductor()
@@ -209,6 +214,8 @@ class CellBuilder:
 				delay = self.parameters.h_i_delay, 
 				dur = self.parameters.h_i_duration, 
 				amp = self.parameters.h_i_amplitude)
+			
+		self.logger.log(f"There were {len(cell.errors_in_setting_params)} errors when trying to insert unused channels.")
 
 		return cell
 

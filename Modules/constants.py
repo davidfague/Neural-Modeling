@@ -2,31 +2,31 @@ from dataclasses import dataclass
 
 @dataclass
 class SimulationParameters:
-
+	
 	# Name: required argument
 	sim_name: str
 
 	# Random state
-	numpy_random_state = 130
-	neuron_random_state = 90
+	numpy_random_state: int = 130
+	neuron_random_state: int = 90
 
 	# Runtime
-	parallelize = True
+	parallelize: bool = True
 
 	# Reduction
-	reduce_cell = False
-	expand_cable = False
-	reduction_frequency = 0
-	choose_branches = 22
+	reduce_cell: bool = False
+	expand_cable: bool = False
+	reduction_frequency: int = 0
+	choose_branches: int = 22
 	# Whether or not to optimize the number of segments by lambda after reduction 
 	# (may need to add an update to the CellModel class instance's segments list and seg_info list.)
-	optimize_nseg_by_lambda = True
+	optimize_nseg_by_lambda: bool = True
 	# Whether or not to merge synapses after optimizing nseg by lambda. 
 	# (synapses should already be merged by the reduce_cell_func, 
 	# but could be merged again if optimize_nseg_by_lambda lowers nseg.)
-	merge_synapses = False
+	merge_synapses: bool = False
 	# Desired number of segs per length constant
-	segs_per_lambda = 10
+	segs_per_lambda: int = 10
 
 	# Morphology parameters used if build_m1
 	# SomaL = 28.896601873591436
@@ -35,63 +35,63 @@ class SimulationParameters:
 	# AxonDiam = 1.0198477329563544
 
 	# Neymotin Reduced
-	SomaL = 48.4123467666
-	SomaDiam = 28.2149102762
-	AxonL = 594.292937602 # 549.528226526987
-	AxonDiam =  1.40966286462
-	Axon_L_scale = 1 # Used to adjust axon length while maintaing surface area
+	SomaL: float = 48.4123467666
+	SomaDiam: float = 28.2149102762
+	AxonL: float = 594.292937602 # 549.528226526987
+	AxonDiam: float =  1.40966286462
+	Axon_L_scale: float = 1 # Used to adjust axon length while maintaing surface area
 
 	# Neuron parameters
-	h_celcius = 34 # 37
-	h_tstop = 100 # Sim runtime (ms)
-	h_dt = 0.1 # Timestep (ms)
+	h_celcius: float = 34 # 37
+	h_tstop: int = 1000 # Sim runtime (ms)
+	h_dt: float = 0.1 # Timestep (ms)
 
 	# Current injection
-	CI_on = True
+	CI_on: bool = True
 	h_i_amplitude: float = -1.0 # (nA)
-	h_i_duration = 80 # (ms)
-	h_i_delay = 10 # (ms)
+	h_i_duration: int = 80 # (ms)
+	h_i_delay: int = 10 # (ms)
 
-	trunk_exc_synapses = True
-	perisomatic_exc_synapses = False
-	add_soma_inh_synapses = True
-	num_soma_inh_syns = 150
+	trunk_exc_synapses: bool = True
+	perisomatic_exc_synapses: bool = False
+	add_soma_inh_synapses: bool = True
+	num_soma_inh_syns: int = 150
 
 	# gmax distributions
-	exc_gmax_mean_0 = 0.2
-	exc_gmax_std_0 = 0.345
-	exc_gmax_clip = (0, 0.65)
-	inh_gmax_dist = 1
-	soma_gmax_dist = 1
-	inh_scalar = 1
-	exc_scalar = 1 # Scales weight
+	exc_gmax_mean_0: float = 0.2
+	exc_gmax_std_0: float = 0.345
+	exc_gmax_clip: tuple = (0, 0.65)
+	inh_gmax_dist: float = 1
+	soma_gmax_dist: float = 1
+	inh_scalar: int = 1
+	exc_scalar: int = 1 # Scales weight
 
 	# Synapse density syns/um 
 	# Current densities taken from literature on apical main bifurcation, and extrapolated to entire cell.
-	exc_synaptic_density = 2.16 # (syn/micron of path length)
-	inh_synaptic_density = 0.22 # (syn/micron of path length)
-	use_SA_exc = True # Use surface area instead of lengths for the synapse's segment assignment probabilities
+	exc_synaptic_density: float = 2.16 # (syn/micron of path length)
+	inh_synaptic_density: float = 0.22 # (syn/micron of path length)
+	use_SA_exc: bool = True # Use surface area instead of lengths for the synapse's segment assignment probabilities
 
 	# Release probability distributions
-	exc_P_release_mean = 0.53
-	exc_P_release_std = 0.22
-	inh_basal_P_release_mean = 0.72
-	inh_basal_P_release_std = 0.1
-	inh_apic_P_release_mean = 0.3
-	inh_apic_P_release_std = 0.08
-	inh_soma_P_release_mean = 0.88
-	inh_soma_P_release_std = 0.05
+	exc_P_release_mean: float = 0.53
+	exc_P_release_std: float = 0.22
+	inh_basal_P_release_mean: float = 0.72
+	inh_basal_P_release_std: float = 0.1
+	inh_apic_P_release_mean: float = 0.3
+	inh_apic_P_release_std: float = 0.08
+	inh_soma_P_release_mean: float = 0.88
+	inh_soma_P_release_std: float = 0.05
 
 	# syn_mod
-	exc_syn_mod= 'AMPA_NMDA_STP'
-	inh_syn_mod = 'GABA_AB_STP'
+	exc_syn_mod: str = 'AMPA_NMDA_STP'
+	inh_syn_mod: str = 'GABA_AB_STP'
 
 	# firing rate distributions
-	inh_prox_mean_fr = 16.9
-	inh_prox_std_fr = 14.3
-	inh_distal_mean_fr = 3.9
-	inh_distal_std_fr = 4.9
-	inh_firing_rate_time_shift = 4
+	inh_prox_mean_fr: float = 16.9
+	inh_prox_std_fr: float = 14.3
+	inh_distal_mean_fr: float = 3.9
+	inh_distal_std_fr: float = 4.9
+	inh_firing_rate_time_shift: int = 4
 
 	# Syn parameters
 	#TODO: implement
@@ -180,3 +180,6 @@ class SimulationParameters:
 	log_every_ms = 1000
 	save_every_ms = 1000
 	path = ''
+
+class HayParameters(SimulationParameters):
+	channel_names = ['i_pas', 'i_hd', 'ina', 'ik_kdr','ik_kap','ik_kdmc','ina_nax', 'ica_cal', 'ica_can', 'ica','g_nax']
