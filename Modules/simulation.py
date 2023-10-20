@@ -5,7 +5,7 @@ from Modules.logger import Logger
 from neuron import h
 import os, datetime
 
-from multiprocessing import Process, cpu_count
+from multiprocessing import Pool, cpu_count
 
 from cell_inference.config import params
 from cell_inference.utils.currents.ecp import EcpMod
@@ -15,8 +15,8 @@ from Modules.recorder import Recorder
 import pickle, h5py
 
 # https://stackoverflow.com/questions/31729008/python-multiprocessing-seems-near-impossible-to-do-within-classes-using-any-clas
-def unwrap_self_run_single_simulation(self, parameters):
-    return Simulation.run_single_simulation(self, parameters)
+def unwrap_self_run_single_simulation(args):
+    return Simulation.run_single_simulation(args[0], args[1])
 
 class Simulation:
 
@@ -29,7 +29,7 @@ class Simulation:
 
     def submit_job(self, parameters: SimulationParameters):
        parameters.path = os.path.join(self.path, parameters.sim_name)
-       self.pool.append(Process(target = unwrap_self_run_single_simulation, args = [self, parameters]))
+       self.pool.append(parameters)
 
     def run(self):
         self.logger.log(f"Total number of jobs: {len(self.pool)}")
@@ -45,9 +45,8 @@ class Simulation:
         h.load_file('stdrun.hoc')
         h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
         
-        for p in self.pool: p.start()
-        for p in self.pool: p.join()
-        for p in self.pool: p.terminate()
+        pool = Pool(processes = len(self.pool))
+        pool.map(unwrap_self_run_single_simulation, zip([self] * len(self.pool), self.pool))
 
         # Delete the compiled modfiles
         os.system("rm -r x86_64")
