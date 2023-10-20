@@ -1,17 +1,17 @@
 from enum import Enum
-from neuron import h
 import pickle
 import os
 import numpy as np
+
+from functools import partial
+import scipy.stats as st
+
+from neuron import h
 
 from Modules.logger import Logger
 from Modules.cell_utils import get_segments_and_len_per_segment
 from Modules.synapse_generator import SynapseGenerator
 from Modules.spike_generator import SpikeGenerator
-
-from functools import partial
-import scipy.stats as st
-
 from Modules.constants import SimulationParameters
 from Modules.cell_model import CellModel
 from Modules.clustering import create_functional_groups_of_presynaptic_cells
@@ -101,6 +101,7 @@ class CellBuilder:
 		synapse_generator = SynapseGenerator()
 
 		# Build synapses
+		self.logger.log("Building excitatory synapses.")
 		exc_synapses = self.build_excitatory_synapses(
 			skeleton_cell = skeleton_cell,
 			synapse_generator = synapse_generator,
@@ -112,6 +113,7 @@ class CellBuilder:
 			neuron_r = neuron_r
 		)
 
+		self.logger.log("Building inhibitory synapses.")
 		inh_synapses = self.build_inhibitory_synapses(
 			skeleton_cell = skeleton_cell,
 			synapse_generator = synapse_generator,
@@ -121,6 +123,7 @@ class CellBuilder:
 			neuron_r = neuron_r
 		)
 
+		self.logger.log("Building soma synapses.")
 		soma_inh_synapses = self.build_soma_synapses(
 			synapse_generator = synapse_generator,
 			soma_segments = soma_segments,
@@ -144,6 +147,7 @@ class CellBuilder:
 		# Create functional groups
 		spike_generator = SpikeGenerator()
 
+		self.logger.log("Building excitatory functional groups.")
 		_ = self.build_excitatory_functional_groups(
 			cell = dummy_cell,
 			exc_synapses = exc_synapses,
@@ -152,6 +156,7 @@ class CellBuilder:
 		)
 		exc_spikes = spike_generator.spike_trains.copy()
 
+		self.logger.log("Building inhibitory functional groups.")
 		_ = self.build_inhibitory_functional_groups(
 			cell = dummy_cell,
 			inh_synapses = inh_synapses,
@@ -160,6 +165,7 @@ class CellBuilder:
 			exc_spikes = exc_spikes
 		)
 
+		self.logger.log("Building soma functional groups.")
 		_ = self.build_soma_functional_groups(
 			cell = dummy_cell,
 			soma_inh_synapses = soma_inh_synapses,
@@ -171,6 +177,7 @@ class CellBuilder:
 		self.detailed_seg_info = dummy_cell.seg_info.copy()
 
 		# Build the final cell
+		self.logger.log("Creating a CellModel object.")
 		reductor = Reductor()
 		cell = reductor.reduce_cell(
 			complex_cell = skeleton_cell, 

@@ -17,6 +17,12 @@ class Logger:
         else:
             print(f"({datetime.now()})-[PID: {current_process().pid}]–[INFO]: {msg}", file = open(self.path, "a"))
 
+    def log_step(self, step: int):
+        if self.path is None:
+            print(f"({datetime.now()})-[PID: {current_process().pid}]–[STEP]: {step}")
+        else:
+            print(f"({datetime.now()})-[PID: {current_process().pid}]–[STEP]: {step}", file = open(self.path, "a"))
+
     def log_memory(self):
         memory = psutil.virtual_memory()
         if self.path is None:

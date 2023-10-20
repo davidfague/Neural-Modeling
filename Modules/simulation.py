@@ -1,18 +1,17 @@
 from Modules.cell_builder import SkeletonCell, CellBuilder
 from Modules.constants import SimulationParameters
 from Modules.logger import Logger
-
-from neuron import h
-import os, datetime
-
-from multiprocessing import Pool, cpu_count
+from Modules.recorder import Recorder
 
 from cell_inference.config import params
 from cell_inference.utils.currents.ecp import EcpMod
 
-from Modules.recorder import Recorder
+from neuron import h
 
+import os, datetime
 import pickle, h5py
+
+from multiprocessing import Pool, cpu_count
 
 # https://stackoverflow.com/questions/31729008/python-multiprocessing-seems-near-impossible-to-do-within-classes-using-any-clas
 def unwrap_self_run_single_simulation(args):
@@ -100,9 +99,13 @@ class Simulation:
 
         h.finitialize(h.v_init)
 
+        self.logger.log("Starting simulation.")
         while h.t <= h.tstop + 1:
 
             if (time_step > 0) & (time_step % (parameters.save_every_ms / parameters.h_dt) == 0):
+                # Log progress
+                self.logger.log_step(time_step)
+
                 # Save data
                 cell.generate_recorder_data(parameters.save_every_ms)
                 cell.write_data(os.path.join(parameters.path, f"saved_at_step_{time_step}"))

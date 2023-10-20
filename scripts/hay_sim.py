@@ -10,8 +10,6 @@ import numpy as np
 if __name__ == "__main__":
 
     sim = Simulation(SkeletonCell.Hay)
-
-    for ci in [-1, 0, 1]:
-        sim.submit_job(HayParameters(sim_name = f"{ci}", h_i_amplitude = ci))
+    sim.submit_job(HayParameters(sim_name = f"ben"))
 
     sim.run()

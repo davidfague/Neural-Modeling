@@ -85,19 +85,19 @@ def create_functional_groups(seg_id_to_functional_group_index: list, segments_co
 	for functional_group_index in np.unique(seg_id_to_functional_group_index):
 		functional_group_cluster_center=functional_group_cluster_centers[functional_group_index]
 
-	# Gather functional group segments
-	functional_group_target_segments_indices = []
-	for seg_ind, seg in enumerate(cell.seg_info):
-		if seg_id_to_functional_group_index[seg_ind] == functional_group_index: # Segment is in functional group targets
-			functional_group_target_segments_indices.append(seg_ind)
+		# Gather functional group segments
+		functional_group_target_segments_indices = []
+		for seg_ind, seg in enumerate(cell.seg_info):
+			if seg_id_to_functional_group_index[seg_ind] == functional_group_index: # Segment is in functional group targets
+				functional_group_target_segments_indices.append(seg_ind)
 
-	# Create FunctionalGroup object
-	functional_group_name = name_prefix +str(functional_group_index)
-	functional_group_target_segments_coordinates = segments_coordinates[functional_group_target_segments_indices]
-	functional_group = FunctionalGroup(target_segment_indices = functional_group_target_segments_indices, name = functional_group_name, target_segments_coordinates = functional_group_target_segments_coordinates, cluster_center = functional_group_cluster_center)
+		# Create FunctionalGroup object
+		functional_group_name = name_prefix +str(functional_group_index)
+		functional_group_target_segments_coordinates = segments_coordinates[functional_group_target_segments_indices]
+		functional_group = FunctionalGroup(target_segment_indices = functional_group_target_segments_indices, name = functional_group_name, target_segments_coordinates = functional_group_target_segments_coordinates, cluster_center = functional_group_cluster_center)
 
-	functional_groups.append(functional_group)
-	create_presynaptic_cells(functional_group_target_segments_coordinates=functional_group_target_segments_coordinates, n_presynaptic_cells_per_functional_group=n_presynaptic_cells_per_functional_group, functional_group_name=functional_group_name, functional_group=functional_group)
+		functional_groups.append(functional_group)
+		create_presynaptic_cells(functional_group_target_segments_coordinates=functional_group_target_segments_coordinates, n_presynaptic_cells_per_functional_group=n_presynaptic_cells_per_functional_group, functional_group_name=functional_group_name, functional_group=functional_group)
 
 	return functional_groups
   
@@ -109,15 +109,16 @@ def create_presynaptic_cells(functional_group_target_segments_coordinates: np.nd
 	for presynaptic_cell_index in np.unique(seg_ind_to_presynaptic_cell_index):
 		presynaptic_cell_cluster_center = presynaptic_cluster_centers[presynaptic_cell_index]
 	
-	# Gather presynaptic cell segments
-	presynaptic_cell_target_segments_indices = []
-	for seg_ind, global_seg_index in enumerate(functional_group.target_segment_indices):
-		if seg_ind_to_presynaptic_cell_index[seg_ind] == presynaptic_cell_index: # segment is in presynaptic cell targets
-			presynaptic_cell_target_segments_indices.append(global_seg_index)
+		# Gather presynaptic cell segments
+		presynaptic_cell_target_segments_indices = []
+		for seg_ind, global_seg_index in enumerate(functional_group.target_segment_indices):
+			if seg_ind_to_presynaptic_cell_index[seg_ind] == presynaptic_cell_index: # segment is in presynaptic cell targets
+				presynaptic_cell_target_segments_indices.append(global_seg_index)
 	
-	# Create PresynapticCell object
-	presynaptic_cell = PresynapticCell(target_segment_indices = presynaptic_cell_target_segments_indices, name = functional_group_name + '_cell' + str(presynaptic_cell_index), cluster_center=presynaptic_cell_cluster_center)
-	functional_group.presynaptic_cells.append(presynaptic_cell)
+		# Create PresynapticCell object
+		presynaptic_cell = PresynapticCell(target_segment_indices = presynaptic_cell_target_segments_indices, name = functional_group_name + '_cell' + str(presynaptic_cell_index), cluster_center=presynaptic_cell_cluster_center)
+		functional_group.presynaptic_cells.append(presynaptic_cell)
+
 	return presynaptic_cell
   
 def map_synapses_to_PresynapticCells(synapses: list, cell: CellModel, functional_groups: list):
@@ -128,14 +129,13 @@ def map_synapses_to_PresynapticCells(synapses: list, cell: CellModel, functional
 		for seg_index in functional_group.target_segment_indices:
 			all_mapped_functional_group_seg_indices.append(seg_index)
 	
-	for presynaptic_cell in functional_group.presynaptic_cells:
-		for seg_index in presynaptic_cell.target_segment_indices:
-			all_mapped_presynaptic_cell_seg_indices.append(seg_index)
+		for presynaptic_cell in functional_group.presynaptic_cells:
+			for seg_index in presynaptic_cell.target_segment_indices:
+				all_mapped_presynaptic_cell_seg_indices.append(seg_index)
 
 	all_mapped_functional_group_seg_indices = np.sort(all_mapped_functional_group_seg_indices)
 	all_mapped_presynaptic_cell_seg_indices = np.sort(all_mapped_presynaptic_cell_seg_indices)
 
-	seg_index_to_synapses = []
 	# Will need to separate synapses list because we do not want to give exc and inh synapses the same presynaptic cell
 	for synapse in synapses:
 		synapse_seg_index = cell.segments.index(synapse.get_segment())
@@ -191,22 +191,22 @@ def generate_spike_train_for_functional_groups(
 			else:
 				raise(ValueError("Must specify either mean_firing_rate or both proximal_fr_dist and distal_fr_dist."))
 		
-		presynaptic_cell.mean_firing_rate = float(mean_fr)
+			presynaptic_cell.mean_firing_rate = float(mean_fr)
 
-		functional_group.firing_rate_profile = spike_generator.get_firing_rate_profile(
-			t = t, 
-			method = method, 
-			random_state = random_state,
-			mean_fr = mean_fr,
-			rhythmicity = rhythmicity,
-			rhythmic_mod = rhythmic_mod, 
-			rhythmic_f = rhythmic_f,
-			spike_trains_to_delay = spike_trains_to_delay,
-			fr_time_shift = fr_time_shift, 
-			spike_train_dt = spike_train_dt)
+			functional_group.firing_rate_profile = spike_generator.get_firing_rate_profile(
+				t = t, 
+				method = method, 
+				random_state = random_state,
+				mean_fr = mean_fr,
+				rhythmicity = rhythmicity,
+				rhythmic_mod = rhythmic_mod, 
+				rhythmic_f = rhythmic_f,
+				spike_trains_to_delay = spike_trains_to_delay,
+				fr_time_shift = fr_time_shift, 
+				spike_train_dt = spike_train_dt)
 	
-		spikes = spike_generator.generate_spikes_from_profile(functional_group.firing_rate_profile, random_state)
+			spikes = spike_generator.generate_spikes_from_profile(functional_group.firing_rate_profile, random_state)
 
-		presynaptic_cell.spike_train.append(spikes)
-		for synapse in presynaptic_cell.synapses:
-			_ = spike_generator.set_spike_train(synapse, spikes)
+			presynaptic_cell.spike_train.append(spikes)
+			for synapse in presynaptic_cell.synapses:
+				_ = spike_generator.set_spike_train(synapse, spikes)

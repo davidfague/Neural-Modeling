@@ -43,13 +43,13 @@ class SimulationParameters:
 
 	# Neuron parameters
 	h_celcius: float = 34 # 37
-	h_tstop: int = 1000 # Sim runtime (ms)
+	h_tstop: int = 5000 # Sim runtime (ms)
 	h_dt: float = 0.1 # Timestep (ms)
 
 	# Current injection
-	CI_on: bool = True
+	CI_on: bool = False
 	h_i_amplitude: float = -1.0 # (nA)
-	h_i_duration: int = 80 # (ms)
+	h_i_duration: int = 5000 # (ms)
 	h_i_delay: int = 10 # (ms)
 
 	trunk_exc_synapses: bool = True
@@ -58,12 +58,12 @@ class SimulationParameters:
 	num_soma_inh_syns: int = 150
 
 	# gmax distributions
-	exc_gmax_mean_0: float = 0.2
+	exc_gmax_mean_0: float = 0.45
 	exc_gmax_std_0: float = 0.345
-	exc_gmax_clip: tuple = (0, 0.65)
+	exc_gmax_clip: tuple = (0, 0.5)
 	inh_gmax_dist: float = 1
 	soma_gmax_dist: float = 1
-	inh_scalar: int = 1
+	inh_scalar: int = 1.1
 	exc_scalar: int = 1 # Scales weight
 
 	# Synapse density syns/um 
