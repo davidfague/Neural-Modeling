@@ -24,17 +24,26 @@ When it asks you if you want to proceed, type `y`.
 
 ## Activating the environment
 
-Now each time you connect to the server, you can activate this environment with
+You can activate this environment with
 ```{bash}
 conda activate CHOOSE_NAME
 ```
+
+You should do it each time you connect to the server.
 
 ## Installing packages
 
 Install required packages with
 ```{bash}
-cd env
+cd setup
 pip install -r requirements.txt
 ```
 
+## Cloning the `cell_inference` library
+
+To clone the latest version of `cell_inference`, you can do
+```bash
+cd setup
+bash clone_cell_inference.sh
+```
 
