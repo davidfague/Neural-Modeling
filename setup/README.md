@@ -17,7 +17,7 @@ The last command will ask you to restart the shell. After re-logging, you should
 ## Creating a new environment
 
 Create a new environment called `CHOOSE_NAME` (choose any name you want) with
-```{bash}
+```bash
 conda create -n CHOOSE_NAME python=3.10
 ```
 When it asks you if you want to proceed, type `y`.
@@ -25,7 +25,7 @@ When it asks you if you want to proceed, type `y`.
 ## Activating the environment
 
 You can activate this environment with
-```{bash}
+```bash
 conda activate CHOOSE_NAME
 ```
 
@@ -34,7 +34,7 @@ You should do it each time you connect to the server.
 ## Installing packages
 
 Install required packages with
-```{bash}
+```bash
 cd setup
 pip install -r requirements.txt
 ```
