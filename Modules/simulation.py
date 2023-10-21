@@ -46,6 +46,8 @@ class Simulation:
         
         pool = Pool(processes = len(self.pool))
         pool.map(unwrap_self_run_single_simulation, zip([self] * len(self.pool), self.pool))
+        pool.close()
+        pool.join()
 
         # Delete the compiled modfiles
         os.system("rm -r x86_64")
