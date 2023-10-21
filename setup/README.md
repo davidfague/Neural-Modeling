@@ -39,7 +39,7 @@ cd setup
 pip install -r requirements.txt
 ```
 
-## Cloning the `cell_inference` library
+## Cloning the cell_inference library
 
 To clone the latest version of `cell_inference`, you can do
 ```bash
