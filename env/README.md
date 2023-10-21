@@ -2,7 +2,7 @@
 
 ## Installing Miniconda
 
-[(Link to their website)](https://docs.conda.io/projects/miniconda/en/latest/)
+[[Link to their website]](https://docs.conda.io/projects/miniconda/en/latest/)
 
 In your home directory, execute the following:
 ```bash
