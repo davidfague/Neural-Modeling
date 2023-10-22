@@ -182,4 +182,4 @@ class SimulationParameters:
 	path = ''
 
 class HayParameters(SimulationParameters):
-	channel_names = ['i_pas', 'i_hd', 'ina', 'ik_kdr','ik_kap','ik_kdmc','ina_nax', 'ica_cal', 'ica_can', 'ica','g_nax']
+	channel_names = ['i_pas', 'ik', 'ica', 'ina', 'i_h'] + ['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'ina_Nap_Et2', 'ik_SKv3_1', 'ik_SK_E2', 'ik_Im', 'ica_Ca_HVA', 'ica_Ca_LVAst']

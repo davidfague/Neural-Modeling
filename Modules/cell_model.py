@@ -4,26 +4,11 @@ import warnings
 from neuron import h, nrn
 from Modules.recorder import Recorder
 from Modules.cell_utils import calc_seg_coords
-import os, shutil, h5py, csv
+import os, h5py, csv
 
 from cell_inference.utils.currents.currentinjection import CurrentInjection
 
-# Global Constants
 FREQS = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
-
-# CHANNELS = [
-#     ('NaTa_t', 'gNaTa_t_NaTa_t', 'gNaTa_tbar'),
-#     ('Ca_LVAst', 'ica_Ca_LVAst', 'gCa_LVAstbar'),
-#     ('Ca_HVA', 'ica_Ca_HVA', 'gCa_HVAbar'),
-#     ('Ih', 'ihcn_Ih', 'gIhbar'),
-#     ('Nap_Et2', 'gNap_Et2bar_Nap_Et2', 'gNap_Et2bar'),
-#     ('K_Pst', 'gK_Pstbar_K_Pst', 'gK_Pstbar'),
-#     ('K_Tst', 'gK_Tstbar_K_Tst', 'gK_Tstbar'),
-#     ('SK_E2', 'gSK_E2bar_SK_E2', 'gSK_E2bar'),
-#     ('SKv3_1', 'gSKv3_1bar_SKv3_1', 'gSKv3_1bar'),
-#     ('Ca_HVA', 'gCa_HVAbar_Ca_HVA', 'gCa_HVAbar'),
-#     ('Ca_LVAst', 'gCa_LVAstbar_Ca_LVAst', 'gCa_LVAstbar')]
-
 
 class CellModel:
     def __init__(self, hoc_model: object, random_state: np.random.RandomState, 
@@ -568,7 +553,7 @@ class CellModel:
         }
         return info
         
-    def find_terminal_sections(self, region=str):
+    def find_terminal_sections(self, region = str):
         '''
         Finds all terminal sections then gathers terminal apical sections that are greater than 800 microns from the soma in path length
         '''

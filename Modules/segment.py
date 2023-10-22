@@ -114,37 +114,30 @@ class SegmentManager:
           filenames = ["Vm_report", "spikes_report"]
           current_names = ["v"]
         else:
-          #filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
-          #             "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
-          #             "ihcn_Ih_data_report", "ina_NaTa_t_data_report", "i_membrane_report","spikes_report"]
-          #current_names = ["v", "gNaTa", "iampa", "inmda", "igaba","icah", "ical", "ih", "ina", "imembrane"]
+          filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
+                      "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
+                      "ina_NaTa_t_data_report", "i_membrane_report", "spikes_report"]
+          
+          current_names = ["v", "gna", "iampa", "inmda", "igaba","ica", "ical", "ina", "imembrane"]
+
+          #['i_pas', 'ik', 'ica', 'ina', 'i_hd'] + ['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'ina_Nap_Et2', 'ik_SKv3_1', 'ik_SK_E2', 'ik_Im', 'ica_Ca_HVA', 'ica_Ca_LVAst']
+
+          
           #filenames = ["Vm_report", "ina_nax_data_report", "i_AMPA_report",
           #             "i_NMDA_report", "i_GABA_report", "ik_kap_data_report", "ik_kdmc_data_report", "ik_kdr_data_report",
           #             "ihcn_Ih_data_report", "i_pas_data_report","spikes_report"]
-          filenames = ["Vm_report", "ina_nax_data_report", "i_AMPA_report",
-                       "i_NMDA_report", "i_GABA_report", "ik_kap_data_report", "ik_kdmc_data_report", "ik_kdr_data_report",
-                       "i_hd_data_report", "g_nax_data_report","ica_data_report","i_pas_data_report","spikes_report"]
-          current_names = ["v", "ina_nax", "iampa", "inmda", "igaba", "ik_kap","ik_kdmc","ik_kdr", 
-          "ih", "gna", "ica","i_pas"]
+          #filenames = ["Vm_report", "ina_nax_data_report", "i_AMPA_report",
+          #             "i_NMDA_report", "i_GABA_report", "ik_kap_data_report", "ik_kdmc_data_report", "ik_kdr_data_report",
+          #             "i_hd_data_report", "g_nax_data_report","ica_data_report","i_pas_data_report","spikes_report"]
+          #current_names = ["v", "ina_nax", "iampa", "inmda", "igaba", "ik_kap","ik_kdmc","ik_kdr", "ih", "gna", "ica","i_pas"]
           
         self.segments = []
         self.dt = dt
 
         # Read datafiles
         data = self.read_data(filenames, output_folder, steps)
-        
-        #debugging
-        print(f" len(data.keys()): {len(data.keys())}")
-        print(f" len(filenames): {len(filenames)}")
-        print(f" len(data[filenames[0]]): {len(data[filenames[0]])}")
-        for key in data.keys():
-          print(f" len(data[{key}]): {len(data[key])}")
-#        if build_detailed_seg_info: # not yet implemented
-#          build_detailed_segments(output_folder, steps)
-        #print(data["Vm_report"].shape)
 
         self.num_segments = len(data["seg_info"])
-        print("NUM seg", self.num_segments)
 
         for i in range(self.num_segments):
             # Build seg_data
@@ -333,7 +326,7 @@ class SegmentManager:
         if current_type == "ica":
             v_thresh, time_thresh = -40, 200
             #trace = seg.icah + seg.ical + seg.ih
-            trace = seg.ica + seg.ih
+            trace = seg.ica #+ seg.ih
         elif current_type == "inmda":
             v_thresh, time_thresh = -40, 260
             trace = seg.inmda
