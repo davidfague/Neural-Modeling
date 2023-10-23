@@ -405,19 +405,8 @@ class CellModel:
 
     # TODO: CHECK
     def setup_recorders(self, vector_length: int = None):
-                self.recorders = {var_name: Recorder(obj_list=self.segments, var_name=var_name, vector_length = vector_length) for var_name in self.var_names}
-                # self.gNaTa_T = Recorder(obj_list=self.segments, var_name='gNaTa_t_NaTa_t')
-                # self.ina_NaTa_t = Recorder(obj_list=self.segments, var_name='ina_NaTa_t')
-                # self.ina_Nap_Et2 = Recorder(obj_list=self.segments, var_name='ina_Nap_Et2')
-                # self.ik_K_Pst = Recorder(obj_list=self.segments, var_name='ik_K_Pst')
-                # self.ik_K_Tst = Recorder(obj_list=self.segments, var_name='ik_K_Tst')
-                # self.ik_SK_E2 = Recorder(obj_list=self.segments, var_name='ik_SK_E2')
-                # self.ik_SKv3_1 = Recorder(obj_list=self.segments, var_name='ik_SKv3_1')
-                # self.ica_Ca_HVA = Recorder(obj_list=self.segments, var_name='ica_Ca_HVA')
-                # self.ica_Ca_LVAst = Recorder(obj_list=self.segments, var_name='ica_Ca_LVAst')
-                # self.ihcn_Ih = Recorder(obj_list=self.segments, var_name='ihcn_Ih')
-                # self.i_pas = Recorder(obj_list=self.segments, var_name='i_pas')
-                self.Vm = Recorder(obj_list=self.segments, vector_length = vector_length)
+        self.recorders = {var_name: Recorder(obj_list = self.segments, var_name = var_name, vector_length = vector_length) for var_name in self.var_names}
+        self.Vm = Recorder(obj_list = self.segments, vector_length = vector_length)
     
     def get_output_folder_name(self) -> str:
         nbranches = len(self.apic) - 1

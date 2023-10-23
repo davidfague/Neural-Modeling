@@ -21,7 +21,7 @@ what_to_plot = {
 }
 
 # Some cells require data to be transposed
-transpose = True
+transpose = False
 
 # Na
 threshold = 0.001 / 1000 # hay model: 0.003 / 1000
@@ -91,6 +91,12 @@ def analyse_spikes(parameters: SimulationParameters):
 
 	random_state = np.random.RandomState(parameters.numpy_random_state)
 	sm = SegmentManager(parameters.path, steps = steps, dt = parameters.h_dt, transpose = transpose)
+
+	plt.plot(sm.segments[0].v)
+	plt.savefig(os.path.join(parameters.path, "v.png"))
+
+	plt.plot(sm.segments[0].imembrane)
+	plt.savefig(os.path.join(parameters.path, "im.png"))
 
 	if what_to_plot["Na"]:
 			# Get lower bounds for Na

@@ -10,9 +10,6 @@ class SimulationParameters:
 	numpy_random_state: int = 130
 	neuron_random_state: int = 90
 
-	# Runtime
-	parallelize: bool = True
-
 	# Reduction
 	reduce_cell: bool = False
 	expand_cable: bool = False
@@ -28,19 +25,18 @@ class SimulationParameters:
 	# Desired number of segs per length constant
 	segs_per_lambda: int = 10
   
-  use_param_update_dict = False
-  param_update_dict = {
-      "soma": {
-          "nax.gbar": { "<100": 0.5, ">=100": 1.0 },
-          "kap.gbar": { "<100": 0.2, ">=100": 1.0 },
-          "hd.gbar":  1.0  # Assuming a constant value for hd.gbar
-      },
-      "axon": {
-          "nax.gbar": { "<100": 0.3, ">=100": 0.7 },
-          "kap.gbar": 1.0  # Assuming a constant value for kap.gbar
-      }
-  }
-
+	use_param_update_dict: bool = False
+	param_update_dict = {
+		"soma": {
+			"nax.gbar": { "<100": 0.5, ">=100": 1.0 },
+			"kap.gbar": { "<100": 0.2, ">=100": 1.0 },
+			"hd.gbar":  1.0  # Assuming a constant value for hd.gbar
+		},
+		"axon": {
+			"nax.gbar": { "<100": 0.3, ">=100": 0.7 },
+			"kap.gbar": 1.0  # Assuming a constant value for kap.gbar
+		}
+	}
 
 	# Morphology parameters used if build_m1
 	# SomaL = 28.896601873591436
@@ -49,21 +45,21 @@ class SimulationParameters:
 	# AxonDiam = 1.0198477329563544
 
 	# Neymotin Reduced
-	SomaL: float = 48.4123467666
-	SomaDiam: float = 28.2149102762
-	AxonL: float = 594.292937602 # 549.528226526987
-	AxonDiam: float =  1.40966286462
-	Axon_L_scale: float = 1 # Used to adjust axon length while maintaing surface area
+	# SomaL: float = 48.4123467666
+	# SomaDiam: float = 28.2149102762
+	# AxonL: float = 594.292937602 # 549.528226526987
+	# AxonDiam: float =  1.40966286462
+	# Axon_L_scale: float = 1 # Used to adjust axon length while maintaing surface area
 
 	# Neuron parameters
 	h_celcius: float = 34 # 37
-	h_tstop: int = 5000 # Sim runtime (ms)
+	h_tstop: int = 2000 # Sim runtime (ms)
 	h_dt: float = 0.1 # Timestep (ms)
 
 	# Current injection
 	CI_on: bool = False
-	h_i_amplitude: float = -1.0 # (nA)
-	h_i_duration: int = 5000 # (ms)
+	h_i_amplitude: float = 10.0 # (nA)
+	h_i_duration: int = 2000 # (ms)
 	h_i_delay: int = 10 # (ms)
 
 	trunk_exc_synapses: bool = True
@@ -142,8 +138,8 @@ class SimulationParameters:
 		'Fac': 519.
 		}
 	
-	exc_syn_params = [CS2CP_syn_params, CP2CP_syn_params] # 90%, 10%
-	inh_syn_params = [FSI_syn_params, LTS_syn_params]
+	exc_syn_params: tuple = (CS2CP_syn_params, CP2CP_syn_params) # 90%, 10%
+	inh_syn_params: tuple = (FSI_syn_params, LTS_syn_params)
 
 	# kmeans clustering
 	exc_n_FuncGroups = 24
@@ -172,9 +168,9 @@ class SimulationParameters:
 	soma_functional_group_span = 100
 
 	# Cell model
-	seg_to_record = 'soma' # Used to set spike recorder
-	spike_threshold = -10 # (mV)
-	channel_names = ['i_pas', 'i_hd', 'ina', 'ik_kdr','ik_kap','ik_kdmc','ina_nax', 'ica_cal', 'ica_can', 'ica','g_nax']
+	seg_to_record: str = 'soma' # Used to set spike recorder
+	spike_threshold: int = -10 # (mV)
+	channel_names = []
 					
 	# Tiesinga
 	ties_a_iv = 10
@@ -184,16 +180,29 @@ class SimulationParameters:
 	ties_pad_aiv = 0
 
 	# Post Synaptic Current analysis
-	number_of_presynaptic_cells = 2651
-	PSC_start = 5
+	number_of_presynaptic_cells: int = 2651
+	PSC_start: int = 5
 
 	# analyze output
-	skip = 300
+	skip: int = 300
 
 	# Log, plot and save
-	log_every_ms = 1000
-	save_every_ms = 1000
-	path = ''
+	save_every_ms: int = 1000
+	path: str = ''
+
 
 class HayParameters(SimulationParameters):
-	channel_names = ['i_pas', 'ik', 'ica', 'ina', 'i_h'] + ['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'ina_Nap_Et2', 'ik_SKv3_1', 'ik_SK_E2', 'ik_Im', 'ica_Ca_HVA', 'ica_Ca_LVAst']
+	channel_names = [
+		'i_pas', 
+		'ik', 
+		'ica', 
+		'ina', 
+		'i_h', 
+		'gNaTa_t_NaTa_t', 
+		'ina_NaTa_t', 
+		'ina_Nap_Et2', 
+		'ik_SKv3_1', 
+		'ik_SK_E2', 
+		'ik_Im', 
+		'ica_Ca_HVA', 
+		'ica_Ca_LVAst']

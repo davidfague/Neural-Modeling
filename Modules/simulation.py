@@ -131,7 +131,8 @@ class Simulation:
 
                 # Reinitialize vectors: https://www.neuron.yale.edu/phpBB/viewtopic.php?t=2579
                 t_vec.resize(0)
-                for vec in V_rec.vectors: vec.resize(0)
+                for vec in V_rec.vectors: 
+                    vec.resize(0)
                 for vec in cell.Vm.vectors: vec.resize(0)
                 for recorder in cell.recorders.items():
                     for vec in recorder[1].vectors: vec.resize(0)

@@ -105,31 +105,34 @@ class Segment:
 
 class SegmentManager:
 
-    def __init__(self, output_folder: str, steps: list, dt: float = 0.1, skip: int = 0, transpose = False, build_detailed_seg_info: bool = False, no_data=False):
+    def __init__(self, output_folder: str, steps: list, dt: float = 0.1, skip: int = 0, transpose = False):
         '''
         skip: ms of simulation to skip
         build_detailed_seg_info: Whether or not to try to read detailed_seg_info.csv, a csv containing much more segmentation
         '''
-        if no_data:
-          filenames = ["Vm_report", "spikes_report"]
-          current_names = ["v"]
-        else:
-          filenames = ["Vm_report", "gNaTa_t_NaTa_t_data_report", "i_AMPA_report",
-                      "i_NMDA_report", "i_GABA_report", "ica_Ca_HVA_data_report", "ica_Ca_LVAst_data_report",
-                      "ina_NaTa_t_data_report", "i_membrane_report", "spikes_report"]
-          
-          current_names = ["v", "gna", "iampa", "inmda", "igaba","ica", "ical", "ina", "imembrane"]
 
-          #['i_pas', 'ik', 'ica', 'ina', 'i_hd'] + ['gNaTa_t_NaTa_t', 'ina_NaTa_t', 'ina_Nap_Et2', 'ik_SKv3_1', 'ik_SK_E2', 'ik_Im', 'ica_Ca_HVA', 'ica_Ca_LVAst']
-
-          
-          #filenames = ["Vm_report", "ina_nax_data_report", "i_AMPA_report",
-          #             "i_NMDA_report", "i_GABA_report", "ik_kap_data_report", "ik_kdmc_data_report", "ik_kdr_data_report",
-          #             "ihcn_Ih_data_report", "i_pas_data_report","spikes_report"]
-          #filenames = ["Vm_report", "ina_nax_data_report", "i_AMPA_report",
-          #             "i_NMDA_report", "i_GABA_report", "ik_kap_data_report", "ik_kdmc_data_report", "ik_kdr_data_report",
-          #             "i_hd_data_report", "g_nax_data_report","ica_data_report","i_pas_data_report","spikes_report"]
-          #current_names = ["v", "ina_nax", "iampa", "inmda", "igaba", "ik_kap","ik_kdmc","ik_kdr", "ih", "gna", "ica","i_pas"]
+        filenames = [
+            "Vm_report", 
+            "gNaTa_t_NaTa_t_data_report", 
+            "i_AMPA_report",
+            "i_NMDA_report", 
+            "i_GABA_report", 
+            "ica_Ca_HVA_data_report", 
+            "ica_Ca_LVAst_data_report",
+            "ina_NaTa_t_data_report", 
+            "i_membrane_report", 
+            "spikes_report"]
+        
+        current_names = [
+            "v",
+            "gna", 
+            "iampa", 
+            "inmda", 
+            "igaba",
+            "ica", 
+            "ical", 
+            "ina", 
+            "imembrane"]
           
         self.segments = []
         self.dt = dt
@@ -155,6 +158,7 @@ class SegmentManager:
         
         # Soma spikes (ms)
         self.soma_spiketimes = np.array([(i-skip) for i in data[filenames[-1]][:] if i >= skip])
+
         # Soma spikes (inds)
         self.soma_spiketimestamps = np.sort((self.soma_spiketimes / dt).astype(int))
 
@@ -307,8 +311,8 @@ class SegmentManager:
         for spike_time in spike_times:
             if spike_time > 100:
                 #trace = seg.icah[spike_time - 100 : spike_time + 200] + seg.ical[spike_time - 100 : spike_time + 200] +\
-                trace = seg.ica[spike_time - 100 : spike_time + 200] +\
-                seg.ih[spike_time - 100 : spike_time + 200]
+                trace = seg.ica[spike_time - 100 : spike_time + 200]# +\
+                #seg.ih[spike_time - 100 : spike_time + 200]
                 peak_value = np.max(trace)
                 half_peak = peak_value / 2
                 duration = np.arange(len(trace))[trace > half_peak] + spike_time - 10
