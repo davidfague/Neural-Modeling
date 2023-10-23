@@ -377,7 +377,6 @@ class CellBuilder:
 		if (self.parameters.CI_on) or (not self.parameters.add_soma_inh_synapses):
 			return []
 		
-		inh_gmax = self.parameters.inh_gmax_dist * self.parameters.inh_scalar
 		inh_soma_P_dist = partial(P_release_dist, P_mean = self.parameters.inh_soma_P_release_mean, P_std = self.parameters.inh_soma_P_release_std, size = 1)
 		
 		soma_inh_synapses = synapse_generator.add_synapses(
@@ -386,7 +385,7 @@ class CellBuilder:
 			number_of_synapses = self.parameters.num_soma_inh_syns,
 			record = True,
 			vector_length = self.parameters.save_every_ms,
-			gmax = inh_gmax,
+			gmax = self.parameters.soma_gmax_dist,
 			random_state=random_state,
 			neuron_r = neuron_r,
 			syn_mod = self.parameters.inh_syn_mod,
@@ -412,8 +411,6 @@ class CellBuilder:
 		inh_P_dist["soma"] = inh_soma_P_dist
 		inh_P_dist["apic"] = inh_apic_P_dist
 		inh_P_dist["dend"] = inh_basal_P_dist
-		
-		inh_gmax = self.parameters.inh_gmax_dist * self.parameters.inh_scalar
 
 		if self.parameters.CI_on:
 			return []
@@ -424,7 +421,7 @@ class CellBuilder:
 			density = self.parameters.inh_synaptic_density,
 			record = True,
 			vector_length = self.parameters.save_every_ms,
-			gmax = inh_gmax,
+			gmax = self.parameters.inh_gmax_dist,
 			random_state = random_state,
 			neuron_r = neuron_r,
 			syn_mod = self.parameters.inh_syn_mod,
