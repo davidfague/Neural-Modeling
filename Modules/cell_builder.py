@@ -53,6 +53,11 @@ def log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip):
 def exp_levy_dist(alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1):
 	return np.exp(st.levy_stable.rvs(alpha = alpha, beta = beta, loc = loc, scale = scale, size = size)) + 1e-15
 
+def gamma_dist(mean, size = 1):
+	shape = 5
+	scale = mean / shape
+	return np.random.gamma(shape, scale, size) + 1e-15
+
 # Release probability distribution
 def P_release_dist(P_mean, P_std, size):
 	val = np.random.normal(P_mean, P_std, size)
@@ -340,7 +345,8 @@ class CellBuilder:
 				soma_coordinates[2] = seg['p0.5_z3d']
 
 		# Distribution of mean firing rates
-		mean_fr_dist = partial(exp_levy_dist, alpha = 1.37, beta = -1.00, loc = 5.3, scale = 0.44, size = 1)
+		#mean_fr_dist = partial(exp_levy_dist, alpha = 1.37, beta = -1.00, loc = 5.3, scale = 0.44, size = 1)
+		mean_fr_dist = partial(gamma_dist, mean = 5.3, size = 1)
 
 		t = np.arange(0, self.parameters.h_tstop, 1)
 

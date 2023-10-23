@@ -73,7 +73,7 @@ class SimulationParameters:
 	exc_gmax_clip: tuple = (0, 0.5)
 	inh_gmax_dist: float = 1
 	soma_gmax_dist: float = 1
-	inh_scalar: int = 1.1
+	inh_scalar: int = 2
 	exc_scalar: int = 1 # Scales weight
 
 	# Synapse density syns/um 
