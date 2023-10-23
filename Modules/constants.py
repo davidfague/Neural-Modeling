@@ -25,18 +25,18 @@ class SimulationParameters:
 	# Desired number of segs per length constant
 	segs_per_lambda: int = 10
   
-	use_param_update_dict: bool = False
+	use_param_update_dict = False
 	param_update_dict = {
-		"soma": {
-			"nax.gbar": { "<100": 0.5, ">=100": 1.0 },
-			"kap.gbar": { "<100": 0.2, ">=100": 1.0 },
-			"hd.gbar":  1.0  # Assuming a constant value for hd.gbar
-		},
-		"axon": {
-			"nax.gbar": { "<100": 0.3, ">=100": 0.7 },
-			"kap.gbar": 1.0  # Assuming a constant value for kap.gbar
-		}
-	}
+      "soma": {
+          "nax.gbar": { "<100": 0.5, ">=100": 1.0 },
+          "kap.gbar": { "<100": 0.2, ">=100": 1.0 },
+          "hd.gbar":  1.0  # Assuming a constant value for hd.gbar
+      },
+      "axon": {
+          "nax.gbar": { "<100": 0.3, ">=100": 0.7 },
+          "kap.gbar": 1.0  # Assuming a constant value for kap.gbar
+      }
+  }
 
 	# Morphology parameters used if build_m1
 	# SomaL = 28.896601873591436
