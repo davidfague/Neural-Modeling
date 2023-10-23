@@ -101,8 +101,8 @@ class CellBuilder:
 		synapse_generator = SynapseGenerator()
    
     # update parameters from dictionary
-    if self.parameters.use_param_update_dict:
-      self.update_cell_parameters_from_dict(skeleton_cell, self.parameters.param_update_dict)
+#		if self.parameters.use_param_update_dict:
+#		  self.update_cell_parameters_from_dict(skeleton_cell, self.parameters.param_update_dict)
 
 		# Build synapses
 		self.logger.log("Building excitatory synapses.")
@@ -636,79 +636,71 @@ class CellBuilder:
 		
 					section_row[f"mechs.{mech}.{param}"] = value
                                                
-  def update_cell_parameters_from_dict(self, cell, update_dict): # update_dict should come from parameters.py
-      if self.is_indexable(cell.soma):
-        h.distance(sec=cell.soma[0])
-      else:
-        h.distance(sec=cell.soma)
-                        
-      for sec_type in update_dict.keys():
-          sections_to_update = getattr(cell, sec_type)
-
-          if not self.is_indexable(sections_to_update):
-              sections_to_update = [sections_to_update]
-
-          for attribute_to_update, values in update_dict[sec_type].items():
-              att_and_sub_atts = attribute_to_update.split('.')
-              initial_att = att_and_sub_atts[0]
-              sec_or_seg_att = None  # Identify whether this attribute will be in segments or sections
-              
-              if hasattr(sections_to_update[0], initial_att):
-                  sec_or_seg_att = 'sec'
-              elif hasattr(sections_to_update[0](0.5), initial_att):
-                  sec_or_seg_att = 'seg'
-              else:
-                  raise AttributeError(f"{initial_att} of {att_and_sub_atts} is not found in either sec or seg of {sections_to_update[0]}. May need to insert mechanism")
-
-              # Check if values contain a dict for distance-based assignment
-              if isinstance(values, dict):
-                  for distance_condition, assignment_value in values.items():
-                      dist_limit = int(distance_condition[1:])  # Extract the numeric value
-
-                      if sec_or_seg_att == 'seg':
-                          for section in sections_to_update:
-                              for seg in section:
-                                  seg_distance = h.distance(seg.x, sec=section)
-                                  if (distance_condition.startswith("<") and seg_distance < dist_limit) or \
-                                     (distance_condition.startswith(">=") and seg_distance >= dist_limit):
-                                      obj = seg
-                                      for att in att_and_sub_atts:
-                                          if hasattr(obj, att):
-                                              obj = getattr(obj, att)
-                                          else:
-                                              raise AttributeError(f"Failed to access {att} in segment")
-                                      obj = assignment_value
-                      elif sec_or_seg_att == 'sec':  # Assuming you want similar logic for sections
-                          for section in sections_to_update:
-                              sec_distance = h.distance(0.5, sec=section)
-                              if (distance_condition.startswith("<") and sec_distance < dist_limit) or \
-                                 (distance_condition.startswith(">=") and sec_distance >= dist_limit):
-                                  obj = section
-                                  for att in att_and_sub_atts:
-                                      if hasattr(obj, att):
-                                          obj = getattr(obj, att)
-                                      else:
-                                          raise AttributeError(f"Failed to access {att} in section")
-                                  obj = assignment_value
-              else:  # Handle the case where the value is not a dict
-                  assignment_value = values
-
-                  if sec_or_seg_att == 'seg':
-                      for section in sections_to_update:
-                          for seg in section:
-                              obj = seg
-                              for att in att_and_sub_atts:
-                                  if hasattr(obj, att):
-                                      obj = getattr(obj, att)
-                                  else:
-                                      raise AttributeError(f"Failed to access {att} in segment")
-                              obj = assignment_value
-                  elif sec_or_seg_att == 'sec':
-                      for section in sections_to_update:
-                          obj = section
-                          for att in att_and_sub_atts:
-                              if hasattr(obj, att):
-                                  obj = getattr(obj, att)
-                              else:
-                                  raise AttributeError(f"Failed to access {att} in section")
-                          obj = assignment_value
+#    def update_cell_parameters_from_dict(self, cell, update_dict):
+#        # Setting reference for distance
+#        if self.is_indexable(cell.soma):
+#            h.distance(sec=cell.soma[0])
+#        else:
+#            h.distance(sec=cell.soma)
+#                    
+#        for sec_type in update_dict.keys():
+#            sections_to_update = getattr(cell, sec_type)
+#            
+#            if not self.is_indexable(sections_to_update):
+#                sections_to_update = [sections_to_update]
+#
+#            for attribute_to_update, values in update_dict[sec_type].items():
+#                att_and_sub_atts = attribute_to_update.split('.')
+#                initial_att = att_and_sub_atts[0]
+#                sec_or_seg_att = None
+#                    
+#                if hasattr(sections_to_update[0], initial_att):
+#                    sec_or_seg_att = 'sec'
+#                elif hasattr(sections_to_update[0](0.5), initial_att):
+#                    sec_or_seg_att = 'seg'
+#                else:
+#                    raise AttributeError(f"{initial_att} of {att_and_sub_atts} is not found in either sec or seg of {sections_to_update[0]}. May need to insert mechanism")
+#
+#                # Check if values contain a dict for distance-based assignment
+#                if isinstance(values, dict):
+#                    for distance_condition, assignment_value in values.items():
+#                        dist_limit = int(distance_condition[1:])  # Extract the numeric value
+#                        
+#                        if sec_or_seg_att == 'seg':
+#                            for section in sections_to_update:
+#                                for seg in section:
+#                                    seg_distance = h.distance(seg.x, sec=section)
+#                                    if (distance_condition.startswith("<") and seg_distance < dist_limit) or \
+#                                    (distance_condition.startswith(">=") and seg_distance >= dist_limit):
+#                                        obj = seg
+#                                        for att in att_and_sub_atts[:-1]:
+#                                            obj = getattr(obj, att)
+#                                        setattr(obj, att_and_sub_atts[-1], assignment_value)
+#                        
+#                        elif sec_or_seg_att == 'sec':
+#                            for section in sections_to_update:
+#                                sec_distance = h.distance(0.5, sec=section)
+#                                if (distance_condition.startswith("<") and sec_distance < dist_limit) or \
+#                                (distance_condition.startswith(">=") and sec_distance >= dist_limit):
+#                                    obj = section
+#                                    for att in att_and_sub_atts[:-1]:
+#                                        obj = getattr(obj, att)
+#                                    setattr(obj, att_and_sub_atts[-1], assignment_value)
+#                
+#                else:  # Handle the case where the value is not a dict
+#                    assignment_value = values
+#
+#                    if sec_or_seg_att == 'seg':
+#                        for section in sections_to_update:
+#                            for seg in section:
+#                                obj = seg
+#                                for att in att_and_sub_atts[:-1]:
+#                                    obj = getattr(obj, att)
+#                                setattr(obj, att_and_sub_atts[-1], assignment_value)
+#
+#                    elif sec_or_seg_att == 'sec':
+#                        for section in sections_to_update:
+#                            obj = section
+#                            for att in att_and_sub_atts[:-1]:
+#                                obj = getattr(obj, att)
+#                            setattr(obj, att_and_sub_atts[-1], assignment_value)

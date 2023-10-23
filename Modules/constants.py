@@ -28,8 +28,8 @@ class SimulationParameters:
 	# Desired number of segs per length constant
 	segs_per_lambda: int = 10
   
-  use_param_update_dict = False
-  param_update_dict = {
+	use_param_update_dict = False
+	param_update_dict = {
       "soma": {
           "nax.gbar": { "<100": 0.5, ">=100": 1.0 },
           "kap.gbar": { "<100": 0.2, ">=100": 1.0 },
