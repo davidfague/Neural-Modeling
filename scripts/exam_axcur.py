@@ -24,7 +24,7 @@ segs_to_plot = {
 }
 
 how_to_plot = {
-	'soma spikes': False, # Index to plot
+	'soma spikes': True, # Index to plot
 	'specific_time': False, # (ms)
 	'values_at_specific_time': False,
 	'seg_locations': True
@@ -197,7 +197,7 @@ def plot_around_spikes(spiketimes, number_to_plot, segments_to_plot, t, current_
 				for j, seg in enumerate(segments):
 					plot_all(segment=seg, t=t, current_types=current_types, indices=indices, index=i+1, save_to=save_path, title_prefix=prefix+str(j), ylim=[-1, 1] if prefix == "Nexus" else None, vlines=np.array(sm.soma_spiketimes), plot_adj_Vm=plot_adj_Vm, plot_total_AC=plot_total_AC)
 
-def plot_membrane_currents(segment, t, currents, ax):
+def plot_membrane_currents(segment, t, currents, ax, indices):
 	for current in currents:
 		if '+' in current:
 			currents_to_sum = current.split('+')
@@ -331,7 +331,7 @@ def plot_all(
 
 		# Membrane current plots
 		if type(data_type) == list: 
-			plot_membrane_currents(segment, t, data_type, ax)
+			plot_membrane_currents(segment, t, data_type, ax, indices)
 
 		# Voltage plots
 		elif data_type == 'v':
@@ -401,11 +401,11 @@ def analyze_currents(parameters: SimulationParameters):
 		steps = steps, 
 		dt = parameters.h_dt, 
 		skip = parameters.skip, 
-		transpose = False, 
-		channel_names = parameters.channel_names)
+		transpose = False
+		)#channel_names = parameters.channel_names)
 
 	# Can probably change this to read the recorded t_vec
-	t = np.arange(0, len(sm.segments[0].v) * parameters.dt, parameters.dt)
+	t = np.arange(0, len(sm.segments[0].v) * parameters.h_dt, parameters.h_dt)
 
 	# Compute axial currents from each segment toward its adjacent segments.
 	# Compute axial currents between all segments
@@ -419,10 +419,10 @@ def analyze_currents(parameters: SimulationParameters):
 		soma_segs = [soma_segs[3]]
   
 	seg_indexes = load_segment_indexes(parameters.path)
-	if 'BenModel' in parameters:
-		nexus_seg_index, basal_seg_index = [], []
-	else:
-		nexus_seg_index, basal_seg_index, axon_seg_index, tuft_seg_index = seg_indexes["nexus"], seg_indexes["basal"], seg_indexes["axon"], seg_indexes["tuft"]
+#	if 'BenModel' in parameters:
+#		nexus_seg_index, basal_seg_index = [], []
+#	else:
+	nexus_seg_index, basal_seg_index, axon_seg_index, tuft_seg_index = seg_indexes["nexus"], seg_indexes["basal"], seg_indexes["axon"], seg_indexes["tuft"]
   
 	nexus_segs = [sm.segments[nexus_seg_index]]
 	basal_segs = [sm.segments[basal_seg_index]]

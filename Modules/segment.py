@@ -110,7 +110,6 @@ class SegmentManager:
         skip: ms of simulation to skip
         build_detailed_seg_info: Whether or not to try to read detailed_seg_info.csv, a csv containing much more segmentation
         '''
-
         filenames = [
             "Vm_report", 
             "gNaTa_t_NaTa_t_data_report", 
@@ -120,7 +119,10 @@ class SegmentManager:
             "ica_Ca_HVA_data_report", 
             "ica_Ca_LVAst_data_report",
             "ina_NaTa_t_data_report", 
-            "i_membrane_report", 
+            "ik_data_report",
+            "ihcn_Ih_data_report",
+            "i_membrane_report",
+            "i_pas_data_report", 
             "spikes_report"]
         
         current_names = [
@@ -132,7 +134,10 @@ class SegmentManager:
             "ica", 
             "ical", 
             "ina", 
-            "imembrane"]
+            "ik",
+            "ihcn_Ih",
+            "imembrane",
+            "i_pas"]
           
         self.segments = []
         self.dt = dt

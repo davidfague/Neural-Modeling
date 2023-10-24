@@ -546,5 +546,8 @@ def plot_adjacent_segments(segs, sm, figsize = (3,10), title_prefix=None, save_t
       plt.plot(seg.p0_5_x3d,
                seg.p0_5_y3d,
                '*', color='red') # target seg
-  
+  # Check if the directory exists, if not, create it
+  if save_to:
+      if not os.path.exists(save_to):
+          os.makedirs(save_to)
   plt.savefig(os.path.join(save_to, title_prefix+"adjacent_segments.png"))
