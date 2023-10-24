@@ -70,9 +70,9 @@ class SimulationParameters:
 	# gmax distributions
 	exc_gmax_mean_0: float = 0.45
 	exc_gmax_std_0: float = 0.345
-	exc_gmax_clip: tuple = (0, 0.5)
-	inh_gmax_dist: float = 1
-	soma_gmax_dist: float = 1.3
+	exc_gmax_clip: tuple = (0, 0.75)
+	inh_gmax_dist: float = 2
+	soma_gmax_dist: float = 2
 	exc_scalar: int = 1 # Scales weight
 
 	# Synapse density syns/um 
@@ -196,7 +196,7 @@ class HayParameters(SimulationParameters):
 		'ik', 
 		'ica', 
 		'ina', 
-		'i_h', 
+		'ihcn_Ih', 
 		'gNaTa_t_NaTa_t', 
 		'ina_NaTa_t', 
 		'ina_Nap_Et2', 
