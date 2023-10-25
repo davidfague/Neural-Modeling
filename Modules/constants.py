@@ -21,7 +21,7 @@ class SimulationParameters:
 	# Whether or not to merge synapses after optimizing nseg by lambda. 
 	# (synapses should already be merged by the reduce_cell_func, 
 	# but could be merged again if optimize_nseg_by_lambda lowers nseg.)
-	merge_synapses: bool = False
+	merge_synapses: bool = True
 	# Desired number of segs per length constant
 	segs_per_lambda: int = 10
   
@@ -53,7 +53,7 @@ class SimulationParameters:
 
 	# Neuron parameters
 	h_celcius: float = 34 # 37
-	h_tstop: int = 2000 # Sim runtime (ms)
+	h_tstop: int = 10000 # Sim runtime (ms)
 	h_dt: float = 0.1 # Timestep (ms)
 
 	# Current injection
@@ -71,8 +71,8 @@ class SimulationParameters:
 	exc_gmax_mean_0: float = 0.45
 	exc_gmax_std_0: float = 0.345
 	exc_gmax_clip: tuple = (0, 0.75)
-	inh_gmax_dist: float = 2
-	soma_gmax_dist: float = 2
+	inh_gmax_dist: float = 1
+	soma_gmax_dist: float = 1
 	exc_scalar: int = 1 # Scales weight
 
 	# Synapse density syns/um 
@@ -188,6 +188,7 @@ class SimulationParameters:
 	# Log, plot and save
 	save_every_ms: int = 1000
 	path: str = ''
+	vector_length=int(save_every_ms/h_dt)
 
 
 class HayParameters(SimulationParameters):

@@ -428,7 +428,7 @@ class CellModel:
       '''
       Method for calculating net synaptic currents and getting data after simulation
       '''
-      numTstep = int(vector_length / h.dt)
+      numTstep = vector_length
       i_NMDA_bySeg = [[0] * (numTstep)] * len(self.segments)
       i_AMPA_bySeg = [[0] * (numTstep)] * len(self.segments)
       i_GABA_bySeg = [[0] * (numTstep)] * len(self.segments)

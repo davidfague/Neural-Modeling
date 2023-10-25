@@ -220,7 +220,7 @@ class CellBuilder:
 			reductor.merge_synapses(cell)
 
 		# Set recorders
-		cell.setup_recorders(vector_length = self.parameters.save_every_ms)
+		cell.setup_recorders(vector_length = self.parameters.vector_length)
 
 		# Add current injection
 		if self.parameters.CI_on:
@@ -384,7 +384,7 @@ class CellBuilder:
 			probs = soma_SA_per_segment,
 			number_of_synapses = self.parameters.num_soma_inh_syns,
 			record = True,
-			vector_length = self.parameters.save_every_ms,
+			vector_length = self.parameters.vector_length,
 			gmax = self.parameters.soma_gmax_dist,
 			random_state=random_state,
 			neuron_r = neuron_r,
@@ -420,7 +420,7 @@ class CellBuilder:
 			probs = all_SA_per_segment, 
 			density = self.parameters.inh_synaptic_density,
 			record = True,
-			vector_length = self.parameters.save_every_ms,
+			vector_length = self.parameters.vector_length,
 			gmax = self.parameters.inh_gmax_dist,
 			random_state = random_state,
 			neuron_r = neuron_r,
@@ -498,7 +498,7 @@ class CellBuilder:
 			probs = probs, 
 			density = self.parameters.exc_synaptic_density, 
 			record = True, 
-			vector_length = self.parameters.save_every_ms, 
+			vector_length = self.parameters.vector_length, 
 			gmax = gmax_exc_dist,
 			random_state = random_state, 
 			neuron_r = neuron_r,

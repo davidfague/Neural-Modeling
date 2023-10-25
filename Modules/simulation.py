@@ -83,8 +83,8 @@ class Simulation:
             pickle.dump(parameters, file)
 
         # Set up recorder vectors
-        t_vec = h.Vector(1000 / h.dt).record(h._ref_t)
-        V_rec = Recorder(cell.segments, vector_length = parameters.save_every_ms)
+        t_vec = h.Vector(parameters.vector_length).record(h._ref_t)
+        V_rec = Recorder(cell.segments, vector_length = parameters.vector_length)
 
         # In time stamps, i.e., ms / dt
         time_step = 0
@@ -109,7 +109,7 @@ class Simulation:
                 self.logger.log_step(time_step)
 
                 # Save data
-                cell.generate_recorder_data(parameters.save_every_ms)
+                cell.generate_recorder_data(parameters.vector_length)
                 cell.write_data(os.path.join(parameters.path, f"saved_at_step_{time_step}"))
 
                 # Save lfp
