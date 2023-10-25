@@ -38,7 +38,7 @@ class Simulation:
         os.mkdir(self.path)
 
         # Compile the modfiles and suppress output
-        self.logger.log(f"Compiling modfiles")
+        self.logger.log(f"Compiling modfiles.")
         os.system(f"nrnivmodl {self.cell_type.value['modfiles']} > /dev/null 2>&1")
 
         h.load_file('stdrun.hoc')
@@ -83,12 +83,11 @@ class Simulation:
             pickle.dump(parameters, file)
 
         # Set up recorder vectors
-        t_vec = h.Vector(1000 / h.dt).record(h._ref_t)
-        V_rec = Recorder(cell.segments, vector_length = parameters.save_every_ms)
+        # t_vec = h.Vector(parameters.save_every_ms / parameters.h_dt).record(h._ref_t)
+        # V_rec = Recorder(cell.segments, vector_length = parameters.save_every_ms / parameters.h_dt)
 
         # In time stamps, i.e., ms / dt
         time_step = 0
-        time_steps_saved_at = [0]
 
         h.celsius = parameters.h_celcius
         h.tstop = parameters.h_tstop
@@ -124,15 +123,12 @@ class Simulation:
                     file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
 
                 # Save time
-                with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "t.h5"), 'w') as file:
-                    file.create_dataset("report/biophysical/data", data = t_vec.as_numpy())
-
-                time_steps_saved_at.append(time_step)
+                # with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "t.h5"), 'w') as file:
+                #    file.create_dataset("report/biophysical/data", data = t_vec.as_numpy())
 
                 # Reinitialize vectors: https://www.neuron.yale.edu/phpBB/viewtopic.php?t=2579
-                t_vec.resize(0)
-                for vec in V_rec.vectors: 
-                    vec.resize(0)
+                # t_vec.resize(0)
+                # for vec in V_rec.vectors: vec.resize(0)
                 for vec in cell.Vm.vectors: vec.resize(0)
                 for recorder in cell.recorders.items():
                     for vec in recorder[1].vectors: vec.resize(0)

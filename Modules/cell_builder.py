@@ -105,9 +105,9 @@ class CellBuilder:
 		
 		synapse_generator = SynapseGenerator()
    
-    # update parameters from dictionary # commented because inconsistent use of tabs and spaces during def
-#		if self.parameters.use_param_update_dict:
-#		  self.update_cell_parameters_from_dict(skeleton_cell, self.parameters.param_update_dict)
+		# Update parameters from dictionary
+		if self.parameters.use_param_update_dict:
+			self.update_cell_parameters_from_dict(skeleton_cell, self.parameters.param_update_dict)
 
 		# Build synapses
 		self.logger.log("Building excitatory synapses.")
@@ -184,6 +184,9 @@ class CellBuilder:
 		)
 
 		self.detailed_seg_info = dummy_cell.seg_info.copy()
+
+		# Get rid of the dummy cell
+		dummy_cell = None
 
 		# Build the final cell
 		self.logger.log("Creating a CellModel object.")

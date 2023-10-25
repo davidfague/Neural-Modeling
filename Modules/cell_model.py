@@ -217,15 +217,11 @@ class CellModel:
                     channels_set.add('_'.join(split_name[2:]))
                 elif var_name.startswith('i'):
                     channels_set.add('_'.join(split_name[1:]))
-        #print('channels_set:',channels_set) #debug
-        #print(dir(self.soma[0](0.5).nax)) #debug
         special_channels = ['nax', 'kdmc', 'kap', 'kdr', 'hd'] # have different attribute structure as a result of the modfile
         self.CHANNELS = [
             (channel, f'{channel}', f'gbar') if channel in special_channels else (channel, f'g{channel}_{channel}', f'g{channel}bar') 
             for channel in channels_set
         ]
-        #print('self.CHANNELS') #debud
-        #print(f"self.CHANNELS : {self.CHANNELS}")
 
     def insert_unused_channels(self):
         '''
