@@ -7,7 +7,7 @@ from Modules.constants import SimulationParameters, HayParameters
 
 import numpy as np
 
-in_vitro = True
+in_vitro = False
 
 if __name__ == "__main__":
     sim = Simulation(SkeletonCell.Hay) # detailed (all 3 if in-vivo)
