@@ -458,11 +458,11 @@ def analyze_currents(parameters: SimulationParameters):
 	segments_to_plot = {seg_type: segments for seg_type, segments in segments_to_plot.items() 
 						if segs_to_plot.get(seg_type, False) or (seg_type.startswith('Soma_Adj_') and segs_to_plot.get('Soma_Adj', False))}
 					
-	if how_to_plot['seg_locations']:
+	if how_to_plot['seg_locations']: # plots adjacent seg locations
 		for seg_type, segs in segments_to_plot.items():
 			plot_adjacent_segments(segs = segs, sm=sm, title_prefix=f"{seg_type}_", save_to=save_path)
 					
-	if how_to_plot["values_at_specific_time"]:
+	if how_to_plot["values_at_specific_time"]: # prints values at a single time index.
 		# Filter segments_to_plot to only include Soma_Adj segments
 		filtered_segment_types = {k: v for k, v in segments_to_plot.items() if k.startswith('Soma_Adj')}
 			
@@ -492,11 +492,11 @@ def analyze_currents(parameters: SimulationParameters):
 			else:
 				print(f"{channel}: {current:.4f} nA")
 
-	if how_to_plot['soma spikes']:
+	if how_to_plot['soma spikes']: # plots voltage, axial current, and membrane currents around spike times.
 		print(f'number of spikes: {len(sm.soma_spiketimes)}, firing rate: {len(sm.soma_spikestimes)/(len(sm.segments[0].v)*parameters.h_dt/1000)}')
 		plot_around_spikes(sm.soma_spiketimes, number_to_plot=soma_spike_settings["number"], segments_to_plot=segments_to_plot, t=t, current_types=current_types, save_path=save_path, sm=sm, t_range=soma_spike_settings["range"], plot_adj_Vm=soma_spike_settings['plot_adj_Vm'], plot_total_AC=soma_spike_settings['plot_total_AC'])
 
-	if how_to_plot["specific_time"]:
+	if how_to_plot["specific_time"]:  # plots voltage, axial current, and membrane currents around a specific time.
 		plot_all_segments(segments_to_plot, t, current_types, save_path, specific_time=specific_time_settings["time"], sm=sm, plot_adj_Vm=specific_time_settings['plot_adj_Vm'], plot_total_AC=specific_time_settings['plot_total_AC'])
 
 if __name__ == "__main__":

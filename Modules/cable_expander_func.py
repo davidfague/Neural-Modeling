@@ -309,9 +309,9 @@ def cable_expander(original_cell,
         cell.all=all_sections
     for i,sec in enumerate(axons):
         cell.axon=axons
-
-    with push_section(cell.hoc_model.soma[0]):
-        h.delete_section()
+    # don't think we should delete the soma? 
+    #with push_section(cell.hoc_model.soma[0]):
+    #    h.delete_section()
     if return_seg_to_seg:
         return cell, new_synapses_list, netcons_list, original_seg_to_reduced_seg_text
     else:

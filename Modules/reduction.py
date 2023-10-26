@@ -46,12 +46,12 @@ class Reductor():
 
 				for nrn_syn in nrn_synapses_list:
 					if nrn_syn in syn_to_netcon.keys():
-				        syn = Synapse(syn_obj = nrn_syn)
-				        syn.ncs = syn_to_netcon[nrn_syn]
-				        synapses_list.append(syn)
+								syn = Synapse(syn_obj = nrn_syn)
+								syn.ncs = syn_to_netcon[nrn_syn]
+								synapses_list.append(syn)
 					else: # Synapse did not receive netcons during cable_expander.redistribute_netcons
-				        nrn_syn.loc(-1)  # Disconnect the synapse in NEURON
-				        synapses_without_netcons.append(nrn_syn)
+								nrn_syn.loc(-1)  # Disconnect the synapse in NEURON
+								synapses_without_netcons.append(nrn_syn)
 
 				print(f'Reductor: {len(synapses_without_netcons)} unused synapses after expansion')
 				print(f'Reductor: {len(synapses_list)} synapses are being used.')
