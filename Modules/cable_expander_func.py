@@ -861,11 +861,7 @@ def adjust_new_tree_synapses(num_of_subtrees, roots_of_subtrees,
                 #new_synapses_list.append(synapse)
                 # Unlink the synapse from its current section
                 # Set the synapse to the new section and specify its location
-                section_for_synapse.push()  # Make the section the currently accessed one
                 synapse.loc(x, sec=section_for_synapse)  # This should automatically adjust the section and location of the synapse
-
-                h.pop_section()  # Revert the access to the previous section
-
                 new_synapses_list.append(synapse)
 
     # merging somatic and axonal synapses
@@ -1027,7 +1023,8 @@ def distribute_branch_synapses(branch_sets,netcons_list,synapses_list,PP_params_
     for seg in branch_with_synapses:
       # print("branch's seg.point_processes:",seg.point_processes())
       for synapse in seg.point_processes():
-        x=synapse.get_loc() # get loc of original synapse       
+        x=synapse.get_loc() # get loc of original synapse   
+        h.pop_section() # pop the section after getting location    
         new_syns=[] #list for redistributing netcons #make original synapse an option for netcon
         for i in range(len(branch_set)-1): # duplicate synapse onto each corresponding branch location
           new_syn=duplicate_synapse(synapse,seg,PP_params_dict) #generate new identical synapse

@@ -117,6 +117,7 @@ class Synapse:
             Optional existing neuron synapse point process object to store
 
         '''
+        self.syn_mod = syn_mod
         if segment is not None:
             self.segment = segment
         elif syn_obj:
