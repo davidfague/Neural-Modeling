@@ -435,8 +435,11 @@ def analyze_currents(parameters: SimulationParameters):
 	# 	if nexus_seg:
 	# 		nexus_segs = [nexus_seg]
 
-	current_types = parameters.channel_names.copy()
-	current_types.remove('gNaTa_t_NaTa_t')
+	#current_types = parameters.channel_names.copy()
+	#current_types.remove('gNaTa_t_NaTa_t')
+	#current_types.remove('ihcn_Ih')
+	#current_types.remove('ina_NaTa_t')
+	current_types = ['i_pas','ina','ica','ik','imembrane','iampa','inmda','igaba']
   
 	# Combine the dictionaries
 	segments_to_plot = {**soma_adj_segs}
@@ -490,7 +493,7 @@ def analyze_currents(parameters: SimulationParameters):
 				print(f"{channel}: {current:.4f} nA")
 
 	if how_to_plot['soma spikes']:
-		print('number of spikes:',len(sm.soma_spiketimes))
+		print(f'number of spikes: {len(sm.soma_spiketimes)}, firing rate: {len(sm.soma_spikestimes)/(len(sm.segments[0].v)*parameters.h_dt/1000)}')
 		plot_around_spikes(sm.soma_spiketimes, number_to_plot=soma_spike_settings["number"], segments_to_plot=segments_to_plot, t=t, current_types=current_types, save_path=save_path, sm=sm, t_range=soma_spike_settings["range"], plot_adj_Vm=soma_spike_settings['plot_adj_Vm'], plot_total_AC=soma_spike_settings['plot_total_AC'])
 
 	if how_to_plot["specific_time"]:
