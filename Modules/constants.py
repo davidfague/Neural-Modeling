@@ -53,7 +53,7 @@ class SimulationParameters:
 
 	# Neuron parameters
 	h_celcius: float = 34 # 37
-	h_tstop: int = 10000 # Sim runtime (ms)
+	h_tstop: int = 100 # Sim runtime (ms)
 	h_dt: float = 0.1 # Timestep (ms)
 
 	# Current injection
@@ -77,7 +77,7 @@ class SimulationParameters:
 
 	# Synapse density syns/um 
 	# Current densities taken from literature on apical main bifurcation, and extrapolated to entire cell.
-	exc_synaptic_density: float = 2.16 # (syn/micron of path length)
+	exc_synaptic_density: float = 2.16/10 # (syn/micron of path length)
 	inh_synaptic_density: float = 0.22 # (syn/micron of path length)
 	use_SA_exc: bool = True # Use surface area instead of lengths for the synapse's segment assignment probabilities
 

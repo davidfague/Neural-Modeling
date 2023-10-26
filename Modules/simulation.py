@@ -19,9 +19,12 @@ def unwrap_self_run_single_simulation(args):
 
 class Simulation:
 
-    def __init__(self, cell_type: SkeletonCell):
+    def __init__(self, cell_type: SkeletonCell, title=None):
         self.cell_type = cell_type
-        self.path = f"{cell_type}-{datetime.datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}"
+        if title:
+          self.path = f"{title}-{datetime.datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}"
+        else:
+          self.path = f"{cell_type}-{datetime.datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}"
 
         self.logger = Logger(None)
         self.pool = []

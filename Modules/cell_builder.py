@@ -202,7 +202,8 @@ class CellBuilder:
 			expand_cable = self.parameters.expand_cable, 
 			choose_branches = self.parameters.choose_branches)
 									
-		
+		print(f"cell: {cell}")	
+   
 		if (not self.parameters.CI_on) and (not self.parameters.trunk_exc_synapses):
 			# Turn off certain presynaptic neurons to simulate in vivo
 			for synapse in cell.synapses:

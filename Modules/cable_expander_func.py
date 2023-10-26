@@ -18,7 +18,19 @@ from neuron_reduce.subtree_reductor_func import (load_model, gather_subtrees, ma
                                                  type_of_point_process,synapse_properties_match,textify_seg_to_seg,
                                                  Neuron)
 from neuron_reduce.reducing_methods import (_get_subtree_biophysical_properties, measure_input_impedance_of_subtree, find_lowest_subtree_impedance, 
-                                            find_space_const_in_cm, push_section, find_best_real_X)
+                                            find_space_const_in_cm, find_best_real_X)
+                                            
+from contextlib import contextmanager
+
+@contextmanager
+def push_section(section):
+    '''push a section onto the top of the NEURON stack, pop it when leaving the context'''
+    section.push()
+    try:
+        yield
+    finally:
+        h.pop_section()
+        
 # can replace Neuron class import with another python cell class
 
 h.load_file("stdrun.hoc")
@@ -149,30 +161,6 @@ def cable_expander(original_cell,
     trunk_nsegs = calculate_nsegs_from_lambda(all_trunk_properties)
     branch_nsegs = calculate_nsegs_from_lambda(all_branch_properties)
     
-
-    # trunk_properties,branch_properties = [expand_cable(sections_to_expand[i], reduction_frequency, furcations_x, nbranches)
-    #                         for i in sections_to_expand]
-
-    # if total_segments_manual > 1:
-    #     new_cables_nsegs = calculate_nsegs_from_manual_arg(new_cable_properties,
-    #                                                        total_segments_manual)
-    # else:
-    #     new_cables_nsegs = calculate_nsegs_from_lambda(new_cable_properties)
-    #     if total_segments_manual > 0:
-    #         original_cell_seg_n = (sum(i.nseg for i in list(original_cell.basal)) +
-    #                                sum(i.nseg for i in list(original_cell.apical))
-    #                                )
-    #         min_reduced_seg_n = int(round((total_segments_manual * original_cell_seg_n)))
-    #         if sum(new_cables_nsegs) < min_reduced_seg_n:
-    #             logger.debug("number of segments calculated using lambda is {}, "
-    #                   "the original cell had {} segments.  "
-    #                   "The min reduced segments is set to {}% of reduced cell segments".format(
-    #                       sum(new_cables_nsegs),
-    #                       original_cell_seg_n,
-    #                       total_segments_manual * 100))
-    #             logger.debug("the reduced cell nseg is set to %s" % min_reduced_seg_n)
-    #             new_cables_nsegs = calculate_nsegs_from_manual_arg(new_cable_properties,
-    #                                                                min_reduced_seg_n)
                 
     cell, basals, apicals, trunk_sec_type_list_indices, trunks, branches, all_expanded_sections,number_of_sections_in_apical_list,number_of_sections_in_basal_list, number_of_sections_in_axonal_list = create_dendritic_cell(soma_cable,
                                                                                 has_apical,
@@ -202,10 +190,6 @@ def cable_expander(original_cell,
         basals, apicals,
         cell,
         reduction_frequency)
-    
-    # print("PP_params_dict: ",PP_params_dict)
-    # for synapse,params in PP_params_dict.items():
-    #   print(synapse,params)
 
     #check synapses_list with netcons_list
     for netcon in netcons_list:
@@ -325,15 +309,6 @@ def cable_expander(original_cell,
         cell.all=all_sections
     for i,sec in enumerate(axons):
         cell.axon=axons
-    # import pdb; pdb.set_trace()
-    # # print(dir())
-    # for i,sec in enumerate(sections_to_keep):
-    #   with push_section(sec):
-    #     sec_type=sec.name().split(".")[1][:4]
-    #     print('cell.__getattribute__(sec_type)',cell.__getattribute__(sec_type))
-    #     print(dir(cell.__getattribute__(sec_type)))
-    #     if 
-    #     append_to_section_lists("sec_type["+str(number_)+"]", "apical", "reduced_cell")
 
     with push_section(cell.hoc_model.soma[0]):
         h.delete_section()
@@ -550,33 +525,31 @@ def create_dendritic_cell(soma_cable,
     # cell.apic = apic
     return cell, basals, apicals, trunk_sec_type_list_indices, trunks, branches, all_expanded_sections, number_of_sections_in_apical_list,number_of_sections_in_basal_list, number_of_sections_in_axonal_list
 
-def find_and_disconnect_sections_to_keep(soma,sections_to_expand):
+def find_and_disconnect_sections_to_keep(soma, sections_to_expand):
     '''Searching for sections to keep, they can be a child of the soma or a parent of the soma.'''
     sections_to_keep, is_section_to_keep_soma_parent, soma_sections_to_keep_x  = [], [], []
     soma_ref = h.SectionRef(sec=soma)
+    
     for sec in soma.children():
-#         print('original_sec:',sec)
-        # name = sec.hname().lower()
         if sec not in sections_to_expand:
-#             print('keep this section')
             sections_to_keep.append(sec)
             is_section_to_keep_soma_parent.append(False)
-            # disconnect section
             soma_sections_to_keep_x.append(sec.parentseg().x)
             sec.push()
             h.disconnect()
+            h.pop_section()  # Ensure that after disconnecting, you pop the section from the stack
             h.define_shape()
 
     if soma_ref.has_parent():
-            sections_to_keep.append(soma_ref.parent())
-            is_section_to_keep_soma_parent.append(True)
-            soma_sections_to_keep_x.append(None)
-            soma_ref.push()
-            h.disconnect()
-    # else:
-    #     raise Exception('Soma has a parent which is not an axon')
+        sections_to_keep.append(soma_ref.parent())
+        is_section_to_keep_soma_parent.append(True)
+        soma_sections_to_keep_x.append(None)
+        soma_ref.push()
+        h.disconnect()
+        h.pop_section()  # Ensure that after disconnecting, you pop the section from the stack
 
     return sections_to_keep, is_section_to_keep_soma_parent, soma_sections_to_keep_x
+
   
 def gather_cell_subtrees(roots_of_subtrees):
     # dict that maps section indexes to the subtree index they are in: keys are
@@ -883,8 +856,16 @@ def adjust_new_tree_synapses(num_of_subtrees, roots_of_subtrees,
                     print("adding",synapse,"to PP_params_dict")
                     add_PP_properties_to_dict(synapse, PP_params_dict)
                 #########
-                print("moving", synapse, "from",synapse_location,"to",section_for_synapse(x))
-                synapse.loc(x, sec=section_for_synapse)
+                print("moving", synapse, "from",synapse_location,"to",section_for_synapse(x))              
+                #synapse.loc(x, sec=section_for_synapse)
+                #new_synapses_list.append(synapse)
+                # Unlink the synapse from its current section
+                # Set the synapse to the new section and specify its location
+                section_for_synapse.push()  # Make the section the currently accessed one
+                synapse.loc(x, sec=section_for_synapse)  # This should automatically adjust the section and location of the synapse
+
+                h.pop_section()  # Revert the access to the previous section
+
                 new_synapses_list.append(synapse)
 
     # merging somatic and axonal synapses

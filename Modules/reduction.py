@@ -126,7 +126,7 @@ class Reductor():
 		if initial_nseg != new_nseg:
 			warnings.warn(f"Model nseg changed from {initial_nseg} to {new_nseg}.", RuntimeWarning)
 
-	def merge_synapses(cell: object = None, synapses_list: list = None):
+	def merge_synapses(self, cell: object = None, synapses_list: list = None):
 
 		if cell is not None: synapses_list = cell.synapses
 		
