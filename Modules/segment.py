@@ -120,7 +120,7 @@ class SegmentManager:
             "ica_Ca_LVAst_data_report",
             "ina_NaTa_t_data_report", 
             "ik_data_report",
-            "ihcn_Ih_data_report",
+            #"ihcn_Ih_data_report",
             "i_membrane_report",
             "i_pas_data_report", 
             "spikes_report"]
@@ -135,7 +135,7 @@ class SegmentManager:
             "ical", 
             "ina", 
             "ik",
-            "ihcn_Ih",
+            #"ihcn_Ih",
             "imembrane",
             "i_pas"]
           

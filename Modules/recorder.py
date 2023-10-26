@@ -20,7 +20,7 @@ class Recorder:
         self.setup_recorder(vector_length)
 
     def setup_recorder(self, vector_length: int) -> None:
-        size = round(vector_length / h.dt) + 1
+        size = vector_length
         attr_name = '_ref_' + self.var_name
         self.vectors = []
 

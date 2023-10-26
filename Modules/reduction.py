@@ -40,17 +40,22 @@ class Reductor():
 				# Get the mapping of nrn.Synapse to NetCon
 				syn_to_netcon = get_syn_to_netcons(netcons_list)
 	
-				# Convert nrn.Synapse objects back to Synapse class and append netcons
+        # Convert nrn.Synapse objects back to Synapse class and append netcons
 				synapses_list = []
-				synapses_without_netcons=[]
+				synapses_without_netcons = []
+
 				for nrn_syn in nrn_synapses_list:
 					if nrn_syn in syn_to_netcon.keys():
-						syn = Synapse(syn_obj = nrn_syn)
-						syn.ncs = syn_to_netcon[nrn_syn]
-						synapses_list.append(syn)
+								syn = Synapse(syn_obj = nrn_syn)
+								syn.ncs = syn_to_netcon[nrn_syn]
+								synapses_list.append(syn)
 					else: # Synapse did not receive netcons during cable_expander.redistribute_netcons
-						synapses_without_netcons.append(nrn_syn)
+								nrn_syn.loc(-1)  # Disconnect the synapse in NEURON
+								synapses_without_netcons.append(nrn_syn)
+
 				print(f'Reductor: {len(synapses_without_netcons)} unused synapses after expansion')
+				print(f'Reductor: {len(synapses_list)} synapses are being used.')
+
         
 				if optimize_nseg:
 					self.update_model_nseg_using_lambda(self.reduced_dendritic_cell)
@@ -126,7 +131,7 @@ class Reductor():
 		if initial_nseg != new_nseg:
 			warnings.warn(f"Model nseg changed from {initial_nseg} to {new_nseg}.", RuntimeWarning)
 
-	def merge_synapses(cell: object = None, synapses_list: list = None):
+	def merge_synapses(self, cell: object = None, synapses_list: list = None):
 
 		if cell is not None: synapses_list = cell.synapses
 		
@@ -134,7 +139,7 @@ class Reductor():
 		synapses_dict = {}
 	
 		for this_synapse in synapses_list:
-			synapse_key = (this_synapse.syn_mod, this_synapse.gmax, this_synapse.neuron_synapse_obj.get_segment())
+			synapse_key = (this_synapse.syn_mod, this_synapse.gmax, this_synapse.synapse_neuron_obj.get_segment())
 			
 			# If this synapse is already present in synapses_dict, merge with existing synapse
 			if synapse_key in synapses_dict:
@@ -143,7 +148,7 @@ class Reductor():
 				
 				# Move netcons to other_synapse
 				for netcon in this_synapse.ncs:
-					netcon.set_post(other_synapse.neuron_synapse_obj)
+					netcon.setpost(other_synapse.synapse_neuron_obj)
 					other_synapse.ncs.append(netcon)
 				del this_synapse
 			else:

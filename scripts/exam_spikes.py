@@ -125,7 +125,8 @@ def analyse_spikes(parameters: SimulationParameters):
 
 			# Check for na_lower_bounds
 			fig, ax = plt.subplots()
-			ax.plot(np.arange(0, len(sm.segments[0].v)*0.1, 0.1), sm.segments[0].gna)
+			try:ax.plot(np.arange(0, len(sm.segments[0].gna)*0.1, 0.1), sm.segments[0].gna)
+			except:ax.plot(np.arange(0, len(sm.segments[0].gna)*0.1-0.1, 0.1), sm.segments[0].gna)
 			for bound in na_lower_bounds[0]:
 					ax.vlines(bound * 0.1, ymin = 0, ymax = 0.1, color = 'black', label = "Na lower bounds")
 			for i, val in enumerate(np.diff(sm.segments[0].gna > threshold)): # Threshold crossings
