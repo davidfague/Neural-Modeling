@@ -47,3 +47,32 @@ cd setup
 bash clone_cell_inference.sh
 ```
 
+# Runtime
+
+## Screen
+
+1.  Create a screen session named `sim` (you can choose any name)
+    ```bash
+    screen -S sim
+    ```
+    This will open a new, separate terminal window.
+2. By default, the screen starts with the `base` conda environment. Activate a different environment if needed. Start a simulation.
+3. To exit screen, press `Ctrl + A + D`. This will send you back to the main terminal window.
+4.  To return to a screen, execute
+    ```bash
+    screen -ls
+    ```
+    in the main terminal window. It will display a list of active screens. Then execute
+    ```bash
+    screen -r [screen name]
+    ```
+    If you have only one screen opened, you can just do
+    ```bash
+    screen -r
+    ```
+    in the main terminal window.
+5.  Once the simulation is finished, execute
+    ```bash
+    exit
+    ```
+    in the screen window to close it.
