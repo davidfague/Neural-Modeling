@@ -148,7 +148,7 @@ class Simulation:
 
                 for inj in cell.injection: inj.rec_vec.resize(0)
 
-                for syn in cell_builder.all_syns:
+                for syn in cell.synapses:
                     for vec in syn.rec_vec: vec.resize(0)
                 
                 for vec in ecp.im_rec.vectors: vec.resize(0)

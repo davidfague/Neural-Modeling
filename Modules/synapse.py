@@ -93,8 +93,8 @@ class CurrentInjection:
 
 class Synapse:
 
-    def __init__(self, segment: nrn.Segment = None, syn_mod: str = None, gmax: float = None, record: bool = False, 
-                 syn_params: dict = None, syn_obj: object = None, vector_length: int = None):
+    def __init__(self, segment: nrn.Segment = None, syn_mod: str = None, gmax: float = None, record: bool = False,
+                 syn_params: dict = None, syn_obj: object = None, vector_length: int = None, ncs: list = None):
         '''
         Parameters:
         ----------
@@ -114,65 +114,78 @@ class Synapse:
             Additional parameter for the synapse.
 
         syn_obj: object = None
-            Optional existing neuron synapse point process object to store
+            Optional existing hoc synapse point process object to store
 
         '''
-        self.syn_mod = syn_mod
-        if segment is not None:
-            self.segment = segment
-        elif syn_obj:
+        if syn_obj:
             self.segment = syn_obj.get_segment()
+        elif segment:
+            self.segment = segment
         else:
-            raise(ValueError("Need to pass either existing neuron synapse object or segment to create new synapse."))
-        self.syn_type = syn_mod
+            raise ValueError("Need to pass either existing neuron synapse object or segment to create new synapse.")
+        
+        self.syn_type = syn_mod if syn_obj is None else str(syn_obj).split('[')[0]
         self.syn_params = syn_params
-        self.synapse_neuron_obj = syn_obj
-        self.gmax_var = None # Variable name of maximum conductance (uS)
-        if (self.synapse_neuron_obj is not None) and (self.syn_type is None):
-            self.syn_type = str(self.synapse_neuron_obj).split('[')[0]
+        self.synapse_hoc_obj = syn_obj
+        self.gmax_var = None  # Variable name of maximum conductance (uS)
         self.rec_vec = []  # List of vectors for recording
         self.set_params_based_on_synapse_mod(self.syn_type)
-        if (gmax is None) and (syn_obj is not None):
-          self.gmax = self.get_gmax_from_syn_obj()
-        elif gmax is not None:
-          self.gmax = gmax
+        
+        if gmax:
+            self.gmax = gmax
+        elif syn_obj:
+            self.gmax = self.get_gmax_from_syn_obj()
         else:
-          raise(NotImplementedError("Need to pass either existing neuron synapse object or gmax to create new synapse."))
+            raise NotImplementedError("Need to pass either existing neuron synapse object or gmax to create new synapse.")
+        
         self.setup(record, vector_length)
-        self.ncs = []
+        self.ncs = ncs or []  # netcons
+
+    # PRAGMA MARK: new
+    def update_netcons(self, netcons): # function for updating netcons
+      self.ncs=netcons
 
     #PRAGMA MARK: Synapse Parameter Setup
 
     def set_params_based_on_synapse_mod(self, syn_mod: str) -> None:
-        if syn_mod == 'AlphaSynapse1':
-            # Reversal potential (mV); Synapse time constant (ms)
-            #TODO: old? # self.syn_params = {'e': 0., 'tau': 2.0}
-            self.syn_params = {}
-            self.gmax_var = 'gmax'
-        elif syn_mod == 'Exp2Syn':
-            self.syn_params = {'e': 0., 'tau1': 1.0, 'tau2': 3.0}
-            self.gmax_var = '_nc_weight'
-        elif syn_mod in ['pyr2pyr', 'int2pyr']: # ampanmda, gaba
-            self.syn_params = {}
-            self.gmax_var = 'initW'
-        elif any(ext in syn_mod for ext in ['AMPA_NMDA','AMPA_NMDA_STP','GABA_AB', 'GABA_AB_STP']): # ampanmda, gaba
-            self.syn_params = {}
-            self.gmax_var = 'initW'
-        else:
-            raise(ValueError("Synpase type not defined."))
+        syn_params_map = {
+            'AlphaSynapse1': ({}, 'gmax'),
+            'Exp2Syn': ({'e': 0., 'tau1': 1.0, 'tau2': 3.0}, '_nc_weight'),
+            'pyr2pyr': ({}, 'initW'),
+            'int2pyr': ({}, 'initW'),
+            'AMPA_NMDA': ({}, 'initW'),
+            'AMPA_NMDA_STP': ({}, 'initW'),
+            'GABA_AB': ({}, 'initW'),
+            'GABA_AB_STP': ({}, 'initW')
+        }
         
-        if syn_mod in ['AlphaSynapse1', 'Exp2Syn', 'GABA_AB', 'GABA_AB_STP']:
-            self.current_type = "i"
-        elif syn_mod == 'pyr2pyr':
-            self.current_type = "iampa_inmda"
-        elif (syn_mod == 'AMPA_NMDA') or (syn_mod == 'AMPA_NMDA_STP'):
-            self.current_type = 'i_AMPA_i_NMDA'
-        elif syn_mod =='int2pyr':
-            self.current_type = 'igaba'
+        current_type_map = {
+            'AlphaSynapse1': "i",
+            'Exp2Syn': "i",
+            'GABA_AB': "i",
+            'GABA_AB_STP': "i",
+            'pyr2pyr': "iampa_inmda",
+            'AMPA_NMDA': 'i_AMPA_i_NMDA',
+            'AMPA_NMDA_STP': 'i_AMPA_i_NMDA',
+            'int2pyr': 'igaba'
+        }
+    
+        # set syn_params and gmax_var based on syn_mod
+        if syn_mod in syn_params_map:
+            self.syn_params, self.gmax_var = syn_params_map[syn_mod]
         else:
-            raise(ValueError("Synpase type not defined."))
-        if self.synapse_neuron_obj is None: # create new synapse hoc object if not provided one
-            self.synapse_neuron_obj = getattr(h, self.syn_type)(self.segment)
+            raise ValueError("Synapse type not defined.")
+        
+        # set current_type based on syn_mod
+        if syn_mod in current_type_map:
+            self.current_type = current_type_map[syn_mod]
+        else:
+            raise ValueError("Synapse type not defined.")
+        
+        if self.synapse_hoc_obj is None: 
+            # create new synapse hoc object if not provided one
+            self.synapse_hoc_obj = getattr(h, self.syn_type)(self.segment)
+
 
     #PRAGMA MARK: Synapse Value Setup
 
@@ -185,9 +198,9 @@ class Synapse:
         self.syn_params = syn_params # update syn_params if calling outside init
         for key, value in syn_params.items():
             if callable(value):
-                setattr(self.synapse_neuron_obj, key, value(size=1))
+                setattr(self.synapse_hoc_obj, key, value(size=1))
             else:
-                setattr(self.synapse_neuron_obj, key, value)
+                setattr(self.synapse_hoc_obj, key, value)
 
     def setup_synapse(self) -> None:
         if self.syn_params is not None:
@@ -200,30 +213,30 @@ class Synapse:
         if self.gmax_var == '_nc_weight':
             self.nc.weight[0] = self.gmax
         else:
-            setattr(self.synapse_neuron_obj, self.gmax_var, self.gmax)
+            setattr(self.synapse_hoc_obj, self.gmax_var, self.gmax)
 
     def get_gmax_from_syn_obj(self) -> None:
-        gmax = getattr(self.synapse_neuron_obj, self.gmax_var)
+        gmax = getattr(self.synapse_hoc_obj, self.gmax_var)
         return gmax
     
     def setup_recorder(self, vector_length) -> None:
         size = vector_length
         
         if self.current_type == "i":
-            self.rec_vec.append(h.Vector(size).record(self.synapse_neuron_obj._ref_i))
+            self.rec_vec.append(h.Vector(size).record(self.synapse_hoc_obj._ref_i))
             
         elif self.current_type == "igaba":
-            self.rec_vec.append(h.Vector(size).record(self.synapse_neuron_obj._ref_igaba))
+            self.rec_vec.append(h.Vector(size).record(self.synapse_hoc_obj._ref_igaba))
 
         elif self.current_type == "i_AMPA_i_NMDA":
-            vec_inmda = h.Vector(size).record(self.synapse_neuron_obj._ref_i_NMDA)
-            vec_iampa = h.Vector(size).record(self.synapse_neuron_obj._ref_i_AMPA)
+            vec_inmda = h.Vector(size).record(self.synapse_hoc_obj._ref_i_NMDA)
+            vec_iampa = h.Vector(size).record(self.synapse_hoc_obj._ref_i_AMPA)
             self.rec_vec.append(vec_inmda)
             self.rec_vec.append(vec_iampa)
         
         elif self.current_type == "iampa_inmda":
-            vec_inmda = h.Vector(size).record(self.synapse_neuron_obj._ref_inmda)
-            vec_iampa = h.Vector(size).record(self.synapse_neuron_obj._ref_iampa)
+            vec_inmda = h.Vector(size).record(self.synapse_hoc_obj._ref_inmda)
+            vec_iampa = h.Vector(size).record(self.synapse_hoc_obj._ref_iampa)
             self.rec_vec.append(vec_inmda)
             self.rec_vec.append(vec_iampa)
 
@@ -233,10 +246,10 @@ class Synapse:
     #PRAGMA MARK: Utility
 
     def get_section(self) -> h.Section:
-        return self.synapse_neuron_obj.get_segment().sec
+        return self.synapse_hoc_obj.get_segment().sec
 
     def get_segment(self) -> nrn.Segment:
-        return self.synapse_neuron_obj.get_segment()
+        return self.synapse_hoc_obj.get_segment()
         
     def get_exc_or_inh_from_syn_type(self):
         if 'pyr2pyr' in self.syn_type or 'AMPA_NMDA' in self.syn_type:

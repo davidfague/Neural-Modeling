@@ -35,7 +35,7 @@ class SynapseGenerator:
       else:
           chosen_params = syn_params
       new_syn = Synapse(segment, syn_mod=syn_mod, gmax=g, record=record, syn_params=chosen_params, vector_length=vector_length)
-      self.add_random_generator(syn_mod, new_syn.synapse_neuron_obj, neuron_r)
+      self.add_random_generator(syn_mod, new_syn.synapse_hoc_obj, neuron_r)
       return new_syn
 
 

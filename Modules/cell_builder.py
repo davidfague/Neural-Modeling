@@ -142,12 +142,8 @@ class CellBuilder:
 		)
 
 		# Get all synapses
-		all_syns = []
-		for synapse_list in synapse_generator.synapses: # synapse_generator.synapses is a list of synapse lists
-			for synapse in synapse_list:
-				all_syns.append(synapse)
+		all_syns_before_reduction = [synapse for synapses_list in synapse_generator.synapses for synapse in synapses_list]
 
-		self.all_syns = all_syns
 		
 		# Initialize the dummy cell model used for calculating coordinates and 
 		# generating functional groups
@@ -193,7 +189,7 @@ class CellBuilder:
 			complex_cell = skeleton_cell, 
 			reduce_cell = self.parameters.reduce_cell, 
 			optimize_nseg = self.parameters.optimize_nseg_by_lambda, 
-			synapses_list = all_syns,
+			py_synapses_list = all_syns_before_reduction,
 			netcons_list = spike_generator.netcons, 
 			spike_trains = spike_generator.spike_trains,
 			spike_threshold = self.parameters.spike_threshold, 
@@ -465,23 +461,23 @@ class CellBuilder:
 			P_std = self.parameters.exc_P_release_std, 
 			size = 1)
 		
-		# New list to change probabilty of exc functional group nearing soma
-		adjusted_no_soma_len_per_segment = []
-		for i, seg in enumerate(no_soma_segments):
-			if str(type(skeleton_cell.soma)) != "<class 'nrn.Section'>": # cell.soma is a list of sections
-				if h.distance(seg, skeleton_cell.soma[0](0.5)) < 75:
-					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
-				elif seg in skeleton_cell.apic[0]: # trunk
-					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
-				else:
-					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
-			else: # cell.soma is a section
-				if h.distance(seg, skeleton_cell.soma(0.5)) < 75:
-					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
-				elif seg in skeleton_cell.apic[0]: # trunk
-					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
-				else:
-					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
+#		# New list to change probabilty of exc functional group nearing soma
+#		adjusted_no_soma_len_per_segment = []
+#		for i, seg in enumerate(no_soma_segments):
+#			if str(type(skeleton_cell.soma)) != "<class 'nrn.Section'>": # cell.soma is a list of sections
+#				if h.distance(seg, skeleton_cell.soma[0](0.5)) < 75:
+#					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
+#				elif seg in skeleton_cell.apic[0]: # trunk
+#					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
+#				else:
+#					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
+#			else: # cell.soma is a section
+#				if h.distance(seg, skeleton_cell.soma(0.5)) < 75:
+#					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
+#				elif seg in skeleton_cell.apic[0]: # trunk
+#					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
+#				else:
+#					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
 
 		if self.parameters.CI_on:
 			return []

@@ -459,7 +459,7 @@ class SpikeGenerator:
 		return stim
 	
 	def set_netcon(self, synapse, stim) -> h.NetCon:
-		nc = h.NetCon(stim, synapse.synapse_neuron_obj, 1, 0, 1)
+		nc = h.NetCon(stim, synapse.synapse_hoc_obj, 1, 0, 1)
 		self.netcons.append(nc)
 		synapse.ncs.append(nc)
 		return nc
