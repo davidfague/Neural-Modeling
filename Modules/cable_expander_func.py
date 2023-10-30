@@ -411,9 +411,9 @@ def create_dendritic_cell(
 	sec_type_list=[]
 	trunk_sec_type_list = []
 	kept_sec_type_list = []
-	apicals=[]
-	basals=[]
-	all_expanded_sections=[]
+	apicals = []
+	basals = []
+	all_expanded_sections = []
 	trunks=[] # list of trunk sections
 	branches=[] # list of branch sections for each trunk [[first trunk's branches][2nd trunk's..]]
 

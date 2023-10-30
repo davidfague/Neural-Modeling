@@ -52,7 +52,7 @@ class Reductor():
 		
 		# Else -- reduce cell
 		(
-			self.reduced_cell, 
+			reduced_cell, 
 			nrn_synapses_list, 
 			netcons_list, 
 			txt_nr
@@ -68,7 +68,7 @@ class Reductor():
 
 		# Expand cable if needed
 		if expand_cable:
-			sections_to_expand = [self.reduced_cell.hoc_model.apic[0]]
+			sections_to_expand = [reduced_cell.hoc_model.apic[0]]
 			furcations_x = [0.289004]
 			nbranches = [choose_branches]
 			(
@@ -94,13 +94,16 @@ class Reductor():
 			# Get the mapping of nrn.Synapse to NetCon
 			syn_to_netcon = get_syn_to_netcons(netcons_list)
 
+			print("NET CONSSSS")
+			print(syn_to_netcon)
+
 			# Convert nrn.Synapse objects back to Synapse class and append netcons
 			synapses_list = []
 			synapses_without_netcons = []
 
 			for nrn_syn in nrn_synapses_list:
 				if nrn_syn in syn_to_netcon.keys():
-					syn = Synapse(syn_obj = nrn_syn)
+					syn = Synapse(syn_obj = nrn_syn, record = True)
 					syn.ncs = syn_to_netcon[nrn_syn]
 					synapses_list.append(syn)
 				else: # Synapse did not receive netcons during cable_expander.redistribute_netcons
@@ -128,25 +131,26 @@ class Reductor():
 			return cell
 
 		# Else -- return reduced cell
-		self.reduced_cell.all = []
+		reduced_cell.all = []
 		for model_part in ["soma", "apic", "dend", "axon"]:
-			setattr(self.reduced_cell, model_part, CellModel.convert_section_list(self.reduced_cell, getattr(self.reduced_cell, model_part)))
-		for sec in self.reduced_cell.soma + self.reduced_cell.apic + self.reduced_cell.dend + self.reduced_cell.axon:
-			self.reduced_cell.all.append(sec)
+			setattr(reduced_cell, model_part, CellModel.convert_section_list(reduced_cell, getattr(reduced_cell, model_part)))
+		for sec in reduced_cell.soma + reduced_cell.apic + reduced_cell.dend + reduced_cell.axon:
+			reduced_cell.all.append(sec)
 
 		# Get the mapping of nrn.Synapse to NetCon
 		syn_to_netcon = get_syn_to_netcons(netcons_list)
-		
+
 		# Convert nrn.Synapse objects back to Synapse class and append netcons
 		synapses_list = []
 		for nrn_syn in nrn_synapses_list:
-			syn = Synapse(syn_obj=nrn_syn)
+			syn = Synapse(syn_obj = nrn_syn, record = True)
 			syn.ncs = syn_to_netcon[nrn_syn]
 			synapses_list.append(syn)
 		
-		if optimize_nseg: self.update_model_nseg_using_lambda(self.reduced_cell)
+		if optimize_nseg: self.update_model_nseg_using_lambda(reduced_cell)
+
 		cell = CellModel(
-			hoc_model = self.reduced_cell, 
+			hoc_model = reduced_cell, 
 			synapses = synapses_list, 
 			netcons = netcons_list, 
 			spike_trains = spike_trains, 
@@ -154,6 +158,7 @@ class Reductor():
 			random_state = random_state,
 			var_names = var_names, 
 			seg_to_record = seg_to_record)
+		
 		self.logger.log(f"Reductor reported {len(cell.tufts)} terminal tuft branches in NR reduced_cell.")
 
 		return cell

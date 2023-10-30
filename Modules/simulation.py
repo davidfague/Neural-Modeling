@@ -62,7 +62,14 @@ class Simulation:
 
         # Build the cell
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
-        cell = cell_builder.build_cell()
+        cell, _, synapses = cell_builder.build_cell()
+
+        print("SIM")
+        print(len(cell.synapses))
+        print("RETURNED SYNS")
+        print(len(synapses))
+        for synapse in synapses:
+            print(synapse.segment, " : ", synapse.current_type, " : ", len(synapse.rec_vec))
 
         # Construct segment indexes
         seg_indexes = self.construct_seg_indexes(cell, parameters)

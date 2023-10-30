@@ -420,6 +420,7 @@ class CellModel:
     
         return output_folder_name
     
+    #TODO: clean
     def generate_recorder_data(self, vector_length: int = None) -> None: # TODO: add check for synapse.current_type
       '''
       Method for calculating net synaptic currents and getting data after simulation
@@ -429,31 +430,37 @@ class CellModel:
       i_AMPA_bySeg = [[0] * (numTstep)] * len(self.segments)
       i_GABA_bySeg = [[0] * (numTstep)] * len(self.segments)
       # i_bySeg = [[0] * (numTstep+1)] * len(self.segments)
-    
+      counter = 0
       for synapse in self.synapses: # Record nmda and ampa synapse currents
-          if ('nmda' in synapse.current_type) or ('NMDA' in synapse.current_type):
-              i_NMDA = np.array(synapse.rec_vec[0])
-              i_AMPA = np.array(synapse.rec_vec[1])
-              seg = self.segments.index(synapse.segment)
+          if len(synapse.rec_vec) == 0:
+              counter += 1
+          try:
+            if ('nmda' in synapse.current_type) or ('NMDA' in synapse.current_type):
+                i_NMDA = np.array(synapse.rec_vec[0])
+                i_AMPA = np.array(synapse.rec_vec[1])
+                seg = self.segments.index(synapse.segment)
 
-              # Match shapes
-              if len(i_NMDA) > len(i_NMDA_bySeg[seg]):
-                  i_NMDA = i_NMDA[:-1]
-              if len(i_AMPA) > len(i_AMPA_bySeg[seg]):
-                  i_AMPA = i_AMPA[:-1]  
+                # Match shapes
+                if len(i_NMDA) > len(i_NMDA_bySeg[seg]):
+                    i_NMDA = i_NMDA[:-1]
+                if len(i_AMPA) > len(i_AMPA_bySeg[seg]):
+                    i_AMPA = i_AMPA[:-1]  
 
-              i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
-              i_AMPA_bySeg[seg] = i_AMPA_bySeg[seg] + i_AMPA
-              
-          elif ('gaba' in synapse.syn_type) or ('GABA' in synapse.syn_type): # GABA_AB current is 'i' so use syn_mod
-              i_GABA = np.array(synapse.rec_vec[0])
-              seg = self.segments.index(synapse.segment)
+                i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
+                i_AMPA_bySeg[seg] = i_AMPA_bySeg[seg] + i_AMPA
+                
+            elif ('gaba' in synapse.syn_type) or ('GABA' in synapse.syn_type): # GABA_AB current is 'i' so use syn_mod
+                i_GABA = np.array(synapse.rec_vec[0])
+                seg = self.segments.index(synapse.segment)
 
-              if len(i_GABA) > len(i_GABA_bySeg[seg]):
-                  i_GABA = i_GABA[:-1]
+                if len(i_GABA) > len(i_GABA_bySeg[seg]):
+                    i_GABA = i_GABA[:-1]
 
-              i_GABA_bySeg[seg] = i_GABA_bySeg[seg] + i_GABA
+                i_GABA_bySeg[seg] = i_GABA_bySeg[seg] + i_GABA
+          except:
+              continue
     
+      print("COUNTER", counter)
       i_NMDA_df = np.array(pd.DataFrame(i_NMDA_bySeg) )#* 1000) # conversion was for old modfile
       i_AMPA_df = np.array(pd.DataFrame(i_AMPA_bySeg) )#* 1000)
       i_GABA_df = np.array(pd.DataFrame(i_GABA_bySeg) )#* 1000)

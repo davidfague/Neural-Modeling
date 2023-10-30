@@ -185,12 +185,10 @@ class CellBuilder:
 
 		self.detailed_seg_info = dummy_cell.seg_info.copy()
 
-		# Get rid of the dummy cell
-		dummy_cell = None
-
 		# Build the final cell
 		self.logger.log("Creating a CellModel object.")
-		reductor = Reductor()
+
+		reductor = Reductor(logger = self.logger)
 		cell = reductor.reduce_cell(
 			complex_cell = skeleton_cell, 
 			reduce_cell = self.parameters.reduce_cell, 
@@ -204,8 +202,6 @@ class CellBuilder:
 			reduction_frequency = self.parameters.reduction_frequency, 
 			expand_cable = self.parameters.expand_cable, 
 			choose_branches = self.parameters.choose_branches)
-									
-		print(f"cell: {cell}")	
    
 		if (not self.parameters.CI_on) and (not self.parameters.trunk_exc_synapses):
 			# Turn off certain presynaptic neurons to simulate in vivo
@@ -237,7 +233,7 @@ class CellBuilder:
 			
 		self.logger.log(f"There were {len(cell.errors_in_setting_params)} errors when trying to insert unused channels.")
 
-		return cell
+		return cell, dummy_cell, cell.synapses.copy()
 
 	def build_soma_functional_groups(self, cell, soma_inh_synapses, spike_generator, random_state, exc_spikes):
 
