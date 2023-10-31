@@ -44,8 +44,17 @@ class Reductor():
             return self._handle_cable_expansion(reduced_cell, py_synapses_list, hoc_synapses_list, netcons_list, reduction_frequency, 
                                                 random_state, spike_trains, spike_threshold, var_names, seg_to_record, choose_branches)
         
+        # only for NR cell
+        #Make sure section attributes are correct. (can update cell_model class to include this list formation)
+    		reduced_cell.all = []
+    		for model_part in ["soma", "apic", "dend", "axon"]:
+    			setattr(reduced_cell, model_part, CellModel.convert_section_list(reduced_cell, getattr(reduced_cell, model_part)))
+    		for sec in reduced_cell.soma + reduced_cell.apic + reduced_cell.dend + reduced_cell.axon:
+    			reduced_cell.all.append(sec)
+
+        
         # Post-process cell
-        return self._post_process_reduced_cell(reduced_cell.hoc_model, py_synapses_list, netcons_list, spike_trains, spike_threshold, random_state, var_names, seg_to_record)
+        return self._post_process_reduced_cell(reduced_cell, py_synapses_list, netcons_list, spike_trains, spike_threshold, random_state, var_names, seg_to_record)
   
 
     def _create_cell_model(self, hoc_model, py_synapses_list, netcons_list, spike_trains, spike_threshold, random_state, 
@@ -114,7 +123,7 @@ class Reductor():
         
         # CURRENTLY FORGETTING ABOUT UPDATING Synapse.ncs        
         
-        # * Should already be taken care of for reduced cells *
+        # * Should already be taken care of for reduced cells * # will need to pass optimize segments
         # Optimize segments if requested
         #if optimize_nseg: 
         #    self.update_model_nseg_using_lambda(reduced_cell)

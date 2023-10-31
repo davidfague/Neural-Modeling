@@ -63,6 +63,7 @@ class Simulation:
         # Build the cell
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
         cell, _, synapses = cell_builder.build_cell()
+        self.logger.log(f"The Sections in cell.all after returning from cell_builder.build_cell(): {cell.all}")
 
         print("SIM")
         print(len(cell.synapses))

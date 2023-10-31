@@ -228,6 +228,7 @@ class CellBuilder:
 				amp = self.parameters.h_i_amplitude)
 			
 		self.logger.log(f"There were {len(cell.errors_in_setting_params)} errors when trying to insert unused channels.")
+		self.logger.log(f"The Sections in cell.all before returning from cell_builder.build_cell(): {cell.all}")
 
 		return cell, dummy_cell, cell.synapses.copy()
 
