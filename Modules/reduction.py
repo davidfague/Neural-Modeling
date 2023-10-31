@@ -46,11 +46,11 @@ class Reductor():
         
         # only for NR cell
         #Make sure section attributes are correct. (can update cell_model class to include this list formation)
-    		reduced_cell.all = []
-    		for model_part in ["soma", "apic", "dend", "axon"]:
-    			setattr(reduced_cell, model_part, CellModel.convert_section_list(reduced_cell, getattr(reduced_cell, model_part)))
-    		for sec in reduced_cell.soma + reduced_cell.apic + reduced_cell.dend + reduced_cell.axon:
-    			reduced_cell.all.append(sec)
+        reduced_cell.all = []
+        for model_part in ["soma", "apic", "dend", "axon"]:
+            setattr(reduced_cell, model_part, CellModel.convert_section_list(reduced_cell, getattr(reduced_cell, model_part)))
+        for sec in reduced_cell.soma + reduced_cell.apic + reduced_cell.dend + reduced_cell.axon:
+            reduced_cell.all.append(sec)
 
         
         # Post-process cell
