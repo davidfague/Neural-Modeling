@@ -143,6 +143,7 @@ class CellBuilder:
 
 		# Get all synapses
 		all_syns_before_reduction = [synapse for synapses_list in synapse_generator.synapses for synapse in synapses_list]
+		self.logger.log(f"Number of Synapses Before Reduction: {len(all_syns_before_reduction)}")
 
 		
 		# Initialize the dummy cell model used for calculating coordinates and 
@@ -423,7 +424,7 @@ class CellBuilder:
 			neuron_r = neuron_r,
 			syn_mod = self.parameters.inh_syn_mod,
 			P_dist = inh_P_dist,
-			cell = skeleton_cell, # Redundant?
+			cell = skeleton_cell, # Redundant? # no. weight changes be distance from soma.
 			syn_params = self.parameters.inh_syn_params)
 		
 		return inh_synapses

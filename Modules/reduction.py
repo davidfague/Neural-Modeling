@@ -20,6 +20,7 @@ class Reductor():
                     var_names: list = None, reduction_frequency: float = 0, expand_cable: bool = False, 
                     choose_branches: list = None, seg_to_record: str = 'soma'):
 
+        print(f"py_synapses length at start of reduction: {len(py_synapses_list)}")
         # Map Python Synapse objects to NEURON Synapse objects
         py_to_hoc_synapses = {syn: syn.synapse_hoc_obj for syn in py_synapses_list}
 
@@ -37,6 +38,8 @@ class Reductor():
         
         # Clear old Synapse objects that didn't survive
         surviving_hoc_synapses = set(hoc_synapses_list)
+        print(f"surviving_hoc_synapses length after NR: {len(surviving_hoc_synapses)}")
+        
         py_synapses_list[:] = [syn for syn, hoc_syn in py_to_hoc_synapses.items() if hoc_syn in surviving_hoc_synapses]
         
         # expand cable if requested
@@ -47,8 +50,10 @@ class Reductor():
         # only for NR cell
         #Make sure section attributes are correct. (can update cell_model class to include this list formation)
         reduced_cell.all = []
-        for model_part in ["soma", "apic", "dend", "axon"]:
+        for model_part in ["soma", "axon"]:
             setattr(reduced_cell, model_part, CellModel.convert_section_list(reduced_cell, getattr(reduced_cell, model_part)))
+        for model_part in ["apic", "dend"]:
+            setattr(reduced_cell, model_part, CellModel.convert_section_list(reduced_cell, getattr(reduced_cell.hoc_model, model_part))) 
         for sec in reduced_cell.soma + reduced_cell.apic + reduced_cell.dend + reduced_cell.axon:
             reduced_cell.all.append(sec)
 
