@@ -12,7 +12,7 @@ in_vitro = False
 if __name__ == "__main__":
     
     sim = Simulation(SkeletonCell.Hay) # Detailed (all 3 if in-vivo)
-    sim.submit_job(HayParameters("try1", h_tstop = 10, reduce_cell = True))
+    sim.submit_job(HayParameters("try1", h_tstop = 2000, reduce_cell = True))
     
     # if in_vitro:
     #   for amp in [-2.0,-1.0,-0.5,0.0,0.25,0.5,0.6,0.75,1.0,1.5,2.0]:

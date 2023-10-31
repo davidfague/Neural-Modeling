@@ -70,6 +70,7 @@ class Simulation:
         print("RETURNED SYNS")
         print(len(synapses))
         for synapse in synapses:
+            synapse.segment=synapse.get_segment()
             print(synapse.segment, " : ", synapse.current_type, " : ", len(synapse.rec_vec))
 
         # Construct segment indexes
