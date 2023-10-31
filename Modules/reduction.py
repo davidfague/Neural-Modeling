@@ -45,7 +45,7 @@ class Reductor():
                                                 random_state, spike_trains, spike_threshold, var_names, seg_to_record, choose_branches)
         
         # Post-process cell
-        return self._post_process_reduced_cell(reduced_cell, py_synapses_list, netcons_list, spike_trains, spike_threshold, random_state, var_names, seg_to_record)
+        return self._post_process_reduced_cell(reduced_cell.hoc_model, py_synapses_list, netcons_list, spike_trains, spike_threshold, random_state, var_names, seg_to_record)
   
 
     def _create_cell_model(self, hoc_model, py_synapses_list, netcons_list, spike_trains, spike_threshold, random_state, 
@@ -97,10 +97,10 @@ class Reductor():
                 py_to_hoc_synapses[new_syn] = hoc_syn
                 
 
-        return self._post_process_reduced_cell(expanded_cell, hoc_synapses_list, netcons_list, spike_trains, 
+        return self._post_process_reduced_cell(expanded_cell, py_synapses_list, netcons_list, spike_trains, 
                                                spike_threshold, random_state, var_names, seg_to_record)
 
-    def _post_process_reduced_cell(self, reduced_cell, hoc_synapses_list, netcons_list, spike_trains, spike_threshold, 
+    def _post_process_reduced_cell(self, reduced_cell, py_synapses_list, netcons_list, spike_trains, spike_threshold, 
                                    random_state, var_names, seg_to_record):
         """
         Helper method to post-process a reduced cell.
