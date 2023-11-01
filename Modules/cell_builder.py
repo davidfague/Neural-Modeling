@@ -198,7 +198,10 @@ class CellBuilder:
 			var_names = self.parameters.channel_names, 
 			reduction_frequency = self.parameters.reduction_frequency, 
 			expand_cable = self.parameters.expand_cable, 
-			choose_branches = self.parameters.choose_branches)
+			choose_branches = self.parameters.choose_branches,
+      vector_length = self.parameters.vector_length)
+      
+		self.logger.log("Finish creating a CellModel object.")
    
 		if (not self.parameters.CI_on) and (not self.parameters.trunk_exc_synapses):
 			# Turn off certain presynaptic neurons to simulate in vivo

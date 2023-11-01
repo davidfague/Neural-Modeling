@@ -217,11 +217,11 @@ def cable_expander(
 
 	syn_to_netcon = get_syn_to_netcons(netcons_list) # dictionary mapping netcons to their synapse # re call to account for changes.. may need to adjust for efficiency
 	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"duplicating branch 1 synapses onto the other branches and randomly distributing Netcons")
-	print("number of reduced synapses before duplicating synapses to branches:",len(new_synapses_list))
+	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"number of reduced synapses before duplicating synapses to branches:",len(new_synapses_list))
 	new_synapses_list=distribute_branch_synapses(branches,netcons_list,new_synapses_list,PP_params_dict,syn_to_netcon, random_state) #adjust synapses
-	print("number of reduced synapses after duplicating synapses to branches:",len(new_synapses_list))
+	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"number of reduced synapses after duplicating synapses to branches:",len(new_synapses_list))
 	syn_to_netcon = get_syn_to_netcons(netcons_list) # dictionary mapping netcons to their synapse
-	print("netcon mapping after expansion:",syn_to_netcon)
+	#print("netcon mapping after expansion:",syn_to_netcon)
 
 	# Create segment to segment mapping
 	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"Mapping segments")
@@ -1023,7 +1023,7 @@ def distribute_branch_synapses(branch_sets, netcons_list, synapses_list, PP_para
                     # Check if a synapse of the same type already exists at the x location on the selected branch
                     existing_synapse = None
                     for pp in selected_branch(x).point_processes():
-                        if pp.hname().split('[')[0] == synapse.hname().split('[')[0]:
+                        if synapse_properties_match(synapse, pp, PP_params_dict):
                             existing_synapse = pp
                             break
 

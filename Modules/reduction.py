@@ -20,9 +20,9 @@ class Reductor():
                     py_synapses_list: list = None, netcons_list: list = None, spike_trains: list = None, 
                     spike_threshold: int = 10, random_state: np.random.RandomState = None, 
                     var_names: list = None, reduction_frequency: float = 0, expand_cable: bool = False, 
-                    choose_branches: list = None, seg_to_record: str = 'soma'):
+                    choose_branches: list = None, seg_to_record: str = 'soma', vector_length: int = None):
 
-        print(f"py_synapses length at start of reduction: {len(py_synapses_list)}")
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} py_synapses length at start of reduction: {len(py_synapses_list)}")
         # Map Python Synapse objects to NEURON Synapse objects
         py_to_hoc_synapses = {syn: syn.synapse_hoc_obj for syn in py_synapses_list}
 
@@ -37,20 +37,23 @@ class Reductor():
         # Cell reduction
         reduced_cell, hoc_synapses_list, netcons_list, txt_nr = subtree_reductor(
             complex_cell, list(py_to_hoc_synapses.values()), netcons_list, reduction_frequency, return_seg_to_seg=True)
-        
+
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} hoc_synapses_list length after NR: {len(hoc_synapses_list)}")
         # Clear old Synapse objects that didn't survive
         hoc_syn_to_netcon = get_syn_to_netcons(netcons_list)
         surviving_hoc_synapses = set(hoc_syn_to_netcon.keys())
         
         #surviving_hoc_synapses = set(hoc_synapses_list)
-        print(f"surviving_hoc_synapses length after NR: {len(surviving_hoc_synapses)}")
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} surviving_hoc_synapses length after NR: {len(surviving_hoc_synapses)}")
         
         py_synapses_list[:] = [syn for syn, hoc_syn in py_to_hoc_synapses.items() if hoc_syn in surviving_hoc_synapses]
-        
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} py_synapses_list length and removing py_syns that did not represent a surviving hoc_syn after NR: {len(py_synapses_list)}")
+
         # expand cable if requested
         if expand_cable:
+            print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Starting Cable Expander")
             return self._handle_cable_expansion(reduced_cell, py_synapses_list, hoc_synapses_list, netcons_list, reduction_frequency, 
-                                                random_state, spike_trains, spike_threshold, var_names, seg_to_record, choose_branches)
+                                                random_state, spike_trains, spike_threshold, var_names, seg_to_record, choose_branches, vector_length)
         
         # only for NR cell       
         print(f"dir reduced_cell: {dir(reduced_cell)}")
@@ -105,7 +108,7 @@ class Reductor():
         return cell
     
     def _handle_cable_expansion(self, reduced_cell, py_synapses_list, hoc_synapses_list, netcons_list, reduction_frequency, random_state, 
-                                spike_trains, spike_threshold, var_names, seg_to_record, choose_branches):
+                                spike_trains, spike_threshold, var_names, seg_to_record, choose_branches, vector_length):
         sections_to_expand = [reduced_cell.hoc_model.apic[0]]
         furcations_x = [0.289004]
         nbranches = [choose_branches]
@@ -137,12 +140,14 @@ class Reductor():
         print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Finish removing py synapses from list {len(py_synapses_list)}")
         # Create new python synapse for new hoc synapses that were created during expansion
         hoc_synapses_before_expansion = set(hoc_synapse for py_syn, hoc_synapse in py_to_hoc_synapses.items()) # from dictionary before cable_expander
-        for hoc_syn in hoc_synapses_list: # hoc_synapses after cable_expander
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Finish getting hoc_synapses_before_expansion {len(hoc_synapses_before_expansion)}")
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Starting adding py synapses to list. hoc_synapses_list: {len(hoc_synapses_list)}; surviving_hoc_synapses: {len(surviving_hoc_synapses)}")
+        for hoc_syn in surviving_hoc_synapses: # hoc_synapses after cable_expander
             if hoc_syn not in hoc_synapses_before_expansion:
-                new_syn = Synapse(syn_obj=hoc_syn, record=True)  
+                new_syn = Synapse(syn_obj=hoc_syn, record=True, vector_length=vector_length)  
                 py_synapses_list.append(new_syn)
                 py_to_hoc_synapses[new_syn] = hoc_syn
-        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Finish adding py synapses to list  after cable expander. {len(py_synapses_list)}")
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Finish adding py synapses to list after cable expander. {len(py_synapses_list)}")
         return self._post_process_reduced_cell(expanded_cell, py_synapses_list, netcons_list, spike_trains, 
                                                spike_threshold, random_state, var_names, seg_to_record)
 
@@ -164,7 +169,7 @@ class Reductor():
         # Optimize segments if requested
         #if optimize_nseg: 
         #    self.update_model_nseg_using_lambda(reduced_cell)
-        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Start CellModel")
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Starting CellModel")
         # Create a reduced cell model and return it.
         cell = CellModel(
             hoc_model=reduced_cell, 
