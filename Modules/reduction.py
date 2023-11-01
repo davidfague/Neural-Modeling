@@ -7,6 +7,8 @@ from Modules.synapse import Synapse
 from Modules.cell_model import CellModel
 from Modules.logger import Logger
 
+import datetime
+
 import warnings
 
 
@@ -108,6 +110,9 @@ class Reductor():
         furcations_x = [0.289004]
         nbranches = [choose_branches]
 
+        # get new py_to_hoc dictionary in case py_synapses_list changed from neuron_reduce
+        py_to_hoc_synapses = {syn: syn.synapse_hoc_obj for syn in py_synapses_list}
+
         expanded_cell, hoc_synapses_list, netcons_list, _ = cable_expander(
             reduced_cell, 
             sections_to_expand, 
@@ -120,19 +125,24 @@ class Reductor():
             random_state=random_state
         )
         
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Finish cable_expander")
         # Clear old Synapse objects that didn't survive the merging during expansion
-        surviving_hoc_synapses = set(hoc_synapses_list)
-        py_synapses_list[:] = [syn for syn, hoc_syn in py_to_hoc_synapses.items() if hoc_syn in surviving_hoc_synapses]
-        
+        #get surviving hoc_synapses
+        hoc_syn_to_netcon = get_syn_to_netcons(netcons_list)
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Finish hoc_syn_to_netcon {len(hoc_syn_to_netcon.keys())}")
+        surviving_hoc_synapses = set(hoc_syn_to_netcon.keys())
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Finish getting surviving hoc synapses {len(surviving_hoc_synapses)}")
+        # remove py_synapses if their hoc_synapse did not survive
+        py_synapses_list[:] = [py_syn for py_syn, hoc_syn in py_to_hoc_synapses.items() if hoc_syn in surviving_hoc_synapses]
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Finish removing py synapses from list {len(py_synapses_list)}")
         # Create new python synapse for new hoc synapses that were created during expansion
-        existing_hoc_synapses = set(hoc_synapse for py_syn, hoc_synapse in py_to_hoc_synapses.items()) # from overarching dictionary
-        for hoc_syn in hoc_synapses_list: # from cable_axpander
-            if hoc_syn not in existing_hoc_synapses:
+        hoc_synapses_before_expansion = set(hoc_synapse for py_syn, hoc_synapse in py_to_hoc_synapses.items()) # from dictionary before cable_expander
+        for hoc_syn in hoc_synapses_list: # hoc_synapses after cable_expander
+            if hoc_syn not in hoc_synapses_before_expansion:
                 new_syn = Synapse(syn_obj=hoc_syn, record=True)  
                 py_synapses_list.append(new_syn)
                 py_to_hoc_synapses[new_syn] = hoc_syn
-                
-
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Finish adding py synapses to list  after cable expander. {len(py_synapses_list)}")
         return self._post_process_reduced_cell(expanded_cell, py_synapses_list, netcons_list, spike_trains, 
                                                spike_threshold, random_state, var_names, seg_to_record)
 
@@ -154,7 +164,7 @@ class Reductor():
         # Optimize segments if requested
         #if optimize_nseg: 
         #    self.update_model_nseg_using_lambda(reduced_cell)
-
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Start CellModel")
         # Create a reduced cell model and return it.
         cell = CellModel(
             hoc_model=reduced_cell, 
@@ -166,7 +176,8 @@ class Reductor():
             var_names=var_names, 
             seg_to_record=seg_to_record
         )
-        self.logger.log(f"Reductor reported {len(cell.tufts)} terminal tuft branches in the model.")
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Finish CellModel")
+        self.logger.log(f" {len(cell.tufts)} terminal tuft branches in the model.")
         return cell
         
     def find_space_const_in_cm(self, diameter: float, rm: float, ra: float) -> float:

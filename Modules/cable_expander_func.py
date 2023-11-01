@@ -836,19 +836,20 @@ def adjust_new_tree_synapses(num_of_subtrees, roots_of_subtrees,
 					raise(all_trunk_sec_type[section_to_expand_index],' is not "apic" or "dend"')
 			  
 			  # Adjust x location to the point on the branch that has the same electrotonic length as originally
-			dend_elec_L=trunk_properties[section_to_expand_index].electrotonic_length+branch_properties[section_to_expand_index].electrotonic_length
-			on_basal_subtree = not (has_apical and section_to_expand_index == 0)
-			x = find_branch_synapse_X(
-				original_cell,
-				synapse_location,
-				on_basal_subtree,
-				imp_obj,
-				subtree_input_impedance,
-				dend_elec_L,
-				subtree_ind_to_q[section_to_expand_index],
-				trunk_properties=trunk_properties[section_to_expand_index], branch_properties=branch_properties[section_to_expand_index])
+				dend_elec_L=trunk_properties[section_to_expand_index].electrotonic_length+branch_properties[section_to_expand_index].electrotonic_length
+				on_basal_subtree = not (has_apical and section_to_expand_index == 0)
+				x = find_branch_synapse_X(
+  				original_cell,
+  				synapse_location,
+  				on_basal_subtree,
+  				imp_obj,
+  				subtree_input_impedance,
+  				dend_elec_L,
+  				subtree_ind_to_q[section_to_expand_index],
+  				trunk_properties=trunk_properties[section_to_expand_index], branch_properties=branch_properties[section_to_expand_index])
 			  
-
+			if (x > 1) or (x < 0):
+				raise(ValueError(f"{x} is not between 0 and 1 for {original_cell}, {synapse_location}, {on_basal_subtree}, {imp_obj}, {dend_elec_L}, {trunk_properties}"))
 			# go over all point processes in this segment and see whether one
 			# of them has the same proporties of this synapse
 			# If there's such a synapse link the original NetCon with this point processes
@@ -870,7 +871,7 @@ def adjust_new_tree_synapses(num_of_subtrees, roots_of_subtrees,
 					print("adding",synapse,"to PP_params_dict")
 					add_PP_properties_to_dict(synapse, PP_params_dict)
 				#########
-				print("moving", synapse, "from",synapse_location,"to",section_for_synapse(x))              
+				#print("moving", synapse, "from",synapse_location,"to",section_for_synapse(x))              
 				#synapse.loc(x, sec=section_for_synapse)
 				#new_synapses_list.append(synapse)
 				# Unlink the synapse from its current section
@@ -1000,34 +1001,49 @@ def copy_dendritic_mech(original_seg_to_reduced_seg,
 							   mech_names_per_segment)
 		
 		
-def distribute_branch_synapses(branch_sets,netcons_list,synapses_list,PP_params_dict,syn_to_netcon, random_state):
-	'''
-	Works for after the synapses have been mapped to the first branch in the list.
-	duplicates each synapse on the first branch onto each other branch then splits the original synapse's netcons among the synapses.
-	branch_sets: list of subtree lists of branch sections (list of lists for the case where more than one section was expanded)
-	netcons_list: list of netcon objects
-	synapses_list: list of synapse objects
-	'''
-	for branch_set in branch_sets: #branch_sets variable is a list of lists of sections
-		# print(branch_set)
-		branch_with_synapses=branch_set[0] #branch with synapses is the first section within the list
-		for seg in branch_with_synapses:
-			# print("branch's seg.point_processes:",seg.point_processes())
-			for synapse in seg.point_processes():
-				x=synapse.get_loc() # get loc of original synapse   
-				h.pop_section() # pop the section after getting location    
-				new_syns=[] #list for redistributing netcons #make original synapse an option for netcon
-				for i in range(len(branch_set)-1): # duplicate synapse onto each corresponding branch location
-					new_syn=duplicate_synapse(synapse,seg,PP_params_dict) #generate new identical synapse
-					# print("duplicate new_syn:", new_syn)
-					new_syns.append(new_syn) # make new synapse an option for netcon to point to
-					synapses_list.append(new_syn) #update total synapses_list to include new synapse object
-					new_syn.loc(branch_set[i+1](x)) #place new synapse onto each branch
-		redistribute_netcons(synapse,new_syns,syn_to_netcon, random_state)
+def distribute_branch_synapses(branch_sets, netcons_list, synapses_list, PP_params_dict, syn_to_netcon, random_state):
+    ''' 
+    Distributes synapses among branches based on netcons.
+    '''
+    num_duplicated_synapses=0
+    for branch_set in branch_sets:
+        branch_with_synapses = branch_set[0]
+        for seg in branch_with_synapses:
+            for synapse in seg.point_processes():
+                x = synapse.get_loc()
+                h.pop_section()
 
-	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"Finish YAY")
+                synapses_for_netcons = [synapse]  # start with original synapse as an option for netcon
+                
+                associated_netcons = syn_to_netcon.get(synapse, [])
+                for netcon in associated_netcons:
+                    # Randomly select a branch for the netcon
+                    selected_branch = random_state.choice(branch_set)
+                    
+                    # Check if a synapse of the same type already exists at the x location on the selected branch
+                    existing_synapse = None
+                    for pp in selected_branch(x).point_processes():
+                        if pp.hname().split('[')[0] == synapse.hname().split('[')[0]:
+                            existing_synapse = pp
+                            break
 
-	return synapses_list
+                    # If synapse doesn't exist, duplicate it
+                    if not existing_synapse:
+                        num_duplicated_synapses+=1
+                        duplicated_synapse = duplicate_synapse(synapse, seg, PP_params_dict)
+                        duplicated_synapse.loc(selected_branch(x))
+                        synapses_for_netcons.append(duplicated_synapse)
+                        synapses_list.append(duplicated_synapse)
+                    else:
+                        duplicated_synapse = existing_synapse
+
+                    # Point the netcon to the chosen/duplicated synapse
+                    netcon.setpost(duplicated_synapse)
+
+    print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Finish distributing synapses to branches and duplicating synapse. {num_duplicated_synapses} new synapses. {len(synapses_list)} total synapses.")
+    return synapses_list
+
+
 
 def duplicate_synapse(synapse,seg,PP_params_dict):
 	'''
@@ -1048,6 +1064,16 @@ def duplicate_synapse(synapse,seg,PP_params_dict):
 				if param_name not in params_were_same: params_were_same.append(param_name)
 	return new_synapse
 		   
+def redistribute_netcons(synapse, target_synapses, syn_to_netcon, random_state):
+	'''randomly chooses a new synapse among the original and new choices to point the netcon to
+	target_synapses: list of new synapses
+	'''
+	for netcon in syn_to_netcon[synapse]: # redistribute netcons
+		rand_index = random_state.randint(0, len(target_synapses)+1) #choose random branch to move point netcon to
+		if rand_index==0: #if 0, keep netcon on original synapse
+			continue
+		else:
+			netcon.setpost(target_synapses[rand_index-1]) #find corresponding synapse #point netcon toward synapse
 
 def get_syn_to_netcons(netcons_list):
 	syn_to_netcon = {} # dictionary mapping netcons to their synapse
@@ -1059,17 +1085,6 @@ def get_syn_to_netcons(netcons_list):
 			syn_to_netcon[syn] = [netcon] #create new synapse key using netcon as an item
 	return syn_to_netcon
 	   
-			
-def redistribute_netcons(synapse, target_synapses, syn_to_netcon, random_state):
-	'''randomly chooses a new synapse among the original and new choices to point the netcon to
-	target_synapses: list of new synapses
-	'''
-	for netcon in syn_to_netcon[synapse]: # redistribute netcons
-		rand_index = random_state.randint(0, len(target_synapses)+1) #choose random branch to move point netcon to
-		if rand_index==0: #if 0, keep netcon on original synapse
-			continue
-		else:
-			netcon.setpost(target_synapses[rand_index-1]) #find corresponding synapse #point netcon toward synapse
 		
 		
 def add_PP_properties_to_dict(PP, PP_params_dict):
