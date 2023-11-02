@@ -269,7 +269,7 @@ def cable_expander(
 		with push_section(section):
 			h.delete_section()
 	
-	# Add the sections to the list
+	# Add the sections to the list # not sure if this is needed except maybe for apical?
 	if cell.hoc_model.axon is not None:
 		cell.axon = cell.hoc_model.axon
 	
@@ -291,36 +291,44 @@ def cable_expander(
 		soma_sections = cell.soma
 	for soma_sec in soma_sections:
 		all_sections.append(soma_sec)
+   # get soma children
 		if soma_sec.children() != []:
 			for soma_child in soma_sec.children(): # Takes care of sections attached to soma
 				all_sections.append(soma_child)
 				soma_child_sec_type=soma_child.name().split(".")[1][:4]
-			if soma_child_sec_type == 'dend':
-				dends.append(soma_child)
-			elif soma_child_sec_type == 'apic':
-				apics.append(soma_child)
-			elif soma_child_sec_type == 'axon':
-				axons.append(soma_child)
+				if soma_child_sec_type == 'dend':
+				  dends.append(soma_child)
+				elif soma_child_sec_type == 'apic':
+				  apics.append(soma_child)
+				elif soma_child_sec_type == 'axon':
+				  axons.append(soma_child)
 				
-			if soma_child.children() != []:
-				for sec_child in soma_child.children(): # Takes care of branches
-					all_sections.append(sec_child)
-					sec_child_sec_type=soma_child.name().split(".")[1][:4]
-					if sec_child_sec_type == 'dend':
-						dends.append(sec_child)
-					elif sec_child_sec_type == 'apic':
-						apics.append(sec_child)
-					elif sec_child_sec_type=='axon':
-						axons.append(sec_child)
-		  
+        # get children of soma children
+				if soma_child.children() != []:
+				  for sec_child in soma_child.children(): # Takes care of branches
+				    all_sections.append(sec_child)
+				    sec_child_sec_type=soma_child.name().split(".")[1][:4]
+				    if sec_child_sec_type == 'dend':
+				      dends.append(sec_child)
+				    elif sec_child_sec_type == 'apic':
+				      apics.append(sec_child)
+				    elif sec_child_sec_type=='axon':
+				      axons.append(sec_child)
+				    else:
+				      raise(ValueError(f"{sec_child_sec_type} is not dend, apic, or axon"))
+                                                       
+	cell.all = []	
+	cell.dend = []
+	cell.apic = []
+	cell.axon = []
 	for i,sec in enumerate(dends):
-		cell.dend=dends
+		cell.dend.append(sec)
 	for i,sec in enumerate(apics):
-		cell.apic=apics
+		cell.apic.append(sec)
 	for i,sec in enumerate(all_sections):
-		cell.all=all_sections
+		cell.all.append(sec)
 	for i,sec in enumerate(axons):
-		cell.axon=axons
+		cell.axon.append(sec)
 
 	# don't think we should delete the soma? 
 	#with push_section(cell.hoc_model.soma[0]):
@@ -385,156 +393,211 @@ def expand_cable(section_to_expand, frequency, furcation_x, nbranch):
 								type=sec_type, furcation_x=furcation_x)
 	print('branch_L:',branch_L,'|branch_diam:',branch_diam_in_micron,'|trunk_L:',trunk_L,'|trunk_diam:',trunk_diam)
 	return trunk_params, branch_params, sec_type
-		
-def create_dendritic_cell(
-		soma_cable,
-		has_apical,
-		original_cell,
-		model_obj_name,
-		trunk_cable_properties, 
-		branch_cable_properties, 
-		nbranches,sections_to_expand,
-		sections_to_keep,
-		trunk_nsegs, 
-		branch_nsegs,
-		subtrees_xs):
-	
-	h("objref reduced_dendritic_cell")
-	h("reduced_dendritic_cell = new " + model_obj_name + "()")
+ 
+def create_dendritic_cell(original_cell, model_obj_name, trunk_cable_properties,
+                          branch_cable_properties, nbranches, sections_to_expand,
+                          trunk_nsegs, branch_nsegs, subtrees_xs):
 
-	create_sections_in_hoc("soma", 1, "reduced_dendritic_cell")
+    h("objref reduced_dendritic_cell")
+    h("reduced_dendritic_cell = new " + model_obj_name + "()")
 
-	try: soma = original_cell.soma[0] if original_cell.soma.hname()[-1] == ']' else original_cell.soma
-	except: soma = original_cell.soma
+    trunks = []  # list of trunk sections
+    branches = []  # list of branch sections for each trunk
+    apicals = []  # if you want to keep track of apical dendrites
+    basals = []  # if you want to keep track of basal dendrites
 
-	append_to_section_lists("soma[0]", "somatic", "reduced_dendritic_cell")
-	sec_type_list=[]
-	trunk_sec_type_list = []
-	kept_sec_type_list = []
-	apicals = []
-	basals = []
-	all_expanded_sections = []
-	trunks=[] # list of trunk sections
-	branches=[] # list of branch sections for each trunk [[first trunk's branches][2nd trunk's..]]
+    # Get soma reference
+    soma = original_cell.soma
 
-	for i, sec in enumerate(sections_to_expand):
-		sec_type=sec.name().split(".")[1][:4] # get section type
-		sec_type_list.append(sec_type) #append trunk sec_type 
-		trunk_sec_type_list.append(sec_type) #append trunk sec_type to its own list
-		#include branches
-		for nbranch in nbranches:
-			for i in range(nbranch):
-				sec_type_list.append(sec_type) # append branches sec_type (same as trunk)
+    # Create trunks and branches
+    for idx, sec in enumerate(sections_to_expand):
+        trunk_cable_params = trunk_cable_properties[idx]
+        branch_cable_params = branch_cable_properties[idx]
+        trunk_nseg = trunk_nsegs[idx]
+        branch_nseg = branch_nsegs[idx]
+        nbranch = nbranches[idx]
 
-	for i, sec in enumerate(sections_to_keep):
-		sec_type=sec.name().split(".")[1][:4] #get section type
-		sec_type_list.append(sec_type)
-		kept_sec_type_list.append(sec_type)
+        # Create trunk section
+        trunk = h.Section(name='trunk_' + str(idx))
+        # Adjusted call to apply_params_to_section
+        apply_params_to_section('trunk_' + str(idx), 'reduced_dendritic_cell', trunk, trunk_cable_params, trunk_nseg)
+        trunk.connect(soma(0.5))
+        trunks.append(trunk)
+
+        # Create branches for the current trunk
+        branches_for_current_trunk = []
+        for branch_idx in range(nbranch):
+            branch = h.Section(name='branch_' + str(idx) + '_' + str(branch_idx))
+            # Adjusted call to apply_params_to_section
+            apply_params_to_section('branch_' + str(idx) + '_' + str(branch_idx), 'reduced_dendritic_cell', branch, branch_cable_params, branch_nseg)
+            branch.connect(trunk(1))
+            branches_for_current_trunk.append(branch)
+            # ...
+
+        branches.append(branches_for_current_trunk)
+
+    # Create cell python template
+    cell = Neuron(h.reduced_dendritic_cell)
+    cell.soma = soma
+    cell.trunks = trunks
+    cell.branches = branches
+    cell.apicals = apicals  # if you have apical dendrites
+    cell.basals = basals  # if you have basal dendrites
+
+    return cell, basals, apicals, trunks, branches
 
 
-	# Create section lists with the total number of sections for each section type
-	unique_sec_types=[]
-	for sec_type in sec_type_list:
-		if sec_type not in unique_sec_types:
-			unique_sec_types.append(sec_type)
+   
 
-	for unique_sec_type in unique_sec_types:
-		num_sec_type_for_this_unique_sec_type=sec_type_list.count(unique_sec_type)
-		create_sections_in_hoc(unique_sec_type,num_sec_type_for_this_unique_sec_type,"reduced_dendritic_cell")
-		if unique_sec_type=='apic':
-			apicals = [h.reduced_dendritic_cell.apic[i] for i in range(num_sec_type_for_this_unique_sec_type)]
-		elif unique_sec_type == 'dend':
-			basals = [h.reduced_dendritic_cell.dend[i] for i in range(num_sec_type_for_this_unique_sec_type)]
-		elif unique_sec_type == 'axon':
-			axonal = [h.reduced_dendritic_cell.axon[i] for i in range(num_sec_type_for_this_unique_sec_type)]
-		else:
-			raise('error: sec_type', sec_type,' is not "apic" or "dend"')
-
-	# Assemble tree sections
-	number_of_sections_in_apical_list = 0 # count as we add sections since cannot do len(h.reduced_cell.apical)
-	number_of_sections_in_basal_list = 0
-	number_of_sections_in_axonal_list = 0
-	trunk_sec_type_list_indices = []
-
-	for i in range(len(trunk_cable_properties)):
-		trunk_cable_params = trunk_cable_properties[i]
-		branch_cable_params = branch_cable_properties[i]
-		trunk_nseg = trunk_nsegs[i]
-		branch_nseg = branch_nsegs[i]
-		nbranch=nbranches[i]
-		trunk_sec_type=trunk_sec_type_list[i]
-
-		if trunk_sec_type == 'dend': # basal 
-		  #trunk
-			trunk_index=number_of_sections_in_basal_list # trunk index of basal list
-			trunk_cable_params.sec_index_for_type=trunk_index
-			# print('test: trunk_cable_params.sec_index_for_type:',trunk_cable_params.sec_index_for_type) #check is this works
-			apply_params_to_section("dend"+"[" + str(trunk_index) + "]", "basal", "reduced_dendritic_cell",  #apply params to trunk
-								basals[trunk_index], trunk_cable_params, trunk_nseg)
-			basals[trunk_index].connect(soma, subtrees_xs[i], 0) #connect trunk to soma where it was previously connected
-			trunk_sec_type_list_indices.append(trunk_index) #get list of trunk indices for trunk's respective sec_type_list (apic or dend)
-			trunks.append(basals[trunk_index])
-			all_expanded_sections.append(basals[trunk_index])
-			number_of_basal_sections_in_basal_list+=1
-			#branches
-			branches_for_trunk = [] # list of branches for this trunk
-			for j in range(nbranch): #apply branch parameters to next nbranch sections
-					branch_index=number_of_sections_in_apical_list
-					apply_params_to_section("dend"+"[" + str(branch_index) + "]", "basal", "reduced_dendritic_cell",  #apply params to branch
-								basals[branch_index], branch_cable_params, branch_nseg)
-					basals[branch_index].connect(basals[trunk_index], 1, 0) # connect branch to distal end of trunk
-					number_of_sections_in_basal_list+=1
-					branches_for_trunk.append(basals[branch_index])
-					all_expanded_sections.append(basals[branch_index])
-			
-			branches.append(branches_for_trunk)
-
-		elif trunk_sec_type=='apic': # apical
-			#trunk
-			trunk_index=number_of_sections_in_apical_list
-			apply_params_to_section("apic"+"[" + str(trunk_index) + "]", "apical", "reduced_dendritic_cell",  #apply params to trunk
-								apicals[trunk_index], trunk_cable_params, trunk_nseg)
-			apicals[trunk_index].connect(soma, subtrees_xs[i], 0) #connect trunk to soma where it was previously connected
-			trunk_sec_type_list_indices.append(trunk_index) #get list of trunk indices for trunk's respective sec_type_list (apic or dend)
-			trunks.append(apicals[trunk_index])
-			all_expanded_sections.append(apicals[trunk_index])
-			number_of_sections_in_apical_list+=1
-			#branches
-			branches_for_trunk = []
-			for j in range(nbranch): #apply branch parameters to next nbranch sections
-					branch_index=number_of_sections_in_apical_list
-					apply_params_to_section("apic"+"[" + str(branch_index) + "]", "apical", "reduced_dendritic_cell", #apply params to branch
-								apicals[branch_index], branch_cable_params, branch_nseg)
-					apicals[branch_index].connect(apicals[trunk_index], 1, 0) # connect branch to distal end of trunk
-					number_of_sections_in_apical_list+=1
-					branches_for_trunk.append(apicals[branch_index])
-					all_expanded_sections.append(apicals[branch_index])
-			branches.append(branches_for_trunk)
-
-		else:
-			raise(trunk_sec_type,'is not "apic" or "dend"')
-		
-	for i in range(len(sections_to_keep)): #add kept sections to the section lists
-		if kept_sec_type_list[i]=='apic':
-			sec_index=number_of_sections_in_apical_list
-			append_to_section_lists("apic"+"[" + str(sec_index) + "]", "apical", "reduced_dendritic_cell")
-			number_of_sections_in_apical_list+=1
-		elif kept_sec_type_list[i]=='dend':
-			sec_index=number_of_sections_in_basal_list
-			append_to_section_lists("dend"+"[" + str(sec_index) + "]", "basal", "reduced_dendritic_cell")
-			number_of_sections_in_basal_list+=1
-		elif kept_sec_type_list[i]=='axon':
-			sec_index=number_of_sections_in_axonal_list
-			append_to_section_lists("axon"+"[" + str(sec_index) + "]", "axonal", "reduced_dendritic_cell")
-			number_of_sections_in_axonal_list+=1
-		else:
-			raise(kept_sec_type_list[i],'is not "apic" , "dend" , "axon"')
-
-	# Create cell python template
-	cell = Neuron(h.reduced_dendritic_cell)
-	cell.soma = original_cell.soma
-	# cell.apic = apic
-	return cell, basals, apicals, trunk_sec_type_list_indices, trunks, branches, all_expanded_sections, number_of_sections_in_apical_list,number_of_sections_in_basal_list, number_of_sections_in_axonal_list
+#def create_dendritic_cell(
+#		soma_cable,
+#		has_apical,
+#		original_cell,
+#		model_obj_name,
+#		trunk_cable_properties, 
+#		branch_cable_properties, 
+#		nbranches,sections_to_expand,
+#		sections_to_keep,
+#		trunk_nsegs, 
+#		branch_nsegs,
+#		subtrees_xs):
+#	
+#	h("objref reduced_dendritic_cell")
+#	h("reduced_dendritic_cell = new " + model_obj_name + "()")
+#
+#	create_sections_in_hoc("soma", 1, "reduced_dendritic_cell")
+#
+#	try: soma = original_cell.soma[0] if original_cell.soma.hname()[-1] == ']' else original_cell.soma
+#	except: soma = original_cell.soma
+#
+#	append_to_section_lists("soma[0]", "somatic", "reduced_dendritic_cell")
+#	sec_type_list=[]
+#	trunk_sec_type_list = []
+#	kept_sec_type_list = []
+#	apicals = []
+#	basals = []
+#	all_expanded_sections = []
+#	trunks=[] # list of trunk sections
+#	branches=[] # list of branch sections for each trunk [[first trunk's branches][2nd trunk's..]]
+#
+#	for i, sec in enumerate(sections_to_expand):
+#		sec_type=sec.name().split(".")[1][:4] # get section type
+#		sec_type_list.append(sec_type) #append trunk sec_type 
+#		trunk_sec_type_list.append(sec_type) #append trunk sec_type to its own list
+#		#include branches
+#		for nbranch in nbranches:
+#			for i in range(nbranch):
+#				sec_type_list.append(sec_type) # append branches sec_type (same as trunk)
+#
+#	for i, sec in enumerate(sections_to_keep):
+#		sec_type=sec.name().split(".")[1][:4] #get section type
+#		sec_type_list.append(sec_type)
+#		kept_sec_type_list.append(sec_type)
+#
+#
+#	# Create section lists with the total number of sections for each section type
+#	unique_sec_types=[]
+#	for sec_type in sec_type_list:
+#		if sec_type not in unique_sec_types:
+#			unique_sec_types.append(sec_type)
+#
+#	for unique_sec_type in unique_sec_types:
+#		num_sec_type_for_this_unique_sec_type=sec_type_list.count(unique_sec_type)
+#		create_sections_in_hoc(unique_sec_type,num_sec_type_for_this_unique_sec_type,"reduced_dendritic_cell")
+#		if unique_sec_type=='apic':
+#			apicals = [h.reduced_dendritic_cell.apic[i] for i in range(num_sec_type_for_this_unique_sec_type)]
+#		elif unique_sec_type == 'dend':
+#			basals = [h.reduced_dendritic_cell.dend[i] for i in range(num_sec_type_for_this_unique_sec_type)]
+#		elif unique_sec_type == 'axon':
+#			axonal = [h.reduced_dendritic_cell.axon[i] for i in range(num_sec_type_for_this_unique_sec_type)]
+#		else:
+#			raise('error: sec_type', sec_type,' is not "apic" or "dend"')
+#
+#	# Assemble tree sections
+#	number_of_sections_in_apical_list = 0 # count as we add sections since cannot do len(h.reduced_cell.apical)
+#	number_of_sections_in_basal_list = 0
+#	number_of_sections_in_axonal_list = 0
+#	trunk_sec_type_list_indices = []
+#
+#	for i in range(len(trunk_cable_properties)):
+#		trunk_cable_params = trunk_cable_properties[i]
+#		branch_cable_params = branch_cable_properties[i]
+#		trunk_nseg = trunk_nsegs[i]
+#		branch_nseg = branch_nsegs[i]
+#		nbranch=nbranches[i]
+#		trunk_sec_type=trunk_sec_type_list[i]
+#
+#		if trunk_sec_type == 'dend': # basal 
+#		  #trunk
+#			trunk_index=number_of_sections_in_basal_list # trunk index of basal list
+#			trunk_cable_params.sec_index_for_type=trunk_index
+#			# print('test: trunk_cable_params.sec_index_for_type:',trunk_cable_params.sec_index_for_type) #check is this works
+#			apply_params_to_section("dend"+"[" + str(trunk_index) + "]", "basal", "reduced_dendritic_cell",  #apply params to trunk
+#								basals[trunk_index], trunk_cable_params, trunk_nseg)
+#			basals[trunk_index].connect(soma, subtrees_xs[i], 0) #connect trunk to soma where it was previously connected
+#			trunk_sec_type_list_indices.append(trunk_index) #get list of trunk indices for trunk's respective sec_type_list (apic or dend)
+#			trunks.append(basals[trunk_index])
+#			all_expanded_sections.append(basals[trunk_index])
+#			number_of_basal_sections_in_basal_list+=1
+#			#branches
+#			branches_for_trunk = [] # list of branches for this trunk
+#			for j in range(nbranch): #apply branch parameters to next nbranch sections
+#					branch_index=number_of_sections_in_apical_list
+#					apply_params_to_section("dend"+"[" + str(branch_index) + "]", "basal", "reduced_dendritic_cell",  #apply params to branch
+#								basals[branch_index], branch_cable_params, branch_nseg)
+#					basals[branch_index].connect(basals[trunk_index], 1, 0) # connect branch to distal end of trunk
+#					number_of_sections_in_basal_list+=1
+#					branches_for_trunk.append(basals[branch_index])
+#					all_expanded_sections.append(basals[branch_index])
+#			
+#			branches.append(branches_for_trunk)
+#
+#		elif trunk_sec_type=='apic': # apical
+#			#trunk
+#			trunk_index=number_of_sections_in_apical_list
+#			apply_params_to_section("apic"+"[" + str(trunk_index) + "]", "apical", "reduced_dendritic_cell",  #apply params to trunk
+#								apicals[trunk_index], trunk_cable_params, trunk_nseg)
+#			apicals[trunk_index].connect(soma, subtrees_xs[i], 0) #connect trunk to soma where it was previously connected
+#			trunk_sec_type_list_indices.append(trunk_index) #get list of trunk indices for trunk's respective sec_type_list (apic or dend)
+#			trunks.append(apicals[trunk_index])
+#			all_expanded_sections.append(apicals[trunk_index])
+#			number_of_sections_in_apical_list+=1
+#			#branches
+#			branches_for_trunk = []
+#			for j in range(nbranch): #apply branch parameters to next nbranch sections
+#					branch_index=number_of_sections_in_apical_list
+#					apply_params_to_section("apic"+"[" + str(branch_index) + "]", "apical", "reduced_dendritic_cell", #apply params to branch
+#								apicals[branch_index], branch_cable_params, branch_nseg)
+#					apicals[branch_index].connect(apicals[trunk_index], 1, 0) # connect branch to distal end of trunk
+#					number_of_sections_in_apical_list+=1
+#					branches_for_trunk.append(apicals[branch_index])
+#					all_expanded_sections.append(apicals[branch_index])
+#			branches.append(branches_for_trunk)
+#
+#		else:
+#			raise(trunk_sec_type,'is not "apic" or "dend"')
+#		
+#	for i in range(len(sections_to_keep)): #add kept sections to the section lists
+#		if kept_sec_type_list[i]=='apic':
+#			sec_index=number_of_sections_in_apical_list
+#			append_to_section_lists("apic"+"[" + str(sec_index) + "]", "apical", "reduced_dendritic_cell")
+#			number_of_sections_in_apical_list+=1
+#		elif kept_sec_type_list[i]=='dend':
+#			sec_index=number_of_sections_in_basal_list
+#			append_to_section_lists("dend"+"[" + str(sec_index) + "]", "basal", "reduced_dendritic_cell")
+#			number_of_sections_in_basal_list+=1
+#		elif kept_sec_type_list[i]=='axon':
+#			sec_index=number_of_sections_in_axonal_list
+#			append_to_section_lists("axon"+"[" + str(sec_index) + "]", "axonal", "reduced_dendritic_cell")
+#			number_of_sections_in_axonal_list+=1
+#		else:
+#			raise(kept_sec_type_list[i],'is not "apic" , "dend" , "axon"')
+#
+#	# Create cell python template
+#	cell = Neuron(h.reduced_dendritic_cell)
+#	cell.soma = original_cell.soma
+#	# cell.apic = apic
+#	return cell, basals, apicals, trunk_sec_type_list_indices, trunks, branches, all_expanded_sections, number_of_sections_in_apical_list,number_of_sections_in_basal_list, number_of_sections_in_axonal_list
 
 def find_and_disconnect_sections_to_keep(soma, sections_to_expand):
 	'''Searching for sections to keep, they can be a child of the soma or a parent of the soma.'''

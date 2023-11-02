@@ -148,6 +148,25 @@ class Reductor():
                 py_synapses_list.append(new_syn)
                 py_to_hoc_synapses[new_syn] = hoc_syn
         print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Finish adding py synapses to list after cable expander. {len(py_synapses_list)}")
+        
+        # examining section lists # Cable expander
+        print(f"dir expanded_cell: {dir(expanded_cell)}")
+        print()
+        print(f"expanded_cell.all: {getattr(expanded_cell, 'all', 'Not found')}")
+        print(f"expanded_cell.dend: {getattr(expanded_cell, 'dend', 'Not found')}")
+        print(f"expanded_cell.apic: {getattr(expanded_cell, 'apic', 'Not found')}")
+        print(f"expanded_cell.soma: {getattr(expanded_cell, 'soma', 'Not found')}")
+        print(f"expanded_cell.axon: {getattr(expanded_cell, 'axon', 'Not found')}")
+        print()
+
+        print(f"dir expanded_cell.hoc_model: {dir(reduced_cell.hoc_model)}")
+        print()
+        print(f"expanded_cell.hoc_model.all: {getattr(expanded_cell.hoc_model, 'all', 'Not found')}")
+        print(f"expanded_cell.hoc_model.dend: {getattr(expanded_cell.hoc_model, 'dend', 'Not found')}")
+        print(f"expanded_cell.hoc_model.apic: {getattr(expanded_cell.hoc_model, 'apic', 'Not found')}")
+        print(f"expanded_cell.hoc_model.soma: {getattr(expanded_cell.hoc_model, 'soma', 'Not found')}")
+        print(f"expanded_cell.hoc_model.axon: {getattr(expanded_cell.hoc_model, 'axon', 'Not found')}")
+        
         return self._post_process_reduced_cell(expanded_cell, py_synapses_list, netcons_list, spike_trains, 
                                                spike_threshold, random_state, var_names, seg_to_record)
 
@@ -169,6 +188,7 @@ class Reductor():
         # Optimize segments if requested
         #if optimize_nseg: 
         #    self.update_model_nseg_using_lambda(reduced_cell)
+        
         print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Starting CellModel")
         # Create a reduced cell model and return it.
         cell = CellModel(
