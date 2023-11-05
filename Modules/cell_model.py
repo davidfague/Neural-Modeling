@@ -218,20 +218,22 @@ class CellModel:
                 elif var_name.startswith('i'):
                     channels_set.add('_'.join(split_name[1:]))
         special_channels = ['nax', 'kdmc', 'kap', 'kdr', 'hd'] # have different attribute structure as a result of the modfile
-        self.CHANNELS = [
-            (channel, f'{channel}', f'gbar') if channel in special_channels else (channel, f'g{channel}_{channel}', f'g{channel}bar') 
+        print(channels_set)
+	self.CHANNELS = [
+            (channel, f'gbar') if channel in special_channels else (channel, f'g{channel}bar') 
             for channel in channels_set
         ]
-
+	print(self.CHANNELS)
+	
     def insert_unused_channels(self):
         '''
         Method for allowing recording of channels in sections that do not have the current.
         '''
         errors_in_setting_params = []
-        for channel, attr, conductance in self.CHANNELS:
+        for channel, conductance in self.CHANNELS:
             if not (str(channel) == ''): # for some reason '' was getting added? Need to check how self.channels is formed.
               for sec in self.all:
-                  if not hasattr(sec(0.5), attr):
+                  if not hasattr(sec(0.5), channel):
                       try: 
                           # Insert this channel into
                           sec.insert(channel)
