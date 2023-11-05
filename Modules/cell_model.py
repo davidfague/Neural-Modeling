@@ -211,16 +211,16 @@ class CellModel:
         # Identifying unique channels
         channels_set = set()
         for var_name in self.var_names:
-            if (var_name != 'i_pas') and ('ion' not in var_name):
+            if (var_name not in ['i_pas', 'ik', 'ica', 'ina']) and ('ion' not in var_name):
                 split_name = var_name.split('_')
                 if var_name.startswith('g'):
                     channels_set.add('_'.join(split_name[2:]))
                 elif var_name.startswith('i'):
                     channels_set.add('_'.join(split_name[1:]))
-        special_channels = ['nax', 'kdmc', 'kap', 'kdr', 'hd'] # have different attribute structure as a result of the modfile
+        Neymotin_channels = ['nax', 'kdmc', 'kap', 'kdr', 'hd'] # have different attribute structure as a result of the modfile
         print(channels_set)
 	self.CHANNELS = [
-            (channel, f'gbar') if channel in special_channels else (channel, f'g{channel}bar') 
+            (channel, f'gbar') if channel in Neymotin_channels else (channel, f'g{channel}bar') 
             for channel in channels_set
         ]
 	print(self.CHANNELS)
