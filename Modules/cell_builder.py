@@ -49,6 +49,21 @@ def log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip):
 	s = gmax_scalar * float(np.clip(val, clip[0], clip[1]))
 	return s
 
+def binned_log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip):
+	val = np.random.lognormal(gmax_mean, gmax_std, size)
+	s = gmax_scalar * float(np.clip(val, clip[0], clip[1]))
+
+	# Bin
+	num_bins = 10
+	bin_size = (clip[1] - clip[0]) / num_bins
+	bins = np.arange(0, clip[1], bin_size)
+	ind = np.digitize(s, bins)
+
+	if ind == num_bins:
+		return bins[-1]
+	else:
+		return bins[ind]
+
 # Firing rate distribution
 def exp_levy_dist(alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1):
 	return np.exp(st.levy_stable.rvs(alpha = alpha, beta = beta, loc = loc, scale = scale, size = size)) + 1e-15
