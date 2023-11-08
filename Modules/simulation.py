@@ -62,7 +62,16 @@ class Simulation:
 
         # Build the cell
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
-        cell = cell_builder.build_cell()
+        cell, _, synapses = cell_builder.build_cell()
+        self.logger.log(f"The Sections in cell.all after returning from cell_builder.build_cell(): {cell.all}")
+
+        print("SIM")
+        print(len(cell.synapses))
+        print("RETURNED SYNS")
+        print(len(synapses))
+#        for synapse in synapses:
+#            synapse.segment=synapse.get_segment()
+#            print(synapse.segment, " : ", synapse.current_type, " : ", len(synapse.rec_vec))
 
         # Construct segment indexes
         seg_indexes = self.construct_seg_indexes(cell, parameters)
@@ -141,7 +150,7 @@ class Simulation:
 
                 for inj in cell.injection: inj.rec_vec.resize(0)
 
-                for syn in cell_builder.all_syns:
+                for syn in cell.synapses:
                     for vec in syn.rec_vec: vec.resize(0)
                 
                 for vec in ecp.im_rec.vectors: vec.resize(0)

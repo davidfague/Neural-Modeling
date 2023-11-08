@@ -157,12 +157,9 @@ class CellBuilder:
 		)
 
 		# Get all synapses
-		all_syns = []
-		for synapse_list in synapse_generator.synapses: # synapse_generator.synapses is a list of synapse lists
-			for synapse in synapse_list:
-				all_syns.append(synapse)
+		all_syns_before_reduction = [synapse for synapses_list in synapse_generator.synapses for synapse in synapses_list]
+		self.logger.log(f"Number of Synapses Before Reduction: {len(all_syns_before_reduction)}")
 
-		self.all_syns = all_syns
 		
 		# Initialize the dummy cell model used for calculating coordinates and 
 		# generating functional groups
@@ -200,17 +197,15 @@ class CellBuilder:
 
 		self.detailed_seg_info = dummy_cell.seg_info.copy()
 
-		# Get rid of the dummy cell
-		dummy_cell = None
-
 		# Build the final cell
 		self.logger.log("Creating a CellModel object.")
-		reductor = Reductor()
+
+		reductor = Reductor(logger = self.logger)
 		cell = reductor.reduce_cell(
 			complex_cell = skeleton_cell, 
 			reduce_cell = self.parameters.reduce_cell, 
 			optimize_nseg = self.parameters.optimize_nseg_by_lambda, 
-			synapses_list = all_syns,
+			py_synapses_list = all_syns_before_reduction,
 			netcons_list = spike_generator.netcons, 
 			spike_trains = spike_generator.spike_trains,
 			spike_threshold = self.parameters.spike_threshold, 
@@ -218,9 +213,10 @@ class CellBuilder:
 			var_names = self.parameters.channel_names, 
 			reduction_frequency = self.parameters.reduction_frequency, 
 			expand_cable = self.parameters.expand_cable, 
-			choose_branches = self.parameters.choose_branches)
-									
-		print(f"cell: {cell}")	
+			choose_branches = self.parameters.choose_branches,
+      vector_length = self.parameters.vector_length)
+      
+		self.logger.log("Finish creating a CellModel object.")
    
 		if (not self.parameters.CI_on) and (not self.parameters.trunk_exc_synapses):
 			# Turn off certain presynaptic neurons to simulate in vivo
@@ -251,8 +247,9 @@ class CellBuilder:
 				amp = self.parameters.h_i_amplitude)
 			
 		self.logger.log(f"There were {len(cell.errors_in_setting_params)} errors when trying to insert unused channels.")
+		self.logger.log(f"The Sections in cell.all before returning from cell_builder.build_cell(): {cell.all}")
 
-		return cell
+		return cell, dummy_cell, cell.synapses.copy()
 
 	def build_soma_functional_groups(self, cell, soma_inh_synapses, spike_generator, random_state, exc_spikes):
 
@@ -445,7 +442,7 @@ class CellBuilder:
 			neuron_r = neuron_r,
 			syn_mod = self.parameters.inh_syn_mod,
 			P_dist = inh_P_dist,
-			cell = skeleton_cell, # Redundant?
+			cell = skeleton_cell, # Redundant? # no. weight changes be distance from soma.
 			syn_params = self.parameters.inh_syn_params)
 		
 		return inh_synapses
@@ -484,23 +481,23 @@ class CellBuilder:
 			P_std = self.parameters.exc_P_release_std, 
 			size = 1)
 		
-		# New list to change probabilty of exc functional group nearing soma
-		adjusted_no_soma_len_per_segment = []
-		for i, seg in enumerate(no_soma_segments):
-			if str(type(skeleton_cell.soma)) != "<class 'nrn.Section'>": # cell.soma is a list of sections
-				if h.distance(seg, skeleton_cell.soma[0](0.5)) < 75:
-					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
-				elif seg in skeleton_cell.apic[0]: # trunk
-					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
-				else:
-					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
-			else: # cell.soma is a section
-				if h.distance(seg, skeleton_cell.soma(0.5)) < 75:
-					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
-				elif seg in skeleton_cell.apic[0]: # trunk
-					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
-				else:
-					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
+#		# New list to change probabilty of exc functional group nearing soma
+#		adjusted_no_soma_len_per_segment = []
+#		for i, seg in enumerate(no_soma_segments):
+#			if str(type(skeleton_cell.soma)) != "<class 'nrn.Section'>": # cell.soma is a list of sections
+#				if h.distance(seg, skeleton_cell.soma[0](0.5)) < 75:
+#					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
+#				elif seg in skeleton_cell.apic[0]: # trunk
+#					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
+#				else:
+#					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
+#			else: # cell.soma is a section
+#				if h.distance(seg, skeleton_cell.soma(0.5)) < 75:
+#					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 10)
+#				elif seg in skeleton_cell.apic[0]: # trunk
+#					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i] / 5)
+#				else:
+#					adjusted_no_soma_len_per_segment.append(no_soma_len_per_segment[i])
 
 		if self.parameters.CI_on:
 			return []

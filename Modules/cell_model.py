@@ -211,27 +211,29 @@ class CellModel:
         # Identifying unique channels
         channels_set = set()
         for var_name in self.var_names:
-            if (var_name != 'i_pas') and ('ion' not in var_name):
+            if (var_name not in ['i_pas', 'ik', 'ica', 'ina']) and ('ion' not in var_name):
                 split_name = var_name.split('_')
                 if var_name.startswith('g'):
                     channels_set.add('_'.join(split_name[2:]))
                 elif var_name.startswith('i'):
                     channels_set.add('_'.join(split_name[1:]))
-        special_channels = ['nax', 'kdmc', 'kap', 'kdr', 'hd'] # have different attribute structure as a result of the modfile
-        self.CHANNELS = [
-            (channel, f'{channel}', f'gbar') if channel in special_channels else (channel, f'g{channel}_{channel}', f'g{channel}bar') 
+        Neymotin_channels = ['nax', 'kdmc', 'kap', 'kdr', 'hd'] # have different attribute structure as a result of the modfile
+        print(channels_set)
+	self.CHANNELS = [
+            (channel, f'gbar') if channel in Neymotin_channels else (channel, f'g{channel}bar') 
             for channel in channels_set
         ]
-
+	print(self.CHANNELS)
+	
     def insert_unused_channels(self):
         '''
         Method for allowing recording of channels in sections that do not have the current.
         '''
         errors_in_setting_params = []
-        for channel, attr, conductance in self.CHANNELS:
+        for channel, conductance in self.CHANNELS:
             if not (str(channel) == ''): # for some reason '' was getting added? Need to check how self.channels is formed.
               for sec in self.all:
-                  if not hasattr(sec(0.5), attr):
+                  if not hasattr(sec(0.5), channel):
                       try: 
                           # Insert this channel into
                           sec.insert(channel)
@@ -420,6 +422,7 @@ class CellModel:
     
         return output_folder_name
     
+    #TODO: clean
     def generate_recorder_data(self, vector_length: int = None) -> None: # TODO: add check for synapse.current_type
       '''
       Method for calculating net synaptic currents and getting data after simulation
@@ -429,31 +432,37 @@ class CellModel:
       i_AMPA_bySeg = [[0] * (numTstep)] * len(self.segments)
       i_GABA_bySeg = [[0] * (numTstep)] * len(self.segments)
       # i_bySeg = [[0] * (numTstep+1)] * len(self.segments)
-    
+      counter = 0
       for synapse in self.synapses: # Record nmda and ampa synapse currents
-          if ('nmda' in synapse.current_type) or ('NMDA' in synapse.current_type):
-              i_NMDA = np.array(synapse.rec_vec[0])
-              i_AMPA = np.array(synapse.rec_vec[1])
-              seg = self.segments.index(synapse.segment)
+          if len(synapse.rec_vec) == 0:
+              counter += 1
+          try:
+            if ('nmda' in synapse.current_type) or ('NMDA' in synapse.current_type):
+                i_NMDA = np.array(synapse.rec_vec[0])
+                i_AMPA = np.array(synapse.rec_vec[1])
+                seg = self.segments.index(synapse.segment)
 
-              # Match shapes
-              if len(i_NMDA) > len(i_NMDA_bySeg[seg]):
-                  i_NMDA = i_NMDA[:-1]
-              if len(i_AMPA) > len(i_AMPA_bySeg[seg]):
-                  i_AMPA = i_AMPA[:-1]  
+                # Match shapes
+                if len(i_NMDA) > len(i_NMDA_bySeg[seg]):
+                    i_NMDA = i_NMDA[:-1]
+                if len(i_AMPA) > len(i_AMPA_bySeg[seg]):
+                    i_AMPA = i_AMPA[:-1]  
 
-              i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
-              i_AMPA_bySeg[seg] = i_AMPA_bySeg[seg] + i_AMPA
-              
-          elif ('gaba' in synapse.syn_type) or ('GABA' in synapse.syn_type): # GABA_AB current is 'i' so use syn_mod
-              i_GABA = np.array(synapse.rec_vec[0])
-              seg = self.segments.index(synapse.segment)
+                i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
+                i_AMPA_bySeg[seg] = i_AMPA_bySeg[seg] + i_AMPA
+                
+            elif ('gaba' in synapse.syn_type) or ('GABA' in synapse.syn_type): # GABA_AB current is 'i' so use syn_mod
+                i_GABA = np.array(synapse.rec_vec[0])
+                seg = self.segments.index(synapse.segment)
 
-              if len(i_GABA) > len(i_GABA_bySeg[seg]):
-                  i_GABA = i_GABA[:-1]
+                if len(i_GABA) > len(i_GABA_bySeg[seg]):
+                    i_GABA = i_GABA[:-1]
 
-              i_GABA_bySeg[seg] = i_GABA_bySeg[seg] + i_GABA
+                i_GABA_bySeg[seg] = i_GABA_bySeg[seg] + i_GABA
+          except:
+              continue
     
+      print("COUNTER", counter)
       i_NMDA_df = np.array(pd.DataFrame(i_NMDA_bySeg) )#* 1000) # conversion was for old modfile
       i_AMPA_df = np.array(pd.DataFrame(i_AMPA_bySeg) )#* 1000)
       i_GABA_df = np.array(pd.DataFrame(i_GABA_bySeg) )#* 1000)
