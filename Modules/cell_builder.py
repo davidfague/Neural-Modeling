@@ -459,17 +459,10 @@ class CellBuilder:
 			neuron_r) -> list:
 
 		# Excitatory gmax distribution
-		exc_gmax_mean_0 = self.parameters.exc_gmax_mean_0
-		exc_gmax_std_0 = self.parameters.exc_gmax_std_0
-
-		gmax_mean = np.log(exc_gmax_mean_0) - 0.5 * np.log((exc_gmax_std_0 / exc_gmax_mean_0) ** 2 + 1)
-		gmax_std = np.sqrt(np.log((exc_gmax_std_0 / exc_gmax_mean_0) ** 2 + 1))
-
-		# gmax distribution
 		gmax_exc_dist = partial(
 			log_norm_dist, 
-			gmax_mean, 
-			gmax_std, 
+			self.parameters.exc_gmax_mean_0, 
+			self.parameters.exc_gmax_std_0, 
 			self.parameters.exc_scalar, 
 			size = 1, 
 			clip = self.parameters.exc_gmax_clip)

@@ -56,28 +56,9 @@ class Reductor():
             print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Starting Cable Expander")
             return self._handle_cable_expansion(reduced_cell, py_synapses_list, hoc_synapses_list, netcons_list, reduction_frequency, 
                                                 random_state, spike_trains, spike_threshold, var_names, seg_to_record, choose_branches, vector_length)
-        
-        # only for NR cell       
-        print(f"dir reduced_cell: {dir(reduced_cell)}")
-        print()
-        print(f"reduced_cell.all: {getattr(reduced_cell, 'all', 'Not found')}")
-        print(f"reduced_cell.dend: {getattr(reduced_cell, 'dend', 'Not found')}")
-        print(f"reduced_cell.apic: {getattr(reduced_cell, 'apic', 'Not found')}")
-        print(f"reduced_cell.soma: {getattr(reduced_cell, 'soma', 'Not found')}")
-        print(f"reduced_cell.axon: {getattr(reduced_cell, 'axon', 'Not found')}")
-        print()
-
-        print(f"dir reduced_cell.hoc_model: {dir(reduced_cell.hoc_model)}")
-        print()
-        print(f"reduced_cell.hoc_model.all: {getattr(reduced_cell.hoc_model, 'all', 'Not found')}")
-        print(f"reduced_cell.hoc_model.dend: {getattr(reduced_cell.hoc_model, 'dend', 'Not found')}")
-        print(f"reduced_cell.hoc_model.apic: {getattr(reduced_cell.hoc_model, 'apic', 'Not found')}")
-        print(f"reduced_cell.hoc_model.soma: {getattr(reduced_cell.hoc_model, 'soma', 'Not found')}")
-        print(f"reduced_cell.hoc_model.axon: {getattr(reduced_cell.hoc_model, 'axon', 'Not found')}")
-
-        
-        
-        #Make sure section attributes are correct. (can update cell_model class to include this list formation)
+    
+    
+        # Make sure section attributes are correct. (can update cell_model class to include this list formation)
         reduced_cell.all = []
         for model_part in ["soma", "axon"]:
             setattr(reduced_cell, model_part, CellModel.convert_section_list(reduced_cell, getattr(reduced_cell, model_part)))

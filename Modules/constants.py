@@ -77,8 +77,8 @@ class SimulationParameters:
 
 	# Synapse density syns/um 
 	# Current densities taken from literature on apical main bifurcation, and extrapolated to entire cell.
-	exc_synaptic_density: float = 2.16 # (syn/micron of path length)
-	inh_synaptic_density: float = 0.22 # (syn/micron of path length)
+	exc_synaptic_density: float = 2.16 / 4 # (syn/micron of path length)
+	inh_synaptic_density: float = 0.22 / 4 # (syn/micron of path length)
 	use_SA_exc: bool = True # Use surface area instead of lengths for the synapse's segment assignment probabilities
 
 	# Release probability distributions
