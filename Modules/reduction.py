@@ -22,9 +22,6 @@ class Reductor():
                     var_names: list = None, reduction_frequency: float = 0, expand_cable: bool = False, 
                     choose_branches: list = None, seg_to_record: str = 'soma', vector_length: int = None):
 
-        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} py_synapses length at start of reduction: {len(py_synapses_list)}")
-        # Map Python Synapse objects to NEURON Synapse objects
-        py_to_hoc_synapses = {syn: syn.synapse_hoc_obj for syn in py_synapses_list}
 
         # If no cell reduction is required
         if not reduce_cell:
@@ -33,7 +30,12 @@ class Reductor():
             cell = self._create_cell_model(complex_cell, py_synapses_list, netcons_list, spike_trains, spike_threshold, 
                                            random_state, var_names, seg_to_record)
             return cell
-        
+
+        # Prepare reduction
+        print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} py_synapses length at start of reduction: {len(py_synapses_list)}")
+        # Map Python Synapse objects to NEURON Synapse objects
+        py_to_hoc_synapses = {syn: syn.synapse_hoc_obj for syn in py_synapses_list}
+                        
         # Cell reduction
         print(f"Using subtree_reductor on {complex_cell}")
         reduced_cell, hoc_synapses_list, netcons_list, txt_nr = subtree_reductor(

@@ -96,6 +96,8 @@ proc biophys() {
 
   forsec $o1.axonal {
   	g_pas = 0.0000325 
+	insert Ih
+	gIhbar_Ih = 0.0
 	}
 }
 
