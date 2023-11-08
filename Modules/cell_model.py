@@ -67,6 +67,10 @@ class CellModel:
 
         self.get_channels_from_var_names() # Get channel and attribute names from recorded channel name
         self.errors_in_setting_params = self.insert_unused_channels() # Need to update with var_names
+        
+        for sec in self.all:
+          try: sec.insert("butterfly")
+          except Exception as e: self.errors_in_setting_params.append(e)
 
         # PRAGMA MARK: Section Generation
 
@@ -425,7 +429,8 @@ class CellModel:
       '''
       Method for calculating net synaptic currents and getting data after simulation
       '''
-      numTstep = vector_length
+      numTstep = int(vector_length)
+      #print(f"numTstep: {numTstep}, len(self.segments): {len(self.segments)}")
       i_NMDA_bySeg = [[0] * (numTstep)] * len(self.segments)
       i_AMPA_bySeg = [[0] * (numTstep)] * len(self.segments)
       i_GABA_bySeg = [[0] * (numTstep)] * len(self.segments)
@@ -438,7 +443,8 @@ class CellModel:
             if ('nmda' in synapse.current_type) or ('NMDA' in synapse.current_type):
                 i_NMDA = np.array(synapse.rec_vec[0])
                 i_AMPA = np.array(synapse.rec_vec[1])
-                seg = self.segments.index(synapse.segment)
+
+                seg = self.segments.index(synapse.get_segment())
 
                 # Match shapes
                 if len(i_NMDA) > len(i_NMDA_bySeg[seg]):
@@ -451,13 +457,14 @@ class CellModel:
                 
             elif ('gaba' in synapse.syn_type) or ('GABA' in synapse.syn_type): # GABA_AB current is 'i' so use syn_mod
                 i_GABA = np.array(synapse.rec_vec[0])
-                seg = self.segments.index(synapse.segment)
+                seg = self.segments.index(synapse.get_segment())
 
                 if len(i_GABA) > len(i_GABA_bySeg[seg]):
                     i_GABA = i_GABA[:-1]
 
                 i_GABA_bySeg[seg] = i_GABA_bySeg[seg] + i_GABA
-          except:
+          except Exception as e:
+              print(f"Exception occurred: {e}")
               continue
     
       print("COUNTER", counter)
@@ -468,7 +475,9 @@ class CellModel:
       self.data_dict = {}
       # Dynamically add recorded data to data_dict
       for var_name, recorder in self.recorders.items():
+            #print(f"recording {var_name}")
             self.data_dict[var_name + '_data'] = recorder.as_numpy()
+      #print("recording spike times")
       self.data_dict['spikes'] = self.get_spike_time()
       # self.data_dict['ih_data'] = self.ihcn_Ih.as_numpy()
       # self.data_dict['gNaTa_T_data'] = self.gNaTa_T.as_numpy()
@@ -481,7 +490,9 @@ class CellModel:
       # self.data_dict['ica_Ca_HVA_data'] = self.ica_Ca_HVA.as_numpy()
       # self.data_dict['ica_Ca_LVAst_data'] = self.ica_Ca_LVAst.as_numpy()
       # self.data_dict['i_pas_data'] = self.i_pas.as_numpy()
+      #print("recording Vm")
       self.data_dict['Vm'] = self.Vm.as_numpy()
+      #print("recording synaptic currents")
       self.data_dict['i_NMDA'] = i_NMDA_df
       self.data_dict['i_AMPA'] = i_AMPA_df
       self.data_dict['i_GABA'] = i_GABA_df

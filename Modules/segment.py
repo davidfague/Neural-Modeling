@@ -120,7 +120,7 @@ class SegmentManager:
             "ica_Ca_LVAst_data_report",
             "ina_NaTa_t_data_report", 
             "ik_data_report",
-            #"ihcn_Ih_data_report",
+            "ihcn_Ih_data_report",
             "i_membrane_report",
             "i_pas_data_report", 
             "spikes_report"]
@@ -135,7 +135,7 @@ class SegmentManager:
             "ical", 
             "ina", 
             "ik",
-            #"ihcn_Ih",
+            "ih",
             "imembrane",
             "i_pas"]
           
@@ -214,7 +214,7 @@ class SegmentManager:
         bAP_lower_bounds = []
         peak_values = []
         flattened_peak_values = []
-        print(dir(self.segments[0]))
+        #print(dir(self.segments[0]))
     
         for seg in self.segments:
             lb, bAPs = self.get_na_lower_bounds_for_seg(seg, threshold, ms_within_somatic_spike)
@@ -283,7 +283,7 @@ class SegmentManager:
             else:
                 cond = (seg.type == "dend") | (seg.type == "apic")
                 current_type = "inmda"
-            print(f"cond: {cond} | seg.type: {seg.type} | seg.p0_5_y3d: {seg.p0_5_y3d} | lowery: {lowery} | uppery: {uppery}")
+            #print(f"cond: {cond} | seg.type: {seg.type} | seg.p0_5_y3d: {seg.p0_5_y3d} | lowery: {lowery} | uppery: {uppery}")
             if cond:
                 segIDs.append(i)
                 bounds = self.get_ca_lower_bounds_for_seg(seg, i, current_type)
@@ -297,7 +297,7 @@ class SegmentManager:
                         segments_for_condition.append(i) # (i) will be appended multiple times, that's intended
             else:
                 lower_bounds.append([]), upper_bounds.append([]), mag.append([])
-        print(f"segments_for_condition {current_type}: {list(np.unique(segments_for_condition))}")
+        #print(f"segments_for_condition {current_type}: {list(np.unique(segments_for_condition))}")
         random_segments_ids = random_state.choice(segments_for_condition, 100)
 
         # Not used in notebooks @DEPRECATION
@@ -317,7 +317,7 @@ class SegmentManager:
             if spike_time > 100:
                 #trace = seg.icah[spike_time - 100 : spike_time + 200] + seg.ical[spike_time - 100 : spike_time + 200] +\
                 trace = seg.ica[spike_time - 100 : spike_time + 200]# +\
-                #seg.ih[spike_time - 100 : spike_time + 200]
+                seg.ih[spike_time - 100 : spike_time + 200]
                 peak_value = np.max(trace)
                 half_peak = peak_value / 2
                 duration = np.arange(len(trace))[trace > half_peak] + spike_time - 10
@@ -335,7 +335,7 @@ class SegmentManager:
         if current_type == "ica":
             v_thresh, time_thresh = -40, 200
             #trace = seg.icah + seg.ical + seg.ih
-            trace = seg.ica #+ seg.ih
+            trace = seg.ica + seg.ih
         elif current_type == "inmda":
             v_thresh, time_thresh = -40, 260
             trace = seg.inmda

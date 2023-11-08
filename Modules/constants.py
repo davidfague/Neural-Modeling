@@ -53,7 +53,7 @@ class SimulationParameters:
 
 	# Neuron parameters
 	h_celcius: float = 34 # 37
-	h_tstop: int = 2000 # Sim runtime (ms)
+	h_tstop: int = 150000 # Sim runtime (ms)
 	h_dt: float = 0.1 # Timestep (ms)
 
 	# Current injection
@@ -65,19 +65,23 @@ class SimulationParameters:
 	trunk_exc_synapses: bool = True
 	perisomatic_exc_synapses: bool = False
 	add_soma_inh_synapses: bool = True
-	num_soma_inh_syns: int = 150
+	num_soma_inh_syns: int = 300#150
 
 	# gmax distributions
-	exc_gmax_mean_0: float = 0.45
+	exc_gmax_mean_0: float = 0.35 #0.45
 	exc_gmax_std_0: float = 0.345
-	exc_gmax_clip: tuple = (0, 0.75)
-	inh_gmax_dist: float = 1
-	soma_gmax_dist: float = 1
+	exc_gmax_clip: tuple = (0, 0.5)#0.75)
+	inh_gmax_dist: float = 2
+	soma_gmax_dist: float = 2
 	exc_scalar: int = 1 # Scales weight
+	bin_exc_gmax: bool = True
+
+  # Synapatic Firing Rate
+	exc_mean_fr = 1#5.3/4
 
 	# Synapse density syns/um 
 	# Current densities taken from literature on apical main bifurcation, and extrapolated to entire cell.
-	exc_synaptic_density: float = 2.16 # (syn/micron of path length)
+	exc_synaptic_density: float = 2#2.16 # (syn/micron of path length)
 	inh_synaptic_density: float = 0.22 # (syn/micron of path length)
 	use_SA_exc: bool = True # Use surface area instead of lengths for the synapse's segment assignment probabilities
 

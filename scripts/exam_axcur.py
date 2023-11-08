@@ -24,8 +24,8 @@ segs_to_plot = {
 }
 
 how_to_plot = {
-	'soma spikes': True, # Index to plot
-	'specific_time': False, # (ms)
+	'soma spikes': False, # Index to plot
+	'specific_time': True, # (ms)
 	'values_at_specific_time': False,
 	'seg_locations': True
 }
@@ -61,29 +61,36 @@ def load_segment_indexes(output_folder):
 def subset_data(t, xlim):
 	return np.where((t >= xlim[0]) & (t <= xlim[1]))[0]
 
-def plot_all_segments(segments_to_plot, t, current_types, save_path, specific_time, sm):
-	indices = subset_data(t, [specific_time - 100, specific_time + 100])
-	for prefix, segments in segments_to_plot.items():
-		for i, seg in enumerate(segments):
-			plot_all(
-				segment = seg, 
-				t = t, 
-				current_types = current_types, 
-				indices = indices, 
-				index = -1, 
-				save_to = save_path, 
-				title_prefix = prefix + str(i), 
-				ylim = [-1, 1] if prefix == "Nexus_" else None, 
-				vlines = np.array(sm.soma_spiketimes))
-			plot_all(
-				segment = seg, 
-				t = t, 
-				current_types = current_types, 
-				indices = None, 
-				index = None, 
-				save_to = save_path, 
-				title_prefix = prefix, 
-				ylim=[-1, 1] if prefix == "Nexus" else None, vlines = np.array(sm.soma_spiketimes))
+def plot_all_segments(segments_to_plot, t, current_types, save_path, specific_time, sm, plot_adj_Vm, plot_total_AC):
+    indices = subset_data(t, [specific_time - 100, specific_time + 100])
+    for prefix, segments in segments_to_plot.items():
+        for i, seg in enumerate(segments):
+            plot_all(
+                segment=seg, 
+                t=t, 
+                current_types=current_types, 
+                indices=indices, 
+                index=-1, 
+                save_to=save_path, 
+                title_prefix=prefix + str(i), 
+                ylim=[-1, 1] if prefix == "Nexus_" else None, 
+                vlines=np.array(sm.soma_spiketimes),
+                plot_adj_Vm=plot_adj_Vm,  # Add this parameter to plot_all
+                plot_total_AC=plot_total_AC  # Add this parameter to plot_all
+            )
+            plot_all(
+                segment=seg, 
+                t=t, 
+                current_types=current_types, 
+                indices=None, 
+                index=None, 
+                save_to=save_path, 
+                title_prefix=prefix, 
+                ylim=[-1, 1] if prefix == "Nexus" else None, 
+                vlines=np.array(sm.soma_spiketimes),
+                plot_adj_Vm=plot_adj_Vm,  # Add this parameter to plot_all
+                plot_total_AC=plot_total_AC  # Add this parameter to plot_all
+            )
 
 def get_soma_adjacent_segments(soma):
 	"""
@@ -349,7 +356,7 @@ def plot_all(
 		if (vlines is not None) and (j == 0):
 			for ap_index, vline in enumerate(vlines):
 				if ap_index == 0: # only label one so that legend is not outrageous
-					ax.vlines(vline, ymin = ax.get_ylim()[0], ymax = ax.get_ylim()[1], color = 'black', label = 'AP time', linestyle = 'dashed')
+					ax.vlines(vline, ymin = -2, ymax = 2, color = 'black', label = 'AP time', linestyle = 'dashed') #ax.get_ylim()[0], ymax = ax.get_ylim()[1], color = 'black', label = 'AP time', linestyle = 'dashed')
 				else:
 					ax.vlines(vline, ymin = ax.get_ylim()[0], ymax = ax.get_ylim()[1], color = 'black', linestyle = 'dashed')
 
@@ -493,7 +500,7 @@ def analyze_currents(parameters: SimulationParameters):
 				print(f"{channel}: {current:.4f} nA")
 
 	if how_to_plot['soma spikes']: # plots voltage, axial current, and membrane currents around spike times.
-		print(f'number of spikes: {len(sm.soma_spiketimes)}, firing rate: {len(sm.soma_spikestimes)/(len(sm.segments[0].v)*parameters.h_dt/1000)}')
+		print(f'number of spikes: {len(sm.soma_spiketimes)}, firing rate: {len(sm.soma_spiketimes)/(len(sm.segments[0].v)*parameters.h_dt/1000)}')
 		plot_around_spikes(sm.soma_spiketimes, number_to_plot=soma_spike_settings["number"], segments_to_plot=segments_to_plot, t=t, current_types=current_types, save_path=save_path, sm=sm, t_range=soma_spike_settings["range"], plot_adj_Vm=soma_spike_settings['plot_adj_Vm'], plot_total_AC=soma_spike_settings['plot_total_AC'])
 
 	if how_to_plot["specific_time"]:  # plots voltage, axial current, and membrane currents around a specific time.

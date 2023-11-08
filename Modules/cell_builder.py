@@ -48,6 +48,21 @@ def log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip):
 	val = np.random.lognormal(gmax_mean, gmax_std, size)
 	s = gmax_scalar * float(np.clip(val, clip[0], clip[1]))
 	return s
+ 
+def binned_log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip):
+	val = np.random.lognormal(gmax_mean, gmax_std, size)
+	s = gmax_scalar * float(np.clip(val, clip[0], clip[1]))
+
+	# Bin
+	num_bins = 32
+	bin_size = (clip[1] - clip[0]) / num_bins
+	bins = np.arange(0, clip[1], bin_size)
+	ind = np.digitize(s, bins)
+
+	if ind == num_bins:
+		return bins[-1]
+	else:
+		return bins[ind]
 
 # Firing rate distribution
 def exp_levy_dist(alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1):
@@ -116,8 +131,8 @@ class CellBuilder:
 			synapse_generator = synapse_generator,
 			no_soma_segments = no_soma_segments,
 			no_soma_len_per_segment = no_soma_len_per_segment,
-			all_segments = all_segments,
-			all_SA_per_segment = all_SA_per_segment,
+			all_segments = no_soma_segments,
+			all_SA_per_segment = no_soma_SA_per_segment,
 			random_state = random_state,
 			neuron_r = neuron_r
 		)
@@ -232,7 +247,7 @@ class CellBuilder:
 				amp = self.parameters.h_i_amplitude)
 			
 		self.logger.log(f"There were {len(cell.errors_in_setting_params)} errors when trying to insert unused channels.")
-		self.logger.log(f"The Sections in cell.all before returning from cell_builder.build_cell(): {cell.all}")
+		#self.logger.log(f"The Sections in cell.all before returning from cell_builder.build_cell(): {cell.all}")
 
 		return cell, dummy_cell, cell.synapses.copy()
 
@@ -347,7 +362,7 @@ class CellBuilder:
 
 		# Distribution of mean firing rates
 		#mean_fr_dist = partial(exp_levy_dist, alpha = 1.37, beta = -1.00, loc = 5.3, scale = 0.44, size = 1)
-		mean_fr_dist = partial(gamma_dist, mean = 5.3, size = 1)
+		mean_fr_dist = partial(gamma_dist, mean = self.parameters.exc_mean_fr, size = 1)
 
 		t = np.arange(0, self.parameters.h_tstop, 1)
 
@@ -447,17 +462,27 @@ class CellBuilder:
 		exc_gmax_mean_0 = self.parameters.exc_gmax_mean_0
 		exc_gmax_std_0 = self.parameters.exc_gmax_std_0
 
-		gmax_mean = np.log(exc_gmax_mean_0) - 0.5 * np.log((exc_gmax_std_0 / exc_gmax_mean_0) ** 2 + 1)
-		gmax_std = np.sqrt(np.log((exc_gmax_std_0 / exc_gmax_mean_0) ** 2 + 1))
+		gmax_mean = exc_gmax_mean_0#np.log(exc_gmax_mean_0) - 0.5 * np.log((exc_gmax_std_0 / exc_gmax_mean_0) ** 2 + 1)
+		gmax_std = exc_gmax_std_0#np.sqrt(np.log((exc_gmax_std_0 / exc_gmax_mean_0) ** 2 + 1))
+
 
 		# gmax distribution
-		gmax_exc_dist = partial(
-			log_norm_dist, 
-			gmax_mean, 
-			gmax_std, 
-			self.parameters.exc_scalar, 
-			size = 1, 
-			clip = self.parameters.exc_gmax_clip)
+		if self.parameters.bin_exc_gmax:
+				gmax_exc_dist = partial(
+						binned_log_norm_dist, 
+						gmax_mean, 
+						gmax_std, 
+						self.parameters.exc_scalar, 
+						size = 1, 
+						clip = self.parameters.exc_gmax_clip)
+		else:
+				gmax_exc_dist = partial(
+						log_norm_dist, 
+						gmax_mean, 
+						gmax_std, 
+						self.parameters.exc_scalar, 
+						size = 1, 
+						clip = self.parameters.exc_gmax_clip)
 		
 		# exc release probability distribution everywhere
 		exc_P_dist = partial(

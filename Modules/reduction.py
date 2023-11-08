@@ -35,6 +35,7 @@ class Reductor():
             return cell
         
         # Cell reduction
+        print(f"Using subtree_reductor on {complex_cell}")
         reduced_cell, hoc_synapses_list, netcons_list, txt_nr = subtree_reductor(
             complex_cell, list(py_to_hoc_synapses.values()), netcons_list, reduction_frequency, return_seg_to_seg=True)
 
@@ -46,6 +47,24 @@ class Reductor():
         #surviving_hoc_synapses = set(hoc_synapses_list)
         print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} surviving_hoc_synapses length after NR: {len(surviving_hoc_synapses)}")
         
+        # NR cell       
+        #print(f"dir reduced_cell: {dir(reduced_cell)}")
+        print()
+        print(f"reduced_cell.all: {getattr(reduced_cell, 'all', 'Not found')}")
+        print(f"reduced_cell.dend: {getattr(reduced_cell, 'dend', 'Not found')}")
+        print(f"reduced_cell.apic: {getattr(reduced_cell, 'apic', 'Not found')}")
+        print(f"reduced_cell.soma: {getattr(reduced_cell, 'soma', 'Not found')}")
+        print(f"reduced_cell.axon: {getattr(reduced_cell, 'axon', 'Not found')}")
+        print()
+
+        #print(f"dir reduced_cell.hoc_model: {dir(reduced_cell.hoc_model)}")
+        print()
+        print(f"reduced_cell.hoc_model.all: {getattr(reduced_cell.hoc_model, 'all', 'Not found')}")
+        print(f"reduced_cell.hoc_model.dend: {getattr(reduced_cell.hoc_model, 'dend', 'Not found')}")
+        print(f"reduced_cell.hoc_model.apic: {getattr(reduced_cell.hoc_model, 'apic', 'Not found')}")
+        print(f"reduced_cell.hoc_model.soma: {getattr(reduced_cell.hoc_model, 'soma', 'Not found')}")
+        print(f"reduced_cell.hoc_model.axon: {getattr(reduced_cell.hoc_model, 'axon', 'Not found')}")
+        
         py_synapses_list[:] = [syn for syn, hoc_syn in py_to_hoc_synapses.items() if hoc_syn in surviving_hoc_synapses]
         print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} py_synapses_list length and removing py_syns that did not represent a surviving hoc_syn after NR: {len(py_synapses_list)}")
 
@@ -55,23 +74,6 @@ class Reductor():
             return self._handle_cable_expansion(reduced_cell, py_synapses_list, hoc_synapses_list, netcons_list, reduction_frequency, 
                                                 random_state, spike_trains, spike_threshold, var_names, seg_to_record, choose_branches, vector_length)
         
-        # only for NR cell       
-        print(f"dir reduced_cell: {dir(reduced_cell)}")
-        print()
-        print(f"reduced_cell.all: {getattr(reduced_cell, 'all', 'Not found')}")
-        print(f"reduced_cell.dend: {getattr(reduced_cell, 'dend', 'Not found')}")
-        print(f"reduced_cell.apic: {getattr(reduced_cell, 'apic', 'Not found')}")
-        print(f"reduced_cell.soma: {getattr(reduced_cell, 'soma', 'Not found')}")
-        print(f"reduced_cell.axon: {getattr(reduced_cell, 'axon', 'Not found')}")
-        print()
-
-        print(f"dir reduced_cell.hoc_model: {dir(reduced_cell.hoc_model)}")
-        print()
-        print(f"reduced_cell.hoc_model.all: {getattr(reduced_cell.hoc_model, 'all', 'Not found')}")
-        print(f"reduced_cell.hoc_model.dend: {getattr(reduced_cell.hoc_model, 'dend', 'Not found')}")
-        print(f"reduced_cell.hoc_model.apic: {getattr(reduced_cell.hoc_model, 'apic', 'Not found')}")
-        print(f"reduced_cell.hoc_model.soma: {getattr(reduced_cell.hoc_model, 'soma', 'Not found')}")
-        print(f"reduced_cell.hoc_model.axon: {getattr(reduced_cell.hoc_model, 'axon', 'Not found')}")
 
         
         
@@ -115,7 +117,8 @@ class Reductor():
 
         # get new py_to_hoc dictionary in case py_synapses_list changed from neuron_reduce
         py_to_hoc_synapses = {syn: syn.synapse_hoc_obj for syn in py_synapses_list}
-
+        print(f"number of dend sections in NR cell: {len(reduced_cell.dend)}")
+        print(f"Using cable_expander on {reduced_cell}")
         expanded_cell, hoc_synapses_list, netcons_list, _ = cable_expander(
             reduced_cell, 
             sections_to_expand, 
@@ -150,7 +153,7 @@ class Reductor():
         print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Finish adding py synapses to list after cable expander. {len(py_synapses_list)}")
         
         # examining section lists # Cable expander
-        print(f"dir expanded_cell: {dir(expanded_cell)}")
+        #print(f"dir expanded_cell: {dir(expanded_cell)}")
         print()
         print(f"expanded_cell.all: {getattr(expanded_cell, 'all', 'Not found')}")
         print(f"expanded_cell.dend: {getattr(expanded_cell, 'dend', 'Not found')}")
@@ -158,14 +161,37 @@ class Reductor():
         print(f"expanded_cell.soma: {getattr(expanded_cell, 'soma', 'Not found')}")
         print(f"expanded_cell.axon: {getattr(expanded_cell, 'axon', 'Not found')}")
         print()
-
-        print(f"dir expanded_cell.hoc_model: {dir(reduced_cell.hoc_model)}")
-        print()
-        print(f"expanded_cell.hoc_model.all: {getattr(expanded_cell.hoc_model, 'all', 'Not found')}")
-        print(f"expanded_cell.hoc_model.dend: {getattr(expanded_cell.hoc_model, 'dend', 'Not found')}")
-        print(f"expanded_cell.hoc_model.apic: {getattr(expanded_cell.hoc_model, 'apic', 'Not found')}")
-        print(f"expanded_cell.hoc_model.soma: {getattr(expanded_cell.hoc_model, 'soma', 'Not found')}")
-        print(f"expanded_cell.hoc_model.axon: {getattr(expanded_cell.hoc_model, 'axon', 'Not found')}")
+        # Define a function to iterate through a SectionList and return a list of sections
+        def print_section_list(section_list_name, section_list):
+            if section_list is None:
+                return f"{section_list_name}: Not found"
+            sections = []
+            for sec in section_list:
+                try:
+                    # Try to get some identifying property of the section
+                    # Assuming 'name' is a property you can change this to the appropriate method/attribute
+                    section_name = sec.name()
+                    sections.append(section_name)
+                except Exception as e:
+                    # If an exception occurs, print a message and continue with the next section
+                    print(f"Error accessing section in {section_list_name}: {e}")
+                    sections.append(f"<Error: Section could not be accessed>")
+            return sections
+        #debugging
+        print(h.topology())
+        # Now use this function to print the contents of each SectionList
+#        print(f"expanded_cell.hoc_model.all: {print_section_list('all', getattr(expanded_cell.hoc_model, 'all', None))}")
+#        print(f"expanded_cell.hoc_model.soma: {print_section_list('soma', getattr(expanded_cell.hoc_model, 'soma', None))}")
+#        print(f"expanded_cell.hoc_model.dend: {print_section_list('dend', getattr(expanded_cell.hoc_model, 'dend', None))}")
+#        print(f"expanded_cell.hoc_model.apic: {print_section_list('apic', getattr(expanded_cell.hoc_model, 'apic', None))}")
+#        print(f"expanded_cell.hoc_model.axon: {print_section_list('axon', getattr(expanded_cell.hoc_model, 'axon', None))}")
+        #print(f"dir expanded_cell.hoc_model: {dir(reduced_cell.hoc_model)}")
+        #print()
+        #print(f"expanded_cell.hoc_model.all: {getattr(expanded_cell.hoc_model, 'all', 'Not found')}")
+        #print(f"expanded_cell.hoc_model.dend: {getattr(expanded_cell.hoc_model, 'dend', 'Not found')}")
+        #print(f"expanded_cell.hoc_model.apic: {getattr(expanded_cell.hoc_model, 'apic', 'Not found')}")
+        #print(f"expanded_cell.hoc_model.soma: {getattr(expanded_cell.hoc_model, 'soma', 'Not found')}")
+        #print(f"expanded_cell.hoc_model.axon: {getattr(expanded_cell.hoc_model, 'axon', 'Not found')}")
         
         return self._post_process_reduced_cell(expanded_cell, py_synapses_list, netcons_list, spike_trains, 
                                                spike_threshold, random_state, var_names, seg_to_record)

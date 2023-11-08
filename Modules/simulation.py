@@ -9,6 +9,7 @@ from cell_inference.utils.currents.ecp import EcpMod
 from neuron import h
 
 import os, datetime
+import time
 import pickle, h5py
 
 from multiprocessing import Pool, cpu_count
@@ -63,12 +64,12 @@ class Simulation:
         # Build the cell
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
         cell, _, synapses = cell_builder.build_cell()
-        self.logger.log(f"The Sections in cell.all after returning from cell_builder.build_cell(): {cell.all}")
+        #self.logger.log(f"The Sections in cell.all after returning from cell_builder.build_cell(): {cell.all}")
 
-        print("SIM")
-        print(len(cell.synapses))
-        print("RETURNED SYNS")
-        print(len(synapses))
+        #print("SIM")
+        #print(len(cell.synapses))
+        #print("RETURNED SYNS")
+        #print(len(synapses))
 #        for synapse in synapses:
 #            synapse.segment=synapse.get_segment()
 #            print(synapse.segment, " : ", synapse.current_type, " : ", len(synapse.rec_vec))
@@ -114,35 +115,46 @@ class Simulation:
 
         h.finitialize(h.v_init)
 
-        self.logger.log("Starting simulation.")
-        while h.t <= h.tstop + 1:
 
+        # print the topology
+        #print(h.topology())
+        #print(f"sections right before simulation")
+        #for sec in cell.all:
+        #  print(f"{str(sec)} {sec} {sec(0.5)}")
+        #print(f"segments before simulation")
+        #for seg in cell.segments:
+        #  print(seg)
+        for synapse in cell.synapses:
+          synapse.segment = synapse.get_segment()
+        self.logger.log("Starting simulation.")
+        
+        # Initialize the time_step and other variables here
+        # Assume h, parameters, self.logger, cell, ecp are already defined above
+        
+        time_step = 0  # Assuming time_step starts at 0
+        start_time = time.time()  # Record the start time before entering the loop
+        
+        while h.t <= h.tstop + 1:
             if (time_step > 0) & (time_step % (parameters.save_every_ms / parameters.h_dt) == 0):
                 # Log progress
                 self.logger.log_step(time_step)
-
+                #self.logger.log_step(" Generating recorder data for timestep")
                 # Save data
                 cell.generate_recorder_data(parameters.vector_length)
+                #self.logger.log_step("Finish generating recorder data for timestep")
                 cell.write_data(os.path.join(parameters.path, f"saved_at_step_{time_step}"))
-
+                #self.logger.log_step("Finish Writing Data for timestep")
                 # Save lfp
                 loc_param = [0., 0., 45., 0., 1., 0.]
                 lfp = ecp.calc_ecp(move_cell = loc_param).T  # Unit: mV
-
+        
                 with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
                     file.create_dataset("report/biophysical/data", data = lfp)
-
+        
                 # Save net membrane current
                 with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "i_membrane_report.h5"), 'w') as file:
                     file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
-
-                # Save time
-                # with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "t.h5"), 'w') as file:
-                #    file.create_dataset("report/biophysical/data", data = t_vec.as_numpy())
-
-                # Reinitialize vectors: https://www.neuron.yale.edu/phpBB/viewtopic.php?t=2579
-                # t_vec.resize(0)
-                # for vec in V_rec.vectors: vec.resize(0)
+        
                 for vec in cell.Vm.vectors: vec.resize(0)
                 for recorder in cell.recorders.items():
                     for vec in recorder[1].vectors: vec.resize(0)
@@ -155,8 +167,16 @@ class Simulation:
                 
                 for vec in ecp.im_rec.vectors: vec.resize(0)
 
+        
+                #self.logger.log_step("Finish resizing recording vectors for timestep")
             h.fadvance()
             time_step += 1
+        
+        end_time = time.time()  # Record the end time after the loop
+        elapsed_time = end_time - start_time  # Calculate the elapsed time
+        print(f"The loop took {elapsed_time} seconds to run.")
+
+            
 
     def construct_seg_indexes(self, cell, parameters):
         soma_seg_index = cell.segments.index(cell.soma[0](0.5))

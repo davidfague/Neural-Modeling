@@ -95,8 +95,8 @@ def analyse_spikes(parameters: SimulationParameters):
 	plt.plot(sm.segments[0].v)
 	plt.savefig(os.path.join(parameters.path, "v.png"))
 
-	plt.plot(sm.segments[0].imembrane)
-	plt.savefig(os.path.join(parameters.path, "im.png"))
+	plt.plot(sm.segments[0].inmda)
+	plt.savefig(os.path.join(parameters.path, "inmda.png"))
 
 	if what_to_plot["Na"]:
 			# Get lower bounds for Na

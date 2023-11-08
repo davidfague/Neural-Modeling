@@ -86,7 +86,7 @@ proc biophys() {
     gamma_CaDynamics_E2 = 0.000509 
     gSK_E2bar_SK_E2 = 0.0012
   	gSKv3_1bar_SKv3_1 = 0.000261
-  	gNaTa_tbar_NaTa_t = 3.0*0.0213 
+  	gNaTa_tbar_NaTa_t = 0.0213 //* 1.5//*3.0
   	gImbar_Im = 0.0000675 
 		insert Ih
 		gIhbar_Ih = 0.0002
