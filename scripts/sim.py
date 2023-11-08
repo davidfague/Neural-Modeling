@@ -14,17 +14,17 @@ if __name__ == "__main__":
     sim = Simulation(SkeletonCell.Hay) # Detailed (all 3 if in-vivo)
     #sim.submit_job(HayParameters("try1", h_tstop = 4000 ))#reduce_cell = True, expand_cable=True))
     
-#    for amp in [-2.0,-1.0,-0.5,0.0,0.25,0.5,0.6,0.75,1.0,1.5,2.0]:
-#     sim.submit_job(HayParameters(sim_name=f"FI_HAY_DR_{int(amp*1000)}", reduce_cell=True, expand_cable=True, 
-#       CI_on=True, h_i_amplitude=amp, h_i_duration=10000, h_i_delay=1000, h_tstop=11000))
-#     sim.submit_job(HayParameters(sim_name=f"FI_HAY_NR_{int(amp*1000)}", reduce_cell=True, expand_cable=False, 
-#       CI_on=True, h_i_amplitude=amp, h_i_duration=10000, h_i_delay=1000, h_tstop=11000))
-#     sim.submit_job(HayParameters(sim_name=f"FI_HAY_DET_{int(amp*1000)}", reduce_cell=False, expand_cable=False, 
-#       CI_on=True, h_i_amplitude=amp, h_i_duration=10000, h_i_delay=1000, h_tstop=11000))
+    for amp in [-2.0,-1.0,-0.5,0.0,0.25,0.5,0.6,0.75,1.0,1.5,2.0]:
+     sim.submit_job(HayParameters(sim_name=f"FI_HAY_DR_{int(amp*1000)}", reduce_cell=True, expand_cable=True, 
+       CI_on=True, h_i_amplitude=amp, h_i_duration=10000, h_i_delay=1000, h_tstop=11000))
+     sim.submit_job(HayParameters(sim_name=f"FI_HAY_NR_{int(amp*1000)}", reduce_cell=True, expand_cable=False, 
+       CI_on=True, h_i_amplitude=amp, h_i_duration=10000, h_i_delay=1000, h_tstop=11000))
+     sim.submit_job(HayParameters(sim_name=f"FI_HAY_DET_{int(amp*1000)}", reduce_cell=False, expand_cable=False, 
+       CI_on=True, h_i_amplitude=amp, h_i_duration=10000, h_i_delay=1000, h_tstop=11000))
 #    
-    sim.submit_job(HayParameters(sim_name=f"HAY_DET_sim", reduce_cell=False, expand_cable=False))
-    sim.submit_job(HayParameters(sim_name=f"HAY_NR_sim", reduce_cell=True, expand_cable=False))
-    sim.submit_job(HayParameters(sim_name=f"HAY_DR_sim", reduce_cell=True, expand_cable=True))
+#    sim.submit_job(HayParameters(sim_name=f"HAY_DET_sim", reduce_cell=False, expand_cable=False))
+ #   sim.submit_job(HayParameters(sim_name=f"HAY_NR_sim", reduce_cell=True, expand_cable=False))
+  #  sim.submit_job(HayParameters(sim_name=f"HAY_DR_sim", reduce_cell=True, expand_cable=True))
       
     sim.run()
     

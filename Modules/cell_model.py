@@ -222,12 +222,12 @@ class CellModel:
                 elif var_name.startswith('i'):
                     channels_set.add('_'.join(split_name[1:]))
         Neymotin_channels = ['nax', 'kdmc', 'kap', 'kdr', 'hd'] # have different attribute structure as a result of the modfile
-        print(channels_set)
-	self.CHANNELS = [
+        #print(channels_set)
+        self.CHANNELS = [
             (channel, f'gbar') if channel in Neymotin_channels else (channel, f'g{channel}bar') 
             for channel in channels_set
         ]
-	print(self.CHANNELS)
+        #print(self.CHANNELS)
 	
     def insert_unused_channels(self):
         '''
