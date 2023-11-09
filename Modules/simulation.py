@@ -62,16 +62,7 @@ class Simulation:
 
         # Build the cell
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
-        cell, _, synapses = cell_builder.build_cell()
-        self.logger.log(f"The Sections in cell.all after returning from cell_builder.build_cell(): {cell.all}")
-
-        print("SIM")
-        print(len(cell.synapses))
-        print("RETURNED SYNS")
-        print(len(synapses))
-#        for synapse in synapses:
-#            synapse.segment=synapse.get_segment()
-#            print(synapse.segment, " : ", synapse.current_type, " : ", len(synapse.rec_vec))
+        cell = cell_builder.build_cell()
 
         # Construct segment indexes
         seg_indexes = self.construct_seg_indexes(cell, parameters)
@@ -93,12 +84,6 @@ class Simulation:
         # Save constants
         with open(os.path.join(parameters.path, "parameters.pickle"), "wb") as file:
             pickle.dump(parameters, file)
-
-        # Set up recorder vectors
-
-        #t_vec = h.Vector(parameters.vector_length).record(h._ref_t)
-        #V_rec = Recorder(cell.segments, vector_length = parameters.vector_length)
-
 
         # In time stamps, i.e., ms / dt
         time_step = 0
@@ -123,7 +108,7 @@ class Simulation:
 
                 # Save data
                 cell.generate_recorder_data(parameters.vector_length)
-                cell.write_data(os.path.join(parameters.path, f"saved_at_step_{time_step}"))
+                cell.write_recorder_data(os.path.join(parameters.path, f"saved_at_step_{time_step}"))
 
                 # Save lfp
                 loc_param = [0., 0., 45., 0., 1., 0.]
@@ -136,52 +121,43 @@ class Simulation:
                 with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "i_membrane_report.h5"), 'w') as file:
                     file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
 
-                # Save time
-                # with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "t.h5"), 'w') as file:
-                #    file.create_dataset("report/biophysical/data", data = t_vec.as_numpy())
-
                 # Reinitialize vectors: https://www.neuron.yale.edu/phpBB/viewtopic.php?t=2579
-                # t_vec.resize(0)
-                # for vec in V_rec.vectors: vec.resize(0)
-                for vec in cell.Vm.vectors: vec.resize(0)
-                for recorder in cell.recorders.items():
-                    for vec in recorder[1].vectors: vec.resize(0)
-                cell.spikes.resize(0)
-
-                for inj in cell.injection: inj.rec_vec.resize(0)
+                for recorder in cell.recorders:
+                    recorder.vec.resize(0)
 
                 for syn in cell.synapses:
                     for vec in syn.rec_vec: vec.resize(0)
-                
+
                 for vec in ecp.im_rec.vectors: vec.resize(0)
 
             h.fadvance()
             time_step += 1
 
     def construct_seg_indexes(self, cell, parameters):
-        soma_seg_index = cell.segments.index(cell.soma[0](0.5))
-        axon_seg_index = cell.segments.index(cell.axon[-1](0.9))
-        basal_seg_index = cell.segments.index(cell.basals[0](0.5))
-        trunk_seg_index = cell.segments.index(cell.apic[0](0.999))
+        _, _, segments = cell.get_segments()
+        soma_seg_index = segments.index(cell.soma[0](0.5))
+        axon_seg_index = segments.index(cell.axon[-1](0.9))
+        basal_seg_index = segments.index(cell.basals[0](0.5))
+        trunk_seg_index = segments.index(cell.apic[0](0.999))
 
         # Find tuft and nexus
         # Dendritic reduced model
         if (parameters.reduce_cell == True) and (parameters.expand_cable == True):
             # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
-            tuft_seg_index = tuft_seg_index=cell.segments.index(cell.tufts[0](0.5))
-            nexus_seg_index = cell.segments.index(cell.apic[0](0.99))
+            tuft_seg_index = tuft_seg_index = segments.index(cell.tufts[0](0.5))
+            nexus_seg_index = segments.index(cell.apic[0](0.99))
             # NR model
         elif (parameters.reduce_cell == True) and (parameters.expand_cable == False):
             # tufts[0] will be the cable that is both trunk and tuft in this case, so we have to specify near end of cable
-            tuft_seg_index = cell.segments.index(cell.tufts[0](0.9))
-            nexus_seg_index = cell.segments.index(cell.apic[0](0.289004))
+            tuft_seg_index = segments.index(cell.tufts[0](0.9))
+            nexus_seg_index = segments.index(cell.apic[0](0.289004))
         else: # Complex cell
             # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
-            tuft_seg_index = cell.segments.index(cell.tufts[0](0.5))
+            tuft_seg_index = segments.index(cell.tufts[0](0.5))
             if self.cell_type == SkeletonCell.NeymotinDetailed:
-                nexus_seg_index = cell.segments.index(cell.apic[24](0.99)) # May need to adjust
+                nexus_seg_index = segments.index(cell.apic[24](0.99)) # May need to adjust
             else:
-                nexus_seg_index=cell.segments.index(cell.apic[36](0.961538))
+                nexus_seg_index = segments.index(cell.apic[36](0.961538))
 
         seg_indexes = {
             "soma": soma_seg_index,

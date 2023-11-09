@@ -87,7 +87,8 @@ def create_functional_groups(seg_id_to_functional_group_index: list, segments_co
 
 		# Gather functional group segments
 		functional_group_target_segments_indices = []
-		for seg_ind, seg in enumerate(cell.seg_info):
+		seg_info = cell.get_seg_info()
+		for seg_ind, seg in enumerate(seg_info):
 			if seg_id_to_functional_group_index[seg_ind] == functional_group_index: # Segment is in functional group targets
 				functional_group_target_segments_indices.append(seg_ind)
 

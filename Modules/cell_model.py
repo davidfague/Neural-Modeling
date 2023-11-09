@@ -7,6 +7,8 @@ from neuron import h
 from Modules.recorder import Recorder, SpikeRecorder
 from Modules.logger import Logger
 
+from dataclasses import dataclass
+
 class CellModel:
 
 	FREQS = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
@@ -31,27 +33,11 @@ class CellModel:
 
 		# Adjust the number of soma segments
 		if self.soma[0].nseg != 1:
-			self.soma[0].nseg = 1
 			self.logger.log(f"CellModel: changed soma nseg from {self.soma[0].nseg} to 1.")
+			self.soma[0].nseg = 1
 
 		# Adjust coordinates
 		self.assign_sec_coords(random_state)
-
-		#TODO: make empty on init, generate as needed?
-		# ----------
-		# Regions
-		self.basals = self.find_terminal_sections(self.dend)
-		self.tufts = []
-		self.obliques = []
-		for sec in self.find_terminal_sections(self.apic):
-			if h.distance(self.soma[0](0.5), sec(0.5)) > 800:
-				self.tufts.append(sec)
-			else:
-				self.obliques.append(sec)
-
-		# Trunk is a branch vs not a branch
-		self.nbranch = len(self.tufts) + len(self.basals) if len(self.tufts == 1) else len(self.tufts) - 1 + len(self.basals)
-		# ----------
 
 		# Connectivity
 		self.synapses = []
@@ -76,20 +62,24 @@ class CellModel:
 		# 	try: sec.insert("ursadonny")
 		# 	except Exception as e: self.errors_in_setting_params.append(e)
 
-	def get_segments(self) -> tuple:
-		'''
-		Returns:
-		'''
-		nseg = 0
-		sec_id_in_seg = []
-		segments = []
+	def get_basals(self) -> list:
+		return self.find_terminal_sections(self.dend)
+	
+	def get_tufts(self) -> tuple:
+		tufts = []
+		obliques = []
+		for sec in self.find_terminal_sections(self.apic):
+			if h.distance(self.soma[0](0.5), sec(0.5)) > 800:
+				tufts.append(sec)
+			else:
+				obliques.append(sec)
 
-		for sec in self.all:
-			sec_id_in_seg.append(nseg)
-			nseg += sec.nseg
-			for seg in sec: segments.append(seg)
-
-		return nseg, sec_id_in_seg, segments
+		return tufts, obliques
+	
+	def get_nbranch(self) -> int:
+		tufts, _ = self.get_tufts()
+		basals = self.get_basals()
+		return len(tufts) + len(basals) if len(tufts) == 1 else len(tufts) - 1 + len(basals)
 
 	def assign_sec_coords(self, random_state: np.random.RandomState) -> None:
 
@@ -240,14 +230,14 @@ class CellModel:
 		return new_section_list
 
 	def add_recorders(self, names: list, vector_length: int):
-		segments = self.get_segments()
+		_, _, segments = self.get_segments()
 		for name in names:
 			for seg in segments:
 				try: self.recorders.append(Recorder(seg, name, vector_length))
 				except: continue
 
 	def get_recorded_currents_from_synapses(self, vector_length):
-		segments = self.get_segments()
+		_, _, segments = self.get_segments()
 		numTstep = vector_length
 		i_NMDA_bySeg = [[0] * (numTstep)] * len(segments)
 		i_AMPA_bySeg = [[0] * (numTstep)] * len(segments)
@@ -325,7 +315,7 @@ class CellModel:
 
 		# Postprocess seg_info
 		seg_info = self.recompute_parent_segment_ids(seg_info)
-		seg_info = self.recompute_segment_elec_distance(self, seg_info, self.soma[0](0.5), "soma")
+		seg_info = self.recompute_segment_elec_distance(seg_info, self.soma[0](0.5), "soma")
 		seg_info = self.recompute_netcons_per_seg(seg_info)
 		seg_info = self.compute_adjacent_segments(seg_info)
 
@@ -377,7 +367,7 @@ class CellModel:
 			for seg in self.seg_info:
 				seg['seg_elec_distance'] = {}
 
-		segments = self.get_segments()
+		_, _, segments = self.get_segments()
 		
 		passive_imp = h.Impedance()
 		passive_imp.loc(segment)
@@ -387,7 +377,7 @@ class CellModel:
 	
 		for freq_name, freq_hz in self.FREQS.items():
 			passive_imp.compute(freq_hz + 1 / 9e9, 0) 
-			active_imp.compute(freq_hz + 1 / 9e9, 1) 
+			active_imp.compute(freq_hz + 1 / 9e9, 1)
 			for i, seg in enumerate(segments):
 				elec_dist_info = {
 					f'{seg_name}_active': active_imp.ratio(seg.sec(seg.x)),
@@ -402,7 +392,7 @@ class CellModel:
 	
 	def compute_adjacent_segments(self, seg_info) -> list:
 
-		segments = self.get_segments()
+		_, _, segments = self.get_segments()
 
 		for i in range(len(seg_info)):
 			psegid = seg_info[i]['pseg_index']
@@ -530,58 +520,88 @@ class CellModel:
 		self.current_injection.delay = delay
 
 	
-	def get_seg_coords(self) -> pd.DataFrame:
-		nseg_total = sum(sec.nseg for sec in self.all)
-		p0, p05, p1 = np.zeros((nseg_total, 3)), np.zeros((nseg_total, 3)), np.zeros((nseg_total, 3))
-		r = np.zeros(nseg_total)
+	def get_coords_of_segments_in_section(self, sec) -> pd.DataFrame:
 
-		seg_idx = 0
-		for sec in self.all:
-			seg_length = sec.L / sec.nseg
+		seg_coords = np.zeros(sec.nseg, 13)
 
-			arc_lengths = [sec.arc3d(i) for i in range(sec.n3d())]
-			coords = np.array([[sec.x3d(i), sec.y3d(i), sec.z3d(i)] for i in range(sec.n3d())])
+		seg_length = sec.L / sec.nseg
+		arc_lengths = [sec.arc3d(i) for i in range(sec.n3d())]
+		coords = np.array([[sec.x3d(i), sec.y3d(i), sec.z3d(i)] for i in range(sec.n3d())])
 
-			for seg in sec:
-				start = seg.x * sec.L - seg_length / 2
-				end = seg.x * sec.L + seg_length / 2
-				mid = seg.x * sec.L
-			
-				for i in range(len(arc_lengths) - 1):
-					# Check if segment's middle is between two 3D coordinates
-					if arc_lengths[i] <= mid < arc_lengths[i+1]:
-						t = (mid - arc_lengths[i]) / (arc_lengths[i+1] - arc_lengths[i])
-						pt = coords[i] + (coords[i+1] - coords[i]) * t
-			
-						# Calculate the start and end points of the segment
-						direction = (coords[i+1] - coords[i]) / np.linalg.norm(coords[i+1] - coords[i])
-						p0[seg_idx] = pt - direction * seg_length / 2
-						p1[seg_idx] = pt + direction * seg_length / 2
-			
-						# Correct the start point if it goes before 3D coordinates
-						while (i > 0) and (start < arc_lengths[i]):  # Added boundary check i > 0
-							i -= 1
-							direction = (coords[i+1] - coords[i]) / np.linalg.norm(coords[i+1] - coords[i])
-							p0[seg_idx] = coords[i] + direction * (start - arc_lengths[i])
-			
-						# Correct the end point if it goes beyond 3D coordinates
-						while (end > arc_lengths[i+1]) and (i+2 < len(arc_lengths)):
-							i += 1
-							direction = (coords[i+1] - coords[i]) / np.linalg.norm(coords[i+1] - coords[i])
-							p1[seg_idx] = coords[i] + direction * (end - arc_lengths[i])
-			
-						p05[seg_idx] = pt
-						r[seg_idx] = seg.diam / 2
-						seg_idx += 1
-						break
+		seg_idx_in_sec = 0
+		for seg in sec:
+			start = seg.x * sec.L - seg_length / 2
+			end = seg.x * sec.L + seg_length / 2
+			mid = seg.x * sec.L
+		
+			for i in range(len(arc_lengths) - 1):
+				# Check if segment's middle is between two 3D coordinates
+				if (arc_lengths[i] <= mid < arc_lengths[i+1]) == False:
+					continue
+
+				t = (mid - arc_lengths[i]) / (arc_lengths[i+1] - arc_lengths[i])
+				pt = coords[i] + (coords[i+1] - coords[i]) * t
+	
+				# Calculate the start and end points of the segment
+				direction = (coords[i+1] - coords[i]) / np.linalg.norm(coords[i+1] - coords[i])
+
+				# p0
+				seg_coords[seg_idx_in_sec, 0:3] = pt - direction * seg_length / 2
+				# Correct the start point if it goes before 3D coordinates
+				while (i > 0) and (start < arc_lengths[i]):  # Added boundary check i > 0
+					i -= 1
+					direction = (coords[i+1] - coords[i]) / np.linalg.norm(coords[i+1] - coords[i])
+					seg_coords[seg_idx_in_sec, 0:3] = coords[i] + direction * (start - arc_lengths[i])
+
+				# p05
+				seg_coords[seg_idx_in_sec, 3:6] = pt
+
+				# p1
+				seg_coords[seg_idx_in_sec, 6:9] = pt + direction * seg_length / 2
+	
+				# Correct the end point if it goes beyond 3D coordinates
+				while (end > arc_lengths[i+1]) and (i+2 < len(arc_lengths)):
+					i += 1
+					direction = (coords[i+1] - coords[i]) / np.linalg.norm(coords[i+1] - coords[i])
+					seg_coords[seg_idx_in_sec, 6:9] = coords[i] + direction * (end - arc_lengths[i])
+	
+				seg_coords[seg_idx_in_sec, 9] = seg.diam / 2
+				seg_idx_in_sec += 1
+
+		# Compute length (dl)
+		seg_coords[:, 10:13] = seg_coords[:, 6:9] - seg_coords[:, 0:3]
 
 		# Create a dataframe
 		colnames = [f'p0_{x}' for x in range(3)] + [f'pc_{x}' for x in range(3)] + [f'p1_{x}' for x in range(3)]
 		colnames = colnames + ['r'] + [f'dl_{x}' for x in range(3)]
-
-		seg_coords = pd.DataFrame(
-			data = np.hstack((p0, p05, p1, r.reshape((-1, 1)), p1 - p0)),
-			columns = colnames
-		)
+		seg_coords = pd.DataFrame(seg_coords, columns = colnames)
 
 		return seg_coords
+
+	def get_segments(self, section_names: list) -> list:
+		'''
+		Returns:
+		'''
+		segments = []
+
+		for sec in self.all:
+			if (sec.name() in section_names) or ("all" in section_names):
+				for index_in_section, seg in enumerate(sec):
+					data = SegmentData(
+						L = seg.sec.L / seg.sec.nseg,
+						membrane_surface_area = np.pi * seg.diam * (seg.sec.L / seg.sec.nseg),
+						coords = self.get_coords_of_segments_in_section(sec).iloc[index_in_section, :],
+						section = sec.name(),
+						index_in_section = index_in_section,
+					)
+					segments.append((seg, data))
+
+		return segments
+
+@dataclass
+class SegmentData:
+	L: float
+	membrane_surface_area: int
+	coords: pd.DataFrame
+	section: str
+	index_in_section: int
