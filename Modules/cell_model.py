@@ -4,7 +4,7 @@ import os, h5py, csv
 
 from neuron import h
 
-from Modules.recorder import Recorder
+from Modules.recorder import Recorder, SpikeRecorder
 from Modules.logger import Logger
 
 class CellModel:
@@ -63,27 +63,18 @@ class CellModel:
 
 		# Recorders
 		self.recorders = []
+
 		# By default, record spikes and membrane voltage
-		self.recorders.append(self.set_spike_recorder(self.soma[0], spike_threshold))
-		self.recorders.append(self.set_spike_recorder(self.axon[0], spike_threshold))
+		self.recorders.append(SpikeRecorder(self.soma[0], "soma_spikes", spike_threshold))
+		self.recorders.append(SpikeRecorder(self.axon[0], "axon_spikes", spike_threshold))
 
-		# Angles and rotations that were used to branch the cell
-		# Store to use for geometry file generation
-		self.sec_angs = [] 
-		self.sec_rots = []
-
-		#self.recompute_parent_segment_ids()
-		#self.recompute_segment_elec_distance(segment = self.soma[0](0.5), seg_name = "soma")
-		self.recompute_netcons_per_seg()
-		self.compute_adjacent_segments()
-
-		self.get_channels_from_var_names() # Get channel and attribute names from recorded channel name
-		self.errors_in_setting_params = self.insert_unused_channels() # Need to update with var_names
+		# self.get_channels_from_var_names() # Get channel and attribute names from recorded channel name
+		# self.errors_in_setting_params = self.insert_unused_channels() # Need to update with var_names
 
 		# Temporary fix for reference issues
-		for sec in self.all:
-			try: sec.insert("ursadonny")
-			except Exception as e: self.errors_in_setting_params.append(e)
+		# for sec in self.all:
+		# 	try: sec.insert("ursadonny")
+		# 	except Exception as e: self.errors_in_setting_params.append(e)
 
 	def get_segments(self) -> tuple:
 		'''
@@ -124,8 +115,6 @@ class CellModel:
 				self.logger.log(f"Generation of 3D coordinates resulted in change of section length for {sec} from {old_length} to {sec.L}")
 
 	def assign_coordinates_to_soma_sec(self, sec: h.Section) -> float:
-		self.sec_angs.append(0)
-		self.sec_rots.append(0)
 		sec.pt3dclear()
 		sec.pt3dadd(*[0., -1 * sec.L / 2., 0.], sec.diam)
 		sec.pt3dadd(*[0., sec.L / 2., 0.], sec.diam)
@@ -188,30 +177,6 @@ class CellModel:
 				break
 
 		return xyz
-
-	def set_spike_recorder(self, sec, spike_threshold) -> object:
-		nc = h.NetCon(sec(0.5)._ref_v, None, sec = sec)
-		nc.threshold = spike_threshold
-		vec = h.Vector()
-		nc.record(vec)
-		return vec
-	
-	def get_spike_time(self, index: object = 0) -> np.ndarray:
-		  """
-		  Return soma spike time of the cell by index (indices), ndarray (list of ndarray)
-		  Parameters
-		  index: index of the cell to retrieve the spikes from
-		  """
-		  if self.spike_threshold is None:
-			  raise ValueError("Spike recorder was not set up.")
-		  if type(index) is str and index == 'all':
-			  index = range(self.ncell)
-		  if not hasattr(index, '__len__'):
-			  spk = self.spikes.as_numpy().copy()
-		  else:
-			  index = np.asarray(index).ravel()
-			  spk = np.array([self.spikes.as_numpy().copy() for i in index], dtype=object)
-		  return spk
 		
 	def get_channels_from_var_names(self):
 		# Identifying unique channels
@@ -223,103 +188,37 @@ class CellModel:
 					channels_set.add('_'.join(split_name[2:]))
 				elif var_name.startswith('i'):
 					channels_set.add('_'.join(split_name[1:]))
-		Neymotin_channels = ['nax', 'kdmc', 'kap', 'kdr', 'hd'] # have different attribute structure as a result of the modfile
-		self.CHANNELS = [
-				(channel, f'gbar') if channel in Neymotin_channels else (channel, f'g{channel}bar') 
-				for channel in channels_set
-			]
-	
-	def insert_unused_channels(self):
-		'''
-		Method for allowing recording of channels in sections that do not have the current.
-		'''
-		errors_in_setting_params = []
-		for channel, conductance in self.CHANNELS:
-			if not (str(channel) == ''): # for some reason '' was getting added? Need to check how self.channels is formed.
-			  for sec in self.all:
-				  if not hasattr(sec(0.5), channel):
-					  try: 
-						  # Insert this channel into
-						  sec.insert(channel)
-					  except Exception as e:
-						  errors_in_setting_params.append((sec.name(), e))
-					  
-					  try:
-						  for seg in sec:
-							  setattr(getattr(seg, channel), conductance, 0) # set the maximum conductance to zero
-					  except Exception as e:
-						  errors_in_setting_params.append((sec.name(), e))
-		return errors_in_setting_params
 
-	def write_seg_info_to_csv(self, path, seg_info=None, title_prefix:str = None):
-		if seg_info is  None:
-		  seg_info=self.seg_info
+		# Have different attribute structure as a result of the modfile
+		Neymotin_channels = ['nax', 'kdmc', 'kap', 'kdr', 'hd']
+		return [(channel, f'gbar') if channel in Neymotin_channels else (channel, f'g{channel}bar') for channel in channels_set]
+	
+	def insert_unused_channels(self) -> None:
+		'''
+		Allow recording of channels in sections that do not have the current.
+		'''
+		for channel, conductance in self.get_channels_from_var_names():
+			for sec in self.all:
+				if not hasattr(sec(0.5), channel):
+					try: 
+						# Insert this channel
+						sec.insert(channel)
+						# Set the maximum conductance to zero
+						for seg in sec: setattr(getattr(seg, channel), conductance, 0)
+					except: continue
+
+	def write_seg_info_to_csv(self, path, title_prefix: str = None):
+		seg_info = self.get_seg_info()
 		if title_prefix:
-		  csv_file_path = os.path.join(path, title_prefix+'seg_info.csv')
+			csv_file_path = os.path.join(path, title_prefix + 'seg_info.csv')
 		else:
-		  csv_file_path = os.path.join(path, 'seg_info.csv')
+			csv_file_path = os.path.join(path, 'seg_info.csv')
+
 		with open(csv_file_path, mode = 'w') as file:
 			writer = csv.DictWriter(file, fieldnames = seg_info[0].keys())
 			writer.writeheader()
 			for row in seg_info:
 				writer.writerow(row)
-			
-	def compute_adjacent_segments(self):
-		# getting adjacent segments using parent segment IDs
-		# getting children segments
-		segs = self.seg_info
-		for i in range(len(segs)):  # iterate through segment index
-		  psegid = segs[i]['pseg_index']
-		  if psegid is not None:# if not np.isnan(psegid):
-			  psegid = int(psegid)
-			  for seg_index,seg in enumerate(segs):  # check segIDs
-				  if psegid == seg_index:  # find parent seg from parent seg id
-					  segs[psegid]['adjacent_segments'].append(self.segments[i])  # add child seg to this seg's adj_segs list
-					  # cell.segments[seg_index].child_segs.append(self.segments[i])  # add child seg to this seg's child_segs list
-					  segs[i]['adjacent_segments'].append(self.segments[psegid])  # add parent seg to this seg's adj_segs
-					  # cell.segments[i].parent_segs.append(self.segments[psegid])  # add parent seg to thisparent probes
-
-	
-	def recompute_netcons_per_seg(self):
-		NetCon_per_seg = [0] * len(self.seg_info)
-		inh_NetCon_per_seg = [0] * len(self.seg_info)
-		exc_NetCon_per_seg = [0] * len(self.seg_info)
-
-		v_rest = -60 # Used to determine exc/inh may adjust or automate
-	
-		# Calculate number of synapses for each segment (may want to divide by segment length afterward to get synpatic density)
-		for netcon in self.netcons:
-			syn = netcon.syn()
-			syn_type = syn.hname().split('[')[0]
-			syn_seg_id = self.seg_info.index(next((s for s in self.seg_info if s['seg'] == syn.get_segment()), None))
-			seg_dict = self.seg_info[syn_seg_id]
-			if syn in seg_dict['seg'].point_processes():
-				NetCon_per_seg[syn_seg_id] += 1 # Get synapses per segment
-				if (syn_type == 'pyr2pyr') | ('AMPA_NMDA' in syn_type): # | (syn.e > v_rest): TODO: check syn.e
-					exc_NetCon_per_seg[syn_seg_id] += 1
-				elif (syn_type == 'int2pyr') | ('GABA_AB' in syn_type):
-					inh_NetCon_per_seg[syn_seg_id] += 1
-				else: # To clearly separate the default case
-					inh_NetCon_per_seg[syn_seg_id] += 1
-			else:
-				raise(ValueError("Synapse not in designated segment's point processes."))
-	
-		for i, seg in enumerate(self.seg_info):
-			seg['netcons_per_seg'] = {
-				'exc': exc_NetCon_per_seg[i],
-				'inh': inh_NetCon_per_seg[i],
-				'total': NetCon_per_seg[i]
-			  }
-			seg['netcon_density_per_seg'] = {
-				'exc': exc_NetCon_per_seg[i] / seg['seg_L'],
-				'inh': inh_NetCon_per_seg[i] / seg['seg_L'],
-				'total': NetCon_per_seg[i] / seg['seg_L']
-			  }
-			seg['netcon_SA_density_per_seg'] = {
-				'exc': exc_NetCon_per_seg[i] / seg['seg_SA'],
-				'inh': inh_NetCon_per_seg[i] / seg['seg_SA'],
-				'total': NetCon_per_seg[i] / seg['seg_SA']
-			}
 		
 	def convert_section_list(self, section_list: object) -> list:
 
@@ -340,44 +239,25 @@ class CellModel:
 
 		return new_section_list
 
-	# PRAGMA MARK: Data manipulation
+	def add_recorders(self, names: list, vector_length: int):
+		segments = self.get_segments()
+		for name in names:
+			for seg in segments:
+				try: self.recorders.append(Recorder(seg, name, vector_length))
+				except: continue
 
-	# TODO: CHECK
-	def setup_recorders(self, vector_length: int = None):
-		self.recorders = {var_name: Recorder(obj_list = self.segments, var_name = var_name, vector_length = vector_length) for var_name in self.var_names}
-	
-	def get_output_folder_name(self) -> str:
-		nbranches = len(self.apic) - 1
-		nc_count = len(self.netcons)
-		syn_count = len(self.synapses)
-		seg_count = len(self.segments)
-	
-		output_folder_name = (
-			str(self.hoc_model) + "_" + 
-			str(seg_count) + "nseg_" + 
-			str(nbranches) + "nbranch_" + 
-			str(nc_count) + "NCs_" + 
-			str(syn_count) + "nsyn"
-		)
-	
-		return output_folder_name
-	
-	#TODO: clean
-	def generate_recorder_data(self, vector_length: int = None) -> None: # TODO: add check for synapse.current_type
-		'''
-		Method for calculating net synaptic currents and getting data after simulation
-		'''
+	def get_recorded_currents_from_synapses(self, vector_length):
+		segments = self.get_segments()
 		numTstep = vector_length
-		i_NMDA_bySeg = [[0] * (numTstep)] * len(self.segments)
-		i_AMPA_bySeg = [[0] * (numTstep)] * len(self.segments)
-		i_GABA_bySeg = [[0] * (numTstep)] * len(self.segments)
-		# i_bySeg = [[0] * (numTstep+1)] * len(self.segments)
+		i_NMDA_bySeg = [[0] * (numTstep)] * len(segments)
+		i_AMPA_bySeg = [[0] * (numTstep)] * len(segments)
+		i_GABA_bySeg = [[0] * (numTstep)] * len(segments)
 		for synapse in self.synapses: # Record nmda and ampa synapse currents
 			try:
 				if ('nmda' in synapse.current_type) or ('NMDA' in synapse.current_type):
 					i_NMDA = np.array(synapse.rec_vec[0])
 					i_AMPA = np.array(synapse.rec_vec[1])
-					seg = self.segments.index(synapse.segment)
+					seg = segments.index(synapse.segment)
 
 					# Match shapes
 					if len(i_NMDA) > len(i_NMDA_bySeg[seg]):
@@ -399,44 +279,27 @@ class CellModel:
 			except:
 				continue
 		
-		i_NMDA_df = np.array(pd.DataFrame(i_NMDA_bySeg) )#* 1000) # conversion was for old modfile
-		i_AMPA_df = np.array(pd.DataFrame(i_AMPA_bySeg) )#* 1000)
-		i_GABA_df = np.array(pd.DataFrame(i_GABA_bySeg) )#* 1000)
-		
-		self.data_dict = {}
-		# Dynamically add recorded data to data_dict
-		for var_name, recorder in self.recorders.items():
-				self.data_dict[var_name + '_data'] = recorder.as_numpy()
-		self.data_dict['spikes'] = self.get_spike_time()
-		# self.data_dict['ih_data'] = self.ihcn_Ih.as_numpy()
-		# self.data_dict['gNaTa_T_data'] = self.gNaTa_T.as_numpy()
-		# self.data_dict['ina_NaTa_t_data'] = self.ina_NaTa_t.as_numpy()
-		# self.data_dict['ina_Nap_Et2_data'] = self.ina_Nap_Et2.as_numpy()
-		# self.data_dict['ik_K_Pst_data'] = self.ik_K_Pst.as_numpy()
-		# self.data_dict['ik_K_Tst_data'] = self.ik_K_Tst.as_numpy()
-		# self.data_dict['ik_SK_E2_data'] = self.ik_SK_E2.as_numpy()
-		# self.data_dict['ik_SKv3_1_data'] = self.ik_SKv3_1.as_numpy()
-		# self.data_dict['ica_Ca_HVA_data'] = self.ica_Ca_HVA.as_numpy()
-		# self.data_dict['ica_Ca_LVAst_data'] = self.ica_Ca_LVAst.as_numpy()
-		# self.data_dict['i_pas_data'] = self.i_pas.as_numpy()
-		self.data_dict['Vm'] = self.Vm.as_numpy()
-		self.data_dict['i_NMDA'] = i_NMDA_df
-		self.data_dict['i_AMPA'] = i_AMPA_df
-		self.data_dict['i_GABA'] = i_GABA_df
-		# self.data_dict['i'] = i_bySeg
-	
-	def write_data(self, full_path):
-		os.makedirs(full_path)
-		for name, data in self.data_dict.items():
-			self.write_datafile(os.path.join(full_path, f"{name}_report.h5"), data)
+		i_NMDA_df = np.array(pd.DataFrame(i_NMDA_bySeg))
+		i_AMPA_df = np.array(pd.DataFrame(i_AMPA_bySeg))
+		i_GABA_df = np.array(pd.DataFrame(i_GABA_bySeg))
 
-		self.write_seg_info_to_csv(full_path)
+		return i_NMDA_df, i_AMPA_df, i_GABA_df
+	
+	def write_recorder_data(self, path, vector_length) -> None:
+		
+		os.mkdir(path)
+
+		# Write data from the list
+		for recorder in self.recorders:
+			self.write_datafile(os.path.join(path, f"{recorder.name}_report.h5"), recorder.vec.as_numpy())
+
+		for name, current in zip(["i_NMDA", "i_AMPA", "i_GABA"], self.get_recorded_currents_from_synapses(vector_length)):
+			self.write_datafile(os.path.join(path, f"{name}_report.h5"), current)
 	
 	def write_datafile(self, reportname, data):
 		with h5py.File(reportname, 'w') as file:
 			# Check if the data is a DataFrame, and convert to numpy array if true
-			if isinstance(data, pd.DataFrame):
-						data = data.values
+			if isinstance(data, pd.DataFrame): data = data.values
 			file.create_dataset("report/biophysical/data", data = data)
 
 	def get_seg_info(self) -> list:
@@ -463,6 +326,49 @@ class CellModel:
 		# Postprocess seg_info
 		seg_info = self.recompute_parent_segment_ids(seg_info)
 		seg_info = self.recompute_segment_elec_distance(self, seg_info, self.soma[0](0.5), "soma")
+		seg_info = self.recompute_netcons_per_seg(seg_info)
+		seg_info = self.compute_adjacent_segments(seg_info)
+
+		return seg_info
+	
+	def recompute_netcons_per_seg(self, seg_info) -> list:
+		NetCon_per_seg = [0] * len(seg_info)
+		inh_NetCon_per_seg = [0] * len(seg_info)
+		exc_NetCon_per_seg = [0] * len(seg_info)
+	
+		# Calculate number of synapses for each segment (may want to divide by segment length afterward to get synpatic density)
+		for netcon in self.netcons:
+			syn = netcon.syn()
+			syn_type = syn.hname().split('[')[0]
+			syn_seg_id = seg_info.index(next((s for s in seg_info if s['seg'] == syn.get_segment()), None))
+			seg_dict = seg_info[syn_seg_id]
+			if syn in seg_dict['seg'].point_processes():
+				NetCon_per_seg[syn_seg_id] += 1 # Get synapses per segment
+				if (syn_type == 'pyr2pyr') | ('AMPA_NMDA' in syn_type):
+					exc_NetCon_per_seg[syn_seg_id] += 1
+				elif (syn_type == 'int2pyr') | ('GABA_AB' in syn_type):
+					inh_NetCon_per_seg[syn_seg_id] += 1
+				else: # To clearly separate the default case
+					inh_NetCon_per_seg[syn_seg_id] += 1
+			else:
+				raise(ValueError("Synapse not in designated segment's point processes."))
+	
+		for i, seg in enumerate(seg_info):
+			seg['netcons_per_seg'] = {
+				'exc': exc_NetCon_per_seg[i],
+				'inh': inh_NetCon_per_seg[i],
+				'total': NetCon_per_seg[i]
+			  }
+			seg['netcon_density_per_seg'] = {
+				'exc': exc_NetCon_per_seg[i] / seg['seg_L'],
+				'inh': inh_NetCon_per_seg[i] / seg['seg_L'],
+				'total': NetCon_per_seg[i] / seg['seg_L']
+			  }
+			seg['netcon_SA_density_per_seg'] = {
+				'exc': exc_NetCon_per_seg[i] / seg['seg_SA'],
+				'inh': inh_NetCon_per_seg[i] / seg['seg_SA'],
+				'total': NetCon_per_seg[i] / seg['seg_SA']
+			}
 
 		return seg_info
 	
@@ -470,6 +376,8 @@ class CellModel:
 		if not all('seg_elec_distance' in seg for seg in seg_info):
 			for seg in self.seg_info:
 				seg['seg_elec_distance'] = {}
+
+		segments = self.get_segments()
 		
 		passive_imp = h.Impedance()
 		passive_imp.loc(segment)
@@ -480,7 +388,7 @@ class CellModel:
 		for freq_name, freq_hz in self.FREQS.items():
 			passive_imp.compute(freq_hz + 1 / 9e9, 0) 
 			active_imp.compute(freq_hz + 1 / 9e9, 1) 
-			for i, seg in enumerate(self.segments):
+			for i, seg in enumerate(segments):
 				elec_dist_info = {
 					f'{seg_name}_active': active_imp.ratio(seg.sec(seg.x)),
 					f'{seg_name}_passive': passive_imp.ratio(seg.sec(seg.x))
@@ -489,6 +397,26 @@ class CellModel:
 					seg_info[i]['seg_elec_distance'][freq_name].update(elec_dist_info)
 				else:
 					seg_info[i]['seg_elec_distance'][freq_name] = elec_dist_info
+
+		return seg_info
+	
+	def compute_adjacent_segments(self, seg_info) -> list:
+
+		segments = self.get_segments()
+
+		for i in range(len(seg_info)):
+			psegid = seg_info[i]['pseg_index']
+
+			if psegid is None:
+				continue
+
+			psegid = int(psegid)
+			for seg_index, seg in enumerate(seg_info):  # check segIDs
+				if psegid == seg_index:  # Find parent seg from parent seg id
+					seg_info[psegid]['adjacent_segments'].append(segments[i])  # Add child seg to this seg's adj_segs list
+					seg_info[i]['adjacent_segments'].append(segments[psegid])  # Add parent seg to this seg's adj_segs
+		
+		return seg_info
 	
 	def recompute_parent_segment_ids(self, seg_info) -> list:
 		for seg in seg_info: seg['pseg_index'] = None
