@@ -9,7 +9,6 @@ import scipy.stats as st
 from neuron import h
 
 from Modules.logger import Logger
-from Modules.synapse_generator import SynapseGenerator
 from Modules.spike_generator import SpikeGenerator
 from Modules.constants import SimulationParameters
 from Modules.cell_model import CellModel
@@ -107,8 +106,7 @@ class CellBuilder:
 		elif self.cell_type == SkeletonCell.NeymotinDetailed:
 			skeleton_cell = self.build_Neymotin_detailed_cell()
 
-		cell = CellModel(skeleton_cell, random_state, self.logger)
-		synapse_generator = SynapseGenerator()
+		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger)
    
 		# Update parameters from dictionary
 		if self.parameters.use_param_update_dict:
@@ -116,32 +114,13 @@ class CellBuilder:
 
 		# Build synapses
 		self.logger.log("Building excitatory synapses.")
-		exc_synapses = self.build_excitatory_synapses(
-			cell = cell,
-			synapse_generator = synapse_generator,
-			random_state = random_state,
-			neuron_r = neuron_r
-		)
+		self.build_excitatory_synapses(cell = cell)
 
 		self.logger.log("Building inhibitory synapses.")
-		inh_synapses = self.build_inhibitory_synapses(
-			cell = cell,
-			synapse_generator = synapse_generator,
-			random_state = random_state,
-			neuron_r = neuron_r
-		)
+		self.build_inhibitory_synapses(cell = cell)
 
 		self.logger.log("Building soma synapses.")
-		soma_inh_synapses = self.build_soma_synapses(
-			cell = cell,
-			synapse_generator = synapse_generator,
-			random_state = random_state,
-			neuron_r = neuron_r
-		)
-
-		# Get all synapses
-		all_syns_before_reduction = [synapse for synapses_list in synapse_generator.synapses for synapse in synapses_list]
-		self.logger.log(f"Number of Synapses Before Reduction: {len(all_syns_before_reduction)}")
+		self.build_soma_synapses(cell = cell)
 
 		# Create functional groups
 		spike_generator = SpikeGenerator()
@@ -361,15 +340,10 @@ class CellBuilder:
 		return exc_functional_groups
 
 				
-	def build_soma_synapses(
-			self,
-			cell,
-			synapse_generator,
-			random_state, 
-			neuron_r) -> list:
+	def build_soma_synapses(self, cell) -> None:
 		
 		if (self.parameters.CI_on) or (not self.parameters.add_soma_inh_synapses):
-			return []
+			return None
 		
 		inh_soma_P_dist = partial(
 			P_release_dist, 
@@ -380,29 +354,20 @@ class CellBuilder:
 		for _, seg_data in segments:
 			probs.append(seg_data.membrane_surface_area)
 		
-		soma_inh_synapses = synapse_generator.add_synapses(
+		cell.add_synapses_over_segments(
 			segments = segments,
-			probs = probs,
-			number_of_synapses = self.parameters.num_soma_inh_syns,
-			record = True,
-			vector_length = self.parameters.vector_length,
-			gmax = self.parameters.soma_gmax_dist,
-			random_state=random_state,
-			neuron_r = neuron_r,
+			nsyn = self.parameters.num_soma_inh_syns,
 			syn_mod = self.parameters.inh_syn_mod,
-			P_dist = inh_soma_P_dist)
-	
-		return soma_inh_synapses
+			gmax = self.parameters.soma_gmax_dist,
+			name = "soma",
+			density = False,
+			seg_probs = probs,
+			release_p = inh_soma_P_dist)
 			
-	def build_inhibitory_synapses(
-			self, 
-			cell, 
-			synapse_generator,
-			random_state, 
-			neuron_r) -> list:
+	def build_inhibitory_synapses(self, cell) -> None:
 		
 		if self.parameters.CI_on:
-			return []
+			return None
 		
 		# Inhibitory release probability distributions
 		inh_soma_P_dist = partial(
@@ -430,32 +395,21 @@ class CellBuilder:
 		probs = []
 		for _, seg_data in segments:
 			probs.append(seg_data.membrane_surface_area)
-		
-		inh_synapses = synapse_generator.add_synapses(
-			segments = segments, 
-			probs = probs, 
-			density = self.parameters.inh_synaptic_density,
-			record = True,
-			vector_length = self.parameters.vector_length,
-			gmax = self.parameters.inh_gmax_dist,
-			random_state = random_state,
-			neuron_r = neuron_r,
+
+		cell.add_synapses_over_segments(
+			segments = segments,
+			nsyn = self.parameters.inh_synaptic_density,
 			syn_mod = self.parameters.inh_syn_mod,
-			P_dist = inh_P_dist,
-			cell = cell, # Redundant? # no. weight changes be distance from soma.
-			syn_params = self.parameters.inh_syn_params)
-		
-		return inh_synapses
+			gmax = self.parameters.inh_gmax_dist,
+			name = "inh",
+			density = True,
+			seg_probs = probs,
+			release_p = inh_P_dist)
 			
-	def build_excitatory_synapses(
-			self,
-			cell,
-			synapse_generator,
-			random_state,
-			neuron_r) -> list:
+	def build_excitatory_synapses(self, cell) -> None:
 		
 		if self.parameters.CI_on:
-			return []
+			return None
 
 		# Excitatory gmax distribution
 		gmax_exc_dist = partial(
@@ -482,20 +436,15 @@ class CellBuilder:
 		for _, seg_data in segments:
 			probs.append(seg_data.membrane_surface_area)
 
-		exc_synapses = synapse_generator.add_synapses(
-			segments = segments, 
-			probs = probs, 
-			density = self.parameters.exc_synaptic_density, 
-			record = True, 
-			vector_length = self.parameters.vector_length, 
-			gmax = gmax_exc_dist,
-			random_state = random_state, 
-			neuron_r = neuron_r,
+		cell.add_synapses_over_segments(
+			segments = segments,
+			nsyn = self.parameters.exc_synaptic_density,
 			syn_mod = self.parameters.exc_syn_mod,
-			P_dist = exc_P_dist, 
-			syn_params = self.parameters.exc_syn_params[0])
-		
-		return exc_synapses
+			gmax = gmax_exc_dist,
+			name = "exc",
+			density = True,
+			seg_probs = probs,
+			release_p = exc_P_dist)
 
 	def build_Hay_cell(self) -> object:
 		# Load biophysics

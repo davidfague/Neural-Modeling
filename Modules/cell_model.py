@@ -5,6 +5,7 @@ import os, h5py, csv
 from neuron import h
 
 from Modules.recorder import Recorder, SpikeRecorder
+from Modules.synapse import Synapse
 from Modules.logger import Logger
 
 from dataclasses import dataclass
@@ -17,9 +18,12 @@ class CellModel:
 			self, 
 			skeleton_cell: object,
 			random_state: np.random.RandomState,
+			neuron_r: h.Random,
 			logger: Logger,
 			spike_threshold: float = 10):
 		
+		self.random_state = random_state
+		self.neuron_r = neuron_r
 		self.logger = logger
 	
 		# Morphology & Geometry (parse the hoc model)
@@ -597,6 +601,61 @@ class CellModel:
 					segments.append((seg, data))
 
 		return segments
+	
+	def get_synapses(self, synapse_names: list):
+		return [syn for syn in self.synapses if syn.name in synapse_names]
+	
+	def add_synapses_over_segments(
+			self, 
+			segments,
+			nsyn,
+			syn_mod,
+			gmax,
+			name,
+			density = False,
+			seg_probs = None,
+			release_p = None) -> None:
+		
+		total_length = sum([seg.sec.L / seg.sec.nseg for seg in segments])
+		if (density == True):
+			nsyn = int(total_length * nsyn)
+		
+		if (seg_probs is None):
+			seg_probs = [seg_length / total_length for seg_length in [seg.sec.L / seg.sec.nseg for seg in segments]]
+		
+		for _ in range(nsyn):
+			segment = self.random_state.choice(segments, 1, True, seg_probs / np.sum(seg_probs))[0]
+
+			if release_p is not None:
+				if isinstance(release_p, dict):
+					sec_type = segment.sec.name().split('.')[1][:4]
+					p = release_p[sec_type](size = 1)
+				else:
+					p = release_p(size = 1) # release_p is partial
+
+				pu = self.random_state.uniform(low = 0, high = 1, size = 1)
+				
+				# Drop synapses with too low release probability
+				if p < pu: continue
+			
+			# Create synapse
+			segment_distance = h.distance(segment, self.soma(0.5)[0])
+			if (isinstance(syn_params, tuple)) or ((isinstance(syn_params, list))):
+				# Excitatory
+				if 'AMPA' in syn_mod:
+					syn_params = np.random.choice(syn_params, p = (0.9, 0.1))
+				# Inhibitory
+				elif 'GABA' in syn_mod:
+					# Second option is for > 100 um from soma, else first option
+					syn_params = syn_params[1] if segment_distance > 100 else syn_params[0]
+
+			self.synapses.append(Synapse(
+				segment = segment, 
+				syn_mod = syn_mod, 
+				syn_params = syn_params, 
+				gmax = gmax(size = 1) if callable(gmax) else gmax),
+				neuron_r = self.neuron_r,
+				name = name)
 
 @dataclass
 class SegmentData:

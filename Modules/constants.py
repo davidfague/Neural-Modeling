@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from Modules.synapse import CS2CP_syn_params, CP2CP_syn_params, FSI_syn_params, LTS_syn_params
 
 @dataclass
 class SimulationParameters:
@@ -102,41 +103,7 @@ class SimulationParameters:
 	inh_distal_std_fr: float = 4.9
 	inh_firing_rate_time_shift: int = 4
 
-	# Syn parameters
-	#TODO: implement
-	# Can also implement area related synapse density, and increase membrane capacitance for exc spines.
-	# inh distal apic:
-	# inh distal apic:
-	LTS_syn_params = {
-		'e_GABAA': -90.,
-		'Use': 0.3,
-		'Dep': 25.,
-		'Fac': 100.
-		}
-	
-	# inh perisomatic
-	FSI_syn_params = {
-		'e_GABAA': -90.,
-		'Use': 0.3,
-		'Dep': 400.,
-		'Fac': 0.
-		}
-	
-	# exc choice of two:
-	CS2CP_syn_params = {
-		'tau_d_AMPA': 5.2,
-		'Use': 0.41,
-		'Dep': 532.,
-		'Fac': 65.
-		}
-	
-	CP2CP_syn_params = {
-		'tau_d_AMPA': 5.2,
-		'Use': 0.37,
-		'Dep': 31.7,
-		'Fac': 519.
-		}
-	
+	# syn_params
 	exc_syn_params: tuple = (CS2CP_syn_params, CP2CP_syn_params) # 90%, 10%
 	inh_syn_params: tuple = (FSI_syn_params, LTS_syn_params)
 
