@@ -65,25 +65,25 @@ class Simulation:
         cell = cell_builder.build_cell()
 
         # Construct segment indexes
-        seg_indexes = self.construct_seg_indexes(cell, parameters)
+        #seg_indexes = self.construct_seg_indexes(cell, parameters)
 
         # Compute electrotonic distances from nexus
-        cell.recompute_segment_elec_distance(segment = cell.segments[seg_indexes["nexus"]], seg_name = "nexus")
+        #cell.recompute_segment_elec_distance(segment = cell.segments[seg_indexes["nexus"]], seg_name = "nexus")
 
         # Create an ECP object for extracellular potential
         elec_pos = params.ELECTRODE_POSITION
         ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)
 
         # Save segment indexes for plotting
-        with open(os.path.join(parameters.path, "seg_indexes.pickle"), "wb") as file: 
-            pickle.dump(seg_indexes, file)
+        #with open(os.path.join(parameters.path, "seg_indexes.pickle"), "wb") as file: 
+        #    pickle.dump(seg_indexes, file)
 
         # Save segment info
-        cell.write_seg_info_to_csv(path = parameters.path, seg_info = cell_builder.detailed_seg_info, title_prefix = 'detailed_')
+        #cell.write_seg_info_to_csv(path = parameters.path, seg_info = cell_builder.detailed_seg_info, title_prefix = 'detailed_')
 
         # Save constants
-        with open(os.path.join(parameters.path, "parameters.pickle"), "wb") as file:
-            pickle.dump(parameters, file)
+        #with open(os.path.join(parameters.path, "parameters.pickle"), "wb") as file:
+        #    pickle.dump(parameters, file)
 
         # In time stamps, i.e., ms / dt
         time_step = 0
@@ -92,7 +92,7 @@ class Simulation:
         h.tstop = parameters.h_tstop
         h.dt = parameters.h_dt
         h.steps_per_ms = 1 / h.dt
-        if self.is_indexable(cell.soma):
+        if is_indexable(cell.soma):
             h.v_init = cell.soma[0].e_pas
         else:
             h.v_init = cell.soma.e_pas
@@ -107,7 +107,7 @@ class Simulation:
                 self.logger.log_step(time_step)
 
                 # Save data
-                cell.generate_recorder_data(parameters.vector_length)
+                # cell.generate_recorder_data(parameters.vector_length)
                 cell.write_recorder_data(os.path.join(parameters.path, f"saved_at_step_{time_step}"))
 
                 # Save lfp
@@ -168,16 +168,17 @@ class Simulation:
             "nexus": nexus_seg_index
         }
         return seg_indexes
-        
-    def is_indexable(self, obj: object):
-        """
-        Check if the object is indexable.
-        """
-        try:
-            _ = obj[0]
-            return True
-        except:
-            return False
+
+    
+def is_indexable(obj: object):
+    """
+    Check if the object is indexable.
+    """
+    try:
+        _ = obj[0]
+        return True
+    except:
+        return False
 
 
         

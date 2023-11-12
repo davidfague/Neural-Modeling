@@ -47,7 +47,7 @@ class Synapse:
         self.current_type = None
         self.set_gmax_var_and_current_type_based_on_syn_mod(syn_mod)
 
-        self.h_syn = getattr(h, self.syn_type)(segment)
+        self.h_syn = getattr(h, self.syn_mod)(segment)
         self.syn_params = None
         self.set_syn_params(syn_params)
         self.gmax_val = None
@@ -57,6 +57,15 @@ class Synapse:
         self.set_random_generator(neuron_r)
 
         self.name = name
+
+        # Presynaptic cell
+        self.pc = None
+        self.netcons = []
+    
+    def set_spike_train_for_pc(self, mean_fr, spike_train):
+        self.pc.set_spike_train(mean_fr, spike_train)
+        nc = h.NetCon(self.pc.vecstim, self.h_syn, 1, 0, 1)
+        self.netcons.append(nc)
 
     def set_random_generator(self, r: h.Random) -> None:				 
         if self.syn_mod in ['pyr2pyr', 'int2pyr']:

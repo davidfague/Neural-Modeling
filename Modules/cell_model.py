@@ -4,9 +4,9 @@ import os, h5py, csv
 
 from neuron import h
 
-from Modules.recorder import Recorder, SpikeRecorder
-from Modules.synapse import Synapse
-from Modules.logger import Logger
+from recorder import Recorder, SpikeRecorder
+from synapse import Synapse
+from logger import Logger
 
 from dataclasses import dataclass
 
@@ -45,8 +45,6 @@ class CellModel:
 
 		# Connectivity
 		self.synapses = []
-		self.netcons = []
-		self.spike_trains = []
 
 		# Current Injection
 		self.current_injection = None
@@ -234,7 +232,7 @@ class CellModel:
 		return new_section_list
 
 	def add_recorders(self, names: list, vector_length: int):
-		_, _, segments = self.get_segments()
+		segments = self.get_segments()
 		for name in names:
 			for seg in segments:
 				try: self.recorders.append(Recorder(seg, name, vector_length))
@@ -526,7 +524,7 @@ class CellModel:
 	
 	def get_coords_of_segments_in_section(self, sec) -> pd.DataFrame:
 
-		seg_coords = np.zeros(sec.nseg, 13)
+		seg_coords = np.zeros((sec.nseg, 13))
 
 		seg_length = sec.L / sec.nseg
 		arc_lengths = [sec.arc3d(i) for i in range(sec.n3d())]
@@ -582,25 +580,35 @@ class CellModel:
 
 		return seg_coords
 
-	def get_segments(self, section_names: list) -> list:
+	def get_segments(self, section_names: list) -> tuple:
 		'''
 		Returns:
 		'''
 		segments = []
+		datas = []
 
 		for sec in self.all:
-			if (sec.name() in section_names) or ("all" in section_names):
+			if (sec.name().split(".")[1].split("[")[0] in section_names) or ("all" in section_names):
 				for index_in_section, seg in enumerate(sec):
 					data = SegmentData(
 						L = seg.sec.L / seg.sec.nseg,
 						membrane_surface_area = np.pi * seg.diam * (seg.sec.L / seg.sec.nseg),
-						coords = self.get_coords_of_segments_in_section(sec).iloc[index_in_section, :],
+						coords = self.get_coords_of_segments_in_section(sec).iloc[index_in_section, :].to_frame(1).T,
 						section = sec.name(),
 						index_in_section = index_in_section,
 					)
-					segments.append((seg, data))
+					segments.append(seg)
+					datas.append(data)
 
-		return segments
+		return segments, datas
+	
+	def get_seg_index(self, segment: object):
+		indx = 0
+		for sec in self.all:
+			for seg in sec:
+				if seg == segment: return indx
+				indx += 1
+
 	
 	def get_synapses(self, synapse_names: list):
 		return [syn for syn in self.synapses if syn.name in synapse_names]
@@ -610,6 +618,7 @@ class CellModel:
 			segments,
 			nsyn,
 			syn_mod,
+			syn_params,
 			gmax,
 			name,
 			density = False,
@@ -639,7 +648,7 @@ class CellModel:
 				if p < pu: continue
 			
 			# Create synapse
-			segment_distance = h.distance(segment, self.soma(0.5)[0])
+			segment_distance = h.distance(segment, self.soma[0](0.5))
 			if (isinstance(syn_params, tuple)) or ((isinstance(syn_params, list))):
 				# Excitatory
 				if 'AMPA' in syn_mod:
@@ -653,9 +662,9 @@ class CellModel:
 				segment = segment, 
 				syn_mod = syn_mod, 
 				syn_params = syn_params, 
-				gmax = gmax(size = 1) if callable(gmax) else gmax),
+				gmax = gmax(size = 1) if callable(gmax) else gmax,
 				neuron_r = self.neuron_r,
-				name = name)
+				name = name))
 
 @dataclass
 class SegmentData:

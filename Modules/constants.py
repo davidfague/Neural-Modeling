@@ -109,9 +109,9 @@ class SimulationParameters:
 
 	# kmeans clustering
 	exc_n_FuncGroups = 24
-	exc_n_PreCells_per_FuncGroup = 100
+	exc_n_PreCells_per_FuncGroup = 15
 	inh_distributed_n_FuncGroups = 5
-	inh_distributed_n_PreCells_per_FuncGroup = 50
+	inh_distributed_n_PreCells_per_FuncGroup = 100
 
 	# Excitatory dend
 	exc_functional_group_span = 100

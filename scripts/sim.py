@@ -1,5 +1,6 @@
 import sys
 sys.path.append("../")
+sys.path.append("../Modules/")
 
 from Modules.simulation import Simulation
 from Modules.cell_builder import SkeletonCell

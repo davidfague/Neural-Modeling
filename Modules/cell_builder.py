@@ -2,18 +2,17 @@ from enum import Enum
 import pickle
 import os
 import numpy as np
-
 from functools import partial
 import scipy.stats as st
 
 from neuron import h
 
-from Modules.logger import Logger
-from Modules.spike_generator import SpikeGenerator
-from Modules.constants import SimulationParameters
-from Modules.cell_model import CellModel
-from Modules.clustering import create_functional_groups_of_presynaptic_cells
-from Modules.reduction import Reductor
+from logger import Logger
+from spike_generator import PoissonTrainGenerator
+from constants import SimulationParameters
+from cell_model import CellModel
+from presynaptic import PCBuilder
+from reduction import Reductor
 
 class SkeletonCell(Enum):
 	Hay = {
@@ -109,8 +108,8 @@ class CellBuilder:
 		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger)
    
 		# Update parameters from dictionary
-		if self.parameters.use_param_update_dict:
-			self.update_cell_parameters_from_dict(skeleton_cell, self.parameters.param_update_dict)
+		# if self.parameters.use_param_update_dict:
+		# 	self.update_cell_parameters_from_dict(skeleton_cell, self.parameters.param_update_dict)
 
 		# Build synapses
 		self.logger.log("Building excitatory synapses.")
@@ -122,40 +121,16 @@ class CellBuilder:
 		self.logger.log("Building soma synapses.")
 		self.build_soma_synapses(cell = cell)
 
-		# Create functional groups
-		spike_generator = SpikeGenerator()
+		# Assign spike trains
 
-		self.logger.log("Building excitatory functional groups.")
-		_ = self.build_excitatory_functional_groups(
-			cell = cell,
-			exc_synapses = exc_synapses,
-			spike_generator = spike_generator,
-			random_state = random_state
-		)
-		exc_spikes = spike_generator.spike_trains.copy()
+		self.logger.log("Assigning excitatory spike trains")
+		exc_spike_trains = self.assign_exitatory_spike_trains(cell = cell, random_state = random_state)
 
-		self.logger.log("Building inhibitory functional groups.")
-		_ = self.build_inhibitory_functional_groups(
-			cell = cell,
-			inh_synapses = inh_synapses,
-			spike_generator = spike_generator,
-			random_state = random_state,
-			exc_spikes = exc_spikes
-		)
+		self.logger.log("Assigning inhibitory spike trains.")
+		self.assign_inhibitory_spike_trains(cell = cell, exc_spike_trains = exc_spike_trains)
 
-		self.logger.log("Building soma functional groups.")
-		_ = self.build_soma_functional_groups(
-			cell = cell,
-			soma_inh_synapses = soma_inh_synapses,
-			spike_generator = spike_generator,
-			random_state = random_state,
-			exc_spikes = exc_spikes
-		)
-
-		self.detailed_seg_info = cell.get_seg_info()
-
-		# Build the final cell
-		self.logger.log("Creating a CellModel object.")
+		self.logger.log("Assigning soma spike trains.")
+		self.assign_soma_spike_trains(cell = cell, exc_spike_trains = exc_spike_trains)
 
 		# 	reductor = Reductor(logger = self.logger)
 		# 	cell = reductor.reduce_cell(
@@ -175,16 +150,23 @@ class CellBuilder:
       
 		self.logger.log("Finish creating a CellModel object.")
    
-		if (not self.parameters.CI_on) and (not self.parameters.trunk_exc_synapses):
+		if (self.parameters.CI_on == False) and (self.parameters.trunk_exc_synapses == False):
+
 			# Turn off certain presynaptic neurons to simulate in vivo
 			for synapse in cell.synapses:
-				if (synapse.get_segment().sec in cell.apic) and (synapse.syn_type in self.parameters.exc_syn_mod) and (synapse.get_segment().sec not in cell.obliques) and (synapse.get_segment().sec.y3d(0) < 600):
-					for netcon in synapse.ncs: netcon.active(False)
+				if (
+					(synapse.get_segment().sec in cell.apic) and 
+					(synapse.syn_type in self.parameters.exc_syn_mod) and 
+					(synapse.get_segment().sec in cell.obliques == False) and 
+					(synapse.get_segment().sec.y3d(0) < 600)):
+					for netcon in synapse.netcons: netcon.active(False)
 		
 		# Turn off perisomatic exc neurons
-		if not self.parameters.perisomatic_exc_synapses:
+		if self.parameters.perisomatic_exc_synapses == False:
 			for synapse in cell.synapses:
-				if (h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 75) and (synapse.syn_type in self.parameters.exc_syn_mod):
+				if (
+					(h.distance(synapse.get_segment(), cell.soma[0](0.5)) < 75) and 
+					(synapse.syn_type in self.parameters.exc_syn_mod)):
 					for netcon in synapse.ncs: netcon.active(False)
 		
 		# Merge synapses
@@ -206,138 +188,103 @@ class CellBuilder:
 
 		return cell
 
-	def build_soma_functional_groups(self, cell, soma_inh_synapses, spike_generator, random_state, exc_spikes):
-		
-		seg_info = cell.get_seg_info()
-		soma_coordinates = np.zeros(3)
-		segment_coordinates = np.zeros((len(seg_info), 3))
+	def assign_soma_spike_trains(self, cell, exc_spike_trains):
 
-		for ind, seg in enumerate(seg_info):
-			segment_coordinates[ind, 0] = seg['p0.5_x3d']
-			segment_coordinates[ind, 1] = seg['p0.5_y3d']
-			segment_coordinates[ind, 2] = seg['p0.5_z3d']
-	
-			if seg['seg'] == cell.soma[0](0.5):
-				soma_coordinates[0] = seg['p0.5_x3d']
-				soma_coordinates[1] = seg['p0.5_y3d']
-				soma_coordinates[2] = seg['p0.5_z3d']
+		PCBuilder.assign_presynaptic_cells(
+			cell = cell,
+			n_func_gr = 1,
+			n_pc_per_fg = 1,
+			synapse_names = "soma"
+		)
 
 		# Proximal inh mean_fr distribution
-		mean_fr, std_fr = self.parameters.inh_prox_mean_fr, self.parameters.inh_prox_std_fr
-		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
-		proximal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
+		# mean_fr, std_fr = self.parameters.inh_prox_mean_fr, self.parameters.inh_prox_std_fr
+		# a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
+		# proximal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
 
-		# Distal inh mean_fr distribution
-		mean_fr, std_fr = self.parameters.inh_distal_mean_fr, self.parameters.inh_distal_std_fr
-		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
-		distal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
+		# # Distal inh mean_fr distribution
+		# mean_fr, std_fr = self.parameters.inh_distal_mean_fr, self.parameters.inh_distal_std_fr
+		# a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
+		# distal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
 
-		t = np.arange(0, self.parameters.h_tstop, 1)
+		for i, synapse in cell.synapses:
+			if synapse.name == "soma":
+				# if np.linalg.norm(soma_coords - synapse.pc.cluster_center) < 100:
+				# 	mean_fr = proximal_inh_dist(size = 1)
+				# else:
+				# 	mean_fr = distal_inh_dist(size = 1)
 
-		inh_soma_functional_groups = create_functional_groups_of_presynaptic_cells(
-			segments_coordinates = segment_coordinates,
-			n_functional_groups = 1,
-			n_presynaptic_cells_per_functional_group = 1,
-			name_prefix = 'soma_inh',
-			cell = cell, 
-			synapses = soma_inh_synapses, 
-			proximal_fr_dist = proximal_inh_dist, 
-			distal_fr_dist=distal_inh_dist, 
-			spike_generator=spike_generator, 
-			t = t, 
-			random_state = random_state, 
-			spike_trains_to_delay = exc_spikes, 
-			fr_time_shift = self.parameters.inh_firing_rate_time_shift, 
-			soma_coordinates = soma_coordinates, 
-			method = 'delay')
-		
-		return inh_soma_functional_groups
+				spike_train = PoissonTrainGenerator.delay_spike_trains(
+					spike_trains_to_delay = exc_spike_trains).spike_times
+				
+				cell.synapses[i].set_spike_train_for_pc(mean_fr = None, spike_train = spike_train)
 
 
-	def build_inhibitory_functional_groups(self, cell, inh_synapses, spike_generator, random_state, exc_spikes):
+	def assign_inhibitory_spike_trains(self, cell, exc_spike_trains):
 
-		seg_info = cell.get_seg_info()
-		soma_coordinates = np.zeros(3)
-		segment_coordinates = np.zeros((len(seg_info), 3))
-
-		for ind, seg in enumerate(seg_info):
-			segment_coordinates[ind, 0] = seg['p0.5_x3d']
-			segment_coordinates[ind, 1] = seg['p0.5_y3d']
-			segment_coordinates[ind, 2] = seg['p0.5_z3d']
-	
-			if seg['seg'] == cell.soma[0](0.5):
-				soma_coordinates[0] = seg['p0.5_x3d']
-				soma_coordinates[1] = seg['p0.5_y3d']
-				soma_coordinates[2] = seg['p0.5_z3d']
+		PCBuilder.assign_presynaptic_cells(
+			cell = cell,
+			n_func_gr = self.parameters.inh_distributed_n_FuncGroups,
+			n_pc_per_fg = self.parameters.inh_distributed_n_PreCells_per_FuncGroup,
+			synapse_names = "inh"
+		)
 
 		# Proximal inh mean_fr distribution
-		mean_fr, std_fr = self.parameters.inh_prox_mean_fr, self.parameters.inh_prox_std_fr
-		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
-		proximal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
+		# mean_fr, std_fr = self.parameters.inh_prox_mean_fr, self.parameters.inh_prox_std_fr
+		# a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
+		# proximal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
 
-		# Distal inh mean_fr distribution
-		mean_fr, std_fr = self.parameters.inh_distal_mean_fr, self.parameters.inh_distal_std_fr
-		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
-		distal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
+		# # Distal inh mean_fr distribution
+		# mean_fr, std_fr = self.parameters.inh_distal_mean_fr, self.parameters.inh_distal_std_fr
+		# a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
+		# distal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
 
-		t = np.arange(0, self.parameters.h_tstop, 1)
+		# soma_coords = cell.get_segments(["soma"])[1].coords
 
-		inh_distributed_functional_groups = create_functional_groups_of_presynaptic_cells(
-			segments_coordinates = segment_coordinates,
-			n_functional_groups = self.parameters.inh_distributed_n_FuncGroups,
-			n_presynaptic_cells_per_functional_group = self.parameters.inh_distributed_n_PreCells_per_FuncGroup,
-			name_prefix = 'inh',
-			cell = cell, 
-			synapses = inh_synapses,
-			proximal_fr_dist = proximal_inh_dist, 
-			distal_fr_dist = distal_inh_dist, 
-			spike_generator = spike_generator, 
-			t = t, 
-			random_state = random_state, 
-			spike_trains_to_delay = exc_spikes, 
-			fr_time_shift = self.parameters.inh_firing_rate_time_shift, 
-			soma_coordinates = soma_coordinates, 
-			method = 'delay')
-		
-		return inh_distributed_functional_groups
+		for i, synapse in cell.synapses:
+			if synapse.name == "inh":
+				# if np.linalg.norm(soma_coords - synapse.pc.cluster_center) < 100:
+				# 	mean_fr = proximal_inh_dist(size = 1)
+				# else:
+				# 	mean_fr = distal_inh_dist(size = 1)
+
+				spike_train = PoissonTrainGenerator.delay_spike_trains(
+					spike_trains_to_delay = exc_spike_trains).spike_times
+				
+				cell.synapses[i].set_spike_train_for_pc(mean_fr = None, spike_train = spike_train)
 
 
-	def build_excitatory_functional_groups(self, cell, exc_synapses, spike_generator, random_state):
-		
-		seg_info = cell.get_seg_info()
-		soma_coordinates = np.zeros(3)
-		segment_coordinates = np.zeros((len(seg_info), 3))
+	def assign_exitatory_spike_trains(self, cell, random_state) -> list:
 
-		for ind, seg in enumerate(seg_info):
-			segment_coordinates[ind, 0] = seg['p0.5_x3d']
-			segment_coordinates[ind, 1] = seg['p0.5_y3d']
-			segment_coordinates[ind, 2] = seg['p0.5_z3d']
-	
-			if seg['seg'] == cell.soma[0](0.5):
-				soma_coordinates[0] = seg['p0.5_x3d']
-				soma_coordinates[1] = seg['p0.5_y3d']
-				soma_coordinates[2] = seg['p0.5_z3d']
+		PCBuilder.assign_presynaptic_cells(
+			cell = cell,
+			n_func_gr = self.parameters.exc_n_FuncGroups,
+			n_pc_per_fg = self.parameters.exc_n_PreCells_per_FuncGroup,
+			synapse_names = "exc"
+		)
+
+		for synapse in cell.synapses:
+			if synapse.name == "exc":
+				print("HIH", synapse.pc)
 
 		# Distribution of mean firing rates
-		#mean_fr_dist = partial(exp_levy_dist, alpha = 1.37, beta = -1.00, loc = 5.3, scale = 0.44, size = 1)
 		mean_fr_dist = partial(gamma_dist, mean = 5.3, size = 1)
 
-		t = np.arange(0, self.parameters.h_tstop, 1)
+		excitatory_spike_trains = []
+		for i, synapse in enumerate(cell.synapses):
+			if synapse.name == "exc":
+				mean_fr = mean_fr_dist(size = 1)
+				firing_rates = PoissonTrainGenerator.generate_lambdas_from_pink_noise(
+					num = self.parameters.h_tstop,
+					random_state = random_state)
+				spike_train = PoissonTrainGenerator.generate_spike_train(
+					lambdas = firing_rates, 
+					random_state = random_state).spike_times
+				cell.synapses[i].set_spike_train_for_pc(mean_fr = mean_fr, spike_train = spike_train)
 
-		exc_functional_groups = create_functional_groups_of_presynaptic_cells(
-			segments_coordinates = segment_coordinates,
-			n_functional_groups = self.parameters.exc_n_FuncGroups,
-			n_presynaptic_cells_per_functional_group = self.parameters.exc_n_PreCells_per_FuncGroup,
-			name_prefix = 'exc',
-			synapses = exc_synapses, 
-			cell = cell, 
-			mean_firing_rate = mean_fr_dist, 
-			spike_generator = spike_generator, 
-			t = t, 
-			random_state = random_state, 
-			method = '1f_noise')
-		
-		return exc_functional_groups
+				excitatory_spike_trains.append(spike_train)
+
+		return excitatory_spike_trains
 
 				
 	def build_soma_synapses(self, cell) -> None:
@@ -347,17 +294,18 @@ class CellBuilder:
 		
 		inh_soma_P_dist = partial(
 			P_release_dist, 
-			P_mean = self.parameters.inh_soma_P_release_mean, P_std = self.parameters.inh_soma_P_release_std, size = 1)
+			P_mean = self.parameters.inh_soma_P_release_mean, 
+			P_std = self.parameters.inh_soma_P_release_std, 
+			size = 1)
 		
-		segments = cell.get_segments(["soma"])
-		probs = []
-		for _, seg_data in segments:
-			probs.append(seg_data.membrane_surface_area)
+		segments, seg_data = cell.get_segments(["soma"])
+		probs = [data.membrane_surface_area for data in seg_data]
 		
 		cell.add_synapses_over_segments(
 			segments = segments,
 			nsyn = self.parameters.num_soma_inh_syns,
 			syn_mod = self.parameters.inh_syn_mod,
+			syn_params = self.parameters.inh_syn_params,
 			gmax = self.parameters.soma_gmax_dist,
 			name = "soma",
 			density = False,
@@ -370,11 +318,6 @@ class CellBuilder:
 			return None
 		
 		# Inhibitory release probability distributions
-		inh_soma_P_dist = partial(
-			P_release_dist, 
-			P_mean = self.parameters.inh_soma_P_release_mean, 
-			P_std = self.parameters.inh_soma_P_release_std, 
-			size = 1)
 		inh_apic_P_dist = partial(
 			P_release_dist, 
 			P_mean = self.parameters.inh_apic_P_release_mean, 
@@ -387,19 +330,17 @@ class CellBuilder:
 			size = 1)
 		
 		inh_P_dist = {}
-		inh_P_dist["soma"] = inh_soma_P_dist
 		inh_P_dist["apic"] = inh_apic_P_dist
 		inh_P_dist["dend"] = inh_basal_P_dist
 		
-		segments = cell.get_segments(["all"])
-		probs = []
-		for _, seg_data in segments:
-			probs.append(seg_data.membrane_surface_area)
+		segments, seg_data = cell.get_segments(["apic", "dend"])
+		probs = [data.membrane_surface_area for data in seg_data]
 
 		cell.add_synapses_over_segments(
 			segments = segments,
 			nsyn = self.parameters.inh_synaptic_density,
 			syn_mod = self.parameters.inh_syn_mod,
+			syn_params = self.parameters.inh_syn_params,
 			gmax = self.parameters.inh_gmax_dist,
 			name = "inh",
 			density = True,
@@ -429,17 +370,16 @@ class CellBuilder:
 		
 		# Use surface area instead of lengths for probabilities
 		if self.parameters.use_SA_exc: 
-			segments = cell.get_segments(["all"])
+			segments, seg_data = cell.get_segments(["all"])
 		else:
-			segments = cell.get_segments(["apic", "dend", "axon"])
-		probs = []
-		for _, seg_data in segments:
-			probs.append(seg_data.membrane_surface_area)
+			segments, seg_data = cell.get_segments(["apic", "dend", "axon"])
+		probs = [data.membrane_surface_area for data in seg_data]
 
 		cell.add_synapses_over_segments(
 			segments = segments,
 			nsyn = self.parameters.exc_synaptic_density,
 			syn_mod = self.parameters.exc_syn_mod,
+			syn_params = self.parameters.exc_syn_params,
 			gmax = gmax_exc_dist,
 			name = "exc",
 			density = True,
