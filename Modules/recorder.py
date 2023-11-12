@@ -7,7 +7,7 @@ class Recorder:
 		self.vec = h.Vector(vector_length)
 
 		attr_name = '_ref_' + name
-		attr = getattr(obj, attr_name)
+		attr = getattr(obj(0.5), attr_name)
 		self.vec.record(attr)
 
 class SpikeRecorder:

@@ -56,7 +56,7 @@ class PCBuilder:
 		labels, _ = PCBuilder._cluster_segments(seg_coords = seg_coords, n_clusters = n_func_gr)
 
 		for fg_idx in np.unique(labels):
-			
+
 			# Find indexes of segments belonging to the fg
 			fg_seg_idxs = []
 			for seg_ind in range(len(labels)):
@@ -113,10 +113,10 @@ class PCBuilder:
 			for synapse in synapses:
 				if synapse.pc is not None:
 					continue
-				if seg_index in functional_group.seg_idxs == False:
-					continue
 
 				seg_index = all_segments.index(synapse.h_syn.get_segment())
+				if seg_index in functional_group.seg_idxs == False:
+					continue
 
 				for pc in functional_group.presynaptic_cells:
 					if seg_index in pc.seg_idxs:

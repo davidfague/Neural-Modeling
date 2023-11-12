@@ -1,10 +1,9 @@
-from Modules.cell_builder import SkeletonCell, CellBuilder
-from Modules.constants import SimulationParameters
-from Modules.logger import Logger
-from Modules.recorder import Recorder
+from cell_builder import SkeletonCell, CellBuilder
+from constants import SimulationParameters
+from logger import Logger
 
-from cell_inference.config import params
-from cell_inference.utils.currents.ecp import EcpMod
+# from cell_inference.config import params
+# from cell_inference.utils.currents.ecp import EcpMod
 
 from neuron import h
 
@@ -62,7 +61,10 @@ class Simulation:
 
         # Build the cell
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
-        cell = cell_builder.build_cell()
+        cell, _ = cell_builder.build_cell()
+
+        for syn in cell.synapses:
+            print(syn.name, syn.pc.spike_train)
 
         # Construct segment indexes
         #seg_indexes = self.construct_seg_indexes(cell, parameters)
@@ -71,8 +73,8 @@ class Simulation:
         #cell.recompute_segment_elec_distance(segment = cell.segments[seg_indexes["nexus"]], seg_name = "nexus")
 
         # Create an ECP object for extracellular potential
-        elec_pos = params.ELECTRODE_POSITION
-        ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)
+        #elec_pos = params.ELECTRODE_POSITION
+        #ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)
 
         # Save segment indexes for plotting
         #with open(os.path.join(parameters.path, "seg_indexes.pickle"), "wb") as file: 
@@ -108,27 +110,29 @@ class Simulation:
 
                 # Save data
                 # cell.generate_recorder_data(parameters.vector_length)
-                cell.write_recorder_data(os.path.join(parameters.path, f"saved_at_step_{time_step}"))
+                cell.write_recorder_data(
+                    os.path.join(parameters.path, f"saved_at_step_{time_step}"),
+                    parameters.vector_length)
 
                 # Save lfp
-                loc_param = [0., 0., 45., 0., 1., 0.]
-                lfp = ecp.calc_ecp(move_cell = loc_param).T  # Unit: mV
+                #loc_param = [0., 0., 45., 0., 1., 0.]
+                #lfp = ecp.calc_ecp(move_cell = loc_param).T  # Unit: mV
 
-                with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
-                    file.create_dataset("report/biophysical/data", data = lfp)
+                #with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
+                #    file.create_dataset("report/biophysical/data", data = lfp)
 
                 # Save net membrane current
-                with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "i_membrane_report.h5"), 'w') as file:
-                    file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
+                #with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "i_membrane_report.h5"), 'w') as file:
+                #    file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
 
                 # Reinitialize vectors: https://www.neuron.yale.edu/phpBB/viewtopic.php?t=2579
                 for recorder in cell.recorders:
                     recorder.vec.resize(0)
 
-                for syn in cell.synapses:
-                    for vec in syn.rec_vec: vec.resize(0)
+                #for syn in cell.synapses:
+                #    for vec in syn.rec_vec: vec.resize(0)
 
-                for vec in ecp.im_rec.vectors: vec.resize(0)
+                #for vec in ecp.im_rec.vectors: vec.resize(0)
 
             h.fadvance()
             time_step += 1

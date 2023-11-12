@@ -55,11 +55,13 @@ class CellModel:
 		# By default, record spikes and membrane voltage
 		self.recorders.append(SpikeRecorder(self.soma[0], "soma_spikes", spike_threshold))
 		self.recorders.append(SpikeRecorder(self.axon[0], "axon_spikes", spike_threshold))
+		self.recorders.append(Recorder(self.soma[0], "v", 10000))
 
 		# self.get_channels_from_var_names() # Get channel and attribute names from recorded channel name
 		# self.errors_in_setting_params = self.insert_unused_channels() # Need to update with var_names
 
 		# Temporary fix for reference issues
+		# self.errors_in_setting_params = []
 		# for sec in self.all:
 		# 	try: sec.insert("ursadonny")
 		# 	except Exception as e: self.errors_in_setting_params.append(e)
@@ -67,7 +69,7 @@ class CellModel:
 	def get_basals(self) -> list:
 		return self.find_terminal_sections(self.dend)
 	
-	def get_tufts(self) -> tuple:
+	def get_tufts_obliques(self) -> tuple:
 		tufts = []
 		obliques = []
 		for sec in self.find_terminal_sections(self.apic):
@@ -170,10 +172,10 @@ class CellModel:
 
 		return xyz
 		
-	def get_channels_from_var_names(self):
+	def get_channels_from_var_names(self, channel_names):
 		# Identifying unique channels
 		channels_set = set()
-		for var_name in self.var_names:
+		for var_name in self.channel_names:
 			if (var_name not in ['i_pas', 'ik', 'ica', 'ina']) and ('ion' not in var_name):
 				split_name = var_name.split('_')
 				if var_name.startswith('g'):
@@ -185,7 +187,7 @@ class CellModel:
 		Neymotin_channels = ['nax', 'kdmc', 'kap', 'kdr', 'hd']
 		return [(channel, f'gbar') if channel in Neymotin_channels else (channel, f'g{channel}bar') for channel in channels_set]
 	
-	def insert_unused_channels(self) -> None:
+	def insert_unused_channels(self, channel_names) -> None:
 		'''
 		Allow recording of channels in sections that do not have the current.
 		'''
@@ -232,7 +234,7 @@ class CellModel:
 		return new_section_list
 
 	def add_recorders(self, names: list, vector_length: int):
-		segments = self.get_segments()
+		segments, _ = self.get_segments(["all"])
 		for name in names:
 			for seg in segments:
 				try: self.recorders.append(Recorder(seg, name, vector_length))
@@ -285,8 +287,8 @@ class CellModel:
 		for recorder in self.recorders:
 			self.write_datafile(os.path.join(path, f"{recorder.name}_report.h5"), recorder.vec.as_numpy())
 
-		for name, current in zip(["i_NMDA", "i_AMPA", "i_GABA"], self.get_recorded_currents_from_synapses(vector_length)):
-			self.write_datafile(os.path.join(path, f"{name}_report.h5"), current)
+		# for name, current in zip(["i_NMDA", "i_AMPA", "i_GABA"], self.get_recorded_currents_from_synapses(vector_length)):
+		# 	self.write_datafile(os.path.join(path, f"{name}_report.h5"), current)
 	
 	def write_datafile(self, reportname, data):
 		with h5py.File(reportname, 'w') as file:
@@ -516,9 +518,9 @@ class CellModel:
 		"""
 		Add current injection to soma.
 		"""
-		self.current_injection = h.IClamp(self.soma(0.5))
+		self.current_injection = h.IClamp(self.soma[0](0.5))
 		self.current_injection.amp = amp
-		self.current_injection.ci.dur = dur
+		self.current_injection.dur = dur
 		self.current_injection.delay = delay
 
 	

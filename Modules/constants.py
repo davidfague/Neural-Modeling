@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from Modules.synapse import CS2CP_syn_params, CP2CP_syn_params, FSI_syn_params, LTS_syn_params
+from synapse import CS2CP_syn_params, CP2CP_syn_params, FSI_syn_params, LTS_syn_params
 
 @dataclass
 class SimulationParameters:
@@ -58,9 +58,9 @@ class SimulationParameters:
 	h_dt: float = 0.1 # Timestep (ms)
 
 	# Current injection
-	CI_on: bool = False
+	CI_on: bool = True
 	h_i_amplitude: float = 10.0 # (nA)
-	h_i_duration: int = 2000 # (ms)
+	h_i_duration: int = 1000 # (ms)
 	h_i_delay: int = 10 # (ms)
 
 	trunk_exc_synapses: bool = True
@@ -78,8 +78,8 @@ class SimulationParameters:
 
 	# Synapse density syns/um 
 	# Current densities taken from literature on apical main bifurcation, and extrapolated to entire cell.
-	exc_synaptic_density: float = 2.16 / 4 # (syn/micron of path length)
-	inh_synaptic_density: float = 0.22 / 4 # (syn/micron of path length)
+	exc_synaptic_density: float = 2.16 # (syn/micron of path length)
+	inh_synaptic_density: float = 0.22 # (syn/micron of path length)
 	use_SA_exc: bool = True # Use surface area instead of lengths for the synapse's segment assignment probabilities
 
 	# Release probability distributions
@@ -97,11 +97,10 @@ class SimulationParameters:
 	inh_syn_mod: str = 'GABA_AB_STP'
 
 	# firing rate distributions
-	inh_prox_mean_fr: float = 16.9
-	inh_prox_std_fr: float = 14.3
-	inh_distal_mean_fr: float = 3.9
-	inh_distal_std_fr: float = 4.9
-	inh_firing_rate_time_shift: int = 4
+	inh_prox_mean_fr: float = 16.9 / 10
+	inh_prox_std_fr: float = 14.3 / 10
+	inh_distal_mean_fr: float = 3.9 / 10
+	inh_distal_std_fr: float = 4.9 / 10
 
 	# syn_params
 	exc_syn_params: tuple = (CS2CP_syn_params, CP2CP_syn_params) # 90%, 10%
@@ -110,8 +109,8 @@ class SimulationParameters:
 	# kmeans clustering
 	exc_n_FuncGroups = 24
 	exc_n_PreCells_per_FuncGroup = 15
-	inh_distributed_n_FuncGroups = 5
-	inh_distributed_n_PreCells_per_FuncGroup = 100
+	inh_distributed_n_FuncGroups = 24
+	inh_distributed_n_PreCells_per_FuncGroup = 15
 
 	# Excitatory dend
 	exc_functional_group_span = 100
