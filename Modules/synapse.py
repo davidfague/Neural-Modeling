@@ -120,27 +120,3 @@ class Synapse:
             self.current_type = current_type_map[syn_mod]
         else:
             raise ValueError("Synapse type not defined.")
-    
-    def setup_recorder(self, vector_length) -> None:
-        size = vector_length
-        
-        if self.current_type == "i":
-            self.rec_vec.append(h.Vector(size).record(self.synapse_hoc_obj._ref_i))
-            
-        elif self.current_type == "igaba":
-            self.rec_vec.append(h.Vector(size).record(self.synapse_hoc_obj._ref_igaba))
-
-        elif self.current_type == "i_AMPA_i_NMDA":
-            vec_inmda = h.Vector(size).record(self.synapse_hoc_obj._ref_i_NMDA)
-            vec_iampa = h.Vector(size).record(self.synapse_hoc_obj._ref_i_AMPA)
-            self.rec_vec.append(vec_inmda)
-            self.rec_vec.append(vec_iampa)
-        
-        elif self.current_type == "iampa_inmda":
-            vec_inmda = h.Vector(size).record(self.synapse_hoc_obj._ref_inmda)
-            vec_iampa = h.Vector(size).record(self.synapse_hoc_obj._ref_iampa)
-            self.rec_vec.append(vec_inmda)
-            self.rec_vec.append(vec_iampa)
-
-        else:
-            raise(ValueError('current_type not defined'))

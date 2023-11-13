@@ -81,8 +81,8 @@ class Simulation:
         #cell.write_seg_info_to_csv(path = parameters.path, seg_info = cell_builder.detailed_seg_info, title_prefix = 'detailed_')
 
         # Save constants
-        #with open(os.path.join(parameters.path, "parameters.pickle"), "wb") as file:
-        #    pickle.dump(parameters, file)
+        with open(os.path.join(parameters.path, "parameters.pickle"), "wb") as file:
+           pickle.dump(parameters, file)
 
         # In time stamps, i.e., ms / dt
         time_step = 0
@@ -107,9 +107,7 @@ class Simulation:
 
                 # Save data
                 # cell.generate_recorder_data(parameters.vector_length)
-                cell.write_recorder_data(
-                    os.path.join(parameters.path, f"saved_at_step_{time_step}"),
-                    parameters.vector_length)
+                cell.write_recorder_data(os.path.join(parameters.path, f"saved_at_step_{time_step}"))
 
                 # Save lfp
                 #loc_param = [0., 0., 45., 0., 1., 0.]

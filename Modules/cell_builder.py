@@ -164,9 +164,11 @@ class CellBuilder:
 
 		# Set recorders
 		# cell.insert_unused_channels(self.parameters.channel_names)
-		cell.add_recorders(
-			names = self.parameters.channel_names,
-			vector_length = self.parameters.vector_length)
+		for var_name in self.parameters.channel_names:
+			cell.add_section_recorder(var_name = var_name)
+		
+		for var_name in ["i_AMPA", "i_NMDA"]:
+			cell.add_synapse_recorder(var_name = var_name)
 
 		# Add current injection
 		if self.parameters.CI_on:

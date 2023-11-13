@@ -1,19 +1,27 @@
 from neuron import h
 
-class Recorder:
+class SectionRecorder:
 
-	def __init__(self, obj: object, name: str, vector_length: int):
-		self.name = name
-		self.vec = h.Vector(vector_length)
+	def __init__(self, seg: object, var_name: str):
+		self.var_name = var_name
+		self.vec = h.Vector()
 
-		attr_name = '_ref_' + name
-		attr = getattr(obj(0.5), attr_name)
+		attr = getattr(seg(0.5), '_ref_' + var_name)
+		self.vec.record(attr)
+
+class SynapseRecorder:
+
+	def __init__(self, syn: object, var_name: str):
+		self.var_name = var_name
+		self.vec = h.Vector()
+
+		attr = getattr(syn, '_ref_' + var_name)
 		self.vec.record(attr)
 
 class SpikeRecorder:
 
-	def __init__(self, obj: object, name: str, spike_threshold: float):
-		self.name = name
+	def __init__(self, obj: object, var_name: str, spike_threshold: float):
+		self.var_name = var_name
 		self.vec = h.Vector()
 		self.spike_threhsold = spike_threshold
 

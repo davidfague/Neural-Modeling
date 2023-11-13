@@ -4,7 +4,7 @@ import os, h5py, csv
 
 from neuron import h
 
-from recorder import Recorder, SpikeRecorder
+from recorder import SectionRecorder, SynapseRecorder, SpikeRecorder
 from synapse import Synapse
 from logger import Logger
 
@@ -63,7 +63,7 @@ class CellModel:
 		# By default, record spikes and membrane voltage
 		self.recorders.append(SpikeRecorder(self.soma[0], "soma_spikes", spike_threshold))
 		self.recorders.append(SpikeRecorder(self.axon[0], "axon_spikes", spike_threshold))
-		self.recorders.append(Recorder(self.soma[0], "v", 10000))
+		self.recorders.append(SectionRecorder(self.soma[0], "v"))
 
 		# self.get_channels_from_var_names() # Get channel and attribute names from recorded channel name
 		# self.errors_in_setting_params = self.insert_unused_channels() # Need to update with var_names
@@ -234,13 +234,16 @@ class CellModel:
 			raise TypeError(f"Expected input 'section_list' to be either of type hoc.HocObject, nrn.Section, or list, but got {type(section_list).__name__}")
 
 		return new_section_list
+	
+	def add_synapse_recorder(self, var_name: str):
+		for syn in self.synapses:
+			try: self.recorders.append(SynapseRecorder(syn.h_syn, var_name))
+			except: continue
 
-	def add_recorders(self, names: list, vector_length: int):
-		segments, _ = self.get_segments(["all"])
-		for name in names:
-			for seg in segments:
-				try: self.recorders.append(Recorder(seg, name, vector_length))
-				except: continue
+	def add_section_recorder(self, var_name: str):
+		for sec in self.all:
+			try: self.recorders.append(SectionRecorder(sec, var_name))
+			except: continue
 
 	def get_recorded_currents_from_synapses(self, vector_length):
 		_, _, segments = self.get_segments()
@@ -281,13 +284,16 @@ class CellModel:
 
 		return i_NMDA_df, i_AMPA_df, i_GABA_df
 	
-	def write_recorder_data(self, path, vector_length) -> None:
+	def write_recorder_data(self, path) -> None:
 		
 		os.mkdir(path)
 
 		# Write data from the list
 		for recorder in self.recorders:
-			self.write_datafile(os.path.join(path, f"{recorder.name}.h5"), recorder.vec.as_numpy()[::10])
+			if type(recorder) == SpikeRecorder:
+				self.write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.vec.as_numpy())
+			else:
+				self.write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.vec.as_numpy()[::10])
 
 		# for name, current in zip(["i_NMDA", "i_AMPA", "i_GABA"], self.get_recorded_currents_from_synapses(vector_length)):
 		# 	self.write_datafile(os.path.join(path, f"{name}_report.h5"), current)
