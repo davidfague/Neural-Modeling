@@ -39,26 +39,13 @@ class SimulationParameters:
       }
   }
 
-	# Morphology parameters used if build_m1
-	# SomaL = 28.896601873591436
-	# SomaDiam = 14.187950175330796
-	# AxonL = 549.528226526987
-	# AxonDiam = 1.0198477329563544
-
-	# Neymotin Reduced
-	# SomaL: float = 48.4123467666
-	# SomaDiam: float = 28.2149102762
-	# AxonL: float = 594.292937602 # 549.528226526987
-	# AxonDiam: float =  1.40966286462
-	# Axon_L_scale: float = 1 # Used to adjust axon length while maintaing surface area
-
-	# Neuron parameters
+	# Environment parameters
 	h_celcius: float = 34 # 37
 	h_tstop: int = 2000 # Sim runtime (ms)
 	h_dt: float = 0.1 # Timestep (ms)
 
 	# Current injection
-	CI_on: bool = True
+	CI_on: bool = False
 	h_i_amplitude: float = 10.0 # (nA)
 	h_i_duration: int = 1000 # (ms)
 	h_i_delay: int = 10 # (ms)
@@ -69,11 +56,11 @@ class SimulationParameters:
 	num_soma_inh_syns: int = 150
 
 	# gmax distributions
-	exc_gmax_mean_0: float = 0.45
-	exc_gmax_std_0: float = 0.345
-	exc_gmax_clip: tuple = (0, 0.75)
-	inh_gmax_dist: float = 1
-	soma_gmax_dist: float = 1
+	exc_gmax_mean_0: float = 5.5
+	exc_gmax_std_0: float = 0.2
+	exc_gmax_clip: tuple = (0, 7)
+	inh_gmax_dist: float = 0.5
+	soma_gmax_dist: float = 0.5
 	exc_scalar: int = 1 # Scales weight
 
 	# Synapse density syns/um 
@@ -97,10 +84,11 @@ class SimulationParameters:
 	inh_syn_mod: str = 'GABA_AB_STP'
 
 	# firing rate distributions
-	inh_prox_mean_fr: float = 16.9 / 10
-	inh_prox_std_fr: float = 14.3 / 10
-	inh_distal_mean_fr: float = 3.9 / 10
-	inh_distal_std_fr: float = 4.9 / 10
+	exc_mean_fr: float = 5.3
+	inh_prox_mean_fr: float = 3.9
+	inh_prox_std_fr: float = 0.5
+	inh_distal_mean_fr: float = 3.9
+	inh_distal_std_fr: float = 0.5
 
 	# syn_params
 	exc_syn_params: tuple = (CS2CP_syn_params, CP2CP_syn_params) # 90%, 10%

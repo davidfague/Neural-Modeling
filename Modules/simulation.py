@@ -18,7 +18,7 @@ def unwrap_self_run_single_simulation(args):
 
 class Simulation:
 
-    def __init__(self, cell_type: SkeletonCell, title=None):
+    def __init__(self, cell_type: SkeletonCell, title = None):
         self.cell_type = cell_type
         if title:
           self.path = f"{title}-{datetime.datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}"
@@ -62,9 +62,6 @@ class Simulation:
         # Build the cell
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
         cell, _ = cell_builder.build_cell()
-
-        for syn in cell.synapses:
-            print(syn.name, syn.pc.spike_train)
 
         # Construct segment indexes
         #seg_indexes = self.construct_seg_indexes(cell, parameters)

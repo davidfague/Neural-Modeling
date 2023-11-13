@@ -10,6 +10,14 @@ from logger import Logger
 
 from dataclasses import dataclass
 
+@dataclass
+class SegmentData:
+	L: float
+	membrane_surface_area: int
+	coords: pd.DataFrame
+	section: str
+	index_in_section: int
+
 class CellModel:
 
 	FREQS = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
@@ -59,12 +67,6 @@ class CellModel:
 
 		# self.get_channels_from_var_names() # Get channel and attribute names from recorded channel name
 		# self.errors_in_setting_params = self.insert_unused_channels() # Need to update with var_names
-
-		# Temporary fix for reference issues
-		# self.errors_in_setting_params = []
-		# for sec in self.all:
-		# 	try: sec.insert("ursadonny")
-		# 	except Exception as e: self.errors_in_setting_params.append(e)
 
 	def get_basals(self) -> list:
 		return self.find_terminal_sections(self.dend)
@@ -285,7 +287,7 @@ class CellModel:
 
 		# Write data from the list
 		for recorder in self.recorders:
-			self.write_datafile(os.path.join(path, f"{recorder.name}_report.h5"), recorder.vec.as_numpy())
+			self.write_datafile(os.path.join(path, f"{recorder.name}.h5"), recorder.vec.as_numpy()[::10])
 
 		# for name, current in zip(["i_NMDA", "i_AMPA", "i_GABA"], self.get_recorded_currents_from_synapses(vector_length)):
 		# 	self.write_datafile(os.path.join(path, f"{name}_report.h5"), current)
@@ -294,7 +296,7 @@ class CellModel:
 		with h5py.File(reportname, 'w') as file:
 			# Check if the data is a DataFrame, and convert to numpy array if true
 			if isinstance(data, pd.DataFrame): data = data.values
-			file.create_dataset("report/biophysical/data", data = data)
+			file.create_dataset("data", data = data)
 
 	def get_seg_info(self) -> list:
 		bmtk_index = 0
@@ -667,11 +669,3 @@ class CellModel:
 				gmax = gmax(size = 1) if callable(gmax) else gmax,
 				neuron_r = self.neuron_r,
 				name = name))
-
-@dataclass
-class SegmentData:
-	L: float
-	membrane_surface_area: int
-	coords: pd.DataFrame
-	section: str
-	index_in_section: int
