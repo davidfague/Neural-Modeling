@@ -49,7 +49,7 @@ def spike_triggered_average(trace: np.ndarray, spike_times: np.ndarray, win_leng
     sta = np.zeros(win_length)
     # Add trace[spike - window: spike] to the trace
     for sp_time in spike_times:
-        sta = sta + trace[:, int(sp_time - win_length - 1): int(sp_time - 1)]
+        sta = sta + trace[:, int(sp_time - win_length // 2): int(sp_time + win_length // 2)]
 
     # Average over all spikes
     sta = sta / len(spike_times)
@@ -139,7 +139,7 @@ def bin_matrix_to_quantiles(matrix, quantiles, var_to_bin):
         inds = np.where((var_to_bin > quantiles[i]) & ((var_to_bin < quantiles[i + 1])))[0]
         out[i] = np.sum(matrix[inds], axis = 0)
     
-    return out
+    return out[:-1]
 
     
 

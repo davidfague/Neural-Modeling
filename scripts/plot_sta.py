@@ -29,7 +29,7 @@ def plot_stas(
     plt.yticks(ticks = np.arange(11) - 0.5, labels = np.round(quantiles, 3))
     plt.ylabel("Edge Quantile")
     # https://github.com/dbheadley/InhibOnDendComp/blob/master/src/mean_dendevt.py
-    plt.colorbar(label = 'Percent Change from Mean')
+    plt.colorbar(label = 'STA')
     return fig
 
 if __name__ == "__main__":
@@ -79,13 +79,14 @@ if __name__ == "__main__":
     sta_dend = analysis.bin_matrix_to_quantiles(matrix = stas, quantiles = quantiles_dend, var_to_bin = elec_dist)
     sta_apic = analysis.bin_matrix_to_quantiles(matrix = stas, quantiles = quantiles_apic, var_to_bin = elec_dist)
 
+    print(sta_dend.shape)
+
     x_ticks = np.arange(0, 50, 5)
     x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
 
-    sta_mean = np.mean(sta_dend, axis = 1, keepdims = True)
-    normed_sta_dend = (sta_dend - sta_mean) / (np.abs(sta_mean) + 1e-10)
-
-    fig = plot_stas(sta_apic, quantiles_dend, "img", x_ticks, x_tick_labels)
+    fig = plot_stas(sta_dend, quantiles_dend, "Na – Dend", x_ticks, x_tick_labels)
+    plt.show()
+    fig = plot_stas(sta_apic, quantiles_apic, "Na – Apic", x_ticks, x_tick_labels)
     plt.show()
 
     # fig.savefig(f'{save_to}', dpi = fig.dpi)
