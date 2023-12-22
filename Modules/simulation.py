@@ -9,6 +9,7 @@ from neuron import h
 
 import os, datetime
 import pickle, h5py
+import pandas as pd
 
 from multiprocessing import Pool, cpu_count
 
@@ -63,10 +64,21 @@ class Simulation:
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
         cell, _ = cell_builder.build_cell()
 
-        # Construct segment indexes
-        #seg_indexes = self.construct_seg_indexes(cell, parameters)
+        # Classify segments by morphology
+        segments, seg_data = cell.get_segments(["all"])
+        seg_sections = []
+        seg_idx = []
+        for entry in seg_data:
+            sec_name = entry.section.split(".")[1] # name[idx]
+            seg_sections.append(sec_name.split("[")[0])
+            seg_idx.append(sec_name.split("[")[1].split("]")[0])
+        seg_sections = pd.DataFrame({"section": seg_sections, "idx_in_section": seg_idx})
+        seg_sections.to_csv(os.path.join(parameters.path, "segments_by_morphology.csv"))
 
         # Compute electrotonic distances from nexus
+        elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
+        elec_distances_nexus.to_csv(os.path.join(parameters.path, "elec_distance_nexus.csv"))
+
         #cell.recompute_segment_elec_distance(segment = cell.segments[seg_indexes["nexus"]], seg_name = "nexus")
 
         # Create an ECP object for extracellular potential
@@ -106,8 +118,9 @@ class Simulation:
                 self.logger.log_step(time_step)
 
                 # Save data
-                # cell.generate_recorder_data(parameters.vector_length)
-                cell.write_recorder_data(os.path.join(parameters.path, f"saved_at_step_{time_step}"))
+                cell.write_recorder_data(
+                    os.path.join(parameters.path, f"saved_at_step_{time_step}"), 
+                    int(1 / parameters.h_dt))
 
                 # Save lfp
                 #loc_param = [0., 0., 45., 0., 1., 0.]
@@ -120,12 +133,8 @@ class Simulation:
                 #with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "i_membrane_report.h5"), 'w') as file:
                 #    file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
 
-                # Reinitialize vectors: https://www.neuron.yale.edu/phpBB/viewtopic.php?t=2579
-                for recorder in cell.recorders:
-                    recorder.vec.resize(0)
-
-                #for syn in cell.synapses:
-                #    for vec in syn.rec_vec: vec.resize(0)
+                # Reinitialize recording vectors
+                for recorder_or_list in cell.recorders: recorder_or_list.clear()
 
                 #for vec in ecp.im_rec.vectors: vec.resize(0)
 

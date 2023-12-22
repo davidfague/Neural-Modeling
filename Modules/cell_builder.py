@@ -138,7 +138,7 @@ class CellBuilder:
 		self.logger.log("Assigning soma spike trains.")
 		self.assign_soma_spike_trains(cell = cell, random_state = random_state)
       
-		self.logger.log("Finish creating a CellModel object.")
+		self.logger.log("Finished creating a CellModel object.")
 
 		# Turn off certain presynaptic neurons to simulate in vivo
 		if (self.parameters.CI_on == False) and (self.parameters.trunk_exc_synapses == False):
@@ -165,10 +165,10 @@ class CellBuilder:
 		# Set recorders
 		# cell.insert_unused_channels(self.parameters.channel_names)
 		for var_name in self.parameters.channel_names:
-			cell.add_section_recorder(var_name = var_name)
+			cell.add_segment_recorders(var_name = var_name)
 		
 		for var_name in ["i_AMPA", "i_NMDA"]:
-			cell.add_synapse_recorder(var_name = var_name)
+			cell.add_synapse_recorders(var_name = var_name)
 
 		# Add current injection
 		if self.parameters.CI_on:

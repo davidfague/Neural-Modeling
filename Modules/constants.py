@@ -121,16 +121,8 @@ class SimulationParameters:
 	soma_functional_group_span = 100
 
 	# Cell model
-	seg_to_record: str = 'soma' # Used to set spike recorder
 	spike_threshold: int = -10 # (mV)
 	channel_names = []
-					
-	# Tiesinga
-	ties_a_iv = 10
-	ties_P = 1
-	ties_CV_t = 1
-	ties_sigma_iv = 1
-	ties_pad_aiv = 0
 
 	# Post Synaptic Current analysis
 	number_of_presynaptic_cells: int = 2651

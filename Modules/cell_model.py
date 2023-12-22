@@ -4,7 +4,7 @@ import os, h5py, csv
 
 from neuron import h
 
-from recorder import SectionRecorder, SynapseRecorder, SpikeRecorder
+from recorder import SegmentRecorder, SynapseRecorder, SpikeRecorder, SynapseRecorderList, SegmentRecorderList, EmptySegmentRecorder
 from synapse import Synapse
 from logger import Logger
 
@@ -61,9 +61,9 @@ class CellModel:
 		self.recorders = []
 
 		# By default, record spikes and membrane voltage
-		self.recorders.append(SpikeRecorder(self.soma[0], "soma_spikes", spike_threshold))
-		self.recorders.append(SpikeRecorder(self.axon[0], "axon_spikes", spike_threshold))
-		self.recorders.append(SectionRecorder(self.soma[0], "v"))
+		self.recorders.append(SpikeRecorder(sec = self.soma[0], var_name = "soma_spikes", spike_threshold = spike_threshold))
+		self.recorders.append(SpikeRecorder(sec = self.axon[0], var_name = "axon_spikes", spike_threshold = spike_threshold))
+		self.recorders.append(SegmentRecorder(seg = self.soma[0](0.5), var_name = "v"))
 
 		# self.get_channels_from_var_names() # Get channel and attribute names from recorded channel name
 		# self.errors_in_setting_params = self.insert_unused_channels() # Need to update with var_names
@@ -235,73 +235,40 @@ class CellModel:
 
 		return new_section_list
 	
-	def add_synapse_recorder(self, var_name: str):
+	def add_synapse_recorders(self, var_name: str):
+		rec_list = SynapseRecorderList(var_name)
 		for syn in self.synapses:
-			try: self.recorders.append(SynapseRecorder(syn.h_syn, var_name))
+			try: rec_list.add(SynapseRecorder(syn.h_syn, var_name))
 			except: continue
+		self.recorders.append(rec_list)
 
-	def add_section_recorder(self, var_name: str):
-		for sec in self.all:
-			try: self.recorders.append(SectionRecorder(sec, var_name))
-			except: continue
-
-	def get_recorded_currents_from_synapses(self, vector_length):
-		_, _, segments = self.get_segments()
-		numTstep = vector_length
-		i_NMDA_bySeg = [[0] * (numTstep)] * len(segments)
-		i_AMPA_bySeg = [[0] * (numTstep)] * len(segments)
-		i_GABA_bySeg = [[0] * (numTstep)] * len(segments)
-		for synapse in self.synapses: # Record nmda and ampa synapse currents
-			try:
-				if ('nmda' in synapse.current_type) or ('NMDA' in synapse.current_type):
-					i_NMDA = np.array(synapse.rec_vec[0])
-					i_AMPA = np.array(synapse.rec_vec[1])
-					seg = segments.index(synapse.segment)
-
-					# Match shapes
-					if len(i_NMDA) > len(i_NMDA_bySeg[seg]):
-						i_NMDA = i_NMDA[:-1]
-					if len(i_AMPA) > len(i_AMPA_bySeg[seg]):
-						i_AMPA = i_AMPA[:-1]  
-
-					i_NMDA_bySeg[seg] = i_NMDA_bySeg[seg] + i_NMDA
-					i_AMPA_bySeg[seg] = i_AMPA_bySeg[seg] + i_AMPA
-					
-				elif ('gaba' in synapse.syn_type) or ('GABA' in synapse.syn_type): # GABA_AB current is 'i' so use syn_mod
-					i_GABA = np.array(synapse.rec_vec[0])
-					seg = self.segments.index(synapse.segment)
-
-					if len(i_GABA) > len(i_GABA_bySeg[seg]):
-						i_GABA = i_GABA[:-1]
-
-					i_GABA_bySeg[seg] = i_GABA_bySeg[seg] + i_GABA
-			except:
-				continue
-		
-		i_NMDA_df = np.array(pd.DataFrame(i_NMDA_bySeg))
-		i_AMPA_df = np.array(pd.DataFrame(i_AMPA_bySeg))
-		i_GABA_df = np.array(pd.DataFrame(i_GABA_bySeg))
-
-		return i_NMDA_df, i_AMPA_df, i_GABA_df
+	def add_segment_recorders(self, var_name: str):
+		rec_list = SegmentRecorderList(var_name)
+		segments, _ = self.get_segments(["all"])
+		for seg in segments:
+			try: rec_list.add(SegmentRecorder(seg, var_name))
+			except: rec_list.add(EmptySegmentRecorder())
+		self.recorders.append(rec_list)
 	
-	def write_recorder_data(self, path) -> None:
-		
+	def write_recorder_data(self, path: str, step: int) -> None:
 		os.mkdir(path)
 
-		# Write data from the list
 		for recorder in self.recorders:
 			if type(recorder) == SpikeRecorder:
-				self.write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.vec.as_numpy())
-			else:
-				self.write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.vec.as_numpy()[::10])
+				self._write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.vec.as_numpy().reshape(1, -1))
 
-		# for name, current in zip(["i_NMDA", "i_AMPA", "i_GABA"], self.get_recorded_currents_from_synapses(vector_length)):
-		# 	self.write_datafile(os.path.join(path, f"{name}_report.h5"), current)
+			elif (type(recorder) == SegmentRecorder) or (type(recorder) == SynapseRecorder):
+				self._write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.vec.as_numpy()[::step].reshape(1, -1))
+
+			elif (type(recorder) == SegmentRecorderList):
+				self._write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.get_combined_data()[:, ::step])
+
+			elif (type(recorder) == SynapseRecorderList):
+				segments, _ = self.get_segments(["all"])
+				self._write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.get_combined_data(segments, self.synapses)[:, ::step])
 	
-	def write_datafile(self, reportname, data):
+	def _write_datafile(self, reportname, data):
 		with h5py.File(reportname, 'w') as file:
-			# Check if the data is a DataFrame, and convert to numpy array if true
-			if isinstance(data, pd.DataFrame): data = data.values
 			file.create_dataset("data", data = data)
 
 	def get_seg_info(self) -> list:
@@ -373,6 +340,31 @@ class CellModel:
 			}
 
 		return seg_info
+	
+	def compute_electrotonic_distance(self, from_segment) -> pd.DataFrame:
+		passive_imp = h.Impedance()
+		passive_imp.loc(from_segment)
+		active_imp = h.Impedance()
+		active_imp.loc(from_segment)
+		
+		segments, _ = self.get_segments(["all"])
+		elec_distance = np.zeros((len(segments), 2 * len(self.FREQS.items())))
+
+		colnames = []
+		col_idx = 0
+		for freq_name, freq_hz in self.FREQS.items():
+			# 9e-9 is a Segev's value
+			passive_imp.compute(freq_hz + 9e-9, 0)
+			active_imp.compute(freq_hz + 9e-9, 1)
+			for i, seg in enumerate(segments):
+				elec_distance[i, col_idx] = active_imp.ratio(seg.sec(seg.x))
+				elec_distance[i, col_idx + 1] = passive_imp.ratio(seg.sec(seg.x))
+			colnames.append(f"{freq_name}_active")
+			colnames.append(f"{freq_name}_passive")
+			col_idx = col_idx + 2
+
+		return pd.DataFrame(elec_distance, columns = colnames)
+
 	
 	def recompute_segment_elec_distance(self, seg_info, segment, seg_name) -> list:
 		if not all('seg_elec_distance' in seg for seg in seg_info):

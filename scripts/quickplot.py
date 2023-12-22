@@ -1,9 +1,11 @@
-import h5py, pickle
+import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-import sys, os
+import sys
 sys.path.append("../")
 sys.path.append("../Modules/")
+
+from analysis import DataReader
 
 def plot_sim_file(h5file):
 	with h5py.File(h5file, 'r') as file:
@@ -12,17 +14,7 @@ def plot_sim_file(h5file):
 	plt.savefig(f"quickplot.png")
 
 def plot_sim_folder(sim_folder, sim_file_name):
-	with open(os.path.join(sim_folder, "parameters.pickle"), "rb") as file:
-			parameters = pickle.load(file)
-
-	step_size = int(parameters.save_every_ms / parameters.h_dt) # Timestamps
-	steps = range(step_size, int(parameters.h_tstop / parameters.h_dt) + 1, step_size) # Timestamps
-
-	data_to_plot = []
-	for step in steps:
-		with h5py.File(os.path.join(sim_folder, f"saved_at_step_{step}", sim_file_name + ".h5"), 'r') as file:
-			data_to_plot.append(np.array(file["data"]))
-	data_to_plot = np.concatenate(data_to_plot)
+	data_to_plot = DataReader.read_data(sim_folder, sim_file_name)
 	plt.plot(data_to_plot)
 	plt.savefig(f"quickplot.png")
 
