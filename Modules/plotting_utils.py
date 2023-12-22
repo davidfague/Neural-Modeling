@@ -172,97 +172,71 @@ def plot_LFP_Vm_currents(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index,
 		plt.close()  # Close the figure after saving it
 
 def plot_edges(edges, segments, output_folder, elec_dist_var='soma_passive', title = None, filename = None, seg_type = None, freq_name = 'beta'):
-	"""
-	This function creates a plot of segments, colored according to the edge group they belong to.
-	
-	Parameters:
-	edges (array): An array of edge values.
-	segments (list): A list of segments.
-	output_folder (str): Path to the output folder where the plot will be saved.
-	title (str): The title of the plot. If None, the title will be the name of the 'edges' variable.
-	filename (str): The filename for the saved plot. If None, the filename will be the title + '_Elec_distance.png'.
-	seg_type (str): The type of segment you wish to plot ex. 'apic' or 'dend'. Used to filter segments.
-	"""
-	
-	# If title is not provided, set title as the name of 'edges' argument
-	if title is None:
-		callers_local_vars = inspect.currentframe().f_back.f_locals.items()
-		title = [var_name for var_name, var_val in callers_local_vars if var_val is edges][0]
-	
-	# If filename is not provided, set filename as title + '_Elec_distance.png'
-	if filename is None:
-		filename = title + '_Elec_distance.png'
-	
-	# Array to store edge indices
-	edge_indices = []
+  """
+  This function creates a plot of segments, colored according to the edge group they belong to.
+  
+  Parameters:
+  edges (array): An array of edge values.
+  segments (list): A list of segments.
+  output_folder (str): Path to the output folder where the plot will be saved.
+  title (str): The title of the plot. If None, the title will be the name of the 'edges' variable.
+  filename (str): The filename for the saved plot. If None, the filename will be the title + '_Elec_distance.png'.
+  seg_type (str): The type of segment you wish to plot ex. 'apic' or 'dend'. Used to filter segments.
+  """
+  
+  # Ensure output_folder exists
+  if not os.path.exists(output_folder):
+      os.makedirs(output_folder)
+  
+  # Set title based on the variable name of 'edges' if not provided
+  if title is None:
+      title = 'Edges Plot'
+  
+  # Set filename based on title if not provided
+  if filename is None:
+      filename = title.replace(" ", "_") + '_Elec_distance.png'
+  
+  # Calculate the bins for the histogram
+  bins = np.histogram_bin_edges(edges, bins='auto')
+  bins = np.concatenate(([0], bins, [1]))  # Include 0 and 1
+  bin_indices = np.digitize([eval(seg.seg_elec_distance)[freq_name][elec_dist_var] for seg in segments], bins) - 1
+  
+  # Filter segments based on type, if specified
+  if seg_type is not None:
+      segments = [seg for seg in segments if seg.type in [seg_type, 'soma']]
+  
+  # Create the plot
+  plt.figure(figsize=(4,10))
+  cmap = plt.get_cmap('jet', len(bins) - 1)
+  
+  for i, seg in enumerate(segments):
+      color = cmap(bin_indices[i])
+      plt.plot([seg.p0_x3d, seg.p0_5_x3d, seg.p1_x3d], [seg.p0_y3d, seg.p0_5_y3d, seg.p1_y3d], color=color)
+  
+  # Invisible scatter plot for the colorbar
+  sc = plt.scatter([], [], c=[], cmap=cmap)
+  
+  # Set the colorbar
+  cbar = plt.colorbar(sc, ticks=np.linspace(0, 1, len(bins)), label='Edge index')
+  cbar.ax.set_yticklabels(["{:.3f}".format(b) for b in bins])
+  cbar.ax.set_ylabel('Electrical distance', rotation=270)
+  
+  # Set plot details
+  plt.title(title)
+  plt.box(False)
+  plt.xticks([])
+  plt.yticks([])
+  plt.vlines(110, 400, 500)
+  plt.text(0, 450, '100 um')
+  plt.hlines(400, 110, 210)
+  plt.text(110, 350, '100 um')
+  
+  # Save the plot
+  plt.savefig(os.path.join(output_folder, filename))
+  
+  # Close the plot to avoid memory issues
+  plt.close()
 
-	# Adjust edges array to include 0 and 1
-	adjusted_edges = np.concatenate(([0], edges, [1]))
-
-	adjusted_edges.sort()
-
-	# Iterate over each segment
-	for seg in segments: # Get the value of seg_elec_distance for this segment
-		seg_elec_distance = eval(seg.seg_elec_distance)[freq_name][elec_dist_var]
-		if seg_elec_distance > 1:
-			print(f"Warning: {seg.seg} seg_elec_distance > 1 : {seg_elec_distance}. Setting to 1.") 
-			seg_elec_distance = 1
-		
-		# Find the bin or range between edges this segment falls into
-		for i in range(len(adjusted_edges) - 1):
-			if adjusted_edges[i] <= seg_elec_distance <= adjusted_edges[i + 1]:  # include segments exactly at edge values
-        # This segment belongs to the bin between adjusted_edges[i] and adjusted_edges[i + 1]
-				edge_indices.append(i)
-				break
-		else:
-			raise(ValueError(f"seg_elec_distance {seg_elec_distance} is not between 0 and 1"))
-
-	# Normalize the edge_indices to range 0-1
-	normalized_indices = np.array(edge_indices) / (len(adjusted_edges) - 2)  
-
-	# Create colormap
-	cmap = plt.get_cmap('jet', len(adjusted_edges) - 1)
-
-	plt.figure(figsize=(4,10))
-
-	# Filter segments to plot by segment type
-	if seg_type is not None:
-		new_segments = []
-		for seg in segments:
-			if (seg.type == seg_type) or (seg.type == 'soma'):
-				new_segments.append(seg)
-	else:
-		new_segments = segments
-		
-
-	# Plot segments colored by normalized edge index
-	for i, seg in enumerate(new_segments):
-		plt.plot([seg.p0_x3d, seg.p0_5_x3d, seg.p1_x3d], [seg.p0_y3d, seg.p0_5_y3d, seg.p1_y3d], color=cmap(normalized_indices[i]))
-
-	# Invisible scatter plot for the colorbar
-	sc = plt.scatter([seg.p0_x3d for seg in segments], [seg.p0_y3d for seg in segments], c=normalized_indices, s=0, cmap=cmap)
-
-	# Draw lines and labels
-	plt.vlines(110,400,500)
-	plt.text(0,450,'100 um')
-	plt.hlines(400,110,210)
-	plt.text(110,350,'100 um')
-	plt.xticks([])
-	plt.yticks([])
-
-	# Set title
-	plt.title(title)
-
-	# Normalize adjusted_edges for colorbar ticks
-	normalized_ticks = np.linspace(0, 1, len(adjusted_edges))
-
-	# Create colorbar with ticks and labels matching adjusted edges
-	cbar = plt.colorbar(sc, ticks=normalized_ticks, label='Edge index')
-	cbar.ax.set_yticklabels(["{:.3f}".format(val) for val in adjusted_edges])
-	cbar.ax.set_ylabel('Percentage of Somatic signal', rotation=270)
-
-	plt.box(False)
-	plt.savefig(os.path.join(output_folder, filename))
 
 def plot_spikes(sm, seg=None, seg_index=None, dendritic_spike_times=[], spike_labels=[], start_time=0, end_time=None, output_folder="", title=None):
 	"""

@@ -14,10 +14,13 @@ import pickle
 from multiprocessing import Pool, cpu_count
 
 what_to_plot = {
-		"Na": True,
+		"Na": False,
 		"Ca": True,
 		"NMDA": True,
-		"Ca_NMDA": True
+		"Ca_NMDA": True,
+    "Na_sta": False,
+    "Ca_sta": False,
+    "NMDA_sta": False
 }
 
 # Some cells require data to be transposed
@@ -39,6 +42,43 @@ nmda_basal_clip = (-1.5, 1.5)
 
 # NMDA Ca
 nmda_ca_apic_clip = (-2, 2)
+
+def plot_voltage_for_spike_segments(segment_manager, segment_indices, spike_start_times, spike_stop_times, spike_type, output_folder, color, max_indices=2000):
+    plt.figure(figsize=(15, 10))
+    
+    plt.plot(segment_manager.segments[0].v[:max_indices], label=f'{segment_manager.segments[0].seg}', color='black', alpha=0.6)
+    soma_spike_times = [time for time in segment_manager.soma_spiketimes if time < max_indices]
+            # Mark each spike start time with a green star
+    for soma_spike_time in soma_spike_times:
+        plt.plot(soma_spike_time, segment_manager.segments[0].v[soma_spike_time], '*', markersize=10, color='Black')
+      
+
+    for seg_index in np.unique(segment_indices):
+        seg = segment_manager.segments[seg_index]
+
+        # Plot the entire voltage trace up to max_indices for each segment
+        plt.plot(seg.v[:max_indices], label=f'{seg.seg}', color=color, alpha=0.6)
+
+        # Select spike start and stop times for the current segment, ensuring they are within max_indices
+        seg_spike_start_times = [time for time in spike_start_times[seg_index] if time < max_indices]
+        seg_spike_stop_times = [time for time in spike_stop_times[seg_index] if time < max_indices]
+
+        # Mark each spike start time with a green star
+        for spike_time in seg_spike_start_times:
+            plt.plot(spike_time, seg.v[spike_time], '*', markersize=10, color='green')
+
+        # Mark each spike stop time with a red rectangle
+        for spike_time in seg_spike_stop_times:
+            plt.plot(spike_time, seg.v[spike_time], 's', markersize=10, color='red')
+
+    plt.xlabel('Index')
+    plt.ylabel('Voltage')
+    plt.title(f'{spike_type} Spikes')
+    plt.legend()
+    plt.savefig(os.path.join(output_folder, f'{spike_type}_spikes.png'))
+    plt.close()
+
+
 
 def compute_mean_and_plot_sta(
 			spikes: np.ndarray, 
@@ -142,61 +182,84 @@ def analyse_spikes(parameters: SimulationParameters):
 			plot_edges(edges_apic, sm.segments, na_path, elec_dist_var = 'soma_passive', filename = "na_edges_apic.png", seg_type = 'apic')
 
 			# STA
-			compute_mean_and_plot_sta(na_apic, edges_apic, "Na Spikes - Apical", na_path, na_apic_clip, "img")
-			compute_mean_and_plot_sta(na_dend, edges_dend, "Na Spikes - Basal", na_path, na_basal_clip, "img")
+			if what_to_plot["Na_sta"]:  # Check if STA plotting is enabled
+						compute_mean_and_plot_sta(na_apic, edges_apic, "Na Spikes - Apical", na_path, na_apic_clip, "img")
+						compute_mean_and_plot_sta(na_dend, edges_dend, "Na Spikes - Basal", na_path, na_basal_clip, "img")
 
 	if what_to_plot["Ca"]:
 			# Get bounds for Ca
-			ca_lower_bounds, _, _, _, _, _ = sm.get_ca_nmda_lower_bounds_durations_and_peaks(lowery = lowery, uppery = uppery, random_state = random_state)
+			ca_start_times, ca_end_times, _, _, _, _, segments_with_ca_spikes = sm.get_ca_nmda_lower_bounds_durations_and_peaks(lowery = lowery, uppery = uppery, random_state = random_state)
 			
 			# Get edges
-			edges_ca = sm.get_edges(ca_lower_bounds)
-			ca_apic = sm.get_sta(sm.soma_spiketimes, ca_lower_bounds, edges_ca, "apic", current_type = 'ica', elec_dist_var = 'soma_passive')
+			edges_ca = sm.get_edges(ca_start_times)
+			ca_apic = sm.get_sta(sm.soma_spiketimes, ca_start_times, edges_ca, "apic", current_type = 'ica', elec_dist_var = 'soma_passive')
 
 			# Save Ca plots
 			ca_path = os.path.join(parameters.path, "Ca")
 			if not os.path.exists(ca_path):
 				os.mkdir(ca_path)
 
-			compute_mean_and_plot_sta(ca_apic, edges_ca, 'Ca2+ Spikes - Nexus', ca_path, ca_apic_clip, "img")
+			if what_to_plot["Ca_sta"]:  # Check if STA plotting is enabled
+						compute_mean_and_plot_sta(ca_apic, edges_ca, 'Ca2+ Spikes - Nexus', ca_path, ca_apic_clip, "img")
 
 
 	if what_to_plot["NMDA"]:
 			# Get bounds for NMDA
-			nmda_lower_bounds, _, nmda_mag, _, _, _ = sm.get_ca_nmda_lower_bounds_durations_and_peaks(lowery = None, uppery = None, random_state = random_state)
+			nmda_start_times, nmda_end_times, nmda_mag, _, _, _, segments_with_nmda_spikes = sm.get_ca_nmda_lower_bounds_durations_and_peaks(lowery = None, uppery = None, random_state = random_state)
 			
 			# Get edges
-			edges_nmda_apic = sm.get_edges(nmda_lower_bounds, "apic")
-			nmda_apic = sm.get_sta(sm.soma_spiketimes, nmda_lower_bounds, edges_nmda_apic, "apic", current_type = 'inmda', elec_dist_var = 'soma_passive', mag = nmda_mag, mag_th=-0.0001)
+			edges_nmda_apic = sm.get_edges(nmda_start_times, "apic")
+			nmda_apic = sm.get_sta(sm.soma_spiketimes, nmda_start_times, edges_nmda_apic, "apic", current_type = 'inmda', elec_dist_var = 'soma_passive', mag = nmda_mag, mag_th=-0.0001)
 			
-			edges_nmda_dend = sm.get_edges(nmda_lower_bounds, "dend")
-			nmda_dend = sm.get_sta(sm.soma_spiketimes, nmda_lower_bounds, edges_nmda_dend, "dend", current_type = 'inmda', elec_dist_var = 'soma_passive', mag = nmda_mag, mag_th=-0.0001)
+			edges_nmda_dend = sm.get_edges(nmda_start_times, "dend")
+			nmda_dend = sm.get_sta(sm.soma_spiketimes, nmda_start_times, edges_nmda_dend, "dend", current_type = 'inmda', elec_dist_var = 'soma_passive', mag = nmda_mag, mag_th=-0.0001)
 			
 			# Save NMDA plots
 			nmda_path = os.path.join(parameters.path, "NMDA")
 			if not os.path.exists(nmda_path):
 				os.mkdir(nmda_path)
-
-			compute_mean_and_plot_sta(nmda_apic, edges_nmda_apic, 'NMDA Spikes - Apical', nmda_path, nmda_apic_clip, "img")
-			compute_mean_and_plot_sta(nmda_dend, edges_nmda_dend, 'NMDA Spikes - Basal', nmda_path, nmda_basal_clip, "img")
+			if what_to_plot["NMDA_sta"]:  # Check if STA plotting is enabled
+						compute_mean_and_plot_sta(nmda_apic, edges_nmda_apic, 'NMDA Spikes - Apical', nmda_path, nmda_apic_clip, "img")
+						compute_mean_and_plot_sta(nmda_dend, edges_nmda_dend, 'NMDA Spikes - Basal', nmda_path, nmda_basal_clip, "img")
 
 	if (what_to_plot["Ca"]) & (what_to_plot["NMDA"]) & (what_to_plot["Ca_NMDA"]):
 			# Set Ca-NMDA
 			ca_spiketimes = []
-			for ind, i in enumerate(ca_lower_bounds):
+			for ind, i in enumerate(ca_start_times):
 					if (len(i) > 0) & ('apic[50]' in sm.segments[ind].sec):
 							ca_spiketimes.extend(i.tolist())
 
 			ca_spiketimes = np.sort(ca_spiketimes) * parameters.h_dt
 			ca_spiketimes = ca_spiketimes[1:][np.diff(ca_spiketimes) > 100] # This condition is from Ben's code. It's supposed to remove duplicates.
-			ca_nmda_apic = sm.get_sta(ca_spiketimes, nmda_lower_bounds, edges_nmda_apic, "apic", current_type='ica', elec_dist_var = 'soma_passive', mag = nmda_mag, mag_th=-0.1)
+			ca_nmda_apic = sm.get_sta(ca_spiketimes, nmda_start_times, edges_nmda_apic, "apic", current_type='ica', elec_dist_var = 'soma_passive', mag = nmda_mag, mag_th=-0.1)
 			
 			# Save Ca-NMDA plots
 			ca_nmda_path = os.path.join(parameters.path, "Ca_NMDA")
 			if not os.path.exists(ca_nmda_path):
 				os.mkdir(ca_nmda_path)
+			if what_to_plot["NMDA_sta"]:  # Check if STA plotting is enabled
+						compute_mean_and_plot_sta(ca_nmda_apic, edges_nmda_apic, 'Ca - NMDA Spikes - Apical', ca_nmda_path, nmda_ca_apic_clip, "img")
+      
+	color_map = {'Na': 'red', 'Ca': 'blue', 'NMDA': 'green'}
+  # Example of plotting for Na spikes
+#  if what_to_plot["Na"]:
+#      na_indices = [i for i, seg in enumerate(sm.segments) if seg_has_na_spike(seg)]  # Define seg_has_na_spike
+#      plot_voltage_of_segments(sm, na_indices, 'Na', color_map)
+    
+	if what_to_plot["Ca"]:
+		plot_voltage_for_spike_segments(sm, segments_with_ca_spikes, ca_start_times, ca_end_times, 'Ca', color='blue', output_folder=ca_path)
 
-			compute_mean_and_plot_sta(ca_nmda_apic, edges_nmda_apic, 'Ca - NMDA Spikes - Apical', ca_nmda_path, nmda_ca_apic_clip, "img")
+	if what_to_plot["NMDA"]:
+		plot_voltage_for_spike_segments(sm, segments_with_nmda_spikes, nmda_start_times, nmda_end_times, 'NMDA', color = 'grey', output_folder=nmda_path)
+
+  # Plotting the voltage of the 0th segment
+	plt.figure()
+	plt.plot(sm.segments[0].v[:2000], label='Segment 0', color='black')
+	plt.xlabel('Index')
+	plt.ylabel('Voltage')
+	plt.title('Voltage of Segment 0')
+	plt.legend()
+	plt.savefig('voltage_segment_0.png')
 
 if __name__ == "__main__":
 		
