@@ -48,7 +48,7 @@ if __name__ == "__main__":
         Na_spikes.append(spikes)
 
     elec_dist = pd.read_csv(os.path.join(sim_directory, "elec_distance_nexus.csv"))
-    morph = pd.read_csv(os.path.join(sim_directory, "segments_by_morphology.csv"))
+    morph = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
 
     quantiles_dend = analysis.get_quantiles_based_on_elec_dist(
         morph = morph,
@@ -79,8 +79,6 @@ if __name__ == "__main__":
     sta_dend = analysis.bin_matrix_to_quantiles(matrix = stas, quantiles = quantiles_dend, var_to_bin = elec_dist)
     sta_apic = analysis.bin_matrix_to_quantiles(matrix = stas, quantiles = quantiles_apic, var_to_bin = elec_dist)
 
-    print(sta_dend.shape)
-
     x_ticks = np.arange(0, 50, 5)
     x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
 
@@ -89,4 +87,33 @@ if __name__ == "__main__":
     fig = plot_stas(sta_apic, quantiles_apic, "Na – Apic", x_ticks, x_tick_labels)
     plt.show()
 
-    # fig.savefig(f'{save_to}', dpi = fig.dpi)
+    # ========== Ca ==========
+
+    lowery = 500
+    uppery = 1500
+    seg_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
+    indexes = seg_data[(seg_data["section"] == "apic") & (seg_data["pc_1"] > lowery) & (seg_data["pc_1"] < uppery)].index
+
+    v = analysis.DataReader.read_data(sim_directory, "v")
+    ica = analysis.DataReader.read_data(sim_directory, "ica")
+
+    Ca_spikes = []
+    for i in indexes:
+        left_bounds, _, _ = analysis.get_Ca_spikes(v[i], -40, ica[i])
+        Ca_spikes.append(left_bounds)
+    
+    stas = []
+    for train in Ca_spikes:
+        if len(train) == 0: 
+            stas.append(np.zeros((1, 50)))
+            continue
+        cont_train = np.zeros(2000)
+        cont_train[train] = 1
+        sta = analysis.spike_triggered_average(cont_train.reshape((1, -1)), soma_spikes, 50)
+        stas.append(sta)
+
+    stas = np.concatenate(stas)
+    plt.imshow(stas)
+    plt.show()
+
+    print(stas.shape)

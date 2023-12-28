@@ -49,7 +49,7 @@ class CellModel:
 			self.soma[0].nseg = 1
 
 		# Adjust coordinates
-		self.assign_sec_coords(random_state)
+		self._assign_sec_coords(random_state)
 
 		# Connectivity
 		self.synapses = []
@@ -60,13 +60,9 @@ class CellModel:
 		# Recorders
 		self.recorders = []
 
-		# By default, record spikes and membrane voltage
+		# By default, record spikes
 		self.recorders.append(SpikeRecorder(sec = self.soma[0], var_name = "soma_spikes", spike_threshold = spike_threshold))
 		self.recorders.append(SpikeRecorder(sec = self.axon[0], var_name = "axon_spikes", spike_threshold = spike_threshold))
-		self.recorders.append(SegmentRecorder(seg = self.soma[0](0.5), var_name = "v"))
-
-		# self.get_channels_from_var_names() # Get channel and attribute names from recorded channel name
-		# self.errors_in_setting_params = self.insert_unused_channels() # Need to update with var_names
 
 	def get_basals(self) -> list:
 		return self.find_terminal_sections(self.dend)
@@ -87,7 +83,7 @@ class CellModel:
 		basals = self.get_basals()
 		return len(tufts) + len(basals) if len(tufts) == 1 else len(tufts) - 1 + len(basals)
 
-	def assign_sec_coords(self, random_state: np.random.RandomState) -> None:
+	def _assign_sec_coords(self, random_state: np.random.RandomState) -> None:
 
 		for sec in self.all:
 			# Do only for sections without already having 3D coordinates
@@ -97,7 +93,7 @@ class CellModel:
 			old_length = sec.L
 
 			if sec is self.soma:
-				new_length = self.assign_coordinates_to_soma_sec(sec)
+				new_length = self._assign_coordinates_to_soma_sec(sec)
 			else:
 				# Get the parent segment, sec
 				pseg = sec.parentseg()
@@ -105,18 +101,18 @@ class CellModel:
 				psec = pseg.sec
 
 				# Process and get the new length
-				new_length = self.assign_coordinates_to_non_soma_sec(sec, psec, pseg, random_state)
+				new_length = self._assign_coordinates_to_non_soma_sec(sec, psec, pseg, random_state)
 			
 			if np.abs(new_length - old_length) >= 1: # Otherwise, it is a precision issue
 				self.logger.log(f"Generation of 3D coordinates resulted in change of section length for {sec} from {old_length} to {sec.L}")
 
-	def assign_coordinates_to_soma_sec(self, sec: h.Section) -> float:
+	def _assign_coordinates_to_soma_sec(self, sec: h.Section) -> float:
 		sec.pt3dclear()
 		sec.pt3dadd(*[0., -1 * sec.L / 2., 0.], sec.diam)
 		sec.pt3dadd(*[0., sec.L / 2., 0.], sec.diam)
 		return sec.L
 
-	def assign_coordinates_to_non_soma_sec(
+	def _assign_coordinates_to_non_soma_sec(
 			self, 
 			sec: h.Section, 
 			psec: h.Section, 
@@ -124,10 +120,10 @@ class CellModel:
 			random_state: np.random.RandomState) -> float:
 		
 		# Get random theta and phi values for apical tuft and basal dendrites
-		theta, phi = self.generate_phi_theta_for_apical_tuft_and_basal_dendrites(sec, random_state)
+		theta, phi = self._generate_phi_theta_for_apical_tuft_and_basal_dendrites(sec, random_state)
 
 		# Find starting position using parent segment coordinates
-		pt0 = self.find_starting_position_for_a_non_soma_sec(psec, pseg)
+		pt0 = self._find_starting_position_for_a_non_soma_sec(psec, pseg)
 
 		# Calculate new coordinates using spherical coordinates
 		xyz = [sec.L * np.sin(theta) * np.cos(phi), 
@@ -142,7 +138,7 @@ class CellModel:
 
 		return sec.L
 
-	def generate_phi_theta_for_apical_tuft_and_basal_dendrites(
+	def _generate_phi_theta_for_apical_tuft_and_basal_dendrites(
 			self, 
 			sec: h.Section, 
 			random_state: np.random.RandomState) -> tuple:
@@ -159,7 +155,7 @@ class CellModel:
 		
 		return theta, phi
 	
-	def find_starting_position_for_a_non_soma_sec(self, psec: h.Section, pseg: object) -> list:
+	def _find_starting_position_for_a_non_soma_sec(self, psec: h.Section, pseg: object) -> list:
 		for i in range(psec.n3d() - 1):
 			arc_length = (psec.arc3d(i), psec.arc3d(i + 1)) # Before, After
 			if (arc_length[0] / psec.L) <= pseg.x <= (arc_length[1] / psec.L):
@@ -173,35 +169,6 @@ class CellModel:
 				break
 
 		return xyz
-		
-	def get_channels_from_var_names(self, channel_names):
-		# Identifying unique channels
-		channels_set = set()
-		for var_name in self.channel_names:
-			if (var_name not in ['i_pas', 'ik', 'ica', 'ina']) and ('ion' not in var_name):
-				split_name = var_name.split('_')
-				if var_name.startswith('g'):
-					channels_set.add('_'.join(split_name[2:]))
-				elif var_name.startswith('i'):
-					channels_set.add('_'.join(split_name[1:]))
-
-		# Have different attribute structure as a result of the modfile
-		Neymotin_channels = ['nax', 'kdmc', 'kap', 'kdr', 'hd']
-		return [(channel, f'gbar') if channel in Neymotin_channels else (channel, f'g{channel}bar') for channel in channels_set]
-	
-	def insert_unused_channels(self, channel_names) -> None:
-		'''
-		Allow recording of channels in sections that do not have the current.
-		'''
-		for channel, conductance in self.get_channels_from_var_names():
-			for sec in self.all:
-				if not hasattr(sec(0.5), channel):
-					try: 
-						# Insert this channel
-						sec.insert(channel)
-						# Set the maximum conductance to zero
-						for seg in sec: setattr(getattr(seg, channel), conductance, 0)
-					except: continue
 
 	def write_seg_info_to_csv(self, path, title_prefix: str = None):
 		seg_info = self.get_seg_info()

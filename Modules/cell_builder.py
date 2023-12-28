@@ -166,6 +166,8 @@ class CellBuilder:
 		# cell.insert_unused_channels(self.parameters.channel_names)
 		for var_name in self.parameters.channel_names:
 			cell.add_segment_recorders(var_name = var_name)
+
+		cell.add_segment_recorders(var_name = "v")
 		
 		for var_name in ["i_AMPA", "i_NMDA"]:
 			cell.add_synapse_recorders(var_name = var_name)

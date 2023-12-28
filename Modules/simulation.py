@@ -64,16 +64,21 @@ class Simulation:
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
         cell, _ = cell_builder.build_cell()
 
-        # Classify segments by morphology
+        # Classify segments by morphology, save coordinates
         segments, seg_data = cell.get_segments(["all"])
         seg_sections = []
         seg_idx = []
+        seg_coords = []
         for entry in seg_data:
             sec_name = entry.section.split(".")[1] # name[idx]
             seg_sections.append(sec_name.split("[")[0])
             seg_idx.append(sec_name.split("[")[1].split("]")[0])
+            seg_coords.append(entry.coords)
         seg_sections = pd.DataFrame({"section": seg_sections, "idx_in_section": seg_idx})
-        seg_sections.to_csv(os.path.join(parameters.path, "segments_by_morphology.csv"))
+        seg_coords = pd.concat(seg_coords)
+
+        seg_data = pd.concat((seg_sections.reset_index(drop = True), seg_coords.reset_index(drop = True)), axis = 1)
+        seg_data.to_csv(os.path.join(parameters.path, "segment_data.csv"))
 
         # Compute electrotonic distances from nexus
         elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
