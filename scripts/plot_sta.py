@@ -3,19 +3,23 @@ sys.path.append("../")
 sys.path.append("../Modules/")
 
 import analysis
+from logger import Logger
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import pandas as pd
 import os
+import traceback
 
-def plot_stas(
+# https://github.com/dbheadley/InhibOnDendComp/blob/master/src/mean_dendevt.py
+def _plot_sta(
           sta, 
           quantiles, 
-          title, 
-          x_ticks, 
-          x_tick_labels, 
+          title,
           clipping_values = (1, 99)) -> plt.figure:
+    
+    x_ticks = np.arange(0, 50, 5)
+    x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
      
     fig = plt.figure(figsize = (10, 5))
     plt.imshow(
@@ -28,69 +32,71 @@ def plot_stas(
     plt.xlabel('Time (ms)')
     plt.yticks(ticks = np.arange(11) - 0.5, labels = np.round(quantiles, 3))
     plt.ylabel("Edge Quantile")
-    # https://github.com/dbheadley/InhibOnDendComp/blob/master/src/mean_dendevt.py
     plt.colorbar(label = 'STA')
     return fig
 
-if __name__ == "__main__":
-
-    if "-d" in sys.argv:
-        sim_directory = sys.argv[sys.argv.index("-d") + 1]
-    else:
-        raise RuntimeError
-    
-    gnaTa = analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t")
-    soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes.h5")
-
-    Na_spikes = []
-    for i in range(len(gnaTa)):
-        spikes, backpropAP = analysis.get_Na_spikes(gnaTa[i], 0.001 / 1000, soma_spikes, 2)
-        Na_spikes.append(spikes)
-
-    elec_dist = pd.read_csv(os.path.join(sim_directory, "elec_distance_nexus.csv"))
-    morph = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
-
-    quantiles_dend = analysis.get_quantiles_based_on_elec_dist(
-        morph = morph,
-        elec_dist = elec_dist,
-        spikes = Na_spikes,
-        elec_dist_var = "dend"
-    )
-
-    quantiles_apic = analysis.get_quantiles_based_on_elec_dist(
-        morph = morph,
-        elec_dist = elec_dist,
-        spikes = Na_spikes,
-        elec_dist_var = "apic"
-    )
+def _compute_sta_for_each_train_in_a_list(list_of_trains) -> np.ndarray:
+    soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
+    parameters = analysis.DataReader.load_parameters(sim_directory)
 
     stas = []
-    for train in Na_spikes:
+    for train in list_of_trains:
         if len(train) == 0: 
             stas.append(np.zeros((1, 50)))
             continue
-        cont_train = np.zeros(2000)
+        cont_train = np.zeros(parameters.h_tstop)
         cont_train[train] = 1
-        sta = analysis.spike_triggered_average(cont_train.reshape((1, -1)), soma_spikes, 50)
+        sta = analysis.SummaryStatistics.spike_triggered_average(cont_train.reshape((1, -1)), soma_spikes, 50)
         stas.append(sta)
 
     stas = np.concatenate(stas)
+    return stas
+
+def _map_stas_to_quantiles_and_plot(sta, spikes, elec_dist_var, title, indexes = None) -> None:
+    elec_dist = pd.read_csv(os.path.join(sim_directory, "elec_distance_nexus.csv"))
+    morph = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
+
+    if indexes is not None:
+        elec_dist = elec_dist.iloc[indexes, :]
+        morph = morph.iloc[indexes, :]
+
+    quantiles = analysis.SummaryStatistics.get_quantiles_based_on_elec_dist(
+        morph = morph,
+        elec_dist = elec_dist,
+        spikes = spikes,
+        elec_dist_var = elec_dist_var
+    )
+
+    sta_binned = analysis.SummaryStatistics.bin_matrix_to_quantiles(
+        matrix = sta, 
+        quantiles = quantiles, 
+        var_to_bin = elec_dist
+    )
+
+    fig = _plot_sta(sta_binned, quantiles, title)
+    plt.show()
+    if save:
+        fig.savefig(os.path.join(sim_directory, f"{title}.png"), dpi = fig.dpi)
+
+def _analyze_Na():
+
+    gnaTa = analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t")
+    soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
     
-    sta_dend = analysis.bin_matrix_to_quantiles(matrix = stas, quantiles = quantiles_dend, var_to_bin = elec_dist)
-    sta_apic = analysis.bin_matrix_to_quantiles(matrix = stas, quantiles = quantiles_apic, var_to_bin = elec_dist)
+    Na_spikes = []
+    for i in range(len(gnaTa)):
+        spikes, _ = analysis.VoltageTrace.get_Na_spikes(gnaTa[i], 0.001 / 1000, soma_spikes, 2)
+        Na_spikes.append(spikes)
 
-    x_ticks = np.arange(0, 50, 5)
-    x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
+    sta = _compute_sta_for_each_train_in_a_list(Na_spikes)
+    _map_stas_to_quantiles_and_plot(sta, Na_spikes, "dend", "Na-dend")
+    _map_stas_to_quantiles_and_plot(sta, Na_spikes, "apic", "Na-apic")
 
-    fig = plot_stas(sta_dend, quantiles_dend, "Na – Dend", x_ticks, x_tick_labels)
-    plt.show()
-    fig = plot_stas(sta_apic, quantiles_apic, "Na – Apic", x_ticks, x_tick_labels)
-    plt.show()
-
-    # ========== Ca ==========
+def _analyze_Ca():
 
     lowery = 500
     uppery = 1500
+
     seg_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
     indexes = seg_data[(seg_data["section"] == "apic") & (seg_data["pc_1"] > lowery) & (seg_data["pc_1"] < uppery)].index
 
@@ -99,21 +105,57 @@ if __name__ == "__main__":
 
     Ca_spikes = []
     for i in indexes:
-        left_bounds, _, _ = analysis.get_Ca_spikes(v[i], -40, ica[i])
+        left_bounds, _, _ = analysis.VoltageTrace.get_Ca_spikes(v[i], -40, ica[i])
         Ca_spikes.append(left_bounds)
     
-    stas = []
-    for train in Ca_spikes:
-        if len(train) == 0: 
-            stas.append(np.zeros((1, 50)))
-            continue
-        cont_train = np.zeros(2000)
-        cont_train[train] = 1
-        sta = analysis.spike_triggered_average(cont_train.reshape((1, -1)), soma_spikes, 50)
-        stas.append(sta)
+    sta = _compute_sta_for_each_train_in_a_list(Ca_spikes)
+    _map_stas_to_quantiles_and_plot(sta, Ca_spikes, "apic", "Ca-apic", indexes)
 
-    stas = np.concatenate(stas)
-    plt.imshow(stas)
-    plt.show()
+def _analyze_NMDA():
 
-    print(stas.shape)
+    seg_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
+    indexes = seg_data[(seg_data["section"] == "apic") | (seg_data["section"] == "dend")].index
+
+    v = analysis.DataReader.read_data(sim_directory, "v")
+    inmda = analysis.DataReader.read_data(sim_directory, "i_NMDA")
+
+    NMDA_spikes = []
+    for i in indexes:
+        left_bounds, _, _ = analysis.VoltageTrace.get_NMDA_spikes(v[i], -40, inmda[i])
+        NMDA_spikes.append(left_bounds)
+
+    sta = _compute_sta_for_each_train_in_a_list(NMDA_spikes)
+    _map_stas_to_quantiles_and_plot(sta, NMDA_spikes, "dend", "NMDA-dend", indexes)
+    _map_stas_to_quantiles_and_plot(sta, NMDA_spikes, "apic", "NMDA-apic", indexes)
+
+if __name__ == "__main__":
+
+    if "-d" in sys.argv:
+        sim_directory = sys.argv[sys.argv.index("-d") + 1] # (global)
+    else:
+        raise RuntimeError
+
+    # Save figures or just show them
+    save = "-s" in sys.argv # (global)
+
+    logger = Logger()
+
+    try:
+        logger.log("Analyzing Na.")
+        _analyze_Na()
+    except Exception:
+        print(traceback.format_exc())
+    
+    try:
+        logger.log("Analyzing Ca.")
+        _analyze_Ca()
+    except Exception:
+        print(traceback.format_exc())
+
+    try:
+        logger.log("Analyzing NMDA.")
+        _analyze_NMDA()
+    except Exception:
+        print(traceback.format_exc())
+
+
