@@ -65,7 +65,7 @@ class Simulation:
         cell, _ = cell_builder.build_cell()
 
         # Classify segments by morphology, save coordinates
-        segments, seg_data = cell.get_segments(["all"])
+        segments, seg_data = cell.get_segments(["all"]) # (segments is returned here to preserve NEURON references)
         seg_sections = []
         seg_idx = []
         seg_coords = []
@@ -84,8 +84,6 @@ class Simulation:
         elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
         elec_distances_nexus.to_csv(os.path.join(parameters.path, "elec_distance_nexus.csv"))
 
-        #cell.recompute_segment_elec_distance(segment = cell.segments[seg_indexes["nexus"]], seg_name = "nexus")
-
         # Create an ECP object for extracellular potential
         #elec_pos = params.ELECTRODE_POSITION
         #ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)
@@ -93,9 +91,6 @@ class Simulation:
         # Save segment indexes for plotting
         #with open(os.path.join(parameters.path, "seg_indexes.pickle"), "wb") as file: 
         #    pickle.dump(seg_indexes, file)
-
-        # Save segment info
-        #cell.write_seg_info_to_csv(path = parameters.path, seg_info = cell_builder.detailed_seg_info, title_prefix = 'detailed_')
 
         # Save constants
         with open(os.path.join(parameters.path, "parameters.pickle"), "wb") as file:
@@ -145,43 +140,6 @@ class Simulation:
 
             h.fadvance()
             time_step += 1
-
-    def construct_seg_indexes(self, cell, parameters):
-        _, _, segments = cell.get_segments()
-        soma_seg_index = segments.index(cell.soma[0](0.5))
-        axon_seg_index = segments.index(cell.axon[-1](0.9))
-        basal_seg_index = segments.index(cell.basals[0](0.5))
-        trunk_seg_index = segments.index(cell.apic[0](0.999))
-
-        # Find tuft and nexus
-        # Dendritic reduced model
-        if (parameters.reduce_cell == True) and (parameters.expand_cable == True):
-            # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
-            tuft_seg_index = tuft_seg_index = segments.index(cell.tufts[0](0.5))
-            nexus_seg_index = segments.index(cell.apic[0](0.99))
-            # NR model
-        elif (parameters.reduce_cell == True) and (parameters.expand_cable == False):
-            # tufts[0] will be the cable that is both trunk and tuft in this case, so we have to specify near end of cable
-            tuft_seg_index = segments.index(cell.tufts[0](0.9))
-            nexus_seg_index = segments.index(cell.apic[0](0.289004))
-        else: # Complex cell
-            # Otherwise tufts[0] will be truly tuft section and the segment in the middle of section is fine
-            tuft_seg_index = segments.index(cell.tufts[0](0.5))
-            if self.cell_type == SkeletonCell.NeymotinDetailed:
-                nexus_seg_index = segments.index(cell.apic[24](0.99)) # May need to adjust
-            else:
-                nexus_seg_index = segments.index(cell.apic[36](0.961538))
-
-        seg_indexes = {
-            "soma": soma_seg_index,
-            "axon": axon_seg_index,
-            "basal": basal_seg_index,
-            "trunk": trunk_seg_index,
-            "tuft": tuft_seg_index,
-            "nexus": nexus_seg_index
-        }
-        return seg_indexes
-
     
 def is_indexable(obj: object):
     """

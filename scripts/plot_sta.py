@@ -11,6 +11,9 @@ import pandas as pd
 import os
 import traceback
 
+# TODO: 
+# (1) control for bursts
+
 # https://github.com/dbheadley/InhibOnDendComp/blob/master/src/mean_dendevt.py
 def _plot_sta(
           sta, 
@@ -46,6 +49,8 @@ def _compute_sta_for_each_train_in_a_list(list_of_trains) -> np.ndarray:
             continue
         cont_train = np.zeros(parameters.h_tstop)
         cont_train[train] = 1
+        # Skip spikes that are in the beginning of the trace
+        cont_train[:parameters.skip] = 0
         sta = analysis.SummaryStatistics.spike_triggered_average(cont_train.reshape((1, -1)), soma_spikes, 50)
         stas.append(sta)
 

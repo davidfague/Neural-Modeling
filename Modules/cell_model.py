@@ -1,10 +1,11 @@
 import numpy as np
 import pandas as pd
-import os, h5py, csv
+import os, h5py
 
 from neuron import h
 
-from recorder import SegmentRecorder, SynapseRecorder, SpikeRecorder, SynapseRecorderList, SegmentRecorderList, EmptySegmentRecorder
+from recorder import SegmentRecorder, SynapseRecorder, SpikeRecorder,  EmptySegmentRecorder
+from recorder import SynapseRecorderList, SegmentRecorderList
 from synapse import Synapse
 from logger import Logger
 
@@ -27,8 +28,7 @@ class CellModel:
 			skeleton_cell: object,
 			random_state: np.random.RandomState,
 			neuron_r: h.Random,
-			logger: Logger,
-			spike_threshold: float = 10):
+			logger: Logger):
 		
 		self.random_state = random_state
 		self.neuron_r = neuron_r
@@ -41,7 +41,7 @@ class CellModel:
 		self.dend = None
 		self.axon = None
 		for model_part in ["all", "soma", "apic", "dend", "axon"]:
-			setattr(self, model_part, self.convert_section_list(getattr(skeleton_cell, model_part)))
+			setattr(self, model_part, self._convert_section_list(getattr(skeleton_cell, model_part)))
 
 		# Adjust the number of soma segments
 		if self.soma[0].nseg != 1:
@@ -60,29 +60,29 @@ class CellModel:
 		# Recorders
 		self.recorders = []
 
-		# By default, record spikes
-		self.recorders.append(SpikeRecorder(sec = self.soma[0], var_name = "soma_spikes", spike_threshold = spike_threshold))
-		self.recorders.append(SpikeRecorder(sec = self.axon[0], var_name = "axon_spikes", spike_threshold = spike_threshold))
+	# ---------- HOC PARSING ----------
 
-	def get_basals(self) -> list:
-		return self.find_terminal_sections(self.dend)
+	def _convert_section_list(self, section_list: object) -> list:
+
+		# If the section list is a hoc object, add its sections to the python list
+		if str(type(section_list)) == "<class 'hoc.HocObject'>":
+			new_section_list = [sec for sec in section_list]
+
+		# Else, the section list is actually one section, add it to the list
+		elif str(type(section_list)) == "<class 'nrn.Section'>":
+			new_section_list = [section_list]
+
+		# Python lists can also be passed
+		elif str(type(section_list)) == "<class 'list'>":
+			new_section_list = section_list
+		
+		else:
+			raise TypeError(f"Expected input 'section_list' to be either of type hoc.HocObject, nrn.Section, or list, but got {type(section_list).__name__}")
+
+		return new_section_list
+
+	# ---------- COORDINATES ----------
 	
-	def get_tufts_obliques(self) -> tuple:
-		tufts = []
-		obliques = []
-		for sec in self.find_terminal_sections(self.apic):
-			if h.distance(self.soma[0](0.5), sec(0.5)) > 800:
-				tufts.append(sec)
-			else:
-				obliques.append(sec)
-
-		return tufts, obliques
-	
-	def get_nbranch(self) -> int:
-		tufts, _ = self.get_tufts()
-		basals = self.get_basals()
-		return len(tufts) + len(basals) if len(tufts) == 1 else len(tufts) - 1 + len(basals)
-
 	def _assign_sec_coords(self, random_state: np.random.RandomState) -> None:
 
 		for sec in self.all:
@@ -169,327 +169,6 @@ class CellModel:
 				break
 
 		return xyz
-
-	def write_seg_info_to_csv(self, path, title_prefix: str = None):
-		seg_info = self.get_seg_info()
-		if title_prefix:
-			csv_file_path = os.path.join(path, title_prefix + 'seg_info.csv')
-		else:
-			csv_file_path = os.path.join(path, 'seg_info.csv')
-
-		with open(csv_file_path, mode = 'w') as file:
-			writer = csv.DictWriter(file, fieldnames = seg_info[0].keys())
-			writer.writeheader()
-			for row in seg_info:
-				writer.writerow(row)
-		
-	def convert_section_list(self, section_list: object) -> list:
-
-		# If the section list is a hoc object, add its sections to the python list
-		if str(type(section_list)) == "<class 'hoc.HocObject'>":
-			new_section_list = [sec for sec in section_list]
-
-		# Else, the section list is actually one section, add it to the list
-		elif str(type(section_list)) == "<class 'nrn.Section'>":
-			new_section_list = [section_list]
-
-		# Python lists can also be passed
-		elif str(type(section_list)) == "<class 'list'>":
-			new_section_list = section_list
-		
-		else:
-			raise TypeError(f"Expected input 'section_list' to be either of type hoc.HocObject, nrn.Section, or list, but got {type(section_list).__name__}")
-
-		return new_section_list
-	
-	def add_synapse_recorders(self, var_name: str):
-		rec_list = SynapseRecorderList(var_name)
-		for syn in self.synapses:
-			try: rec_list.add(SynapseRecorder(syn.h_syn, var_name))
-			except: continue
-		self.recorders.append(rec_list)
-
-	def add_segment_recorders(self, var_name: str):
-		rec_list = SegmentRecorderList(var_name)
-		segments, _ = self.get_segments(["all"])
-		for seg in segments:
-			try: rec_list.add(SegmentRecorder(seg, var_name))
-			except: rec_list.add(EmptySegmentRecorder())
-		self.recorders.append(rec_list)
-	
-	def write_recorder_data(self, path: str, step: int) -> None:
-		os.mkdir(path)
-
-		for recorder in self.recorders:
-			if type(recorder) == SpikeRecorder:
-				self._write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.vec.as_numpy().reshape(1, -1))
-
-			elif (type(recorder) == SegmentRecorder) or (type(recorder) == SynapseRecorder):
-				self._write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.vec.as_numpy()[::step].reshape(1, -1))
-
-			elif (type(recorder) == SegmentRecorderList):
-				self._write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.get_combined_data()[:, ::step])
-
-			elif (type(recorder) == SynapseRecorderList):
-				segments, _ = self.get_segments(["all"])
-				self._write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.get_combined_data(segments, self.synapses)[:, ::step])
-	
-	def _write_datafile(self, reportname, data):
-		with h5py.File(reportname, 'w') as file:
-			file.create_dataset("data", data = data)
-
-	def get_seg_info(self) -> list:
-		bmtk_index = 0
-		seg_index_global = 0
-		seg_info = []
-
-		sec_coords = self.get_seg_coords()
-
-		for sec in self.all:
-			seg_id_in_sec = 0
-			for seg in sec:
-				seg_info.append(self.generate_info_for_a_segment(
-					seg, 
-					sec, 
-					sec_coords.iloc[seg_index_global, :], 
-					seg_index_global, 
-					bmtk_index, 
-					seg_id_in_sec))
-				seg_index_global += 1
-				seg_id_in_sec += 1
-			bmtk_index += 1
-
-		# Postprocess seg_info
-		seg_info = self.recompute_parent_segment_ids(seg_info)
-		seg_info = self.recompute_segment_elec_distance(seg_info, self.soma[0](0.5), "soma")
-		seg_info = self.recompute_netcons_per_seg(seg_info)
-		seg_info = self.compute_adjacent_segments(seg_info)
-
-		return seg_info
-	
-	def recompute_netcons_per_seg(self, seg_info) -> list:
-		NetCon_per_seg = [0] * len(seg_info)
-		inh_NetCon_per_seg = [0] * len(seg_info)
-		exc_NetCon_per_seg = [0] * len(seg_info)
-	
-		# Calculate number of synapses for each segment (may want to divide by segment length afterward to get synpatic density)
-		for netcon in self.netcons:
-			syn = netcon.syn()
-			syn_type = syn.hname().split('[')[0]
-			syn_seg_id = seg_info.index(next((s for s in seg_info if s['seg'] == syn.get_segment()), None))
-			seg_dict = seg_info[syn_seg_id]
-			if syn in seg_dict['seg'].point_processes():
-				NetCon_per_seg[syn_seg_id] += 1 # Get synapses per segment
-				if (syn_type == 'pyr2pyr') | ('AMPA_NMDA' in syn_type):
-					exc_NetCon_per_seg[syn_seg_id] += 1
-				elif (syn_type == 'int2pyr') | ('GABA_AB' in syn_type):
-					inh_NetCon_per_seg[syn_seg_id] += 1
-				else: # To clearly separate the default case
-					inh_NetCon_per_seg[syn_seg_id] += 1
-			else:
-				raise(ValueError("Synapse not in designated segment's point processes."))
-	
-		for i, seg in enumerate(seg_info):
-			seg['netcons_per_seg'] = {
-				'exc': exc_NetCon_per_seg[i],
-				'inh': inh_NetCon_per_seg[i],
-				'total': NetCon_per_seg[i]
-			  }
-			seg['netcon_density_per_seg'] = {
-				'exc': exc_NetCon_per_seg[i] / seg['seg_L'],
-				'inh': inh_NetCon_per_seg[i] / seg['seg_L'],
-				'total': NetCon_per_seg[i] / seg['seg_L']
-			  }
-			seg['netcon_SA_density_per_seg'] = {
-				'exc': exc_NetCon_per_seg[i] / seg['seg_SA'],
-				'inh': inh_NetCon_per_seg[i] / seg['seg_SA'],
-				'total': NetCon_per_seg[i] / seg['seg_SA']
-			}
-
-		return seg_info
-	
-	def compute_electrotonic_distance(self, from_segment) -> pd.DataFrame:
-		passive_imp = h.Impedance()
-		passive_imp.loc(from_segment)
-		active_imp = h.Impedance()
-		active_imp.loc(from_segment)
-		
-		segments, _ = self.get_segments(["all"])
-		elec_distance = np.zeros((len(segments), 2 * len(self.FREQS.items())))
-
-		colnames = []
-		col_idx = 0
-		for freq_name, freq_hz in self.FREQS.items():
-			# 9e-9 is a Segev's value
-			passive_imp.compute(freq_hz + 9e-9, 0)
-			active_imp.compute(freq_hz + 9e-9, 1)
-			for i, seg in enumerate(segments):
-				elec_distance[i, col_idx] = active_imp.ratio(seg.sec(seg.x))
-				elec_distance[i, col_idx + 1] = passive_imp.ratio(seg.sec(seg.x))
-			colnames.append(f"{freq_name}_active")
-			colnames.append(f"{freq_name}_passive")
-			col_idx = col_idx + 2
-
-		return pd.DataFrame(elec_distance, columns = colnames)
-
-	
-	def recompute_segment_elec_distance(self, seg_info, segment, seg_name) -> list:
-		if not all('seg_elec_distance' in seg for seg in seg_info):
-			for seg in self.seg_info:
-				seg['seg_elec_distance'] = {}
-
-		_, _, segments = self.get_segments()
-		
-		passive_imp = h.Impedance()
-		passive_imp.loc(segment)
-
-		active_imp = h.Impedance()
-		active_imp.loc(segment)
-	
-		for freq_name, freq_hz in self.FREQS.items():
-			passive_imp.compute(freq_hz + 1 / 9e9, 0) 
-			active_imp.compute(freq_hz + 1 / 9e9, 1)
-			for i, seg in enumerate(segments):
-				elec_dist_info = {
-					f'{seg_name}_active': active_imp.ratio(seg.sec(seg.x)),
-					f'{seg_name}_passive': passive_imp.ratio(seg.sec(seg.x))
-				}
-				if freq_name in seg_info[i]['seg_elec_distance']:
-					seg_info[i]['seg_elec_distance'][freq_name].update(elec_dist_info)
-				else:
-					seg_info[i]['seg_elec_distance'][freq_name] = elec_dist_info
-
-		return seg_info
-	
-	def compute_adjacent_segments(self, seg_info) -> list:
-
-		_, _, segments = self.get_segments()
-
-		for i in range(len(seg_info)):
-			psegid = seg_info[i]['pseg_index']
-
-			if psegid is None:
-				continue
-
-			psegid = int(psegid)
-			for seg_index, seg in enumerate(seg_info):  # check segIDs
-				if psegid == seg_index:  # Find parent seg from parent seg id
-					seg_info[psegid]['adjacent_segments'].append(segments[i])  # Add child seg to this seg's adj_segs list
-					seg_info[i]['adjacent_segments'].append(segments[psegid])  # Add parent seg to this seg's adj_segs
-		
-		return seg_info
-	
-	def recompute_parent_segment_ids(self, seg_info) -> list:
-		for seg in seg_info: seg['pseg_index'] = None
-
-		for i, seg in enumerate(seg_info):
-			idx = int(np.floor(seg['x'] * seg['sec_nseg']))
-
-			if idx != 0:
-				seg_info[i]['pseg_index'] = i - 1
-				continue
-			
-			pseg = seg['seg'].sec.parentseg()
-			if pseg is None:
-				seg_info[i]['pseg_index'] = None
-				continue
-
-			psec = pseg.sec
-			nseg = psec.nseg
-			pidx = int(np.floor(pseg.x * nseg))
-			if pseg.x == 1: pidx -= 1
-			try:
-				pseg_id = next(idx for idx, info in enumerate(seg_info) if info['seg'] == psec((pidx + 0.5) / nseg))
-			except StopIteration:
-				pseg_id = None
-
-			seg_info[i]['pseg_index'] = pseg_id
-		
-		return seg_info
-
-	def generate_info_for_a_segment(
-			self, 
-			seg, 
-			sec,
-			seg_coord, 
-			seg_index_global, 
-			bmtk_index, 
-			seg_id_in_sec) -> dict:
-		
-		# Extract section index from section name
-		sec_name_parts = sec.name().split('.')
-		sec_type = sec_name_parts[1][:4]
-		last_part = sec_name_parts[-1]
-	
-		if '[' in last_part:
-			sec_index = int(last_part.split('[')[1].split(']')[0])
-		else:
-			sec_index = 0
-
-		info = {
-			'seg': seg,
-			'seg_index_global': seg_index_global,
-			'p0_x3d': seg_coord['p0_0'],
-			'p0_y3d': seg_coord['p0_1'],
-			'p0_z3d': seg_coord['p0_2'],
-			'p0.5_x3d': seg_coord['pc_0'],
-			'p0.5_y3d': seg_coord['pc_1'],
-			'p0.5_z3d': seg_coord['pc_2'],
-			'p1_x3d': seg_coord['p1_0'],
-			'p1_y3d': seg_coord['p1_1'],
-			'p1_z3d': seg_coord['p1_2'],
-			'seg_diam': seg.diam,
-			'bmtk_index': bmtk_index,
-			'x': seg.x,
-			'sec': seg.sec,
-			'type': sec_type,
-			'sec_index': sec_index,
-			'sec_diam': sec.diam,
-			'sec_nseg': seg.sec.nseg,
-			'sec_Ra': seg.sec.Ra,
-			'seg_L': sec.L / sec.nseg,
-			'sec_L': sec.L,
-			'seg_SA': (sec.L / sec.nseg) * (np.pi * seg.diam),
-			'seg_h_distance': h.distance(self.soma[0](0.5), seg),
-			'seg_half_seg_RA': 0.01 * seg.sec.Ra * (sec.L / 2 / seg.sec.nseg) / (np.pi * (seg.diam / 2)**2),
-			'pseg_index': None,
-			'seg_elec_distance': {},
-			'adjacent_segments': [],
-			'seg_id_in_sec': seg_id_in_sec,
-			'seg_gcanbar': seg.can.gcanbar if hasattr(seg, 'can') else 0,
-			'seg_gcalbar': seg.cal.gcalbar if hasattr(seg, 'cal') else 0
-		}
-		return info
-		
-	def find_terminal_sections(self, region: list) -> list:
-		'''
-		Finds all terminal sections by iterating over all sections and returning those which are not parent sections.
-		'''
-		# Find non-terminal sections
-		parent_sections = []
-		for sec in self.all:
-			if sec.parentseg() is None:
-				continue
-			
-			if sec.parentseg().sec not in parent_sections:
-				parent_sections.append(sec.parentseg().sec)
-			
-		terminal_sections = []
-		for sec in region:
-			if (sec not in parent_sections):
-				terminal_sections.append(sec)
-
-		return terminal_sections
-
-	def set_injection(self, amp: float = 0, dur: float = 0, delay: float = 0):
-		"""
-		Add current injection to soma.
-		"""
-		self.current_injection = h.IClamp(self.soma[0](0.5))
-		self.current_injection.amp = amp
-		self.current_injection.dur = dur
-		self.current_injection.delay = delay
-
 	
 	def get_coords_of_segments_in_section(self, sec) -> pd.DataFrame:
 
@@ -548,11 +227,10 @@ class CellModel:
 		seg_coords = pd.DataFrame(seg_coords, columns = colnames)
 
 		return seg_coords
+	
+	# ---------- SEGMENTS ----------
 
 	def get_segments(self, section_names: list) -> tuple:
-		'''
-		Returns:
-		'''
 		segments = []
 		datas = []
 
@@ -578,10 +256,8 @@ class CellModel:
 				if seg == segment: return indx
 				indx += 1
 
-	
-	def get_synapses(self, synapse_names: list):
-		return [syn for syn in self.synapses if syn.name in synapse_names]
-	
+	# ---------- SYNAPSES ----------
+				
 	def add_synapses_over_segments(
 			self, 
 			segments,
@@ -634,3 +310,123 @@ class CellModel:
 				gmax = gmax(size = 1) if callable(gmax) else gmax,
 				neuron_r = self.neuron_r,
 				name = name))
+	
+	def get_synapses(self, synapse_names: list):
+		return [syn for syn in self.synapses if syn.name in synapse_names]
+	
+	# ---------- CURRENT INJECTION ----------
+
+	def set_soma_injection(self, amp: float = 0, dur: float = 0, delay: float = 0):
+		"""
+		Add current injection to soma.
+		"""
+		self.current_injection = h.IClamp(self.soma[0](0.5))
+		self.current_injection.amp = amp
+		self.current_injection.dur = dur
+		self.current_injection.delay = delay
+
+	# ---------- MORPHOLOGY ----------
+
+	def get_basals(self) -> list:
+		return self.find_terminal_sections(self.dend)
+	
+	def get_tufts_obliques(self) -> tuple:
+		tufts = []
+		obliques = []
+		for sec in self.find_terminal_sections(self.apic):
+			if h.distance(self.soma[0](0.5), sec(0.5)) > 800:
+				tufts.append(sec)
+			else:
+				obliques.append(sec)
+
+		return tufts, obliques
+	
+	def get_nbranch(self) -> int:
+		tufts, _ = self.get_tufts()
+		basals = self.get_basals()
+		return len(tufts) + len(basals) if len(tufts) == 1 else len(tufts) - 1 + len(basals)
+	
+	def find_terminal_sections(self, region: list) -> list:
+		'''
+		Finds all terminal sections by iterating over all sections and returning those which are not parent sections.
+		'''
+		# Find non-terminal sections
+		parent_sections = []
+		for sec in self.all:
+			if sec.parentseg() is None:
+				continue
+			
+			if sec.parentseg().sec not in parent_sections:
+				parent_sections.append(sec.parentseg().sec)
+			
+		terminal_sections = []
+		for sec in region:
+			if (sec not in parent_sections):
+				terminal_sections.append(sec)
+
+		return terminal_sections
+	
+	def compute_electrotonic_distance(self, from_segment) -> pd.DataFrame:
+		passive_imp = h.Impedance()
+		passive_imp.loc(from_segment)
+		active_imp = h.Impedance()
+		active_imp.loc(from_segment)
+		
+		segments, _ = self.get_segments(["all"])
+		elec_distance = np.zeros((len(segments), 2 * len(self.FREQS.items())))
+
+		colnames = []
+		col_idx = 0
+		for freq_name, freq_hz in self.FREQS.items():
+			# 9e-9 is a Segev's value
+			passive_imp.compute(freq_hz + 9e-9, 0)
+			active_imp.compute(freq_hz + 9e-9, 1)
+			for i, seg in enumerate(segments):
+				elec_distance[i, col_idx] = active_imp.ratio(seg.sec(seg.x))
+				elec_distance[i, col_idx + 1] = passive_imp.ratio(seg.sec(seg.x))
+			colnames.append(f"{freq_name}_active")
+			colnames.append(f"{freq_name}_passive")
+			col_idx = col_idx + 2
+
+		return pd.DataFrame(elec_distance, columns = colnames)
+	
+	# ---------- RECORDERS ----------
+
+	def add_spike_recorder(self, sec: object, var_name: str, spike_threshold: float):
+		self.recorders.append(SpikeRecorder(sec = sec, var_name = var_name, spike_threshold = spike_threshold))
+	
+	def add_synapse_recorders(self, var_name: str) -> None:
+		rec_list = SynapseRecorderList(var_name)
+		for syn in self.synapses:
+			try: rec_list.add(SynapseRecorder(syn.h_syn, var_name))
+			except: continue
+		self.recorders.append(rec_list)
+
+	def add_segment_recorders(self, var_name: str) -> None:
+		rec_list = SegmentRecorderList(var_name)
+		segments, _ = self.get_segments(["all"])
+		for seg in segments:
+			try: rec_list.add(SegmentRecorder(seg, var_name))
+			except: rec_list.add(EmptySegmentRecorder())
+		self.recorders.append(rec_list)
+	
+	def write_recorder_data(self, path: str, step: int) -> None:
+		os.mkdir(path)
+
+		for recorder in self.recorders:
+			if type(recorder) == SpikeRecorder:
+				self._write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.vec.as_numpy().reshape(1, -1))
+
+			elif (type(recorder) == SegmentRecorder) or (type(recorder) == SynapseRecorder):
+				self._write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.vec.as_numpy()[::step].reshape(1, -1))
+
+			elif (type(recorder) == SegmentRecorderList):
+				self._write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.get_combined_data()[:, ::step])
+
+			elif (type(recorder) == SynapseRecorderList):
+				segments, _ = self.get_segments(["all"])
+				self._write_datafile(os.path.join(path, f"{recorder.var_name}.h5"), recorder.get_combined_data(segments, self.synapses)[:, ::step])
+	
+	def _write_datafile(self, reportname, data):
+		with h5py.File(reportname, 'w') as file:
+			file.create_dataset("data", data = data)

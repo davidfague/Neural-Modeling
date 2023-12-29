@@ -11,34 +11,6 @@ class SimulationParameters:
 	numpy_random_state: int = 130
 	neuron_random_state: int = 90
 
-	# Reduction
-	reduce_cell: bool = False
-	expand_cable: bool = False
-	reduction_frequency: int = 0
-	choose_branches: int = 22
-	# Whether or not to optimize the number of segments by lambda after reduction 
-	# (may need to add an update to the CellModel class instance's segments list and seg_info list.)
-	optimize_nseg_by_lambda: bool = True
-	# Whether or not to merge synapses after optimizing nseg by lambda. 
-	# (synapses should already be merged by the reduce_cell_func, 
-	# but could be merged again if optimize_nseg_by_lambda lowers nseg.)
-	merge_synapses: bool = True
-	# Desired number of segs per length constant
-	segs_per_lambda: int = 10
-  
-	use_param_update_dict = False
-	param_update_dict = {
-      "soma": {
-          "nax.gbar": { "<100": 0.5, ">=100": 1.0 },
-          "kap.gbar": { "<100": 0.2, ">=100": 1.0 },
-          "hd.gbar":  1.0  # Assuming a constant value for hd.gbar
-      },
-      "axon": {
-          "nax.gbar": { "<100": 0.3, ">=100": 0.7 },
-          "kap.gbar": 1.0  # Assuming a constant value for kap.gbar
-      }
-  }
-
 	# Environment parameters
 	h_celcius: float = 34 # 37
 	h_tstop: int = 2000 # Sim runtime (ms)
@@ -95,30 +67,30 @@ class SimulationParameters:
 	inh_syn_params: tuple = (FSI_syn_params, LTS_syn_params)
 
 	# kmeans clustering
-	exc_n_FuncGroups = 24
-	exc_n_PreCells_per_FuncGroup = 15
-	inh_distributed_n_FuncGroups = 24
-	inh_distributed_n_PreCells_per_FuncGroup = 15
+	exc_n_FuncGroups: int = 24
+	exc_n_PreCells_per_FuncGroup: int = 15
+	inh_distributed_n_FuncGroups: int = 24
+	inh_distributed_n_PreCells_per_FuncGroup: int = 15
 
 	# Excitatory dend
-	exc_functional_group_span = 100
-	exc_cluster_span = 10
-	exc_synapses_per_cluster = 5
+	exc_functional_group_span: int = 100
+	exc_cluster_span: int = 10
+	exc_synapses_per_cluster: int = 5
 
 	# Inhibitory dend
-	inh_cluster_span = 10
-	inh_number_of_groups = 1
-	inh_functional_group_span = 100
+	inh_cluster_span: int = 10
+	inh_number_of_groups: int = 1
+	inh_functional_group_span: int = 100
 
 	# Inhibitory soma
 	# Number of presynaptic cells
-	soma_number_of_clusters = 15
-	soma_cluster_span = 10
+	soma_number_of_clusters: int = 15
+	soma_cluster_span: int = 10
 	
 	# Number of synapses per presynaptic cell
-	soma_synapses_per_cluster = 10
-	soma_number_of_groups = 1
-	soma_functional_group_span = 100
+	soma_synapses_per_cluster: int = 10
+	soma_number_of_groups: int = 1
+	soma_functional_group_span: int = 100
 
 	# Cell model
 	spike_threshold: int = -10 # (mV)
@@ -128,14 +100,27 @@ class SimulationParameters:
 	number_of_presynaptic_cells: int = 2651
 	PSC_start: int = 5
 
-	# analyze output
+	# Analyze output
 	skip: int = 300
 
 	# Log, plot and save
 	save_every_ms: int = 1000
 	path: str = ''
-	vector_length=int(save_every_ms/h_dt)
 
+	# Reduction
+	reduce_cell: bool = False
+	expand_cable: bool = False
+	reduction_frequency: int = 0
+	choose_branches: int = 22
+	# Whether or not to optimize the number of segments by lambda after reduction 
+	# (may need to add an update to the CellModel class instance's segments list and seg_info list.)
+	optimize_nseg_by_lambda: bool = True
+	# Whether or not to merge synapses after optimizing nseg by lambda. 
+	# (synapses should already be merged by the reduce_cell_func, 
+	# but could be merged again if optimize_nseg_by_lambda lowers nseg.)
+	merge_synapses: bool = True
+	# Desired number of segs per length constant
+	segs_per_lambda: int = 10
 
 class HayParameters(SimulationParameters):
 	channel_names = [

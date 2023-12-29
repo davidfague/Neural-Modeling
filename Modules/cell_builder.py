@@ -112,10 +112,6 @@ class CellBuilder:
 			skeleton_cell = self.build_Neymotin_detailed_cell()
 
 		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger)
-   
-		# Update parameters from dictionary
-		# if self.parameters.use_param_update_dict:
-		# 	self.update_cell_parameters_from_dict(skeleton_cell, self.parameters.param_update_dict)
 
 		# Build synapses
 		self.logger.log("Building excitatory synapses.")
@@ -163,7 +159,6 @@ class CellBuilder:
 		# 	reductor.merge_synapses(cell)
 
 		# Set recorders
-		# cell.insert_unused_channels(self.parameters.channel_names)
 		for var_name in self.parameters.channel_names:
 			cell.add_segment_recorders(var_name = var_name)
 
@@ -172,9 +167,12 @@ class CellBuilder:
 		for var_name in ["i_AMPA", "i_NMDA"]:
 			cell.add_synapse_recorders(var_name = var_name)
 
+		cell.add_spike_recorder(sec = cell.soma[0], var_name = "soma_spikes", spike_threshold = self.parameters.spike_threshold)
+		cell.add_spike_recorder(sec = cell.axon[0], var_name = "axon_spikes", spike_threshold = self.parameters.spike_threshold)
+
 		# Add current injection
 		if self.parameters.CI_on:
-			cell.set_injection(
+			cell.set_soma_injection(
 				amp = self.parameters.h_i_amplitude,
 				dur = self.parameters.h_i_duration, 
 				delay = self.parameters.h_i_delay)
