@@ -17,6 +17,12 @@ class Logger:
         else:
             print(f"({datetime.now()})-[PID: {current_process().pid}]–[INFO]: {msg}", file = open(self.path, "a"))
 
+    def log_warining(self, msg: str):
+        if self.path is None:
+            print(f"({datetime.now()})-[PID: {current_process().pid}]–[WARNING]: {msg}")
+        else:
+            print(f"({datetime.now()})-[PID: {current_process().pid}]–[WARNING]: {msg}", file = open(self.path, "a"))
+
     def log_step(self, step: int):
         if self.path is None:
             print(f"({datetime.now()})-[PID: {current_process().pid}]–[STEP]: {step}")

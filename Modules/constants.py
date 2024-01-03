@@ -22,6 +22,9 @@ class SimulationParameters:
 	h_i_duration: int = 1000 # (ms)
 	h_i_delay: int = 10 # (ms)
 
+	# ECP
+	record_ecp: bool = False
+
 	trunk_exc_synapses: bool = True
 	perisomatic_exc_synapses: bool = False
 	add_soma_inh_synapses: bool = True

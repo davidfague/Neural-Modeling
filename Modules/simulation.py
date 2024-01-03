@@ -89,10 +89,14 @@ class Simulation:
         # Create an ECP object for extracellular potential
         #elec_pos = params.ELECTRODE_POSITION
         #ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)
-
-        # Save segment indexes for plotting
-        #with open(os.path.join(parameters.path, "seg_indexes.pickle"), "wb") as file: 
-        #    pickle.dump(seg_indexes, file)
+        # Set ECP
+        # if parameters.record_ecp == True:
+        #     # Reason: (NEURON: Impedance calculation with extracellular not implemented)
+        #     self.logger.log_warining("Recording ECP adds the extracellular channel to all segments after computing electrotonic distance.\
+        #                              This channel is therefore not accounted for in impedence calculation, but it might affect the simulation.")
+        #     h.cvode.use_fast_imem(1)
+        #     for sec in cell.all: sec.insert('extracellular')
+        #     cell.add_segment_recorders(var_name = "i_membrane_")
 
         # Save constants
         with open(os.path.join(parameters.path, "parameters.pickle"), "wb") as file:
