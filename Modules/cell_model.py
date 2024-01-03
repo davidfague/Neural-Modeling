@@ -4,7 +4,7 @@ import os, h5py
 
 from neuron import h
 
-from recorder import SegmentRecorder, SynapseRecorder, SpikeRecorder,  EmptySegmentRecorder
+from recorder import SegmentRecorder, SynapseRecorder, SpikeRecorder, EmptySegmentRecorder
 from recorder import SynapseRecorderList, SegmentRecorderList
 from synapse import Synapse
 from logger import Logger
@@ -18,6 +18,7 @@ class SegmentData:
 	coords: pd.DataFrame
 	section: str
 	index_in_section: int
+	seg_half_seg_RA: float
 
 class CellModel:
 
@@ -243,6 +244,7 @@ class CellModel:
 						coords = self.get_coords_of_segments_in_section(sec).iloc[index_in_section, :].to_frame(1).T,
 						section = sec.name(),
 						index_in_section = index_in_section,
+						seg_half_seg_RA = 0.01 * seg.sec.Ra * (sec.L / 2 / seg.sec.nseg) / (np.pi * (seg.diam / 2) ** 2)
 					)
 					segments.append(seg)
 					datas.append(data)

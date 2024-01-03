@@ -1,7 +1,13 @@
 import numpy as np
 import os
 import pickle, h5py
-import pandas as pd
+
+from tqdm import tqdm
+from scipy.spatial.transform import Rotation
+
+import matplotlib.pyplot as plt
+from matplotlib import colormaps, colors, cm
+import matplotlib.animation as animation
 
 class DataReader:
 
@@ -142,6 +148,20 @@ class Trace:
 
         return upward_crossings, downward_crossings
     
+class CurrentTrace(Trace):
+    
+    @staticmethod
+    def compute_axial_currents(v, seg_data):
+        cg = CellGraph(seg_data)
+        print("Computing adjacency matrix...")
+        adj_matrix = cg.compute_adjacency_matrix()
+        ac_matrix = np.zeros_like(v)
+        for i in range(cg.N):
+            for j in np.where(adj_matrix[i, :] == 1)[0]:
+                ac = (v[i] - v[j]) / (seg_data.loc[i, "seg_half_seg_RA"] + seg_data.loc[j, "seg_half_seg_RA"])
+                ac_matrix[i, :] = ac_matrix[i, :] + ac
+                ac_matrix[j, :] = ac_matrix[j, :] + ac
+        return ac_matrix
 
 class VoltageTrace(Trace):
 
@@ -228,6 +248,73 @@ class VoltageTrace(Trace):
                 if len(x30) == 0: stop = True
 
         return left_bounds, right_bounds, sum_current
+    
+
+class CellGraph:
+
+    def __init__(self, seg_data):
+        self.N = len(seg_data)
+        self.start_coords = seg_data.loc[:, ["p0_0", "p0_1", "p0_2"]].to_numpy()
+        self.center_coords = seg_data.loc[:, ["pc_0", "pc_1", "pc_2"]].to_numpy()
+        self.end_coords = seg_data.loc[:, ["p1_0", "p1_1", "p1_2"]].to_numpy()
+
+    def animate_cell(self, variable, step):
+        plots = []
+        fig = plt.figure(figsize = (10, 20))
+        for i in tqdm(range(0, variable.shape[1], step)):
+            fig_i = self.plot_cell(color = variable[:, i])
+            ax_i = fig_i.gca(); ax_i.set(animated = True); ax_i.remove()
+            ax_i.figure = fig; fig.add_axes(ax_i); plt.close(fig_i)
+            plots.append([ax_i])
+        cmap = colormaps.get_cmap("Spectral")
+        # Normalize because color maps are defined in [0, 1]
+        norm = colors.Normalize(np.min(variable), np.max(variable))
+        fig.colorbar(cm.ScalarMappable(norm = norm, cmap = cmap), ax = fig.gca(), fraction = 0.026, pad = 0.04)
+        anime = animation.ArtistAnimation(fig, plots)
+        return anime
+
+    def plot_cell(self, color = None):
+        fig = plt.figure(figsize = (10, 20))
+        ax = fig.add_subplot(projection = '3d')
+
+        # All these values are heuristics
+        ax.view_init(elev = 20, azim = 10)
+        r = Rotation.from_euler('yx', (90, 90), degrees = True)
+        start_coords = r.apply(self.start_coords)
+        end_coords = r.apply(self.end_coords)
+
+        if color is not None:
+            cmap = colormaps.get_cmap("Spectral")
+            # Normalize because color maps are defined in [0, 1]
+            norm = colors.Normalize(np.min(color), np.max(color))
+            fig.colorbar(cm.ScalarMappable(norm = norm, cmap = cmap), ax = ax, fraction = 0.026, pad = 0.04)
+
+        for i in range(self.N):
+            ax.plot(
+                np.hstack([start_coords[i, 0], end_coords[i, 0]]),
+                np.hstack([start_coords[i, 1], end_coords[i, 1]]),
+                np.hstack([start_coords[i, 2], end_coords[i, 2]]),
+                color = cmap(norm(color[i])) if color is not None else 'teal'
+            )
+        return fig
+
+    def compute_adjacency_matrix(self):
+        adj_matrix = np.zeros((self.N, self.N))
+        for i in tqdm(range(self.N)):
+            for j in range(self.N):
+                adj_matrix[i, j] = self._find_zero_diff_in_two_coord_lists(
+                    [self.start_coords[i], self.center_coords[i], self.end_coords[i]],
+                    [self.start_coords[j], self.center_coords[j], self.end_coords[j]])
+        return adj_matrix - np.eye(self.N)
+
+    def _find_zero_diff_in_two_coord_lists(self, list0, list1):
+        for c0 in list0:
+            for c1 in list1:
+                if np.sum(np.abs(c0 - c1)) < 1e-10:
+                    return 1
+        return 0
+                
+
 
             
             

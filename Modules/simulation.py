@@ -69,12 +69,14 @@ class Simulation:
         seg_sections = []
         seg_idx = []
         seg_coords = []
+        seg_half_seg_RAs = []
         for entry in seg_data:
             sec_name = entry.section.split(".")[1] # name[idx]
             seg_sections.append(sec_name.split("[")[0])
             seg_idx.append(sec_name.split("[")[1].split("]")[0])
             seg_coords.append(entry.coords)
-        seg_sections = pd.DataFrame({"section": seg_sections, "idx_in_section": seg_idx})
+            seg_half_seg_RAs.append(entry.seg_half_seg_RA)
+        seg_sections = pd.DataFrame({"section": seg_sections, "idx_in_section": seg_idx, "seg_half_seg_RA": seg_half_seg_RAs})
         seg_coords = pd.concat(seg_coords)
 
         seg_data = pd.concat((seg_sections.reset_index(drop = True), seg_coords.reset_index(drop = True)), axis = 1)
