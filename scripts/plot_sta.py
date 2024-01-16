@@ -117,6 +117,8 @@ def _analyze_Na():
                     title = f"Na-{section}",
                     xlabel_spike_type = "soma")
             except:
+                print(section, elec_dist)
+                print(traceback.format_exc())
                 continue
 
 def _analyze_Ca():
@@ -149,8 +151,14 @@ def _analyze_Ca():
                         title = f"Ca-{section}",
                         xlabel_spike_type = "soma",
                         indexes = indexes)
-                except: continue
-        except: continue
+                except:
+                    print(section, elec_dist)
+                    print(traceback.format_exc())
+                    continue
+        except:
+            print(section)
+            print(traceback.format_exc()) 
+            continue
 
 def _analyze_NMDA():
 
@@ -169,7 +177,10 @@ def _analyze_NMDA():
             for i in indexes:
                 left_bounds, _, _ = analysis.VoltageTrace.get_NMDA_spikes(v[i], -40, inmda[i])
                 NMDA_spikes.append(left_bounds)
-        except: continue # There are no NMDA spikes
+        except:
+            print(section)
+            print(traceback.format_exc()) 
+            continue # There are no NMDA spikes
 
         try:
             # Soma
@@ -184,8 +195,14 @@ def _analyze_NMDA():
                         title = f"NMDA-{section}",
                         xlabel_spike_type = "soma",
                         indexes = indexes)
-                except: continue
-        except: pass
+                except:
+                    print(section, elec_dist)
+                    print(traceback.format_exc()) 
+                    continue
+        except:
+            print(section, elec_dist)
+            print(traceback.format_exc()) 
+            pass
         
         try:
             # Ca
@@ -206,8 +223,14 @@ def _analyze_NMDA():
                         title = f"NMDA-{section}",
                         xlabel_spike_type = "Ca",
                         indexes = indexes)
-                except: continue
-        except: pass
+                except:
+                    print(section, elec_dist)
+                    print(traceback.format_exc()) 
+                    continue
+        except:
+            print(section)
+            print(traceback.format_exc()) 
+            pass
         
 
 if __name__ == "__main__":
