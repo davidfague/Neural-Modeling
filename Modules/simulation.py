@@ -82,6 +82,10 @@ class Simulation:
         seg_data = pd.concat((seg_sections.reset_index(drop = True), seg_coords.reset_index(drop = True)), axis = 1)
         seg_data.to_csv(os.path.join(parameters.path, "segment_data.csv"))
 
+        # Compute electrotonic distances from soma
+        elec_distances_soma = cell.compute_electrotonic_distance(from_segment = cell.soma[0](0.5))
+        elec_distances_soma.to_csv(os.path.join(parameters.path, "elec_distance_soma.csv"))
+
         # Compute electrotonic distances from nexus
         elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
         elec_distances_nexus.to_csv(os.path.join(parameters.path, "elec_distance_nexus.csv"))

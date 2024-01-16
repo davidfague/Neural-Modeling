@@ -106,12 +106,12 @@ class SummaryStatistics:
         return STTC
 
     @staticmethod
-    def get_quantiles_based_on_elec_dist(morph, elec_dist, spikes, elec_dist_var):
-        filtered_elec_dist = elec_dist.loc[morph.section == elec_dist_var, "beta_passive"]
-        filtered_spikes = [spikes[i] for i in np.where(morph.section == elec_dist_var)[0]]
+    def get_quantiles_based_on_elec_dist(morph, elec_dist, spikes, section):
+        filtered_elec_dist = elec_dist.loc[morph.section == section, "beta_passive"]
+        filtered_spikes = [spikes[i] for i in np.where(morph.section == section)[0]]
 
         if len(filtered_spikes) < 10:
-            raise RuntimeError(f"Found less than 10 spikes when computing quantiles for {elec_dist_var}.")
+            raise RuntimeError(f"Found less than 10 spikes when computing quantiles for {section}.")
         
         q = np.quantile(filtered_elec_dist, np.arange(0, 1.1, 0.1))
         return q
@@ -313,7 +313,8 @@ class CellGraph:
                 if np.sum(np.abs(c0 - c1)) < 1e-10:
                     return 1
         return 0
- 
+
+# UNFINISHED BUSINESS
 class ECP:
     # Adapted from
     # https://github.com/chenziao/Stylized-Single-Cell-and-Extracellular-Potential/tree/main/cell_inference
