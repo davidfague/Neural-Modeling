@@ -12,7 +12,7 @@ class SimulationParameters:
 	neuron_random_state: int = 90
 
 	# Environment parameters
-	h_celcius: float = 34 # 37
+	h_celcius: float = 37 # 34
 	h_tstop: int = 2000 # Sim runtime (ms)
 	h_dt: float = 0.1 # Timestep (ms)
 
@@ -31,7 +31,7 @@ class SimulationParameters:
 	num_soma_inh_syns: int = 150
 
 	# gmax distributions
-	exc_gmax_mean_0: float = 5.5
+	exc_gmax_mean_0: float = 1.55 # 1.5-1.6 is good
 	exc_gmax_std_0: float = 0.2
 	exc_gmax_clip: tuple = (0, 7)
 	inh_gmax_dist: float = 0.5

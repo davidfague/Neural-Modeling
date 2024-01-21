@@ -136,6 +136,7 @@ class CellBuilder:
       
 		self.logger.log("Finished creating a CellModel object.")
 
+		# @CHECK ----
 		# Turn off certain presynaptic neurons to simulate in vivo
 		if (self.parameters.CI_on == False) and (self.parameters.trunk_exc_synapses == False):
 			for synapse in cell.synapses:
@@ -153,6 +154,8 @@ class CellBuilder:
 					(h.distance(synapse.h_syn.get_segment(), cell.soma[0](0.5)) < 75) and 
 					(synapse.syn_mod in self.parameters.exc_syn_mod)):
 					for netcon in synapse.netcons: netcon.active(False)
+		
+		# ----
 		
 		# Merge synapses
 		# if self.parameters.merge_synapses:
@@ -277,11 +280,11 @@ class CellBuilder:
 		if (self.parameters.CI_on) or (not self.parameters.add_soma_inh_synapses):
 			return None
 		
-		inh_soma_P_dist = partial(
-			P_release_dist, 
-			P_mean = self.parameters.inh_soma_P_release_mean, 
-			P_std = self.parameters.inh_soma_P_release_std, 
-			size = 1)
+		# inh_soma_P_dist = partial(
+		# 	P_release_dist, 
+		# 	P_mean = self.parameters.inh_soma_P_release_mean, 
+		# 	P_std = self.parameters.inh_soma_P_release_std, 
+		# 	size = 1)
 		
 		segments, seg_data = cell.get_segments(["soma"])
 		probs = [data.membrane_surface_area for data in seg_data]
@@ -295,7 +298,7 @@ class CellBuilder:
 			name = "soma",
 			density = False,
 			seg_probs = probs,
-			release_p = inh_soma_P_dist)
+			release_p = None)
 			
 	def build_inhibitory_synapses(self, cell) -> None:
 		
@@ -303,20 +306,20 @@ class CellBuilder:
 			return None
 		
 		# Inhibitory release probability distributions
-		inh_apic_P_dist = partial(
-			P_release_dist, 
-			P_mean = self.parameters.inh_apic_P_release_mean, 
-			P_std = self.parameters.inh_apic_P_release_std, 
-			size = 1)
-		inh_basal_P_dist = partial(
-			P_release_dist, 
-			P_mean = self.parameters.inh_basal_P_release_mean, 
-			P_std = self.parameters.inh_basal_P_release_std, 
-			size = 1)
+		# inh_apic_P_dist = partial(
+		# 	P_release_dist, 
+		# 	P_mean = self.parameters.inh_apic_P_release_mean, 
+		# 	P_std = self.parameters.inh_apic_P_release_std, 
+		# 	size = 1)
+		# inh_basal_P_dist = partial(
+		# 	P_release_dist, 
+		# 	P_mean = self.parameters.inh_basal_P_release_mean, 
+		# 	P_std = self.parameters.inh_basal_P_release_std, 
+		# 	size = 1)
 		
-		inh_P_dist = {}
-		inh_P_dist["apic"] = inh_apic_P_dist
-		inh_P_dist["dend"] = inh_basal_P_dist
+		# inh_P_dist = {}
+		# inh_P_dist["apic"] = inh_apic_P_dist
+		# inh_P_dist["dend"] = inh_basal_P_dist
 		
 		segments, seg_data = cell.get_segments(["apic", "dend"])
 		probs = [data.membrane_surface_area for data in seg_data]
@@ -330,7 +333,7 @@ class CellBuilder:
 			name = "inh",
 			density = True,
 			seg_probs = probs,
-			release_p = inh_P_dist)
+			release_p = None)
 			
 	def build_excitatory_synapses(self, cell) -> None:
 		
@@ -347,18 +350,22 @@ class CellBuilder:
 			clip = self.parameters.exc_gmax_clip)
 		
 		# exc release probability distribution everywhere
-		exc_P_dist = partial(
-			P_release_dist, 
-			P_mean = self.parameters.exc_P_release_mean, 
-			P_std = self.parameters.exc_P_release_std, 
-			size = 1)
+		# exc_P_dist = partial(
+		# 	P_release_dist, 
+		# 	P_mean = self.parameters.exc_P_release_mean, 
+		# 	P_std = self.parameters.exc_P_release_std, 
+		# 	size = 1)
 		
+		# @CHECK ----
+		# Looks like currently we are assigning exc synapses to soma as well.
+		# Check this param use_SA_exc – probably doesn't represent what's intended. 
 		# Use surface area instead of lengths for probabilities
 		if self.parameters.use_SA_exc: 
 			segments, seg_data = cell.get_segments(["all"])
 		else:
 			segments, seg_data = cell.get_segments(["apic", "dend", "axon"])
 		probs = [data.membrane_surface_area for data in seg_data]
+		# ----
 
 		cell.add_synapses_over_segments(
 			segments = segments,
@@ -369,7 +376,7 @@ class CellBuilder:
 			name = "exc",
 			density = True,
 			seg_probs = probs,
-			release_p = exc_P_dist)
+			release_p = None)
 
 	def build_Hay_cell(self) -> object:
 		# Load biophysics
