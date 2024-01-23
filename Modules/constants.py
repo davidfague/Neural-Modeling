@@ -31,7 +31,7 @@ class SimulationParameters:
 	num_soma_inh_syns: int = 150
 
 	# gmax distributions
-	exc_gmax_mean_0: float = 1.55 # 1.5-1.6 is good
+	exc_gmax_mean_0: float = 1.5 # 1.5-1.6 is good
 	exc_gmax_std_0: float = 0.2
 	exc_gmax_clip: tuple = (0, 7)
 	inh_gmax_dist: float = 0.5
@@ -58,12 +58,13 @@ class SimulationParameters:
 	exc_syn_mod: str = 'AMPA_NMDA_STP'
 	inh_syn_mod: str = 'GABA_AB_STP'
 
-	# firing rate distributions
-	exc_mean_fr: float = 5.3
-	inh_prox_mean_fr: float = 3.9
-	inh_prox_std_fr: float = 0.5
+	# Firing rate distributions
+	exc_mean_fr: float = 4.43
+	exc_std_fr: float = 2.9
+	inh_prox_mean_fr: float = 16.9
+	inh_prox_std_fr: float = 14.3
 	inh_distal_mean_fr: float = 3.9
-	inh_distal_std_fr: float = 0.5
+	inh_distal_std_fr: float = 4.9
 
 	# syn_params
 	exc_syn_params: tuple = (CS2CP_syn_params, CP2CP_syn_params) # 90%, 10%

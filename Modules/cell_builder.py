@@ -260,7 +260,10 @@ class CellBuilder:
 		)
 
 		# Distribution of mean firing rates
-		mean_fr_dist = partial(gamma_dist, mean = self.parameters.exc_mean_fr, size = 1)
+		# mean_fr_dist = partial(gamma_dist, mean = self.parameters.exc_mean_fr, size = 1)
+		mean_fr, std_fr = self.parameters.exc_mean_fr, self.parameters.exc_std_fr
+		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
+		mean_fr_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
 
 		for i, synapse in enumerate(cell.synapses):
 			if synapse.name == "exc":
@@ -355,17 +358,12 @@ class CellBuilder:
 		# 	P_mean = self.parameters.exc_P_release_mean, 
 		# 	P_std = self.parameters.exc_P_release_std, 
 		# 	size = 1)
-		
-		# @CHECK ----
-		# Looks like currently we are assigning exc synapses to soma as well.
-		# Check this param use_SA_exc – probably doesn't represent what's intended. 
-		# Use surface area instead of lengths for probabilities
-		if self.parameters.use_SA_exc: 
-			segments, seg_data = cell.get_segments(["all"])
+
+		segments, seg_data = cell.get_segments(["apic", "dend"])
+		if self.parameters.use_SA_exc:
+			probs = [data.membrane_surface_area for data in seg_data]
 		else:
-			segments, seg_data = cell.get_segments(["apic", "dend", "axon"])
-		probs = [data.membrane_surface_area for data in seg_data]
-		# ----
+			raise NotImplementedError
 
 		cell.add_synapses_over_segments(
 			segments = segments,
