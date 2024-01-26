@@ -99,10 +99,11 @@ def _analyze_Na():
 
     gnaTa = analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t")
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
+    v = analysis.DataReader.read_data(sim_directory, "v")
     
     Na_spikes = []
     for i in range(len(gnaTa)):
-        spikes, _ = analysis.VoltageTrace.get_Na_spikes(gnaTa[i], 0.001 / 1000, soma_spikes, 2)
+        spikes, _ = analysis.VoltageTrace.get_Na_spikes(gnaTa[i], 0.001 / 1000, soma_spikes, 2, v[i], v[0])
         Na_spikes.append(spikes)
 
     sta = _compute_sta_for_each_train_in_a_list(Na_spikes, soma_spikes)
@@ -266,5 +267,4 @@ if __name__ == "__main__":
         _analyze_NMDA()
     except Exception:
         print(traceback.format_exc())
-
 
