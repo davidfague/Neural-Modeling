@@ -13,6 +13,11 @@ class SpikeTrain:
 		self.spike_times = spike_times
 		self.T = T
 
+	def to_continuous(self):
+		cv = np.zeros(self.T)
+		cv[self.spike_times] = 1
+		return cv
+
 class PoissonTrainGenerator:
 	# Win_size = 1 ms
 

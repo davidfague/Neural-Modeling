@@ -306,7 +306,7 @@ class CellModel:
 					syn_params = syn_params[1] if segment_distance > 100 else syn_params[0]
 
 			self.synapses.append(Synapse(
-				segment = segment, 
+				segment = segment,
 				syn_mod = syn_mod, 
 				syn_params = syn_params, 
 				gmax = gmax(size = 1) if callable(gmax) else gmax,

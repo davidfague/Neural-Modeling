@@ -126,13 +126,13 @@ class CellBuilder:
 		# Assign spike trains
 
 		self.logger.log("Assigning excitatory spike trains.")
-		self.assign_exitatory_spike_trains(cell = cell, random_state = random_state)
+		exc_spike_trains = self.assign_exitatory_spike_trains(cell = cell, random_state = random_state)
 
 		self.logger.log("Assigning inhibitory spike trains.")
-		self.assign_inhibitory_spike_trains(cell = cell, random_state = random_state)
+		inh_spike_trains = self.assign_inhibitory_spike_trains(cell = cell, random_state = random_state)
 
 		self.logger.log("Assigning soma spike trains.")
-		self.assign_soma_spike_trains(cell = cell, random_state = random_state)
+		soma_spike_trains = self.assign_soma_spike_trains(cell = cell, random_state = random_state)
       
 		self.logger.log("Finished creating a CellModel object.")
 
@@ -162,16 +162,8 @@ class CellBuilder:
 		# 	reductor.merge_synapses(cell)
 
 		# Set recorders
-		for var_name in self.parameters.channel_names:
-			cell.add_segment_recorders(var_name = var_name)
-
 		cell.add_segment_recorders(var_name = "v")
-		
-		for var_name in ["i_AMPA", "i_NMDA"]:
-			cell.add_synapse_recorders(var_name = var_name)
-
 		cell.add_spike_recorder(sec = cell.soma[0], var_name = "soma_spikes", spike_threshold = self.parameters.spike_threshold)
-		cell.add_spike_recorder(sec = cell.axon[0], var_name = "axon_spikes", spike_threshold = self.parameters.spike_threshold)
 
 		# Add current injection
 		if self.parameters.CI_on:
@@ -181,9 +173,11 @@ class CellBuilder:
 				delay = self.parameters.h_i_delay)
 
 		# Also return skeleton_cell to keep references 
-		return cell, skeleton_cell
+		return cell, skeleton_cell, exc_spike_trains, inh_spike_trains, soma_spike_trains
 
 	def assign_soma_spike_trains(self, cell, random_state) -> None:
+
+		soma_spike_trains = []
 
 		PCBuilder.assign_presynaptic_cells(
 			cell = cell,
@@ -209,9 +203,16 @@ class CellBuilder:
 					random_state = random_state)
 
 				cell.synapses[i].set_spike_train_for_pc(mean_fr = mean_fr, spike_train = spike_train.spike_times)
+				soma_spike_trains.append(spike_train.spike_times)
+			else:
+				soma_spike_trains.append([])
+		
+		return soma_spike_trains
 
 
 	def assign_inhibitory_spike_trains(self, cell, random_state) -> None:
+
+		inh_spike_trains = []
 
 		PCBuilder.assign_presynaptic_cells(
 			cell = cell,
@@ -248,9 +249,16 @@ class CellBuilder:
 					random_state = random_state)
 				
 				cell.synapses[i].set_spike_train_for_pc(mean_fr = mean_fr, spike_train = spike_train.spike_times)
+				inh_spike_trains.append(spike_train.spike_times)
+			else:
+				inh_spike_trains.append([])
+		
+		return inh_spike_trains
 
 
 	def assign_exitatory_spike_trains(self, cell, random_state) -> None:
+
+		exc_spike_trains = []
 
 		PCBuilder.assign_presynaptic_cells(
 			cell = cell,
@@ -276,6 +284,11 @@ class CellBuilder:
 					lambdas = firing_rates, 
 					random_state = random_state)
 				cell.synapses[i].set_spike_train_for_pc(mean_fr = mean_fr, spike_train = spike_train.spike_times)
+				exc_spike_trains.append(spike_train.spike_times)
+			else:
+				exc_spike_trains.append([])
+		
+		return exc_spike_trains
 
 				
 	def build_soma_synapses(self, cell) -> None:

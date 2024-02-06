@@ -1,3 +1,4 @@
+import imp
 from cell_builder import SkeletonCell, CellBuilder
 from constants import SimulationParameters
 from logger import Logger
@@ -10,6 +11,7 @@ from neuron import h
 import os, datetime
 import pickle, h5py
 import pandas as pd
+import numpy as np
 
 from multiprocessing import Pool, cpu_count
 
@@ -62,7 +64,14 @@ class Simulation:
 
         # Build the cell
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
-        cell, _ = cell_builder.build_cell()
+        cell, _, exc_spike_trains, inh_spike_trains, soma_spike_trains = cell_builder.build_cell()
+        with open(os.path.join(parameters.path, "exc_spike_trains.pickle"), "wb") as file:
+            pickle.dump(exc_spike_trains, file)
+        with open(os.path.join(parameters.path, "inh_spike_trains.pickle"), "wb") as file:
+            pickle.dump(inh_spike_trains, file)
+        with open(os.path.join(parameters.path, "soma_spike_trains.pickle"), "wb") as file:
+            pickle.dump(soma_spike_trains, file)
+        
 
         # Classify segments by morphology, save coordinates
         segments, seg_data = cell.get_segments(["all"]) # (segments is returned here to preserve NEURON references)
@@ -78,29 +87,15 @@ class Simulation:
             seg_half_seg_RAs.append(entry.seg_half_seg_RA)
         seg_sections = pd.DataFrame({"section": seg_sections, "idx_in_section": seg_idx, "seg_half_seg_RA": seg_half_seg_RAs})
         seg_coords = pd.concat(seg_coords)
-
         seg_data = pd.concat((seg_sections.reset_index(drop = True), seg_coords.reset_index(drop = True)), axis = 1)
+
+        seg_to_synapse = [[] for _ in range(len(segments))]
+        for i, synapse in enumerate(cell.synapses):
+            seg_to_synapse[segments.index(synapse.h_syn.get_segment())].append(i)
+        
+        seg_data["synapses"] = seg_to_synapse
+
         seg_data.to_csv(os.path.join(parameters.path, "segment_data.csv"))
-
-        # Compute electrotonic distances from soma
-        elec_distances_soma = cell.compute_electrotonic_distance(from_segment = cell.soma[0](0.5))
-        elec_distances_soma.to_csv(os.path.join(parameters.path, "elec_distance_soma.csv"))
-
-        # Compute electrotonic distances from nexus
-        elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
-        elec_distances_nexus.to_csv(os.path.join(parameters.path, "elec_distance_nexus.csv"))
-
-        # Create an ECP object for extracellular potential
-        #elec_pos = params.ELECTRODE_POSITION
-        #ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)
-        # Set ECP
-        # if parameters.record_ecp == True:
-        #     # Reason: (NEURON: Impedance calculation with extracellular not implemented)
-        #     self.logger.log_warining("Recording ECP adds the extracellular channel to all segments after computing electrotonic distance.\
-        #                              This channel is therefore not accounted for in impedence calculation, but it might affect the simulation.")
-        #     h.cvode.use_fast_imem(1)
-        #     for sec in cell.all: sec.insert('extracellular')
-        #     cell.add_segment_recorders(var_name = "i_membrane_")
 
         # Save constants
         with open(os.path.join(parameters.path, "parameters.pickle"), "wb") as file:

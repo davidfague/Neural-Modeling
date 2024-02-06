@@ -9,6 +9,7 @@ from Modules.constants import HayParameters
 if __name__ == "__main__":
     
     sim = Simulation(SkeletonCell.Hay)
-    sim.submit_job(HayParameters("try1", h_tstop = 2000, reduce_cell = False, expand_cable = False))
+    for i in range(3):
+        sim.submit_job(HayParameters(f"sim_{i}", h_tstop = 1000, reduce_cell = False, expand_cable = False))
     sim.run()
 
