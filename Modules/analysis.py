@@ -60,7 +60,7 @@ class SummaryStatistics:
         spike_times = np.delete(spike_times, np.where(spike_times < win_length))
 
         # Delete spikes which occured after the trace's end
-        spike_times = np.delete(spike_times, np.where(spike_times > trace.shape[1]))
+        spike_times = np.delete(spike_times, np.where(spike_times > trace.shape[1] - win_length))
 
         sta = np.zeros(win_length)
         # Add trace[spike - window: spike] to the trace
