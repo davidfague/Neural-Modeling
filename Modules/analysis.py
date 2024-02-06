@@ -163,10 +163,30 @@ class CurrentTrace(Trace):
                 ac_matrix[j, :] = ac_matrix[j, :] + ac
         return ac_matrix
 
+def plot_spike_windows(spike_times, v_Na, v_Soma, window_size=10):
+    num_spikes = len(spike_times)
+    fig, axes = plt.subplots(num_spikes, 1, figsize=(12, 6 * num_spikes))
+
+    for i, spike_time in enumerate(spike_times):
+        start = max(0, spike_time - window_size)
+        end = min(len(v_Na), spike_time + window_size)
+
+        axes[i].plot(range(start, end), v_Na[start:end], label='v_Na', color='blue')
+        axes[i].plot(range(start, end), v_Soma[start:end], label='v_Soma', color='red')
+        axes[i].axvline(x=spike_time, color='green', linestyle='--', label='Spike Time')
+        
+        axes[i].set_xlabel('Time')
+        axes[i].set_ylabel('Voltage')
+        axes[i].legend()
+        axes[i].set_title(f'Spike at Time {spike_time}')
+
+    plt.tight_layout()
+    plt.show()
+
 class VoltageTrace(Trace):
 
     @staticmethod
-    def get_Na_spikes(g_Na: np.ndarray, threshold: float, spikes: np.ndarray, ms_within_spike: float) -> np.ndarray:
+    def get_Na_spikes(g_Na: np.ndarray, threshold: float, spikes: np.ndarray, ms_within_spike: float, v_Na: np.ndarray, v_Soma: np.ndarray) -> np.ndarray:
 
         upward_crossings, _ = VoltageTrace.get_crossings(g_Na, threshold)
 
@@ -178,18 +198,36 @@ class VoltageTrace(Trace):
         for sp_time in upward_crossings:
             # Time of APs before this na spike
             spikes_before_sodium_spike = spikes[spikes < sp_time]
+            spikes_after_sodium_spike = spikes[spikes > sp_time]
+            
+            # Na spike starts less than x ms before first AP after Na spike, and Na spike voltage is less than soma voltage at time of Na spike start (bAP that was being counted as Na spike)
+            if (len(spikes_after_sodium_spike) > 0):
+                if ((spikes_after_sodium_spike[0] - sp_time) < 5) and (v_Na[sp_time] < v_Soma[sp_time]):
+                    backprop_AP.append(sp_time)    
 
-            # Na spike has no AP before
-            if len(spikes_before_sodium_spike) == 0:
-                Na_spikes.append(sp_time)
+                # Na spike has no AP before
+                elif len(spikes_before_sodium_spike) == 0:
+                    Na_spikes.append(sp_time)
+    
+                # Na spike is more than x ms after last AP
+                elif (sp_time - spikes_before_sodium_spike[-1] > ms_within_spike):
+                    Na_spikes.append(sp_time)
+                
+                # Na spike is within x ms after latest AP and counted as a back propagating AP
+                else:
+                    backprop_AP.append(sp_time)
 
-            # Na spike is more than x ms after last AP
-            elif (sp_time - spikes_before_sodium_spike[-1] > ms_within_spike):
-                Na_spikes.append(sp_time)
-
-            # Na spike is within x ms after latest AP and counted as a back propagating AP
             else:
-                backprop_AP.append(sp_time)
+                if len(spikes_before_sodium_spike) == 0:
+                    Na_spikes.append(sp_time)
+    
+                # Na spike is more than x ms after last AP
+                elif (sp_time - spikes_before_sodium_spike[-1] > ms_within_spike):
+                    Na_spikes.append(sp_time)
+                
+                # Na spike is within x ms after latest AP and counted as a back propagating AP
+                else:
+                    backprop_AP.append(sp_time)
 
         return np.array(Na_spikes), np.array(backprop_AP)
     

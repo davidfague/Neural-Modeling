@@ -5,6 +5,7 @@ sys.path.append("../Modules/")
 import analysis
 from logger import Logger
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import seaborn as sns
 import numpy as np
 import pandas as pd
@@ -13,39 +14,56 @@ import traceback
 import random
 
 
-# CHECK seg indices
+# ADD electrotonic distance from soma to legend.
+# UPDATE generate one figure per somatic spike and accompanying dend spikes
+# add what stars mean.
 def plot_voltage_for_segments_where_spikes_occur(
-                                                  seg_data,
-                                                  v,
-                                                  soma_spikes,
-                                                  dend_spike_start_times,
-                                                  title,
-                                                  section,
-                                                  #color,
-                                                  min_time_index=0,
-                                                  max_time_index=2000,
-                                                  time_indices_before_soma_spike=50,
-                                                  time_indices_after_soma_spike=50,
-                                                  max_soma_spikes_plotted=2,
-                                                  max_segments_with_dend_spikes_per_soma_spike=10,
-                                                  save=True):
-    x_ticks = np.arange(0, 50, 5)
-    x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
+    seg_data,
+    v,
+    soma_spikes,
+    dend_spike_start_times,
+    title,
+    section,
+    min_time_index=0,
+    max_time_index=2000,
+    time_indices_before_soma_spike=50,
+    time_indices_after_soma_spike=50,
+    max_soma_spikes_plotted=1,
+    max_segments_with_dend_spikes_per_soma_spike=100,
+    save=True,
+    sim_directory='',
+    include_legend=True,
+    use_varied_colors=True):
+    """
+    Plots voltage for segments where spikes occur.
+
+    Parameters:
+    ... [other parameters] ...
+    include_legend : bool, optional
+        Include a legend in the plot to identify segment indices.
+    use_varied_colors : bool, optional
+        Use varied colors for dendritic voltages.
+    """
 
     if title == 'Ca':
         indexes = seg_data[(seg_data["section"] == "apic")].index
     else:
         indexes = seg_data[(seg_data["section"] == section)].index
-
+        
+    print(seg_data.keys())
     print(f"{title+section} indexes: {indexes}")
 
-    fig = plt.figure(figsize=(15, 10))
-    soma_spikes_plotted = 0
+    fig, ax = plt.figure(figsize=(15, 10)), plt.gca()
 
-    for soma_spike in soma_spikes[0][1:-1]:
-        if soma_spikes_plotted >= max_soma_spikes_plotted:
-            break
+    # Generate a list of distinct colors if varied colors are to be used
+    if use_varied_colors:
+        palette_name = 'tab20'
+        colors = list(plt.get_cmap(palette_name).colors)  # Convert to list before shuffling
+        random.shuffle(colors)
+    # Randomly select soma spikes, respecting the maximum limit
+    random_soma_spikes = random.sample(list(soma_spikes[0][1:-1]), min(len(soma_spikes[0][1:-1]), max_soma_spikes_plotted))
 
+    for soma_spike in random_soma_spikes:
         min_index = int(max(soma_spike - time_indices_before_soma_spike, 0))
         max_index = int(min(soma_spike + time_indices_after_soma_spike, len(v[0])))
 
@@ -61,23 +79,28 @@ def plot_voltage_for_segments_where_spikes_occur(
 
         # Randomly select segments to plot, respecting the maximum limit
         segments_to_plot = random.sample(eligible_segments, min(len(eligible_segments), max_segments_with_dend_spikes_per_soma_spike))
-        print(f"segments randomly chosen to plot: {segments_to_plot}")
 
-        for seg_index in segments_to_plot:
-            seg_dend_spikes = dend_spike_start_times[seg_index]
-            plt.plot(v[seg_index][min_index:max_index], color='blue', linewidth=0.25)
-            for spike_time in seg_dend_spikes:
-                if min_index < spike_time < max_index:
-                    plt.plot(spike_time - min_index, v[seg_index][spike_time], '*', markersize=10, color='green')
+    for i, seg_index in enumerate(segments_to_plot):
+        seg_dend_spikes = dend_spike_start_times[seg_index]
+        color = colors[i % len(colors)] if use_varied_colors else 'blue'
+        ax.plot(v[seg_index][min_index:max_index], color=color, linewidth=0.25, label=f'Segment {seg_index}' if use_varied_colors else None)
+        for spike_time in seg_dend_spikes:
+            if min_index < spike_time < max_index:
+                spike_label = 'Dendritic Spike' if f'Dendritic Spike' not in ax.get_legend_handles_labels()[1] else None
+                ax.plot(spike_time - min_index, v[seg_index][spike_time], '*', markersize=10, color=color, label=spike_label)
+    
+    if len(segments_to_plot) > 0:
+        ax.plot(v[0][min_index:max_index], color='black', linewidth=1.0, label='Soma')
+        soma_spike_label = 'Somatic Spike' if 'Somatic Spike' not in ax.get_legend_handles_labels()[1] else None
+        ax.plot(soma_spike - min_index, max(v[0][min_index:max_index]), '*', markersize=10, color='black', label=soma_spike_label)
+    
+    ax.set_title('Vm ' + title + section)
+    ax.set_xlabel('Time (ms)')
+    ax.set_ylabel("Voltage")
+    
+    if include_legend:
+        ax.legend()
 
-        if len(segments_to_plot) > 0:
-            plt.plot(v[0][min_index:max_index], color='black')
-            plt.plot(soma_spike - min_index, max(v[0][min_index:max_index]), '*', markersize=10, color='red')
-            soma_spikes_plotted += 1
-
-    plt.title('Vm ' + title + section)
-    plt.xlabel('Time (ms)')
-    plt.ylabel("Voltage")
     plt.show()
 
     if save:
@@ -125,12 +148,14 @@ def _analyze_Na():
     gnaTa = analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t")
     v = analysis.DataReader.read_data(sim_directory, "v")
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
+    v = analysis.DataReader.read_data(sim_directory, "v")
     
     Na_spikes = []
     for i in range(len(gnaTa)):
-        spike_start_times, _ = analysis.VoltageTrace.get_Na_spikes(gnaTa[i], 0.001 / 1000, soma_spikes, 2)
+        spike_start_times, _ = analysis.VoltageTrace.get_Na_spikes(gnaTa[i], 0.001 / 1000, soma_spikes, 2, v[i], v[0])
         Na_spikes.append(spike_start_times)
     seg_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
+
     # compute and plot
     plot_voltage_for_segments_where_spikes_occur(seg_data, v, soma_spikes, Na_spikes, 'Na',section='dend')
     plot_voltage_for_segments_where_spikes_occur(seg_data, v, soma_spikes, Na_spikes, 'Na',section='apic')
