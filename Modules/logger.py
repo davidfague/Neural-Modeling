@@ -36,5 +36,12 @@ class Logger:
         else:
             print(f"({datetime.now()})-[PID: {current_process().pid}]–[MEMORY]: available {round(memory.available * 1e-9, 2)}, used: {memory.percent}% of total.", 
                   file = open(self.path, "a"))
+            
+class EmptyLogger(Logger):
+    def log(self, msg: str): pass
+    def log_warining(self, msg: str): pass
+    def log_step(self, step: int): pass
+    def log_memory(self): pass
+
 
 

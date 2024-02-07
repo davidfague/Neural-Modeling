@@ -1,7 +1,7 @@
 import imp
 from cell_builder import SkeletonCell, CellBuilder
 from constants import SimulationParameters
-from logger import Logger
+from logger import Logger, EmptyLogger
 
 # from cell_inference.config import params
 # from cell_inference.utils.currents.ecp import EcpMod
@@ -35,9 +35,14 @@ class Simulation:
        parameters.path = os.path.join(self.path, parameters.sim_name)
        self.pool.append(parameters)
 
-    def run(self):
-        self.logger.log(f"Total number of jobs: {len(self.pool)}")
-        self.logger.log(f"Total number of proccessors: {cpu_count()}")
+    def run(self, batch_size = None):
+        self.logger.log(f"Total number of jobs: {len(self.pool)}.")
+        self.logger.log(f"Total number of proccessors: {cpu_count()}.")
+        if batch_size is None:
+            batch_size = len(self.pool)
+        elif (batch_size > len(self.pool)) or (len(self.pool) % batch_size != 0):
+            raise ValueError
+        self.logger.log(f"Running in batches of size: {batch_size}.")
 
         # Create the simulation parent folder
         os.mkdir(self.path)
@@ -49,10 +54,12 @@ class Simulation:
         h.load_file('stdrun.hoc')
         h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
         
-        pool = Pool(processes = len(self.pool))
-        pool.map(unwrap_self_run_single_simulation, zip([self] * len(self.pool), self.pool))
-        pool.close()
-        pool.join()
+        for nr in range(len(self.pool) // batch_size):
+            self.logger.log(f"Running batch {nr + 1}/{len(self.pool) // batch_size}.")
+            pool = Pool(processes = batch_size)
+            pool.map(unwrap_self_run_single_simulation, zip([self] * batch_size, self.pool[int(nr * batch_size) : int((nr + 1) * batch_size)]))
+            pool.close()
+            pool.join()
 
         # Delete the compiled modfiles
         os.system("rm -r x86_64")
@@ -63,7 +70,8 @@ class Simulation:
         os.mkdir(parameters.path)
 
         # Build the cell
-        cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
+        empty_logger = EmptyLogger(None)
+        cell_builder = CellBuilder(self.cell_type, parameters, empty_logger)
         cell, _, exc_spike_trains, inh_spike_trains, soma_spike_trains = cell_builder.build_cell()
         with open(os.path.join(parameters.path, "exc_spike_trains.pickle"), "wb") as file:
             pickle.dump(exc_spike_trains, file)
@@ -115,12 +123,9 @@ class Simulation:
 
         h.finitialize(h.v_init)
 
-        self.logger.log("Starting simulation.")
         while h.t <= h.tstop + 1:
 
             if (time_step > 0) & (time_step % (parameters.save_every_ms / parameters.h_dt) == 0):
-                # Log progress
-                self.logger.log_step(time_step)
 
                 # Save data
                 cell.write_recorder_data(
