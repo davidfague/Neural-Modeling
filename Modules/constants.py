@@ -13,7 +13,7 @@ class SimulationParameters:
 
 	# Environment parameters
 	h_celcius: float = 37 # 34
-	h_tstop: int = 2000 # Sim runtime (ms)
+	h_tstop: int = 150000 # Sim runtime (ms)
 	h_dt: float = 0.1 # Timestep (ms)
 
 	# Current injection
@@ -26,14 +26,14 @@ class SimulationParameters:
 	record_ecp: bool = False
 
 	trunk_exc_synapses: bool = True
-	perisomatic_exc_synapses: bool = False
+	perisomatic_exc_synapses: bool = True
 	add_soma_inh_synapses: bool = True
 	num_soma_inh_syns: int = 150
 
 	# gmax distributions
-	exc_gmax_mean_0: float = 1.5 # 1.5-1.6 is good
+	exc_gmax_mean_0: float = 2.3#1.5 # 1.5-1.6 is good
 	exc_gmax_std_0: float = 0.2
-	exc_gmax_clip: tuple = (0, 7)
+	exc_gmax_clip: tuple = (0, 15)
 	inh_gmax_dist: float = 0.5
 	soma_gmax_dist: float = 0.5
 	exc_scalar: int = 1 # Scales weight
