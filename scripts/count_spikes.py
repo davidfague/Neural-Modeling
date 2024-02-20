@@ -24,6 +24,11 @@ def _analyze_Na():
         durations.append(analysis.VoltageTrace.get_duration(spikes, downward_crossing))
         Na_spikes.append(spikes)
 
+    total_spikes = 0
+    for i in range(len(Na_spikes)):
+        total_spikes += len(Na_spikes[i])
+    print(f"Avg spikes per segment: {total_spikes / len(Na_spikes)}")
+
     out = []
     for i in range(len(gnaTa)):
         out.append(
