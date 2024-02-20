@@ -15,24 +15,27 @@ import traceback
 # (1) control for bursts
 
 # https://github.com/dbheadley/InhibOnDendComp/blob/master/src/mean_dendevt.py
-def _plot_sta(
-          sta, 
-          quantiles, 
-          title,
-          xlabel_spike_type,
-          ylabel_ed_from) -> plt.figure:
-    
+def _plot_sta(sta, quantiles, title, xlabel_spike_type, ylabel_ed_from) -> plt.figure:
     x_ticks = np.arange(0, 50, 5)
     x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 10)]
      
-    fig = plt.figure(figsize = (10, 5))
-    plt.imshow(sta, cmap = sns.color_palette("coolwarm", as_cmap = True))
+    # Calculate mean and standard deviation of sta
+    mean_val = np.mean(sta)
+    std_val = np.std(sta)
+
+    # Calculate limits as within 95% of the mean
+    lower_limit = mean_val - 0.95 * std_val
+    upper_limit = mean_val + 0.95 * std_val
+
+    fig = plt.figure(figsize=(10, 5))
+    # Set vmin and vmax to the calculated limits
+    plt.imshow(sta, cmap=sns.color_palette("coolwarm", as_cmap=True), vmin=lower_limit, vmax=upper_limit)
     plt.title(title)
-    plt.xticks(ticks = x_ticks - 0.5, labels = x_tick_labels)
+    plt.xticks(ticks=x_ticks - 0.5, labels=x_tick_labels)
     plt.xlabel(f'Time w.r.t. {xlabel_spike_type} spikes (ms)')
-    plt.yticks(ticks = np.arange(11) - 0.5, labels = np.round(quantiles, 3))
+    plt.yticks(ticks=np.arange(11) - 0.5, labels=np.round(quantiles, 3))
     plt.ylabel(f"Elec. dist. quantile (from {ylabel_ed_from})")
-    plt.colorbar(label = 'Percent change from mean')
+    plt.colorbar(label='Percent change from mean')
     return fig
 
 def _compute_sta_for_each_train_in_a_list(list_of_trains, spikes) -> np.ndarray:

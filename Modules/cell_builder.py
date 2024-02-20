@@ -22,7 +22,7 @@ class SkeletonCell(Enum):
 		return self.name == other.name and self.value == other.value
 	
 	Hay = {
-		"biophys": "L5PCbiophys3ActiveBasal.hoc",
+		"biophys": "L5PCbiophys3.hoc",#"L5PCbiophys3ActiveBasal.hoc",
 		"morph": "cell1.asc",
 		"template": "L5PCtemplate.hoc",
 		"pickle": None,
