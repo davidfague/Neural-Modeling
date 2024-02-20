@@ -120,14 +120,14 @@ class SummaryStatistics:
     def bin_matrix_to_quantiles(matrix, quantiles, var_to_bin):
         out = np.zeros((len(quantiles) - 1, matrix.shape[1]))
     
-         for i in range(len(quantiles) - 1):
-             inds = np.where((var_to_bin > quantiles[i]) & (var_to_bin < quantiles[i + 1]))[0]
-             if len(inds) > 0:
-                 out[i] = np.mean(matrix[inds], axis=0)
-             else:
-                 out[i] = np.zeros(matrix.shape[1])  # Fill with zeros if inds is empty
+        for i in range(len(quantiles) - 1):
+            inds = np.where((var_to_bin > quantiles[i]) & (var_to_bin < quantiles[i + 1]))[0]
+            if len(inds) > 0:
+                out[i] = np.mean(matrix[inds], axis=0)
+            else:
+                out[i] = np.zeros(matrix.shape[1])  # Fill with zeros if inds is empty
      
-         return out
+        return out
 
 
 class Trace:
@@ -150,6 +150,14 @@ class Trace:
             upward_crossings = upward_crossings[:-1]
 
         return upward_crossings, downward_crossings
+    
+    def get_duration(spike_times, downward_crossings):
+        # For each spike time, find the closest downward crossing which occured after that time
+        durations = []
+        for st in spike_times:
+            closest_dc = downward_crossings[np.where(downward_crossings - st > 0)[0][0]]
+            durations.append(float(closest_dc - st))
+        return durations
     
 class CurrentTrace(Trace):
     
