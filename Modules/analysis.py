@@ -117,16 +117,18 @@ class SummaryStatistics:
         return q
 
     @staticmethod
-    def bin_matrix_to_quantiles(matrix, quantiles, var_to_bin):
+    def bin_matrix_to_quantiles(matrix, quantiles, var_to_bin, cumulative=False):
         out = np.zeros((len(quantiles) - 1, matrix.shape[1]))
-    
-        for i in range(len(quantiles) - 1):
-            inds = np.where((var_to_bin > quantiles[i]) & (var_to_bin < quantiles[i + 1]))[0]
-            if len(inds) > 0:
-                out[i] = np.mean(matrix[inds], axis=0)
-            else:
-                out[i] = np.zeros(matrix.shape[1])  # Fill with zeros if inds is empty
-     
+
+        if cumulative:
+          for i in range(len(quantiles) - 1):
+             inds = np.where((var_to_bin > quantiles[i]) & ((var_to_bin < quantiles[i + 1])))[0]
+             out[i] = np.sum(matrix[inds], axis = 0)
+        else:
+          for i in range(len(quantiles) - 1):
+             inds = np.where((var_to_bin > quantiles[i]) & ((var_to_bin < quantiles[i + 1])))[0]
+             out[i] = np.mean(matrix[inds], axis = 0)
+        
         return out
 
 
