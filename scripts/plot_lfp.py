@@ -20,13 +20,30 @@ def plot_LFP():
     morph = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
     Vm = analysis.DataReader.read_data(sim_directory, "v")
     
-    morph['pc'] = morph.apply(lambda row: np.array([row['pc_0'], row['pc_1'], row['pc_2']]), axis=1)
-    pc_array = np.stack(morph['pc'].values)
+    #dl: A NumPy array of shape [nseg, 3], representing the directional vectors from the start to the end of each segment.
+    #pc: A NumPy array of shape [nseg, 3], representing the center points of each segment.
+    #r: A NumPy array of shape [nseg], representing the radius of each segment.
+    
+    #morph['pc'] = morph.apply(lambda row: np.array([row['pc_0'], row['pc_1'], row['pc_2']]), axis=1)
+    #pc_array = np.stack(morph['pc'].values)
     #morph['pc'] = pc_array
     #morph['dl'] = np.sqrt((morph['dl_0']**2) + (morph['dl_1']**2) + (morph['dl_2']**2))
-    morph['dl'] = morph.apply(lambda row: np.array([row['dl_0'], row['dl_1'], row['dl_2']]), axis=1)
-    #print(morph.keys())
-    #print(len(morph))
+    #morph['dl'] = morph.apply(lambda row: np.array([row['dl_0'], row['dl_1'], row['dl_2']]), axis=1)
+
+    
+    # Construct 'pc' and 'dl' arrays from the DataFrame
+    pc = morph[['pc_0', 'pc_1', 'pc_2']].to_numpy()
+    dl = morph[['dl_0', 'dl_1', 'dl_2']].to_numpy()
+    r = morph['r'].to_numpy()
+    
+    # Create the seg_coords dictionary
+    morph = {
+        'pc': pc,
+        'dl': dl,
+        'r': r
+    }
+    print("morph['pc']: {morph['pc']}")
+    print("morph['dl']: {morph['dl']}")
     
     elec_pos = params.ELECTRODE_POSITION
     ecp = ECP(i_membrane, seg_coords=morph, min_distance=params.MIN_DISTANCE)

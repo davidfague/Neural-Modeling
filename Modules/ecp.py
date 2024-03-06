@@ -7,8 +7,10 @@ class ECP(object):
       self.move_cell= None
       self.scale=1
       self.min_distance = min_distance
-      self.pc_array = np.stack(seg_coords['pc'].values)
-      self.dl_array = np.stack(seg_coords['dl'].values)
+      self._nseg=len(i_membrane)
+      #print(self._nseg)
+      #self.pc_array = np.stack(seg_coords['pc'].values)
+      #self.dl_array = np.stack(seg_coords['dl'].values)
       
 
   def set_electrode_positions(self, electrode_positions: np.ndarray) -> None:
@@ -36,31 +38,24 @@ class ECP(object):
       else:
           elec_coords = self.elec_coords
       if not move_elec and move_cell is not None:
-          dl = move_position([0., 0., 0.], move_cell[1], self.dl_array)
-          pc = move_position(move_cell[0], move_cell[1], self.pc_array)
+          dl = move_position([0., 0., 0.], move_cell[1], seg_coords['dl'])
+          pc = move_position(move_cell[0], move_cell[1], seg_coords['pc'])
       else:
-          dl = self.dl_array
-          pc = self.pc_array
+          dl = seg_coords['dl']
+          pc = seg_coords['pc']
       if min_distance is None:
           r = seg_coords['r']
       else:
           r = np.fmax(seg_coords['r'], min_distance)
       rr = r ** 2
       
-      tr = np.empty((self.nelec, len(self.seg_coords)))
-      for j in range(self.nelec):  # calculate mapping for each site on the 
-        for i in range(self.pc_array.shape[0]):  # For each segment center
-          # Subtract the j-th electrode's coordinates from the i-th segment center
-          rel_pc = elec_coords[j, :] - self.pc_array[i, :]
-          #rel_pc_expanded = rel_pc[np.newaxis, :]  # shape becomes (1, 3)
-          #print(rel_pc.shape, dl.shape)
-          #rel_pc = elec_coords[j, :] - pc  # distance between electrode and segment centers
+      tr = np.empty((self.nelec, self._nseg))
+      for j in range(self.nelec):  # calculate mapping for each site on the electrode
+          rel_pc = elec_coords[j, :] - pc  # distance between electrode and segment centers
           # compute dot product row-wise, the resulting array has as many rows as original
-          #r2 = np.einsum('ij,ij->i', rel_pc, rel_pc)
-          r2 = np.sum(rel_pc**2)
-          rlldl = np.sum(rel_pc * dl[i]) #rlldl = np.einsum('ij,ij->i', rel_pc, dl)
-          #dlmag = np.linalg.norm(dl, axis=1)  # length of each segment
-          dlmag = np.sum(dl[i]**2) ** 0.5
+          r2 = np.einsum('ij,ij->i', rel_pc, rel_pc)
+          rlldl = np.einsum('ij,ij->i', rel_pc, dl)
+          dlmag = np.linalg.norm(dl, axis=1)  # length of each segment
           rll = abs(rlldl / dlmag)  # component of r parallel to the segment axis it must be always positive
           r_t2 = r2 - rll ** 2  # square of perpendicular component
           up = rll + dlmag / 2
