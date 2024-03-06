@@ -115,25 +115,26 @@ class CellBuilder:
 		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger)
 
 		# Build synapses
-		self.logger.log("Building excitatory synapses.")
-		self.build_excitatory_synapses(cell = cell)
+		if not self.parameters.all_synapses_off:
+				self.logger.log("Building excitatory synapses.")
+				self.build_excitatory_synapses(cell = cell)
 
-		self.logger.log("Building inhibitory synapses.")
-		self.build_inhibitory_synapses(cell = cell)
+				self.logger.log("Building inhibitory synapses.")
+				self.build_inhibitory_synapses(cell = cell)
 
-		self.logger.log("Building soma synapses.")
-		self.build_soma_synapses(cell = cell)
+				self.logger.log("Building soma synapses.")
+				self.build_soma_synapses(cell = cell)
 
 		# Assign spike trains
 
-		self.logger.log("Assigning excitatory spike trains.")
-		self.assign_exitatory_spike_trains(cell = cell, random_state = random_state)
+				self.logger.log("Assigning excitatory spike trains.")
+				self.assign_exitatory_spike_trains(cell = cell, random_state = random_state)
 
-		self.logger.log("Assigning inhibitory spike trains.")
-		self.assign_inhibitory_spike_trains(cell = cell, random_state = random_state)
+				self.logger.log("Assigning inhibitory spike trains.")
+				self.assign_inhibitory_spike_trains(cell = cell, random_state = random_state)
 
-		self.logger.log("Assigning soma spike trains.")
-		self.assign_soma_spike_trains(cell = cell, random_state = random_state)
+				self.logger.log("Assigning soma spike trains.")
+				self.assign_soma_spike_trains(cell = cell, random_state = random_state)
   
     
 		reductor = Reductor(logger = self.logger)
