@@ -13,6 +13,7 @@ from constants import SimulationParameters
 from cell_model import CellModel
 from presynaptic import PCBuilder
 from reduction import Reductor
+#from reduction_utils import update_model_nseg_using_lambda, merge_synapses
 
 class SkeletonCell(Enum):
 
@@ -133,6 +134,32 @@ class CellBuilder:
 
 		self.logger.log("Assigning soma spike trains.")
 		self.assign_soma_spike_trains(cell = cell, random_state = random_state)
+  
+    
+		reductor = Reductor(logger = self.logger)
+		if self.parameters.reduce_cell:
+				cell = reductor.reduce_cell(
+						cell_model = cell,  
+						#random_state = random_state,
+						reduction_frequency = self.parameters.reduction_frequency)
+				if self.parameters.expand_cable:
+						cell = reductor.expand_cell(
+								cell_model = cell, 
+            		choose_branches = self.parameters.choose_branches, 
+            		reduction_frequency = self.parameters.reduction_frequency, 
+            		random_state = random_state)
+				cell._assign_sec_coords(random_state)
+            
+		elif self.parameters.expand_cable:
+				raise(ValueError("expand_cable cannot be True without reduce_cell being True"))
+      
+		else: # call standalone reduction methods without NR or CE
+				if self.parameters.optimize_nseg_by_lambda:
+						self.logger.log("Updating nseg using lambda.")
+						reductor.update_model_nseg_using_lambda(cell)
+				if self.parameters.merge_synapses:
+						self.logger.log("Merging synapses.")
+						reductor.merge_synapses(cell)
       
 		self.logger.log("Finished creating a CellModel object.")
 
@@ -166,6 +193,17 @@ class CellBuilder:
 			cell.add_segment_recorders(var_name = var_name)
 
 		cell.add_segment_recorders(var_name = "v")
+   
+		if self.parameters.record_ecp == True:
+			# Create an ECP object for extracellular potential
+			#elec_pos = params.ELECTRODE_POSITION
+			#ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)
+			#     # Reason: (NEURON: Impedance calculation with extracellular not implemented)
+			self.logger.log_warining("Recording ECP adds the extracellular channel to all segments after computing electrotonic distance.\
+                                  This channel is therefore not accounted for in impedence calculation, but it might affect the simulation.")
+			h.cvode.use_fast_imem(1)
+			#for sec in cell.all: sec.insert('extracellular') # may not be needed
+			cell.add_segment_recorders(var_name = "i_membrane_")
 		
 		for var_name in ["i_AMPA", "i_NMDA"]:
 			cell.add_synapse_recorders(var_name = var_name)
@@ -345,7 +383,7 @@ class CellBuilder:
 
 		# Excitatory gmax distribution
 		gmax_exc_dist = partial(
-			log_norm_dist, 
+			binned_log_norm_dist,#log_norm_dist, 
 			self.parameters.exc_gmax_mean_0, 
 			self.parameters.exc_gmax_std_0, 
 			self.parameters.exc_scalar, 
