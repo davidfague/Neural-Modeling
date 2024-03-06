@@ -70,13 +70,15 @@ class Simulation:
         seg_idx = []
         seg_coords = []
         seg_half_seg_RAs = []
+        seg = []
         for entry in seg_data:
             sec_name = entry.section.split(".")[1] # name[idx]
             seg_sections.append(sec_name.split("[")[0])
             seg_idx.append(sec_name.split("[")[1].split("]")[0])
             seg_coords.append(entry.coords)
             seg_half_seg_RAs.append(entry.seg_half_seg_RA)
-        seg_sections = pd.DataFrame({"section": seg_sections, "idx_in_section": seg_idx, "seg_half_seg_RA": seg_half_seg_RAs})
+            seg.append(entry.seg)
+        seg_sections = pd.DataFrame({"section": seg_sections, "idx_in_section": seg_idx, "seg_half_seg_RA": seg_half_seg_RAs, "seg": seg})
         seg_coords = pd.concat(seg_coords)
 
         seg_data = pd.concat((seg_sections.reset_index(drop = True), seg_coords.reset_index(drop = True)), axis = 1)
@@ -87,7 +89,12 @@ class Simulation:
         elec_distances_soma.to_csv(os.path.join(parameters.path, "elec_distance_soma.csv"))
 
         # Compute electrotonic distances from nexus
-        elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
+        if parameters.reduce_cell and parameters.expand_cable:
+          elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.75))
+        elif parameters.reduce_cell:
+          elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.4))
+        else:
+          elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
         elec_distances_nexus.to_csv(os.path.join(parameters.path, "elec_distance_nexus.csv"))
 
         # Create an ECP object for extracellular potential
@@ -121,36 +128,67 @@ class Simulation:
         h.finitialize(h.v_init)
 
         self.logger.log("Starting simulation.")
-        while h.t <= h.tstop + 1:
+#        while h.t <= h.tstop + 1:
+#
+#            if (time_step > 0) & (time_step % (parameters.save_every_ms / parameters.h_dt) == 0):
+#                # Log progress
+#                self.logger.log_step(time_step)
+#
+#                # Save data
+#                cell.write_recorder_data(
+#                    os.path.join(parameters.path, f"saved_at_step_{time_step}"), 
+#                    int(1 / parameters.h_dt))
+#                self.logger.log("Finish writing data")
+#                # Save lfp
+#                #loc_param = [0., 0., 45., 0., 1., 0.]
+#                #lfp = ecp.calc_ecp(move_cell = loc_param).T  # Unit: mV
+#
+#                #with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
+#                #    file.create_dataset("report/biophysical/data", data = lfp)
+#
+#                # Save net membrane current
+#                #with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "i_membrane_report.h5"), 'w') as file:
+#                #    file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
+#
+#                # Reinitialize recording vectors
+#                for recorder_or_list in cell.recorders: recorder_or_list.clear()
+#                self.logger.log_step("Finish clearing recorders")
+#
+#                #for vec in ecp.im_rec.vectors: vec.resize(0)
+#
+#            h.fadvance()
+#            time_step += 1
+#        self.logger.log("Finish simulation")
+        try:
+          while h.t <= h.tstop + 1:
+  
+              if (time_step > 0) and (time_step % (parameters.save_every_ms / parameters.h_dt) == 0):
+                  self.logger.log(f"Saving data at step: {time_step}")
+                  try:
+                      # Save data
+                      cell.write_recorder_data(
+                          os.path.join(parameters.path, f"saved_at_step_{time_step}"), 
+                          1)#int(1 / parameters.h_dt))
+                      self.logger.log("Finished writing data")
+  
+                      # Reinitialize recording vectors
+                      for recorder_or_list in cell.recorders: recorder_or_list.clear()
+                      self.logger.log("Finished clearing recorders")
+                  except Exception as e:
+                      self.logger.log(f"Error during data saving or recorder clearing at step {time_step}: {e}")
+  
+              try:
+                  h.fadvance()
+              except Exception as e:
+                  self.logger.log(f"Error advancing simulation at time_step {time_step}: {e}")
+                  break  # Exit the loop on error
+              
+              time_step += 1
+  
+          self.logger.log("Finish simulation")
+        except Exception as e:
+          self.logger.log(f"Unexpected error in run_single_simulation: {e}")    
 
-            if (time_step > 0) & (time_step % (parameters.save_every_ms / parameters.h_dt) == 0):
-                # Log progress
-                self.logger.log_step(time_step)
-
-                # Save data
-                cell.write_recorder_data(
-                    os.path.join(parameters.path, f"saved_at_step_{time_step}"), 
-                    int(1 / parameters.h_dt))
-
-                # Save lfp
-                #loc_param = [0., 0., 45., 0., 1., 0.]
-                #lfp = ecp.calc_ecp(move_cell = loc_param).T  # Unit: mV
-
-                #with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "lfp.h5"), 'w') as file:
-                #    file.create_dataset("report/biophysical/data", data = lfp)
-
-                # Save net membrane current
-                #with h5py.File(os.path.join(parameters.path, f"saved_at_step_{time_step}", "i_membrane_report.h5"), 'w') as file:
-                #    file.create_dataset("report/biophysical/data", data = ecp.im_rec.as_numpy())
-
-                # Reinitialize recording vectors
-                for recorder_or_list in cell.recorders: recorder_or_list.clear()
-
-                #for vec in ecp.im_rec.vectors: vec.resize(0)
-
-            h.fadvance()
-            time_step += 1
-    
 def is_indexable(obj: object):
     """
     Check if the object is indexable.
