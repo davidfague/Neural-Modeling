@@ -6,11 +6,14 @@ import analysis
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import os
 
 def _analyze_Na():
     gnaTa = analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t")
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
     v = analysis.DataReader.read_data(sim_directory, "v")
+    # ina = -1 * analysis.DataReader.read_data(sim_directory, "ina_NaTa_t.h5")
+    segment_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
     
     threshold = 0.001 / 1000
     durations = []
@@ -25,17 +28,27 @@ def _analyze_Na():
         Na_spikes.append(spikes)
 
     total_spikes = 0
+    spikes_per_segment_per_micron = []
     for i in range(len(Na_spikes)):
         total_spikes += len(Na_spikes[i])
+        spikes_per_segment_per_micron.append(len(Na_spikes[i]) / segment_data.loc[i, "L"])
+
     print(f"Avg spikes per segment: {total_spikes / len(Na_spikes)}")
+    print(f"Avg spikes per segment per ms: {total_spikes / len(Na_spikes) / len(gnaTa[0])}")
+    print(f"Avg spikes per micron: {np.mean(spikes_per_segment_per_micron)}")
+    print(f"Avg spikes per segment per ms: {np.mean(spikes_per_segment_per_micron) / len(gnaTa[0])}")
 
     out = []
     for i in range(len(gnaTa)):
+        # charges = []
+        # for idx, spike in enumerate(Na_spikes[i]):
+            # charges.append(np.sum(ina[i][int(spike) : int(spike) + int(durations[i][idx])]))
+        
         out.append(
             [
                 gnaTa[i][Na_spikes[i].flatten().astype(int)].flatten().tolist(), 
                 durations[i], 
-                v[i][Na_spikes[i].flatten().astype(int)].flatten().tolist()
+                [len(Na_spikes[i]) / total_spikes * 100] * len(Na_spikes)
             ]
         )
     gnas = []
@@ -57,7 +70,10 @@ def _analyze_Na():
                             (durs > duration_quantiles[j]) & 
                             (durs < duration_quantiles[j + 1]))[0]
             matrix[i, j] = np.mean(np.array(vs)[inds])
-    plt.imshow(matrix)
+    plt.imshow(matrix.T, origin = 'lower')
+    plt.xlabel("Duration (ms)")
+    plt.ylabel("Conductance (?)")
+    plt.colorbar(label = 'Percentage of events')
     plt.show()
 
 if __name__ == "__main__":
