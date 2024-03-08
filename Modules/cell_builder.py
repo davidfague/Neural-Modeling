@@ -185,9 +185,6 @@ class CellBuilder:
 		
 		# ----
 		
-		# Merge synapses
-		# if self.parameters.merge_synapses:
-		# 	reductor.merge_synapses(cell)
 
 		# Set recorders
 		for var_name in self.parameters.channel_names:
@@ -206,8 +203,9 @@ class CellBuilder:
 			#for sec in cell.all: sec.insert('extracellular') # may not be needed
 			cell.add_segment_recorders(var_name = "i_membrane_")
 		
-		for var_name in ["i_AMPA", "i_NMDA"]:
-			cell.add_synapse_recorders(var_name = var_name)
+		if not self.parameters.all_synapses_off:
+				for var_name in ["i_AMPA", "i_NMDA"]:
+						cell.add_synapse_recorders(var_name = var_name)
 
 		cell.add_spike_recorder(sec = cell.soma[0], var_name = "soma_spikes", spike_threshold = self.parameters.spike_threshold)
 		cell.add_spike_recorder(sec = cell.axon[0], var_name = "axon_spikes", spike_threshold = self.parameters.spike_threshold)
