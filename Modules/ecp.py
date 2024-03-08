@@ -1,5 +1,10 @@
 import numpy as np
 
+# ECP MOD: https://github.com/chenziao/Stylized-Cell-Inference/blob/main/cell_inference/utils/currents/ecp.py
+
+# previously used cell object: https://github.com/chenziao/Stylized-Cell-Inference/blob/main/cell_inference/cells/stylizedcell.py
+
+# This is a post-processing version of the above code.
 class ECP(object):
   def __init__(self, i_membrane, seg_coords, min_distance):
       self.i_membrane = i_membrane
