@@ -21,9 +21,11 @@ class SimulationParameters:
 	h_i_amplitude: float = 10.0 # (nA)
 	h_i_duration: int = 1000 # (ms)
 	h_i_delay: int = 10 # (ms)
-
+  
+  #record
 	# ECP
 	record_ecp: bool = True
+	record_seg_to_seg: bool = False
  
 	all_synapses_off: bool = False
 	trunk_exc_synapses: bool = True
@@ -126,6 +128,10 @@ class SimulationParameters:
 	merge_synapses: bool = False
 	# Desired number of segs per length constant
 	segs_per_lambda: int = 10
+ 
+	# new mar 2024
+	test_morphology: bool = False
+	reduction_before_synapses: bool = False
 
 class HayParameters(SimulationParameters):
 	channel_names = [
