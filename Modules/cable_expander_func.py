@@ -1,3 +1,6 @@
+# TODO: update seg_to_seg text to include kept sections/segments mapping to themselves. Same for NR.
+# TODO: update returned seg_to_seg text to be expanded_seg to original seg. and x to 1 mapping. (currently using original to expanded which is 1 to x mapping.)
+
 import collections
 import re
 import cmath
@@ -6,18 +9,35 @@ import numpy as np
 import neuron
 from neuron import h
 
+#append_to_section_lists was updated.
 from neuron_reduce.subtree_reductor_func import (
 	load_model, 
-	gather_subtrees, 
+	gather_subtrees,
+	#append_to_section_lists,
 	mark_subtree_sections_with_subtree_index, 
 	create_segments_to_mech_vals, 
 	calculate_nsegs_from_lambda, 
 	create_sections_in_hoc, 
-	append_to_section_lists, 
 	calculate_subtree_q,
 	type_of_point_process,synapse_properties_match,
 	textify_seg_to_seg,
 	Neuron)
+
+def append_to_section_lists(section, type_of_sectionlist, instance_as_str):
+    ''' Appends given section to the sectionlist of the given type and to the "all" sectionlist
+    in the hoc world in the instance whose name is given as a string.
+    '''
+    # Create the HOC command strings
+    section_list_command = f"{section} {type_of_sectionlist}.append()"
+    all_list_command = f"{section} all.append()"
+
+    # Use the HOC interpreter to execute the commands
+    h("strdef hoc_command")
+    h.hoc_command = section_list_command
+    h(f"execute(hoc_command, {instance_as_str})")
+    h.hoc_command = all_list_command
+    h(f"execute(hoc_command, {instance_as_str})")
+
 
 from neuron_reduce.reducing_methods import (
 	_get_subtree_biophysical_properties, 
@@ -48,6 +68,7 @@ CableParams = collections.namedtuple(
 	)
 
 SynapseLocation = collections.namedtuple('SynapseLocation', 'subtree_index, section_num, x, section_type')
+
 
 SOMA_LABEL = "soma"
 EXCLUDE_MECHANISMS = ('pas', 'na_ion', 'k_ion', 'ca_ion', 'h_ion', 'ttx_ion')
@@ -117,8 +138,11 @@ def cable_expander(
 	model_obj_name = load_model(model_filename)
 	
 	# Find soma properties
-	try: soma = original_cell.soma[0] if original_cell.soma.hname()[-1] == ']' else original_cell.soma
-	except: soma = original_cell.soma
+	try:
+		soma = original_cell.soma[0] if isinstance(original_cell.soma, list) else original_cell.soma
+	except Exception as e:
+		print(f"An error occurred: {e}")
+
 	
 	soma_cable = CableParams(
 		length = soma.L, 
@@ -151,7 +175,7 @@ def cable_expander(
 		h.disconnect(sec=section_to_expand)
 
 	# Expanding the subtrees
-	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"Branching the section using (d)3/2 and electrotonic length rule to preserve service area and electrical properties.")
+	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"Branching the section using (d)3/2 and electrotonic length rule to preserve surface area and electrical properties.")
 	all_trunk_properties=[] #list of all trunk cable properties
 	all_branch_properties=[] #list of all branch cable properties
 	all_trunk_types=[]
@@ -189,8 +213,8 @@ def cable_expander(
 		branch_nsegs,
 		subtrees_xs)
 	
-
-	syn_to_netcon = get_syn_to_netcons(netcons_list) # dictionary mapping netcons to their synapse
+	#print(f"branches: {branches}")
+	syn_to_netcon = get_hsyn_to_netcons(netcons_list) # dictionary mapping netcons to their synapse
 	
 	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"Spreading synapses onto branches")
 	
@@ -215,12 +239,12 @@ def cable_expander(
 		if syn not in synapses_list:
 			print('Not on the list:', syn, netcon)
 
-	syn_to_netcon = get_syn_to_netcons(netcons_list) # dictionary mapping netcons to their synapse # re call to account for changes.. may need to adjust for efficiency
+	syn_to_netcon = get_hsyn_to_netcons(netcons_list) # dictionary mapping netcons to their synapse # re call to account for changes.. may need to adjust for efficiency
 	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"duplicating branch 1 synapses onto the other branches and randomly distributing Netcons")
 	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"number of reduced synapses before duplicating synapses to branches:",len(new_synapses_list))
 	new_synapses_list=distribute_branch_synapses(branches,netcons_list,new_synapses_list,PP_params_dict,syn_to_netcon, random_state) #adjust synapses
 	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"number of reduced synapses after duplicating synapses to branches:",len(new_synapses_list))
-	syn_to_netcon = get_syn_to_netcons(netcons_list) # dictionary mapping netcons to their synapse
+	syn_to_netcon = get_hsyn_to_netcons(netcons_list) # dictionary mapping netcons to their synapse
 	#print("netcon mapping after expansion:",syn_to_netcon)
 
 	# Create segment to segment mapping
@@ -261,8 +285,9 @@ def cable_expander(
 				soma.connect(sec)
 			else:
 				sections_to_keep[i].connect(soma, soma_sections_to_keep_x[i])
+	#print(f"sections to keep: {sections_to_keep}")
 			
-	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"Deleting original model sections")
+	print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"Deleting original model sections after building reduced_dendritic_cell")
 	
 	# Delete the original model sections
 	for section in sections_to_expand:
@@ -292,6 +317,8 @@ def cable_expander(
 	for soma_sec in soma_sections:
 		all_sections.append(soma_sec)
    # get soma children
+		#print(f"soma_sec: {soma_sec}")
+		#print(f"soma_sec.children(): {soma_sec.children()}")
 		if soma_sec.children() != []:
 			for soma_child in soma_sec.children(): # Takes care of sections attached to soma
 				all_sections.append(soma_child)
@@ -316,7 +343,8 @@ def cable_expander(
 				      axons.append(sec_child)
 				    else:
 				      raise(ValueError(f"{sec_child_sec_type} is not dend, apic, or axon"))
-                                                       
+	#print("apics before returning from cable_expander: {apics}")
+                                               
 	cell.all = []	
 	cell.dend = []
 	cell.apic = []
@@ -330,15 +358,25 @@ def cable_expander(
 	for i,sec in enumerate(axons):
 		cell.axon.append(sec)
 
+
+	#print()
+	#print(f"cell.apic returning from cable_expander: {cell.apic}")
+	#print()
+	#print(f"cell.dend returning from cable_expander: {cell.dend}")
+	#print()
+	#print(f"cell.axon returning from cable_expander: {cell.axon}")
+	#print()
+	#print(f"cell.soma returning from cable_expander: {cell.soma}")
 	# don't think we should delete the soma? 
 	#with push_section(cell.hoc_model.soma[0]):
 	#    h.delete_section()
 	if return_seg_to_seg:
-		return cell, new_synapses_list, netcons_list, original_seg_to_reduced_seg_text
+		return cell, new_synapses_list, netcons_list, reduced_seg_to_original_seg
 	else:
 		return cell, new_synapses_list, netcons_list
 	  
 def apply_params_to_section(name, type_of_sectionlist, instance_as_str, section, cable_params, nseg):
+	#print(f"Calling apply_params_to_section(name={name}, type_of_sectionlist={type_of_sectionlist}, instance_as_str={instance_as_str}, section={section}, cable_params={cable_params}, nseg={nseg}")
 	section.L = cable_params.length
 	section.diam = cable_params.diam
 	section.nseg = nseg
@@ -394,60 +432,131 @@ def expand_cable(section_to_expand, frequency, furcation_x, nbranch):
 	print('branch_L:',branch_L,'|branch_diam:',branch_diam_in_micron,'|trunk_L:',trunk_L,'|trunk_diam:',trunk_diam)
 	return trunk_params, branch_params, sec_type
  
-def create_dendritic_cell(original_cell, model_obj_name, trunk_cable_properties,
-                          branch_cable_properties, nbranches, sections_to_expand,
-                          trunk_nsegs, branch_nsegs, subtrees_xs):
+ 
 
+def create_dendritic_cell(
+    soma_cable,
+    has_apical,
+    original_cell,
+    model_obj_name,
+    trunk_cable_properties,
+    branch_cable_properties,
+    nbranches,
+    sections_to_expand,
+    sections_to_keep,
+    trunk_nsegs,
+    branch_nsegs,
+    subtrees_xs,
+    debug=True
+):
+    # Create a new instance of the dendritic cell
     h("objref reduced_dendritic_cell")
-    h("reduced_dendritic_cell = new " + model_obj_name + "()")
+    h(f"reduced_dendritic_cell = new {model_obj_name}()")
+    
+    # Create the soma section
+    create_sections_in_hoc("soma", 1, "reduced_dendritic_cell")
+    	# Find soma properties
+    try:
+        soma = original_cell.soma[0] if isinstance(original_cell.soma, list) else original_cell.soma
+    except Exception as e:
+        # Handle the error or exception, if necessary
+        print(f"An error occurred: {e}")
+    append_to_section_lists("soma[0]", "somatic", "reduced_dendritic_cell")
 
-    trunks = []  # list of trunk sections
-    branches = []  # list of branch sections for each trunk
-    apicals = []  # if you want to keep track of apical dendrites
-    basals = []  # if you want to keep track of basal dendrites
+    # Initialize variables for tracking new sections and indices
+    all_new_sections_from_expansion = []
+    trunk_sec_type_list_indices = []
+    trunks = []
+    branches = []
+    basals = []
+    apicals = []
+    axonals = []
+    number_of_sections_in_apical_list = 0
+    number_of_sections_in_basal_list = 0
+    number_of_sections_in_axonal_list = 0
 
-    # Get soma reference
-    soma = original_cell.soma
+    # Iterate over sections to expand and create necessary sections
+    for i, sec in enumerate(sections_to_expand):
+        sec_type = sec.name().split(".")[1][:4]  # 'dend' or 'apic'
+        num_sections_to_create = nbranches[i] + 1  # +1 for the trunk
 
-    # Create trunks and branches
-    for idx, sec in enumerate(sections_to_expand):
-        trunk_cable_params = trunk_cable_properties[idx]
-        branch_cable_params = branch_cable_properties[idx]
-        trunk_nseg = trunk_nsegs[idx]
-        branch_nseg = branch_nsegs[idx]
-        nbranch = nbranches[idx]
+        # Create sections in hoc environment
+        create_sections_in_hoc(sec_type, num_sections_to_create, "reduced_dendritic_cell")
+        for j in range(num_sections_to_create):
+            section_name = f"{sec_type}[{j}]"
+            section = getattr(h.reduced_dendritic_cell, sec_type)[j]
+            cable_params = trunk_cable_properties[i] if j == 0 else branch_cable_properties[i]
+            nseg = trunk_nsegs[i] if j == 0 else branch_nsegs[i]
+            if sec_type == 'apic':
+              type_of_sectionlist = 'apical'
+            else:
+              type_of_sectionlist == 'basal'
+            
+            apply_params_to_section(section_name, type_of_sectionlist, "reduced_dendritic_cell", section, cable_params, nseg)
 
-        # Create trunk section
-        trunk = h.Section(name='trunk_' + str(idx))
-        # Adjusted call to apply_params_to_section
-        apply_params_to_section('trunk_' + str(idx), 'reduced_dendritic_cell', trunk, trunk_cable_params, trunk_nseg)
-        trunk.connect(soma(0.5))
-        trunks.append(trunk)
+                
+            if j == 0:  # This is a trunk section
+                trunks.append(section)
+                trunk_sec_type_list_indices.append(len(apicals) if sec_type == 'apic' else len(basals))
+                section.connect(soma, subtrees_xs[i])#, 0)
+            else:  # This is a branch section
+                branches.append(section)
+                section.connect(trunks[i], 1.0)#, 0)
+                
+            apicals.append(section) if sec_type == 'apic' else basals.append(section)
 
-        # Create branches for the current trunk
-        branches_for_current_trunk = []
-        for branch_idx in range(nbranch):
-            branch = h.Section(name='branch_' + str(idx) + '_' + str(branch_idx))
-            # Adjusted call to apply_params_to_section
-            apply_params_to_section('branch_' + str(idx) + '_' + str(branch_idx), 'reduced_dendritic_cell', branch, branch_cable_params, branch_nseg)
-            branch.connect(trunk(1))
-            branches_for_current_trunk.append(branch)
-            # ...
+            all_new_sections_from_expansion.append(section)
+            
+    for section in sections_to_keep:
+        sec_type = section.name().split(".")[1][:4]  # 'dend' or 'apic'
+        if sec_type == 'apic':
+          apicals.append(section)
+        elif sec_type == 'dend':
+          basals.append(section)
+        elif sec_type == 'axon':
+          axonals.append(section)
+    
+    #print(f"apicals: {apicals}")
+    #print(f"basals: {basals}")
+    # Calculate the number of sections in each type list
+    number_of_sections_in_apical_list = len(apicals)
+    number_of_sections_in_basal_list = len(basals)
 
-        branches.append(branches_for_current_trunk)
+    # Deal with kept sections
+    # [Existing logic for handling kept sections]
 
-    # Create cell python template
+    # Now create the Neuron object and set the properties
     cell = Neuron(h.reduced_dendritic_cell)
-    cell.soma = soma
-    cell.trunks = trunks
-    cell.branches = branches
-    cell.apicals = apicals  # if you have apical dendrites
-    cell.basals = basals  # if you have basal dendrites
+    cell.soma = original_cell.soma
+    cell.dend = basals
+    cell.apic = apicals
+    cell.axon = axonals
+    # axon handling is omitted for brevity, but should follow the same pattern
+    #print()
+    #print(f"cell.apic in create_dendritic_cell: {cell.apic}")
+    #print()
+    #print(f"cell.dend in create_dendritic_cell: {cell.dend}")
+    #print()
+    #print(f"cell.axon in create_dendritic_cell: {cell.axon}")
+    #print()
+    #print(f"cell.soma in create_dendritic_cell: {cell.soma}")
+    # Return the Neuron object along with other details
+    return (
+        cell,
+        basals,
+        apicals,
+        trunk_sec_type_list_indices,
+        trunks,
+        branches,
+        all_new_sections_from_expansion,
+        number_of_sections_in_apical_list,
+        number_of_sections_in_basal_list,
+        number_of_sections_in_axonal_list  # Make sure this is computed if you have axon sections
+    )
 
-    return cell, basals, apicals, trunks, branches
 
 
-   
+ 
 
 #def create_dendritic_cell(
 #		soma_cable,
@@ -598,6 +707,8 @@ def create_dendritic_cell(original_cell, model_obj_name, trunk_cable_properties,
 #	cell.soma = original_cell.soma
 #	# cell.apic = apic
 #	return cell, basals, apicals, trunk_sec_type_list_indices, trunks, branches, all_expanded_sections, number_of_sections_in_apical_list,number_of_sections_in_basal_list, number_of_sections_in_axonal_list
+     
+
 
 def find_and_disconnect_sections_to_keep(soma, sections_to_expand):
 	'''Searching for sections to keep, they can be a child of the soma or a parent of the soma.'''
@@ -852,16 +963,16 @@ def adjust_new_tree_synapses(num_of_subtrees, roots_of_subtrees,
 		if synapse.get_segment().sec in sections_to_expand:
 			synapse_location = find_synapse_loc(synapse, mapping_sections_to_subtree_index)
 		
-		# For a somatic synapse
-		# TODO: 'axon' is never returned by find_synapse_loc...
-		if synapse_location.subtree_index in (SOMA_LABEL, 'axon'):
-			soma_synapses_syn_to_netcon[synapse] = netcons_list[syn_index]
-		else:
-			baskets[synapse_location.subtree_index].append((synapse, synapse_location, syn_index))
+  		# For a somatic synapse
+  		# TODO: 'axon' is never returned by find_synapse_loc...
+			if synapse_location.subtree_index in (SOMA_LABEL, 'axon'):
+			  soma_synapses_syn_to_netcon[synapse] = netcons_list[syn_index]
+			else:
+			  baskets[synapse_location.subtree_index].append((synapse, synapse_location, syn_index))
 
 		# Not sure what it is
-		# else: #leave synapses not on new trees synapses alone
-		# new_synapses_list.append(synapse)
+		else: #leave synapses not on new trees synapses alone
+		  new_synapses_list.append(synapse) # hoc synapse that does not move because it was not on an expanding section
 
 	for section_to_expand_index in range(len(sections_to_expand)):
 		imp_obj, subtree_input_impedance = measure_input_impedance_of_subtree(
@@ -920,7 +1031,7 @@ def adjust_new_tree_synapses(num_of_subtrees, roots_of_subtrees,
 			for PP in section_for_synapse(x).point_processes():
 				# print(PP_params_dict)
 				if type_of_point_process(PP) not in PP_params_dict:
-					print("adding",PP,"to PP_params_dict")
+					#print("adding",PP,"to PP_params_dict")
 					add_PP_properties_to_dict(PP, PP_params_dict)
 
 				if synapse_properties_match(synapse, PP, PP_params_dict):
@@ -931,7 +1042,7 @@ def adjust_new_tree_synapses(num_of_subtrees, roots_of_subtrees,
 			else:  # If for finish the loop -> first appearance of this synapse
 				##########testing
 				if type_of_point_process(synapse) not in PP_params_dict:
-					print("adding",synapse,"to PP_params_dict")
+					#print("adding",synapse,"to PP_params_dict")
 					add_PP_properties_to_dict(synapse, PP_params_dict)
 				#########
 				#print("moving", synapse, "from",synapse_location,"to",section_for_synapse(x))              
@@ -960,7 +1071,7 @@ def adjust_new_tree_synapses(num_of_subtrees, roots_of_subtrees,
 			synapses_per_seg[seg_pointer].append(synapse)
 
 	return new_synapses_list, subtree_ind_to_q
-  
+ 
 def create_seg_to_seg(original_cell,
 					  section_per_subtree_index,
 					  sections_to_expand,
@@ -1007,7 +1118,7 @@ def create_seg_to_seg(original_cell,
 				if on_trunk:
 					new_section_for_synapse = trunks[subtree_index] # returns trunk section
 				else:
-					new_section_for_synapse = branches[subtree_index] # returns list of branch sections for each trunk
+					new_section_for_synapse = branches#[subtree_index] # returns list of branch sections for each trunk # **somehow branches got converted into a list instead of list of lists (originally planned for expanded multiple cables)
 				if on_trunk == False: # case for mapping to branches
 					expanded_seg = [None] * len(new_section_for_synapse) #initial array for branches
 					for i in range(len(new_section_for_synapse)):
@@ -1064,44 +1175,43 @@ def copy_dendritic_mech(original_seg_to_reduced_seg,
 							   mech_names_per_segment)
 		
 		
-def distribute_branch_synapses(branch_sets, netcons_list, synapses_list, PP_params_dict, syn_to_netcon, random_state):
+def distribute_branch_synapses(branch_set, netcons_list, synapses_list, PP_params_dict, syn_to_netcon, random_state):
     ''' 
     Distributes synapses among branches based on netcons.
     '''
     num_duplicated_synapses=0
-    for branch_set in branch_sets:
-        branch_with_synapses = branch_set[0]
-        for seg in branch_with_synapses:
-            for synapse in seg.point_processes():
-                x = synapse.get_loc()
-                h.pop_section()
+    branch_with_synapses = branch_set[0]
+    for seg in branch_with_synapses:
+        for synapse in seg.point_processes():
+            x = synapse.get_loc()
+            h.pop_section()
 
-                synapses_for_netcons = [synapse]  # start with original synapse as an option for netcon
+            synapses_for_netcons = [synapse]  # start with original synapse as an option for netcon
+            
+            associated_netcons = syn_to_netcon.get(synapse, [])
+            for netcon in associated_netcons:
+                # Randomly select a branch for the netcon
+                selected_branch = random_state.choice(branch_set)
                 
-                associated_netcons = syn_to_netcon.get(synapse, [])
-                for netcon in associated_netcons:
-                    # Randomly select a branch for the netcon
-                    selected_branch = random_state.choice(branch_set)
-                    
-                    # Check if a synapse of the same type already exists at the x location on the selected branch
-                    existing_synapse = None
-                    for pp in selected_branch(x).point_processes():
-                        if synapse_properties_match(synapse, pp, PP_params_dict):
-                            existing_synapse = pp
-                            break
+                # Check if a synapse of the same type already exists at the x location on the selected branch
+                existing_synapse = None
+                for pp in selected_branch(x).point_processes():
+                    if synapse_properties_match(synapse, pp, PP_params_dict):
+                        existing_synapse = pp
+                        break
 
-                    # If synapse doesn't exist, duplicate it
-                    if not existing_synapse:
-                        num_duplicated_synapses+=1
-                        duplicated_synapse = duplicate_synapse(synapse, seg, PP_params_dict)
-                        duplicated_synapse.loc(selected_branch(x))
-                        synapses_for_netcons.append(duplicated_synapse)
-                        synapses_list.append(duplicated_synapse)
-                    else:
-                        duplicated_synapse = existing_synapse
+                # If synapse doesn't exist, duplicate it
+                if not existing_synapse:
+                    num_duplicated_synapses+=1
+                    duplicated_synapse = duplicate_synapse(synapse, seg, PP_params_dict)
+                    duplicated_synapse.loc(selected_branch(x))
+                    synapses_for_netcons.append(duplicated_synapse)
+                    synapses_list.append(duplicated_synapse)
+                else:
+                    duplicated_synapse = existing_synapse
 
-                    # Point the netcon to the chosen/duplicated synapse
-                    netcon.setpost(duplicated_synapse)
+                # Point the netcon to the chosen/duplicated synapse
+                netcon.setpost(duplicated_synapse)
 
     print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Finish distributing synapses to branches and duplicating synapse. {num_duplicated_synapses} new synapses. {len(synapses_list)} total synapses.")
     return synapses_list
@@ -1138,7 +1248,7 @@ def redistribute_netcons(synapse, target_synapses, syn_to_netcon, random_state):
 		else:
 			netcon.setpost(target_synapses[rand_index-1]) #find corresponding synapse #point netcon toward synapse
 
-def get_syn_to_netcons(netcons_list):
+def get_hsyn_to_netcons(netcons_list):
 	syn_to_netcon = {} # dictionary mapping netcons to their synapse
 	for netcon in netcons_list: #fill in dictionary
 		syn = netcon.syn() # get the synapse that netcon points to
