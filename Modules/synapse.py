@@ -39,28 +39,34 @@ CP2CP_syn_params = {
 
 class Synapse:
 
-    def __init__(self, segment, syn_mod, syn_params, gmax, neuron_r, name):
+    def __init__(self, segment, syn_mod, syn_params, gmax, neuron_r, name, hoc_syn=None):
+        '''providing hoc_syn creates a python Synapse object from the existing hoc object; otherwise, create a new hoc object'''
         
-        self.syn_mod = syn_mod
-
         self.gmax_var = None # Variable name of maximum conductance (uS)
-        self.current_type = None
-        self.set_gmax_var_and_current_type_based_on_syn_mod(syn_mod)
-
-        self.h_syn = getattr(h, self.syn_mod)(segment)
+        self.current_type = None        
         self.syn_params = None
-        self.set_syn_params(syn_params)
         self.gmax_val = None
-        self.set_gmax_val(gmax)
-
         self.random_generator = None
-        self.set_random_generator(neuron_r)
+        
+        if hoc_syn != None:
+          self.h_syn = hoc_syn
+          self.syn_mod = str(hoc_syn).split('[')[0]
+          self.set_gmax_var_and_current_type_based_on_syn_mod(self.syn_mod)
+        else:
+          self.syn_mod = syn_mod
+          self.h_syn = getattr(h, self.syn_mod)(segment)
+          self.set_gmax_var_and_current_type_based_on_syn_mod(syn_mod)
+          self.set_syn_params(syn_params)
+          self.set_gmax_val(gmax)
+          self.set_random_generator(neuron_r)
 
         self.name = name
 
         # Presynaptic cell
         self.pc = None
         self.netcons = []
+        
+    
     
     def set_spike_train_for_pc(self, mean_fr, spike_train):
         self.pc.set_spike_train(mean_fr, spike_train)

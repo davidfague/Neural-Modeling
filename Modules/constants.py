@@ -21,10 +21,13 @@ class SimulationParameters:
 	h_i_amplitude: float = 10.0 # (nA)
 	h_i_duration: int = 1000 # (ms)
 	h_i_delay: int = 10 # (ms)
-
+  
+  #record
 	# ECP
-	record_ecp: bool = False
-
+	record_ecp: bool = True
+	record_seg_to_seg: bool = False
+ 
+	all_synapses_off: bool = False
 	trunk_exc_synapses: bool = True
 	perisomatic_exc_synapses: bool = True
 	add_soma_inh_synapses: bool = True
@@ -118,13 +121,17 @@ class SimulationParameters:
 	choose_branches: int = 22
 	# Whether or not to optimize the number of segments by lambda after reduction 
 	# (may need to add an update to the CellModel class instance's segments list and seg_info list.)
-	optimize_nseg_by_lambda: bool = True
+	optimize_nseg_by_lambda: bool = False
 	# Whether or not to merge synapses after optimizing nseg by lambda. 
 	# (synapses should already be merged by the reduce_cell_func, 
 	# but could be merged again if optimize_nseg_by_lambda lowers nseg.)
-	merge_synapses: bool = True
+	merge_synapses: bool = False
 	# Desired number of segs per length constant
 	segs_per_lambda: int = 10
+ 
+	# new mar 2024
+	test_morphology: bool = False
+	reduction_before_synapses: bool = False
 
 class HayParameters(SimulationParameters):
 	channel_names = [

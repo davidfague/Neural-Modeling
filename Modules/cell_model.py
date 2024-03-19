@@ -19,6 +19,8 @@ class SegmentData:
 	section: str
 	index_in_section: int
 	seg_half_seg_RA: float
+	seg: str
+	pseg: str
 
 class CellModel:
 
@@ -30,19 +32,18 @@ class CellModel:
 			random_state: np.random.RandomState,
 			neuron_r: h.Random,
 			logger: Logger):
-		
+		self.skeleton_cell = skeleton_cell
 		self.random_state = random_state
 		self.neuron_r = neuron_r
 		self.logger = logger
-	
+   
 		# Morphology & Geometry (parse the hoc model)
 		self.all = []
 		self.soma = None
 		self.apic = None
 		self.dend = None
 		self.axon = None
-		for model_part in ["all", "soma", "apic", "dend", "axon"]:
-			setattr(self, model_part, self._convert_section_list(getattr(skeleton_cell, model_part)))
+		self.update_section_lists()
 
 		# Adjust the number of soma segments
 		if self.soma[0].nseg != 1:
@@ -62,9 +63,28 @@ class CellModel:
 		self.recorders = []
 
 	# ---------- HOC PARSING ----------
+ 
+#	def update_section_lists(self):
+#		for model_part in ["all", "soma", "apic", "dend", "axon"]:
+#			setattr(self, model_part, self._convert_section_list(getattr(self.skeleton_cell, model_part)))
+
+	def update_section_lists(self):
+    # Initialize an empty list for 'all' to update self.all
+		self.all = []
+    
+		for model_part in ["soma", "apic", "dend", "axon"]:
+				# Retrieve the current part list using the existing method
+				current_part_list = self._convert_section_list(getattr(self.skeleton_cell, model_part))
+        
+				# Update the specific model part attribute with the converted list
+				setattr(self, model_part, current_part_list)
+        
+        # Extend the 'all' list with the current part list
+				self.all.extend(current_part_list)
+
+		self.all = self._convert_section_list(self.all) # may not be needed since self.all should not be hoc.SectionList
 
 	def _convert_section_list(self, section_list: object) -> list:
-
 		# If the section list is a hoc object, add its sections to the python list
 		if str(type(section_list)) == "<class 'hoc.HocObject'>":
 			new_section_list = [sec for sec in section_list]
@@ -244,7 +264,9 @@ class CellModel:
 						coords = self.get_coords_of_segments_in_section(sec).iloc[index_in_section, :].to_frame(1).T,
 						section = sec.name(),
 						index_in_section = index_in_section,
-						seg_half_seg_RA = 0.01 * seg.sec.Ra * (sec.L / 2 / seg.sec.nseg) / (np.pi * (seg.diam / 2) ** 2)
+						seg_half_seg_RA = 0.01 * seg.sec.Ra * (sec.L / 2 / seg.sec.nseg) / (np.pi * (seg.diam / 2) ** 2),
+            seg = str(seg),
+            pseg = str(sec.parentseg()) if index_in_section==0 else str(sec((index_in_section-0.5)/seg.sec.nseg)) # x = middle of previous segment
 					)
 					segments.append(seg)
 					datas.append(data)

@@ -13,6 +13,8 @@ from constants import SimulationParameters
 from cell_model import CellModel
 from presynaptic import PCBuilder
 from reduction import Reductor
+import pandas as pd
+#from reduction_utils import update_model_nseg_using_lambda, merge_synapses
 
 class SkeletonCell(Enum):
 
@@ -93,7 +95,6 @@ class CellBuilder:
 		self.logger = logger
 
 	def build_cell(self):
-
 		random_state = np.random.RandomState(self.parameters.numpy_random_state)
 		np.random.seed(self.parameters.numpy_random_state)
 		neuron_r = h.Random()
@@ -112,27 +113,54 @@ class CellBuilder:
 			skeleton_cell = self.build_Neymotin_detailed_cell()
 
 		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger)
-
+   
+        
+    # ----
+    # MARK: where reduction goes 3/2024
+		if self.parameters.reduction_before_synapses:
+				reductor = Reductor(logger = self.logger)
+				cell = self.perform_reduction(reductor = reductor, cell = cell, random_state = random_state)
+   
+				if self.parameters.test_morphology:
+						print(f"morphology:")
+						h.topology()     
+    
+    # ----
+   
 		# Build synapses
-		self.logger.log("Building excitatory synapses.")
-		self.build_excitatory_synapses(cell = cell)
+		if not self.parameters.all_synapses_off:
+				self.logger.log("Building excitatory synapses.")
+				self.build_excitatory_synapses(cell = cell)
 
-		self.logger.log("Building inhibitory synapses.")
-		self.build_inhibitory_synapses(cell = cell)
+				self.logger.log("Building inhibitory synapses.")
+				self.build_inhibitory_synapses(cell = cell)
 
-		self.logger.log("Building soma synapses.")
-		self.build_soma_synapses(cell = cell)
+				self.logger.log("Building soma synapses.")
+				self.build_soma_synapses(cell = cell)
 
 		# Assign spike trains
 
-		self.logger.log("Assigning excitatory spike trains.")
-		self.assign_exitatory_spike_trains(cell = cell, random_state = random_state)
+				self.logger.log("Assigning excitatory spike trains.")
+				self.assign_exitatory_spike_trains(cell = cell, random_state = random_state)
 
-		self.logger.log("Assigning inhibitory spike trains.")
-		self.assign_inhibitory_spike_trains(cell = cell, random_state = random_state)
+				self.logger.log("Assigning inhibitory spike trains.")
+				self.assign_inhibitory_spike_trains(cell = cell, random_state = random_state)
 
-		self.logger.log("Assigning soma spike trains.")
-		self.assign_soma_spike_trains(cell = cell, random_state = random_state)
+				self.logger.log("Assigning soma spike trains.")
+				self.assign_soma_spike_trains(cell = cell, random_state = random_state)
+  
+    #---
+		#MARK *** Reduction was Here.
+		# reduce morphology, segmentation, and synapses optionally.
+		if not self.parameters.reduction_before_synapses:
+				reductor = Reductor(logger = self.logger)
+				cell = self.perform_reduction(reductor = reductor, cell = cell, random_state = random_state)
+   
+				if self.parameters.test_morphology:
+						print(f"morphology:")
+						h.topology()
+
+    #---
       
 		self.logger.log("Finished creating a CellModel object.")
 
@@ -157,18 +185,27 @@ class CellBuilder:
 		
 		# ----
 		
-		# Merge synapses
-		# if self.parameters.merge_synapses:
-		# 	reductor.merge_synapses(cell)
 
 		# Set recorders
 		for var_name in self.parameters.channel_names:
 			cell.add_segment_recorders(var_name = var_name)
 
 		cell.add_segment_recorders(var_name = "v")
+   
+		if self.parameters.record_ecp == True:
+			# Create an ECP object for extracellular potential
+			#elec_pos = params.ELECTRODE_POSITION
+			#ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)
+			#     # Reason: (NEURON: Impedance calculation with extracellular not implemented)
+			self.logger.log_warining("Recording ECP adds the extracellular channel to all segments after computing electrotonic distance.\
+                                  This channel is therefore not accounted for in impedence calculation, but it might affect the simulation.")
+			h.cvode.use_fast_imem(1)
+			#for sec in cell.all: sec.insert('extracellular') # may not be needed
+			cell.add_segment_recorders(var_name = "i_membrane_")
 		
-		for var_name in ["i_AMPA", "i_NMDA"]:
-			cell.add_synapse_recorders(var_name = var_name)
+		if not self.parameters.all_synapses_off:
+				for var_name in ["i_AMPA", "i_NMDA"]:
+						cell.add_synapse_recorders(var_name = var_name)
 
 		cell.add_spike_recorder(sec = cell.soma[0], var_name = "soma_spikes", spike_threshold = self.parameters.spike_threshold)
 		cell.add_spike_recorder(sec = cell.axon[0], var_name = "axon_spikes", spike_threshold = self.parameters.spike_threshold)
@@ -182,6 +219,38 @@ class CellBuilder:
 
 		# Also return skeleton_cell to keep references 
 		return cell, skeleton_cell
+   
+	def perform_reduction(self, reductor, cell, random_state):
+		if self.parameters.reduce_cell:
+				cell, nr_seg_to_seg = reductor.reduce_cell(
+						cell_model = cell,  
+						#random_state = random_state,
+						reduction_frequency = self.parameters.reduction_frequency)
+				if self.parameters.record_seg_to_seg and not self.parameters.expand_cable:
+								nr_seg_to_seg_df = pd.DataFrame(list(nr_seg_to_seg.items()), columns=['detailed', 'neuron_reduce'])
+								nr_seg_to_seg_df.to_csv(os.path.join(self.parameters.path, "nr_seg_to_seg.csv"))
+				if self.parameters.expand_cable:
+						cell, ce_seg_to_seg = reductor.expand_cell(
+								cell_model = cell, 
+            		choose_branches = self.parameters.choose_branches, 
+            		reduction_frequency = self.parameters.reduction_frequency, 
+            		random_state = random_state)
+						if self.parameters.record_seg_to_seg:
+								ce_seg_to_seg_df = pd.DataFrame(list(ce_seg_to_seg.items()), columns=['neuron_reduce', 'cable_expander'])
+								ce_seg_to_seg_df.to_csv(os.path.join(self.parameters.path, "ce_seg_to_seg.csv"))
+				cell._assign_sec_coords(random_state)
+            
+		elif self.parameters.expand_cable:
+				raise(ValueError("expand_cable cannot be True without reduce_cell being True"))
+      
+		else: # call standalone reduction methods without NR or CE
+				if self.parameters.optimize_nseg_by_lambda:
+						self.logger.log("Updating nseg using lambda.")
+						reductor.update_model_nseg_using_lambda(cell)
+				if self.parameters.merge_synapses:
+						self.logger.log("Merging synapses.")
+						reductor.merge_synapses(cell)
+		return cell
 
 	def assign_soma_spike_trains(self, cell, random_state) -> None:
 
@@ -345,7 +414,7 @@ class CellBuilder:
 
 		# Excitatory gmax distribution
 		gmax_exc_dist = partial(
-			log_norm_dist, 
+			binned_log_norm_dist,#log_norm_dist, 
 			self.parameters.exc_gmax_mean_0, 
 			self.parameters.exc_gmax_std_0, 
 			self.parameters.exc_scalar, 
