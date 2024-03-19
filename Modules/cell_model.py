@@ -20,6 +20,7 @@ class SegmentData:
 	index_in_section: int
 	seg_half_seg_RA: float
 	seg: str
+	pseg: str
 
 class CellModel:
 
@@ -63,9 +64,25 @@ class CellModel:
 
 	# ---------- HOC PARSING ----------
  
+#	def update_section_lists(self):
+#		for model_part in ["all", "soma", "apic", "dend", "axon"]:
+#			setattr(self, model_part, self._convert_section_list(getattr(self.skeleton_cell, model_part)))
+
 	def update_section_lists(self):
-		for model_part in ["all", "soma", "apic", "dend", "axon"]:
-			setattr(self, model_part, self._convert_section_list(getattr(self.skeleton_cell, model_part)))
+    # Initialize an empty list for 'all' to update self.all
+		self.all = []
+    
+		for model_part in ["soma", "apic", "dend", "axon"]:
+				# Retrieve the current part list using the existing method
+				current_part_list = self._convert_section_list(getattr(self.skeleton_cell, model_part))
+        
+				# Update the specific model part attribute with the converted list
+				setattr(self, model_part, current_part_list)
+        
+        # Extend the 'all' list with the current part list
+				self.all.extend(current_part_list)
+
+		self.all = self._convert_section_list(self.all) # may not be needed since self.all should not be hoc.SectionList
 
 	def _convert_section_list(self, section_list: object) -> list:
 		# If the section list is a hoc object, add its sections to the python list
@@ -248,7 +265,8 @@ class CellModel:
 						section = sec.name(),
 						index_in_section = index_in_section,
 						seg_half_seg_RA = 0.01 * seg.sec.Ra * (sec.L / 2 / seg.sec.nseg) / (np.pi * (seg.diam / 2) ** 2),
-            seg = str(seg)
+            seg = str(seg),
+            pseg = str(sec.parentseg()) if index_in_section==0 else str(sec((index_in_section-0.5)/seg.sec.nseg)) # x = middle of previous segment
 					)
 					segments.append(seg)
 					datas.append(data)

@@ -26,11 +26,11 @@ class Reductor():
         netcons_list = [netcon for synapse in cell_model.synapses for netcon in synapse.netcons]
         
         self.log_with_timestamp(f'using subtree reductor')
-        reduced_skeleton_cell, hoc_synapses_list, netcons_list, txt_nr = subtree_reductor(
+        reduced_skeleton_cell, hoc_synapses_list, netcons_list, seg_to_seg = subtree_reductor(
             cell_model.skeleton_cell, list(original_py_to_hoc_syns.values()), netcons_list, reduction_frequency, return_seg_to_seg=True)
             
-        self.log_with_timestamp(f'printing topology after reduction')
-        print(h.topology())
+        #self.log_with_timestamp(f'printing topology after reduction')
+       # print(h.topology())
         
         self.log_with_timestamp(f'updating synapses after reduction')
         self.update_synapses_after_reduction(cell_model, netcons_list, original_py_to_hoc_syns)
@@ -42,9 +42,9 @@ class Reductor():
         self.log_with_timestamp(f'reduced cell.all: {cell_model.all}')
         unique_netcons = set(netcon for syn in cell_model.synapses for netcon in syn.netcons) # debbuging
         if len(unique_netcons) != len(netcons_list):
-          selg.log_with_timestep(f'len(unique netcons after expansion) != len(original netcons list) {len(unique_netcons)} {len(netcons_list)}')
+          self.log_with_timestep(f'len(unique netcons after expansion) != len(original netcons list) {len(unique_netcons)} {len(netcons_list)}')
 
-        return cell_model
+        return cell_model, seg_to_seg
     
     def expand_cell(self, cell_model, choose_branches, reduction_frequency, random_state):
         # select expansion parameters
@@ -56,7 +56,7 @@ class Reductor():
         netcons_list = [netcon for synapse in cell_model.synapses for netcon in synapse.netcons]
 
         self.log_with_timestamp(f'using cable_expander')
-        expanded_cell, hoc_synapses_list, netcons_list, _ = cable_expander(
+        expanded_cell, hoc_synapses_list, netcons_list, seg_to_seg = cable_expander(
             cell_model.skeleton_cell, 
             sections_to_expand, 
             furcations_x, 
@@ -68,8 +68,8 @@ class Reductor():
             random_state=random_state
         )
 
-        self.log_with_timestamp(f'printing topology after cable expander')
-        print(h.topology())
+        #self.log_with_timestamp(f'printing topology after cable expander')
+        #print(h.topology())
 
         self.log_with_timestamp(f'updating synapses after cable expander')
         self.update_synapses_after_expansion(cell_model, netcons_list, original_py_to_hoc_syns)
@@ -83,17 +83,21 @@ class Reductor():
         if len(unique_netcons) != len(netcons_list):
           selg.log_with_timestep(f'len(unique netcons after expansion) != len(original netcons list) {len(unique_netcons)} {len(netcons_list)}')
 
-        return cell_model
+        return cell_model, seg_to_seg
     
     def update_synapses_after_expansion(self, cell_model, netcons_list, original_py_to_hoc_syns):
         '''The expansion may have made some original hoc synapses obsolete, and probably created new hoc synapses that will need a new python synapses.
         Netcons also probably moved around, and will need to be updated in the python Synapse.'''
-        # map netcons to their h_syn
+        # map netcons to their current h_syn assignment
         hoc_syn_to_netcon = get_hsyn_to_netcons(netcons_list)
         # update list of all hoc synapses to only those that have a netcon
         new_hoc_synapses = set(hoc_syn_to_netcon.keys())
-        # remove py synapses whose hoc synapse no longer have a netcon
-        cell_model.synapses[:] = [py_syn for py_syn, hoc_syn in original_py_to_hoc_syns.items() if hoc_syn in new_hoc_synapses]
+        
+        # dereference hoc synapse objects that no longer have a presynaptic spike train
+        self.dereference_hoc_syns_with_no_netcons(new_hoc_synapses, original_py_to_hoc_syns)
+        
+        # remove py synapses who no longer have a hoc synapse object
+        cell_model.synapses[:] = [py_syn for py_syn in cell_model.synapses if py_syn.h_syn is not None]
 
         # add py synapses for newly created hoc synapses
         hoc_synapses_before_expansion = set(hoc_synapse for py_syn, hoc_synapse in original_py_to_hoc_syns.items())
@@ -134,20 +138,31 @@ class Reductor():
                 self.log_with_timestamp(f"{py_syn} has no netcons")
                 py_syn.netcons = []
                 
+    def dereference_hoc_syns_with_no_netcons(self, new_hoc_synapses, original_py_to_hoc_syns):
+        for py_syn, hoc_syn in original_py_to_hoc_syns.items():
+          if hoc_syn not in new_hoc_synapses:
+              # If the hoc synapse is no longer linked to any netcons, set the Python synapse's h_syn attribute to None
+              py_syn.h_syn = None
+                
     def update_stored_sections_after_reduction(self, cell_model, reduced_skeleton_cell):
         # have to make this corrections to pass the new sections
         # need to pass skel.soma, skel.axon, AND skel.hoc_model.apic, skel.hoc_model.dend
         reduced_skeleton_cell.dend=reduced_skeleton_cell.hoc_model.dend
         reduced_skeleton_cell.apic=reduced_skeleton_cell.hoc_model.apic
+        reduced_skeleton_cell.soma=cell_model.soma
+        reduced_skeleton_cell.axon=cell_model.axon
         self.log_with_timestamp(f"reduced_skeleton_cell.hoc_model.all: {reduced_skeleton_cell.hoc_model.all}")
-        reduced_skeleton_cell.all = reduced_skeleton_cell.hoc_model.all
+        reduced_skeleton_cell.all = reduced_skeleton_cell.hoc_model.all # shouldn't be necessary. update_section_lists() should reform cell.all using the other section lists.
+        self.log_with_timestamp(f"reduced_skeleton_cell.all: {reduced_skeleton_cell.all}")
         
         self.log_with_timestamp(f"updating cell_model.skeleton_cell")
         cell_model.skeleton_cell = reduced_skeleton_cell
         self.log_with_timestamp(f"updating section_lists")
         cell_model.update_section_lists()
+        self.log_with_timestamp(f"cell_model.all: {cell_model.all}")
 
     def update_stored_sections_after_expansion(self, cell_model, reduced_skeleton_cell):
+        reduced_skeleton_cell.axon = cell_model.axon
         self.log_with_timestamp(f"updating cell_model.skeleton_cell")
         cell_model.skeleton_cell = reduced_skeleton_cell
         self.log_with_timestamp(f"updating section_lists")
