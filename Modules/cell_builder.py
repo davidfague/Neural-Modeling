@@ -197,8 +197,7 @@ class CellBuilder:
 			#elec_pos = params.ELECTRODE_POSITION
 			#ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)
 			#     # Reason: (NEURON: Impedance calculation with extracellular not implemented)
-			self.logger.log_warining("Recording ECP adds the extracellular channel to all segments after computing electrotonic distance.\
-                                  This channel is therefore not accounted for in impedence calculation, but it might affect the simulation.")
+			self.logger.log_warining("Recording ECP adds the extracellular channel to all segments after computing electrotonic distance. This channel is therefore not accounted for in impedence calculation, but it might affect the simulation.")
 			h.cvode.use_fast_imem(1)
 			#for sec in cell.all: sec.insert('extracellular') # may not be needed
 			cell.add_segment_recorders(var_name = "i_membrane_")

@@ -2,10 +2,10 @@ import numpy as np
 from neuron import h
 from neuron_reduce import subtree_reductor
 
-from Modules.cable_expander_func import cable_expander, get_hsyn_to_netcons
-from Modules.synapse import Synapse
-from Modules.cell_model import CellModel
-from Modules.logger import Logger
+from cable_expander_func import cable_expander, get_hsyn_to_netcons
+from synapse import Synapse
+from cell_model import CellModel
+from logger import Logger
 
 import datetime
 

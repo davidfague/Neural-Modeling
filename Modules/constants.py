@@ -22,9 +22,8 @@ class SimulationParameters:
 	h_i_duration: int = 1000 # (ms)
 	h_i_delay: int = 10 # (ms)
   
-  #record
 	# ECP
-	record_ecp: bool = True
+	record_ecp: bool = False
 	record_seg_to_seg: bool = False
  
 	all_synapses_off: bool = False
@@ -131,7 +130,7 @@ class SimulationParameters:
  
 	# new mar 2024
 	test_morphology: bool = False
-	reduction_before_synapses: bool = False
+	reduction_before_synapses: bool = True
 
 class HayParameters(SimulationParameters):
 	channel_names = [
