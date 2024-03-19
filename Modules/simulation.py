@@ -10,6 +10,7 @@ from neuron import h
 import os, datetime
 import pickle, h5py
 import pandas as pd
+import numpy as np
 
 from multiprocessing import Pool, cpu_count
 
@@ -64,6 +65,10 @@ class Simulation:
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
         cell, _ = cell_builder.build_cell()
 
+        # Save the (parent, child) adjacency matrix
+        adj_matrix = cell.compute_directed_adjacency_matrix()
+        np.savetxt(os.path.join(parameters.path, "adj_matrix.txt"), adj_matrix)
+
         # Classify segments by morphology, save coordinates
         segments, seg_data = cell.get_segments(["all"]) # (segments is returned here to preserve NEURON references)
         seg_sections = []
@@ -78,14 +83,15 @@ class Simulation:
             seg_coords.append(entry.coords)
             seg_half_seg_RAs.append(entry.seg_half_seg_RA)
             seg_Ls.append(entry.L)
+            
         seg_sections = pd.DataFrame({
             "section": seg_sections, 
             "idx_in_section": seg_idx, 
             "seg_half_seg_RA": seg_half_seg_RAs,
             "L": seg_Ls
             })
+        
         seg_coords = pd.concat(seg_coords)
-
         seg_data = pd.concat((seg_sections.reset_index(drop = True), seg_coords.reset_index(drop = True)), axis = 1)
         seg_data.to_csv(os.path.join(parameters.path, "segment_data.csv"))
 

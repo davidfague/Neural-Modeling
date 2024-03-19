@@ -9,6 +9,13 @@ from Modules.constants import HayParameters
 if __name__ == "__main__":
     
     sim = Simulation(SkeletonCell.Hay)
-    sim.submit_job(HayParameters("try1", h_tstop = 2000, reduce_cell = False, expand_cable = False))
+    seed = 126
+    sim.submit_job(HayParameters(
+        f"{seed}", 
+        h_tstop = 2000, 
+        reduce_cell = False, 
+        expand_cable = False, 
+        numpy_random_state = seed, 
+        neuron_random_state = seed))
     sim.run()
 

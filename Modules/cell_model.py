@@ -255,6 +255,7 @@ class CellModel:
 		indx = 0
 		for sec in self.all:
 			for seg in sec:
+				print(seg)
 				if seg == segment: return indx
 				indx += 1
 
@@ -391,6 +392,37 @@ class CellModel:
 			col_idx = col_idx + 2
 
 		return pd.DataFrame(elec_distance, columns = colnames)
+	
+	def compute_directed_adjacency_matrix(self) -> None:
+		'''
+		(i, j) = 1 means i is the parent of j
+		'''
+		segments, _ = self.get_segments(["all"])
+		adj_matrix = np.zeros((len(segments), len(segments)))
+
+		for i, seg in enumerate(segments):
+			idx = int(np.floor(seg.x * seg.sec.nseg))
+
+			# The segment is not the first one in the section => the parent is the previous segment
+			if idx != 0:
+				adj_matrix[i - 1, i] = 1
+				continue
+
+			# The segment is the first one in the section
+			pseg = seg.sec.parentseg()
+
+			# Soma, do nothing
+			if pseg is None: continue
+
+			# Not soma
+			# Update self.get_segment(index) and replace
+			for j, pot_seg in enumerate(segments):
+				if str(pseg).split("(")[0] == str(pot_seg).split("(")[0]:
+					pseg_id = j
+					break
+			adj_matrix[pseg_id, i] = 1
+
+		return adj_matrix
 	
 	# ---------- RECORDERS ----------
 
