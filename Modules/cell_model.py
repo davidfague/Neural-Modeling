@@ -72,7 +72,7 @@ class CellModel:
     # Initialize an empty list for 'all' to update self.all
 		self.all = []
     
-		for model_part in ["soma", "apic", "dend", "axon"]:
+		for model_part in ["soma", "dend", "apic", "axon"]:
 				# Retrieve the current part list using the existing method
 				current_part_list = self._convert_section_list(getattr(self.skeleton_cell, model_part))
         
