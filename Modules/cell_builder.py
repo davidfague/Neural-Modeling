@@ -184,7 +184,6 @@ class CellBuilder:
 					for netcon in synapse.netcons: netcon.active(False)
 		
 		# ----
-		
 
 		# Set recorders
 		for var_name in self.parameters.channel_names:

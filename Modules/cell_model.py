@@ -72,7 +72,7 @@ class CellModel:
     # Initialize an empty list for 'all' to update self.all
 		self.all = []
     
-		for model_part in ["soma", "apic", "dend", "axon"]:
+		for model_part in ["soma", "dend", "apic", "axon"]:
 				# Retrieve the current part list using the existing method
 				current_part_list = self._convert_section_list(getattr(self.skeleton_cell, model_part))
         
@@ -277,7 +277,6 @@ class CellModel:
 		indx = 0
 		for sec in self.all:
 			for seg in sec:
-				print(seg)
 				if seg == segment: return indx
 				indx += 1
 
@@ -437,11 +436,16 @@ class CellModel:
 			if pseg is None: continue
 
 			# Not soma
-			# Update self.get_segment(index) and replace
+			pidx = int(np.floor(pseg.x * pseg.sec.nseg))
+			if pseg.x == 1: pidx -= 1
+			counter = 0
 			for j, pot_seg in enumerate(segments):
 				if str(pseg).split("(")[0] == str(pot_seg).split("(")[0]:
-					pseg_id = j
-					break
+					if counter == pidx: 
+						pseg_id = j
+						break
+					counter += 1
+
 			adj_matrix[pseg_id, i] = 1
 
 		return adj_matrix
