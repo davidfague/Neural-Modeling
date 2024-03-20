@@ -9,7 +9,7 @@ from Modules.constants import HayParameters
 if __name__ == "__main__":
     
     sim = Simulation(SkeletonCell.Hay)
-    seed = 126
+    seed = 123
     sim.submit_job(HayParameters(
         f"{seed}", 
         h_tstop = 2000, 
