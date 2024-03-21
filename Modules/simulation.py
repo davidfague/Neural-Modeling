@@ -142,20 +142,25 @@ class Simulation:
 
         h.finitialize(h.v_init)
 
-        # Delete one of the apical branches and replace with equivalent current injection
-        cell.apic[37].push()
-        h.disconnect()
-        cell.apic_clamp = []
-        mean = 0.05367143905642357
-        std =  0.07637665047239821
-        print("tstop", parameters.h_tstop)
-        np.random.seed(123)
-        for _ in range(parameters.h_tstop):
-            clamp_i = h.IClamp(cell.apic[36](0.5))
-            clamp_i.amp = np.abs(np.random.normal(mean, std))
-            clamp_i.dur = 1
-            clamp_i.delay = 0
-            cell.apic_clamp.append(clamp_i)
+        if parameters.disable_apic_37:
+            # Delete one of the apical branches and replace with equivalent current injection
+            cell.apic[37].push()
+            h.disconnect()
+            # cell.apic_clamp = h.IClamp(cell.apic[36](0.5))
+            # cell.apic_clamp.amp = 10
+            # cell.apic_clamp.dur = 2000
+            # cell.apic_clamp.delay = 0
+            cell.apic_clamp = []
+            mean = 0.05367143905642357
+            std =  0.07637665047239821
+            print("tstop", parameters.h_tstop)
+            np.random.seed(123)
+            for i in range(parameters.h_tstop):
+                clamp_i = h.IClamp(cell.apic[36](0.5))
+                clamp_i.amp = np.abs(np.random.normal(mean, std))
+                clamp_i.dur = 1
+                clamp_i.delay = i
+                cell.apic_clamp.append(clamp_i)
 
         self.logger.log("Starting simulation.")
 #        while h.t <= h.tstop + 1:

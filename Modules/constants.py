@@ -131,6 +131,7 @@ class SimulationParameters:
 	# new mar 2024
 	test_morphology: bool = False
 	reduction_before_synapses: bool = True
+	disable_apic_37 = False
 
 class HayParameters(SimulationParameters):
 	channel_names = [
