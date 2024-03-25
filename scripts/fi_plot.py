@@ -59,6 +59,8 @@ def plot_fi(sim_directories, base_name):
     plt.figure()
     plt.plot(amplitudes,firing_rates)
     plt.show()
+    if save:
+        fig.savefig(os.path.join(sim_directory, f"FI.png"), dpi = fig.dpi)
 
 def group_directories_by_prefix(directory_path):
     """
@@ -81,20 +83,64 @@ def group_directories_by_prefix(directory_path):
             grouped_directories[prefix].append(full_path)
     return grouped_directories
 
+def collect_fi_data(sim_directories, base_name):
+    amplitudes = []
+    firing_rates = []
+    for sim_directory in sim_directories:
+        soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
+        parameters = analysis.DataReader.load_parameters(sim_directory)
+        amplitudes.append(parameters.h_i_amplitude)
+        firing_rates.append(analyze_and_log(soma_spikes, parameters, base_name))
+        
+    return amplitudes, firing_rates
+    
+def plot_all_fi_curves(grouped_data):
+    fig = plt.figure(figsize=(10, 6))
+    for base_name, data in grouped_data.items():
+        amplitudes, firing_rates = data
+        plt.plot(amplitudes, firing_rates, label=base_name.split('_')[0])
+    plt.xlabel('Current Injection (nA)')
+    plt.ylabel('Firing Rate (Hz)')
+    plt.title('F/I')
+    plt.legend()
+    plt.show()
+    if save:
+        fig.savefig(os.path.join(sim_directory, f"FI.png"), dpi = fig.dpi)
+
+#if __name__ == "__main__":
+#    if "-d" in sys.argv:
+#        sim_directory = sys.argv[sys.argv.index("-d") + 1] # Fixed variable name to match usage
+#    else:
+#        raise RuntimeError("Directory not specified")
+#
+#    save = "-s" in sys.argv # (global)
+#
+#    # New logic to group directories and analyze them
+#    grouped_directories = group_directories_by_prefix(sim_directory)
+#    for base_name, directories in grouped_directories.items():
+#        #try:
+#            print("Analyzing FI curves for", base_name)
+#            plot_fi(directories, base_name) # Pass the list of directories and base name
+#        #except Exception as e:
+#        #    print(f"Error processing {base_name}: {e}")
 
 if __name__ == "__main__":
     if "-d" in sys.argv:
-        sim_directory = sys.argv[sys.argv.index("-d") + 1] # Fixed variable name to match usage
+        sim_directory = sys.argv[sys.argv.index("-d") + 1]
     else:
         raise RuntimeError("Directory not specified")
 
-    save = "-s" in sys.argv # (global)
+    save = "-s" in sys.argv  # (global)
 
-    # New logic to group directories and analyze them
     grouped_directories = group_directories_by_prefix(sim_directory)
+    all_data = {}  # Collect all data before plotting
+
     for base_name, directories in grouped_directories.items():
-        #try:
-            print("Analyzing FI curves for", base_name)
-            plot_fi(directories, base_name) # Pass the list of directories and base name
-        #except Exception as e:
-        #    print(f"Error processing {base_name}: {e}")
+        try:
+            print("Collecting FI curves data for", base_name)
+            amplitudes, firing_rates = collect_fi_data(directories, base_name)
+            all_data[base_name] = (amplitudes, firing_rates)
+        except Exception as e:
+            print(f"Error processing {base_name}: {e}")
+
+    plot_all_fi_curves(all_data)
