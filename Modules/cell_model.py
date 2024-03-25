@@ -11,6 +11,22 @@ from logger import Logger
 
 from dataclasses import dataclass
 
+from adjacency import find_branching_seg_with_most_branching_descendants_in_subset_y
+def find_nexus_seg(cell_model, adjacency_matrix): # from MM temporarily
+  all_seg_list, seg_data = cell_model.get_segments(['all'])
+  #print(f"seg_data[379].coords['p1_1']: {seg_data[379].coords['p1_1']}")
+  y_coords = []
+  for i, seg in enumerate(all_seg_list):
+    y_coord = seg_data[i].coords["p1_1"].iloc[0] if not seg_data[i].coords["p1_1"].empty else None
+    y_coords.append(y_coord)
+  #print(f"y_coords: {y_coords}")
+  #print(f"all_seg_list: {all_seg_list}")
+  apical_segment_indices = [i for i, seg in enumerate(all_seg_list) if 'apic' in str(seg)]
+  #print(f"apical_segment_indices: {apical_segment_indices}")
+  nexus_index_in_all_list, _ = find_branching_seg_with_most_branching_descendants_in_subset_y(adjacency_matrix, apical_segment_indices, y_coords)
+  #print(f"The found apical nexus segment is: {all_seg_list[nexus_index_in_all_list]}")
+  return nexus_index_in_all_list
+
 @dataclass
 class SegmentData:
 	L: float
@@ -72,7 +88,7 @@ class CellModel:
     # Initialize an empty list for 'all' to update self.all
 		self.all = []
     
-		for model_part in ["soma", "apic", "dend", "axon"]:
+		for model_part in ["soma", "dend", "apic", "axon"]:
 				# Retrieve the current part list using the existing method
 				current_part_list = self._convert_section_list(getattr(self.skeleton_cell, model_part))
         
@@ -340,11 +356,16 @@ class CellModel:
 	
 	# ---------- CURRENT INJECTION ----------
 
-	def set_soma_injection(self, amp: float = 0, dur: float = 0, delay: float = 0):
+	def set_injection(self, amp: float = 0, dur: float = 0, delay: float = 0, target='soma'):
 		"""
 		Add current injection to soma.
 		"""
-		self.current_injection = h.IClamp(self.soma[0](0.5))
+		if target == 'soma':
+			self.current_injection = h.IClamp(self.soma[0](0.5))
+		elif target == 'nexus':
+			nexus_segment = find_nexus_seg(self, self.compute_directed_adjacency_matrix())
+			segments, _ = self.get_segments(['all'])
+			self.current_injection = h.IClamp(segments[nexus_segment])
 		self.current_injection.amp = amp
 		self.current_injection.dur = dur
 		self.current_injection.delay = delay
@@ -413,6 +434,45 @@ class CellModel:
 			col_idx = col_idx + 2
 
 		return pd.DataFrame(elec_distance, columns = colnames)
+	
+	def compute_directed_adjacency_matrix(self) -> None:
+		'''
+		(i, j) = 1 means i is the parent of j
+		'''
+
+		segments, _ = self.get_segments(['all'])
+
+		adj_matrix = np.zeros((len(segments), len(segments)))
+
+		for i, seg in enumerate(segments):
+
+			idx = int(np.floor(seg.x * seg.sec.nseg))
+
+			# The segment is not the first one in the section => the parent is the previous segment
+			if idx != 0:
+				adj_matrix[i - 1, i] = 1
+				continue
+
+			# The segment is the first one in the section
+			pseg = seg.sec.parentseg()
+
+			# Soma, do nothing
+			if pseg is None: continue
+
+			# Not soma
+			pidx = int(np.floor(pseg.x * pseg.sec.nseg))
+			if pseg.x == 1: pidx -= 1
+			counter = 0
+			for j, pot_seg in enumerate(segments):
+				if str(pseg).split("(")[0] == str(pot_seg).split("(")[0]:
+					if counter == pidx: 
+						pseg_id = j
+						break
+					counter += 1
+
+			adj_matrix[pseg_id, i] = 1
+
+		return adj_matrix
 	
 	# ---------- RECORDERS ----------
 
