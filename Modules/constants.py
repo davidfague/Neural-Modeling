@@ -18,6 +18,7 @@ class SimulationParameters:
 
 	# Current injection
 	CI_on: bool = False
+	CI_target: str = 'soma'
 	h_i_amplitude: float = 10.0 # (nA)
 	h_i_duration: int = 1000 # (ms)
 	h_i_delay: int = 10 # (ms)
@@ -132,6 +133,12 @@ class SimulationParameters:
 	# new mar 2024
 	test_morphology: bool = False
 	reduction_before_synapses: bool = False
+	Hay_biophys: str = "L5PCbiophys3.hoc"
+	use_mm: bool = False
+ 
+  # stylized -.-
+	build_stylized: bool = False
+	geometry_file: str = "geom_parameters.csv"
 
 class HayParameters(SimulationParameters):
 	channel_names = [
