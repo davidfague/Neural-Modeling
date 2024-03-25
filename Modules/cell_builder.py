@@ -13,7 +13,15 @@ from constants import SimulationParameters
 from cell_model import CellModel
 from presynaptic import PCBuilder
 from reduction import Reductor
+from morphology_manipulator import MorphologyManipulator
 import pandas as pd
+import time
+
+from electrotonic_distance import *
+from surface_area import *
+
+from stylized_module import Builder
+
 #from reduction_utils import update_model_nseg_using_lambda, merge_synapses
 
 class SkeletonCell(Enum):
@@ -87,6 +95,7 @@ def P_release_dist(P_mean, P_std, size):
 class CellBuilder:
 
 	templates_folder = "../cells/templates"
+	stylized_templates_folder = "../cells/stylized_morphologies"
 
 	def __init__(self, cell_type: SkeletonCell, parameters: SimulationParameters, logger: Logger) -> None:
 
@@ -95,6 +104,7 @@ class CellBuilder:
 		self.logger = logger
 
 	def build_cell(self):
+		start_time = time.time()
 		random_state = np.random.RandomState(self.parameters.numpy_random_state)
 		np.random.seed(self.parameters.numpy_random_state)
 		neuron_r = h.Random()
@@ -102,8 +112,11 @@ class CellBuilder:
 
 		# Build skeleton cell
 		self.logger.log(f"Building {self.cell_type}.")
+   
+		if self.parameters.build_stylized:
+			skeleton_cell = self.build_stylized_cell()
 
-		if self.cell_type == SkeletonCell.Hay:
+		elif self.cell_type == SkeletonCell.Hay:
 			skeleton_cell = self.build_Hay_cell()
 
 		elif self.cell_type == SkeletonCell.HayNeymotin:
@@ -113,6 +126,8 @@ class CellBuilder:
 			skeleton_cell = self.build_Neymotin_detailed_cell()
 
 		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger)
+		for model_part in ['all','soma','dend','apic','axon']:
+				print(f"{model_part}: {getattr(cell, model_part)}")
    
         
     # ----
@@ -123,8 +138,11 @@ class CellBuilder:
    
 				if self.parameters.test_morphology:
 						print(f"morphology:")
-						h.topology()     
-    
+						h.topology()   
+              
+				if self.parameters.use_mm:
+						mm = MorphologyManipulator()
+						self.perform_MM(cell, mm)
     # ----
    
 		# Build synapses
@@ -159,6 +177,11 @@ class CellBuilder:
 				if self.parameters.test_morphology:
 						print(f"morphology:")
 						h.topology()
+                                 
+        # MARK NEW
+				if self.parameters.use_mm:
+						mm = MorphologyManipulator()
+						self.perform_MM(cell, mm)
 
     #---
       
@@ -182,10 +205,8 @@ class CellBuilder:
 					(h.distance(synapse.h_syn.get_segment(), cell.soma[0](0.5)) < 75) and 
 					(synapse.syn_mod in self.parameters.exc_syn_mod)):
 					for netcon in synapse.netcons: netcon.active(False)
-		
+   
 		# ----
-		
-
 		# Set recorders
 		for var_name in self.parameters.channel_names:
 			cell.add_segment_recorders(var_name = var_name)
@@ -212,14 +233,52 @@ class CellBuilder:
 
 		# Add current injection
 		if self.parameters.CI_on:
-			cell.set_soma_injection(
+			cell.set_injection(
 				amp = self.parameters.h_i_amplitude,
 				dur = self.parameters.h_i_duration, 
-				delay = self.parameters.h_i_delay)
+				delay = self.parameters.h_i_delay,
+        target = self.parameters.CI_target)
+        
+ 		# ----
 
-		# Also return skeleton_cell to keep references 
+    # report runtime
+		end_time = time.time()
+		run_time = end_time - start_time
+		self.logger.log(f"Finish building in {run_time}")
+    # Record the  runtime to a file
+		runtime_file_path = os.path.join(self.parameters.path, "builder_runtime.txt")
+		with open(runtime_file_path, "w") as runtime_file:
+				runtime_file.write(f"builder runtime: {run_time} seconds")
+        
 		return cell, skeleton_cell
-   
+
+	def perform_MM(self, cell, MM): # need to separate recording nexus_seg_index from this and create constants to control
+		nexus_seg_index, SA_df, L_df, elec_L_of_tufts = MM.run(cell)
+		nexus_seg_index_file_path = os.path.join(self.parameters.path, "nexus_seg_index.txt")
+		with open(nexus_seg_index_file_path, "w") as nexus_seg_index_file:
+				nexus_seg_index_file.write(f"Nexus Seg Index: {nexus_seg_index}")
+		sa_df_to_save = pd.DataFrame(list(SA_df.items()), columns=['Model_Part', 'Surface_Area'])
+		sa_df_to_save.to_csv(os.path.join(self.parameters.path, "SA.csv"), index=False)
+		l_df_to_save = pd.DataFrame(list(L_df.items()), columns=['Model_Part', 'Length'])
+		l_df_to_save.to_csv(os.path.join(self.parameters.path, "L.csv"), index=False)
+		elec_L_of_tufts_file_path = os.path.join(self.parameters.path, "elec_L_of_tufts.txt")
+		with open(elec_L_of_tufts_file_path, "w") as elec_L_of_tufts_file:
+			elec_L_of_tufts_file.write(f"Tuft electrotonic lengths: {elec_L_of_tufts}")
+		if self.parameters.expand_cable:
+			MM.update_reduced_model_tuft_lengths(cell)
+			nexus_seg_index, SA_df, L_df, elec_L_of_tufts = MM.run(cell)
+			nexus_seg_index_file_path = os.path.join(self.parameters.path, "nexus_seg_index.txt")
+			with open(nexus_seg_index_file_path, "w") as nexus_seg_index_file:
+				nexus_seg_index_file.write(f"Nexus Seg Index: {nexus_seg_index}")
+			sa_df_to_save = pd.DataFrame(list(SA_df.items()), columns=['Model_Part', 'Surface_Area'])
+			sa_df_to_save.to_csv(os.path.join(self.parameters.path, "SA_after.csv"), index=False)
+			l_df_to_save = pd.DataFrame(list(L_df.items()), columns=['Model_Part', 'Length'])
+			l_df_to_save.to_csv(os.path.join(self.parameters.path, "L_after.csv"), index=False)
+			elec_L_of_tufts_file_path = os.path.join(self.parameters.path, "elec_L_of_tufts_after.txt")
+			with open(elec_L_of_tufts_file_path, "w") as elec_L_of_tufts_file:
+				elec_L_of_tufts_file.write(f"Tuft electrotonic lengths: {elec_L_of_tufts}")
+     
+
 	def perform_reduction(self, reductor, cell, random_state):
 		if self.parameters.reduce_cell:
 				cell, nr_seg_to_seg = reductor.reduce_cell(
@@ -445,9 +504,16 @@ class CellBuilder:
 			seg_probs = probs,
 			release_p = None)
 
+	def build_stylized_cell(self) -> object:
+		geometry_path = os.path.join(self.stylized_templates_folder, self.parameters.geometry_file)
+		geo_standard = pd.read_csv(geometry_path,index_col='id')         
+		builder = Builder(geo_standard)
+		cell = builder.cells[0]
+		return cell
+
 	def build_Hay_cell(self) -> object:
 		# Load biophysics
-		h.load_file(os.path.join(self.templates_folder, SkeletonCell.Hay.value["biophys"]))
+		h.load_file(os.path.join(self.templates_folder, self.parameters.Hay_biophys))#SkeletonCell.Hay.value["biophys"]))
 
 		# Load morphology
 		h.load_file("import3d.hoc")
