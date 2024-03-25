@@ -13,6 +13,8 @@ import pandas as pd
 
 from multiprocessing import Pool, cpu_count
 
+import time
+
 # https://stackoverflow.com/questions/31729008/python-multiprocessing-seems-near-impossible-to-do-within-classes-using-any-clas
 def unwrap_self_run_single_simulation(args):
     return Simulation.run_single_simulation(args[0], args[1])
@@ -72,22 +74,29 @@ class Simulation:
         seg_half_seg_RAs = []
         seg = []
         seg_Ls = []
+        psegs=[]
         
         for entry in seg_data:
-            sec_name = entry.section.split(".")[1] # name[idx]
+            if parameters.build_stylized:
+                sec_name = entry.section.split(".")[-1]
+            else:
+                sec_name = entry.section.split(".")[1] # name[idx]
+            print(f"sec_name: {sec_name}")
             seg_sections.append(sec_name.split("[")[0])
             seg_idx.append(sec_name.split("[")[1].split("]")[0])
             seg_coords.append(entry.coords)
             seg_half_seg_RAs.append(entry.seg_half_seg_RA)
             seg.append(entry.seg)
             seg_Ls.append(entry.L)
+            psegs.append(entry.pseg)
             
         seg_sections = pd.DataFrame({
             "section": seg_sections, 
             "idx_in_section": seg_idx, 
             "seg_half_seg_RA": seg_half_seg_RAs,
             "L": seg_Ls,
-            "seg":seg
+            "seg":seg,
+            "pseg":psegs
             })
 
         seg_coords = pd.concat(seg_coords)
@@ -104,6 +113,8 @@ class Simulation:
           elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.75))
         elif parameters.reduce_cell:
           elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.4))
+        elif parameters.build_stylized:
+          elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.999))
         else:
           elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
         elec_distances_nexus.to_csv(os.path.join(parameters.path, "elec_distance_nexus.csv"))
@@ -170,35 +181,72 @@ class Simulation:
 #            h.fadvance()
 #            time_step += 1
 #        self.logger.log("Finish simulation")
-        try:
-          while h.t <= h.tstop + 1:
-  
-              if (time_step > 0) and (time_step % (parameters.save_every_ms / parameters.h_dt) == 0):
-                  self.logger.log(f"Saving data at step: {time_step}")
-                  try:
-                      # Save data
-                      cell.write_recorder_data(
-                          os.path.join(parameters.path, f"saved_at_step_{time_step}"), 
-                          1)#int(1 / parameters.h_dt))
-                      self.logger.log("Finished writing data")
-  
-                      # Reinitialize recording vectors
-                      for recorder_or_list in cell.recorders: recorder_or_list.clear()
-                      self.logger.log("Finished clearing recorders")
-                  except Exception as e:
-                      self.logger.log(f"Error during data saving or recorder clearing at step {time_step}: {e}")
-  
-              try:
-                  h.fadvance()
-              except Exception as e:
-                  self.logger.log(f"Error advancing simulation at time_step {time_step}: {e}")
-                  break  # Exit the loop on error
-              
-              time_step += 1
-  
-          self.logger.log("Finish simulation")
-        except Exception as e:
-          self.logger.log(f"Unexpected error in run_single_simulation: {e}")    
+#        try:
+#          while h.t <= h.tstop + 1:
+#  
+#              if (time_step > 0) and (time_step % (parameters.save_every_ms / parameters.h_dt) == 0):
+#                  self.logger.log(f"Saving data at step: {time_step}")
+#                  try:
+#                      # Save data
+#                      cell.write_recorder_data(
+#                          os.path.join(parameters.path, f"saved_at_step_{time_step}"), 
+#                          1)#int(1 / parameters.h_dt))
+#                      self.logger.log("Finished writing data")
+#  
+#                      # Reinitialize recording vectors
+#                      for recorder_or_list in cell.recorders: recorder_or_list.clear()
+#                      self.logger.log("Finished clearing recorders")
+#                  except Exception as e:
+#                      self.logger.log(f"Error during data saving or recorder clearing at step {time_step}: {e}")
+#  
+#              try:
+#                  h.fadvance()
+#              except Exception as e:
+#                  self.logger.log(f"Error advancing simulation at time_step {time_step}: {e}")
+#                  break  # Exit the loop on error
+#              
+#              time_step += 1
+#  
+#          self.logger.log("Finish simulation")
+#        except Exception as e:
+#          self.logger.log(f"Unexpected error in run_single_simulation: {e}")    
+
+        #try:
+        start_time = time.time()
+        while h.t <= h.tstop + 1:
+
+            if (time_step > 0) and (time_step % (parameters.save_every_ms / parameters.h_dt) == 0):
+                self.logger.log(f"Saving data at step: {time_step}")
+                #try:
+                # Save data
+                cell.write_recorder_data(
+                    os.path.join(parameters.path, f"saved_at_step_{time_step}"), 
+                    int(1 / parameters.h_dt))
+                self.logger.log("Finished writing data")
+
+                # Reinitialize recording vectors
+                for recorder_or_list in cell.recorders: recorder_or_list.clear()
+                self.logger.log("Finished clearing recorders")
+                #except Exception as e:
+                #    self.logger.log(f"Error during data saving or recorder clearing at step {time_step}: {e}")
+
+            try:
+                h.fadvance()
+            except Exception as e:
+                self.logger.log(f"Error advancing simulation at time_step {time_step}: {e}")
+                break  # Exit the loop on error
+            
+            time_step += 1
+
+        end_time = time.time()
+        simulation_runtime = end_time - start_time
+        self.logger.log("Finish simulation in {simulation_runtime}")
+        # Record the simulation runtime to a file
+        runtime_file_path = os.path.join(parameters.path, "simulation_runtime.txt")
+        with open(runtime_file_path, "w") as runtime_file:
+            runtime_file.write(f"Simulation runtime: {simulation_runtime} seconds")
+        #except Exception as e:
+        #  self.logger.log(f"Unexpected error in run_single_simulation: {e}") 
 
 def is_indexable(obj: object):
     """
