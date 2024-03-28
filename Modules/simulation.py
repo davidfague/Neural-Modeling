@@ -124,8 +124,10 @@ class Simulation:
         # elif parameters.reduce_cell:
         #   elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.4))
         # else:
-        #   elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
-        # elec_distances_nexus.to_csv(os.path.join(parameters.path, "elec_distance_nexus.csv"))
+        # elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
+        print(cell.all[19])
+        elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.all[19](0.916667))
+        elec_distances_nexus.to_csv(os.path.join(parameters.path, "elec_distance_nexus.csv"))
 
         # Create an ECP object for extracellular potential
         #elec_pos = params.ELECTRODE_POSITION
