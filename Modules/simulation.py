@@ -43,7 +43,8 @@ class Simulation:
 
         # Compile the modfiles and suppress output
         self.logger.log(f"Compiling modfiles.")
-        os.system(f"nrnivmodl {self.cell_type.value['modfiles']} > /dev/null 2>&1")
+        # os.system(f"nrnivmodl {self.cell_type.value['modfiles']} > /dev/null 2>&1")
+        os.system(f"nrnivmodl /Users/vladimiromelyusik/Neural-Modeling/Stylized-Cell-Inference/cell_inference/resources/compiled/mechanisms_reduced_order > /dev/null 2>&1")
 
         h.load_file('stdrun.hoc')
         h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
@@ -79,9 +80,16 @@ class Simulation:
         seg_Ls = []
         
         for entry in seg_data:
-            sec_name = entry.section.split(".")[1] # name[idx]
-            seg_sections.append(sec_name.split("[")[0])
-            seg_idx.append(sec_name.split("[")[1].split("]")[0])
+            sec_name = entry.section.split(">.")[1] # name[idx]
+            if "passivebasal" in sec_name:
+                seg_sections.append("passivebasal")
+            elif "basal" in sec_name:
+                seg_sections.append("dend")
+            elif "soma" in sec_name:
+                seg_sections.append("soma")
+            else:
+                seg_sections.append("apic")
+            seg_idx.append(sec_name)
             seg_coords.append(entry.coords)
             seg_half_seg_RAs.append(entry.seg_half_seg_RA)
             seg.append(entry.seg)
@@ -103,14 +111,21 @@ class Simulation:
         elec_distances_soma = cell.compute_electrotonic_distance(from_segment = cell.soma[0](0.5))
         elec_distances_soma.to_csv(os.path.join(parameters.path, "elec_distance_soma.csv"))
 
+        # from cell_inference.utils.metrics.measure_passive_properties import measure_passive_properties
+        # from cell_inference.utils.metrics.measure_segment_distance import measure_segment_distance
+        # sec_type = np.array([1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3])
+        # seg_prop, Rin, Rin_pha = measure_segment_distance(cell.soma[0], cell.all, sec_type, 0)
+        # elec_distances_soma = pd.DataFrame(seg_prop['elec_dist'], columns = ['beta_passive', 'x'])
+        # elec_distances_soma.to_csv(os.path.join(parameters.path, "elec_distance_soma.csv"))
+
         # Compute electrotonic distances from nexus
-        if parameters.reduce_cell and parameters.expand_cable:
-          elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.75))
-        elif parameters.reduce_cell:
-          elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.4))
-        else:
-          elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
-        elec_distances_nexus.to_csv(os.path.join(parameters.path, "elec_distance_nexus.csv"))
+        # if parameters.reduce_cell and parameters.expand_cable:
+        #   elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.75))
+        # elif parameters.reduce_cell:
+        #   elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.4))
+        # else:
+        #   elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
+        # elec_distances_nexus.to_csv(os.path.join(parameters.path, "elec_distance_nexus.csv"))
 
         # Create an ECP object for extracellular potential
         #elec_pos = params.ELECTRODE_POSITION
@@ -142,25 +157,26 @@ class Simulation:
 
         h.finitialize(h.v_init)
 
-        if parameters.disable_apic_37:
-            # Delete one of the apical branches and replace with equivalent current injection
-            cell.apic[37].push()
-            h.disconnect()
-            # cell.apic_clamp = h.IClamp(cell.apic[36](0.5))
-            # cell.apic_clamp.amp = 10
-            # cell.apic_clamp.dur = 2000
-            # cell.apic_clamp.delay = 0
-            cell.apic_clamp = []
-            mean = 0.05367143905642357
-            std =  0.07637665047239821
-            print("tstop", parameters.h_tstop)
-            np.random.seed(123)
-            for i in range(parameters.h_tstop):
-                clamp_i = h.IClamp(cell.apic[36](0.5))
-                clamp_i.amp = np.abs(np.random.normal(mean, std))
-                clamp_i.dur = 1
-                clamp_i.delay = i
-                cell.apic_clamp.append(clamp_i)
+        # if parameters.disable_apic_37:
+        #     # Delete one of the apical branches and replace with equivalent current injection
+        #     cell.apic[37].push()
+        #     h.disconnect()
+        #     # cell.apic_clamp = h.IClamp(cell.apic[36](0.5))
+        #     # cell.apic_clamp.amp = 10
+        #     # cell.apic_clamp.dur = 2000
+        #     # cell.apic_clamp.delay = 0
+        #     cell.apic_clamp = []
+        #     mean = 0.05367143905642357
+        #     std =  0.07637665047239821
+        #     print("tstop", parameters.h_tstop)
+        #     np.random.seed(123)
+        #     ac = np.loadtxt("/Users/vladimiromelyusik/Neural-Modeling/scripts/ac0.txt")
+        #     for i in range(parameters.h_tstop):
+        #         clamp_i = h.IClamp(cell.apic[36](0.5))
+        #         clamp_i.amp = ac[i] # np.random.normal(mean, std)
+        #         clamp_i.dur = 1
+        #         clamp_i.delay = i
+        #         cell.apic_clamp.append(clamp_i)
 
         self.logger.log("Starting simulation.")
 #        while h.t <= h.tstop + 1:
@@ -194,35 +210,21 @@ class Simulation:
 #            h.fadvance()
 #            time_step += 1
 #        self.logger.log("Finish simulation")
-        try:
-          while h.t <= h.tstop + 1:
-  
-              if (time_step > 0) and (time_step % (parameters.save_every_ms / parameters.h_dt) == 0):
-                  self.logger.log(f"Saving data at step: {time_step}")
-                  try:
-                      # Save data
-                      cell.write_recorder_data(
-                          os.path.join(parameters.path, f"saved_at_step_{time_step}"), 
-                          1)#int(1 / parameters.h_dt))
-                      self.logger.log("Finished writing data")
-  
-                      # Reinitialize recording vectors
-                      for recorder_or_list in cell.recorders: recorder_or_list.clear()
-                      self.logger.log("Finished clearing recorders")
-                  except Exception as e:
-                      self.logger.log(f"Error during data saving or recorder clearing at step {time_step}: {e}")
-  
-              try:
-                  h.fadvance()
-              except Exception as e:
-                  self.logger.log(f"Error advancing simulation at time_step {time_step}: {e}")
-                  break  # Exit the loop on error
-              
-              time_step += 1
-  
-          self.logger.log("Finish simulation")
-        except Exception as e:
-          self.logger.log(f"Unexpected error in run_single_simulation: {e}")    
+        while h.t <= h.tstop + 1:
+
+            if (time_step > 0) and (time_step % (parameters.save_every_ms / parameters.h_dt) == 0):
+                self.logger.log(f"Saving data at step: {time_step}")
+                # Save data
+                cell.write_recorder_data(
+                    os.path.join(parameters.path, f"saved_at_step_{time_step}"), int(1 / parameters.h_dt))
+
+                # Reinitialize recording vectors
+                for recorder_or_list in cell.recorders: recorder_or_list.clear()
+            
+            h.fadvance()
+            time_step += 1
+
+        self.logger.log("Finish simulation")
 
 def is_indexable(obj: object):
     """

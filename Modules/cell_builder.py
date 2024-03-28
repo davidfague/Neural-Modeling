@@ -16,6 +16,8 @@ from reduction import Reductor
 import pandas as pd
 #from reduction_utils import update_model_nseg_using_lambda, merge_synapses
 
+from temp_reduced_cell import build_ziaos_cell
+
 class SkeletonCell(Enum):
 
 	def __eq__(self, other):
@@ -103,14 +105,16 @@ class CellBuilder:
 		# Build skeleton cell
 		self.logger.log(f"Building {self.cell_type}.")
 
-		if self.cell_type == SkeletonCell.Hay:
-			skeleton_cell = self.build_Hay_cell()
+		# if self.cell_type == SkeletonCell.Hay:
+		# 	skeleton_cell = self.build_Hay_cell()
 
-		elif self.cell_type == SkeletonCell.HayNeymotin:
-			skeleton_cell = self.build_HayNeymotin_cell()
+		# elif self.cell_type == SkeletonCell.HayNeymotin:
+		# 	skeleton_cell = self.build_HayNeymotin_cell()
 
-		elif self.cell_type == SkeletonCell.NeymotinDetailed:
-			skeleton_cell = self.build_Neymotin_detailed_cell()
+		# elif self.cell_type == SkeletonCell.NeymotinDetailed:
+		# 	skeleton_cell = self.build_Neymotin_detailed_cell()
+		
+		skeleton_cell = build_ziaos_cell()
 
 		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger)
    
@@ -206,7 +210,7 @@ class CellBuilder:
 						cell.add_synapse_recorders(var_name = var_name)
 
 		cell.add_spike_recorder(sec = cell.soma[0], var_name = "soma_spikes", spike_threshold = self.parameters.spike_threshold)
-		cell.add_spike_recorder(sec = cell.axon[0], var_name = "axon_spikes", spike_threshold = self.parameters.spike_threshold)
+		# cell.add_spike_recorder(sec = cell.axon[0], var_name = "axon_spikes", spike_threshold = self.parameters.spike_threshold)
 
 		# Add current injection
 		if self.parameters.CI_on:
@@ -391,7 +395,8 @@ class CellBuilder:
 		# inh_P_dist["apic"] = inh_apic_P_dist
 		# inh_P_dist["dend"] = inh_basal_P_dist
 		
-		segments, seg_data = cell.get_segments(["apic", "dend"])
+		segments, seg_data = cell.get_segments([
+			"proxbasal", "midbasal", "distbasal", "proxtrunk", "midtrunk", "disttrunk", "proxtuft", "midtuft", "disttuft"])
 		probs = [data.membrane_surface_area for data in seg_data]
 
 		cell.add_synapses_over_segments(
@@ -426,7 +431,8 @@ class CellBuilder:
 		# 	P_std = self.parameters.exc_P_release_std, 
 		# 	size = 1)
 
-		segments, seg_data = cell.get_segments(["apic", "dend"])
+		segments, seg_data = cell.get_segments([
+			"proxbasal", "midbasal", "distbasal", "proxtrunk", "midtrunk", "disttrunk", "proxtuft", "midtuft", "disttuft"])
 		if self.parameters.use_SA_exc:
 			probs = [data.membrane_surface_area for data in seg_data]
 		else:

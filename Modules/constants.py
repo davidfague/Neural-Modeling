@@ -13,7 +13,7 @@ class SimulationParameters:
 
 	# Environment parameters
 	h_celcius: float = 37 # 34
-	h_tstop: int = 150000 # Sim runtime (ms)
+	h_tstop: int = 2000 # Sim runtime (ms)
 	h_dt: float = 0.1 # Timestep (ms)
 
 	# Current injection
@@ -131,7 +131,7 @@ class SimulationParameters:
 	# new mar 2024
 	test_morphology: bool = False
 	reduction_before_synapses: bool = True
-	disable_apic_37 = False
+	disable_apic_37 = True
 
 class HayParameters(SimulationParameters):
 	channel_names = [

@@ -256,7 +256,8 @@ class CellModel:
 		datas = []
 
 		for sec in self.all:
-			if (sec.name().split(".")[1].split("[")[0] in section_names) or ("all" in section_names):
+			# if (sec.name().split(".")[1].split("[")[0] in section_names) or ("all" in section_names):
+			if (sec.name().split(">.")[1] in section_names) or ("all" in section_names):
 				for index_in_section, seg in enumerate(sec):
 					data = SegmentData(
 						L = seg.sec.L / seg.sec.nseg,
