@@ -467,7 +467,6 @@ def copy_dendritic_mech(original_seg_to_reduced_seg,
                         reduced_seg_to_original_seg,
                         segment_to_mech_vals,
                         new_section,
-                        all_segments,
                         mapping_type='impedance'):
     ''' copies the mechanisms from the original model to the reduced model'''
 
@@ -489,7 +488,7 @@ def copy_dendritic_mech(original_seg_to_reduced_seg,
         for param_name, param_values in vals_per_mech_per_segment[reduced_seg].items():
             setattr(reduced_seg, param_name, np.mean(param_values))
 
-    all_reduced_segments = [list(new_section)]
+    all_reduced_segments = list(new_section)
     
 
     if len(all_reduced_segments) != len(reduced_seg_to_original_seg):
@@ -497,7 +496,7 @@ def copy_dendritic_mech(original_seg_to_reduced_seg,
                     'reduced model did not receive channels from the original cell.'
                     'Trying to compensate by copying channels from neighboring segments')
         handle_orphan_segments(original_seg_to_reduced_seg,
-                               all_segments,
+                               all_reduced_segments,
                                vals_per_mech_per_segment,
                                mech_names_per_segment)
  
@@ -508,6 +507,7 @@ def handle_orphan_segments(original_seg_to_reduced_seg,
                            mech_names_per_segment):
     ''' This function handle reduced segments that did not had original segments mapped to them'''
     # Get all reduced segments that have been mapped by a original model segment
+    #import pdb; pdb.set_trace()
     all_mapped_control_segments = original_seg_to_reduced_seg.values()
     non_mapped_segments = set(all_segments) - set(all_mapped_control_segments)
 
@@ -534,6 +534,8 @@ def handle_orphan_segments(original_seg_to_reduced_seg,
                 child_seg_index += 1
 
         if not parent_seg and not child_seg:
+            import pdb
+            pdb.set_trace()
             raise Exception("no child seg nor parent seg, with active channels, was found")
 
         if parent_seg and not child_seg:
