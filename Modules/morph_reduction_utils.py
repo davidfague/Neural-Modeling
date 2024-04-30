@@ -20,6 +20,43 @@ def get_terminal_coordinates(seg_data, terminal_descend_indices):
     terminal_seg_coords = [[terminal_seg_data.coords.p1_0, terminal_seg_data.coords.p1_1, terminal_seg_data.coords.p1_2] for terminal_seg_data in terminal_seg_datas]
     return terminal_seg_coords
 
+def average_coordinates(coordinates):
+    sum_x = sum_y = sum_z = 0
+    n = len(coordinates)
+
+    for x, y, z in coordinates:
+        sum_x += x
+        sum_y += y
+        sum_z += z
+
+    avg_x = sum_x / n
+    avg_y = sum_y / n
+    avg_z = sum_z / n
+
+    return [avg_x, avg_y, avg_z]
+
+def calculate_third_point(p1, p2, distance):
+    # Extract coordinates
+    x1, y1, z1 = p1
+    x2, y2, z2 = p2
+
+    # Step 1: Calculate the vector from p1 to p2
+    v = [x2 - x1, y2 - y1, z2 - z1]
+
+    # Step 2: Calculate the magnitude of the vector
+    magnitude_v = math.sqrt(float(v[0].iloc[0])**2 + float(v[1].iloc[0])**2 + float(v[2].iloc[0])**2)
+
+    # Step 3: Normalize the vector
+    u = [v[0] / magnitude_v, v[1] / magnitude_v, v[2] / magnitude_v]
+
+    # Step 4: Scale the unit vector by the distance
+    scaled_u = [u[0] * distance, u[1] * distance, u[2] * distance]
+
+    # Step 5: Calculate the new point by adding the scaled vector to p1
+    p3 = [x1 + scaled_u[0], y1 + scaled_u[1], z1 + scaled_u[2]]
+
+    return p3
+
 def disconnect_root(root_sec):
     pseg = root_sec.parentseg()
     if pseg is not None:
