@@ -156,3 +156,27 @@ def is_path_exist(adjacency_matrix, start, end, visited=None):
 
     # If no path is found to the end, return False
     return False
+
+def get_divergent_children_of_branching_segments(adjacency_matrix, start, end):
+    # Find the path from start to end using the original find_path_segments function
+    path = find_path_segments(adjacency_matrix, start, end)
+    
+    if path is None:
+        raise ValueError(f"No path exists between segment {start} and {end}")
+    
+    divergent_children = []
+    
+    # We need to make sure the starting segment (path[0]) is never considered, so begin from path[1]
+    if len(path) > 1:
+        # Start the loop from the second segment (index 1) in the path to exclude the starting segment
+        for i in range(1, len(path) - 1):  # Exclude the last segment because it doesn't branch to the end
+            current_segment = path[i]
+            next_segment_on_path = path[i + 1]
+            
+            if sum(adjacency_matrix[current_segment]) > 1:  # It's a branching segment
+                children = np.where(adjacency_matrix[current_segment] == 1)[0]
+                for child in children:
+                    if child != next_segment_on_path:
+                        divergent_children.append(child)
+                    
+    return divergent_children
