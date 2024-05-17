@@ -629,55 +629,11 @@ def find_synapse_loc_and_sec(synapse_or_segment):
     if not isinstance(synapse_or_segment, neuron.nrn.Segment):
         synapse_or_segment = synapse_or_segment.h_syn.get_segment()
     return synapse_or_segment.x, synapse_or_segment.sec
-
-# # adapted from https://github.com/orena1/neuron_reduce/blob/94b1850607f9c62a205ad8fb695f2fd91d84d87d/neuron_reduce/reducing_methods.py#L317
-# def reduce_synapse(
-#                    synapse_location,
-#                    section,
-#                    imp_obj,
-#                    root_input_impedance,
-#                    new_cable_electrotonic_length,
-#                    q_subtree
-#                    ):
-#     '''
-#     Receives an instance of a cell, the location (section + relative
-#     location(x)) of a synapse to be reduced, a boolean on_basal that is True if
-#     the synapse is on a basal subtree, the number of segments in the reduced
-#     cable that this synapse is in, an Impedance calculating Hoc object, the
-#     input impedance at the root of this subtree, and the electrotonic length of
-#     the reduced cable that represents the current subtree
-#     (as a real and as a complex number) -
-#     and maps the given synapse to its new location on the reduced cable
-#     according to the NeuroReduce algorithm.  Returns the new "post-merging"
-#     relative location of the synapse on the reduced cable (x, 0<=x<=1), that
-#     represents the middle of the segment that this synapse is located at in the
-#     new reduced cable.
-#     '''
-#     # measures the original transfer impedance from the synapse to the
-#     # somatic-proximal end in the subtree root section
-
-#     with push_section(section):
-#         orig_transfer_imp = imp_obj.transfer(synapse_location) * 1000000  # ohms
-#         orig_transfer_phase = imp_obj.transfer_phase(synapse_location)
-#         # creates a complex Impedance value with the given polar coordinates
-#         orig_synapse_transfer_impedance = cmath.rect(orig_transfer_imp, orig_transfer_phase)
-
-#     # synapse location could be calculated using:
-#     # X = L - (1/q) * arcosh( (Zx,0(f) / ZtreeIn(f)) * cosh(q*L) ),
-#     # derived from Rall's cable theory for dendrites (Gal Eliraz)
-#     # but we chose to find the X that will give the correct modulus. See comment about L values
-
-#     synapse_new_electrotonic_location = find_best_real_X(root_input_impedance,
-#                                                          orig_synapse_transfer_impedance,
-#                                                          q_subtree,
-#                                                          new_cable_electrotonic_length)
-#     new_relative_loc_in_section = (float(synapse_new_electrotonic_location) /
-#                                    new_cable_electrotonic_length)
-
-#     if new_relative_loc_in_section > 1:  # PATCH
-#         new_relative_loc_in_section = 0.999999
-
-#     return new_relative_loc_in_section
+def find_synapse_loc(synapse_or_segment):
+    ''' Returns the normalized location (x) of the given synapse or segment'''
+    if not isinstance(synapse_or_segment, neuron.nrn.Segment):
+        synapse_or_segment = synapse_or_segment.get_segment()
+    return synapse_or_segment.x
 
 # https://github.com/orena1/neuron_reduce/blob/94b1850607f9c62a205ad8fb695f2fd91d84d87d/neuron_reduce/subtree_reductor_func.py#L464
 def calculate_subtree_q(root, reduction_frequency):

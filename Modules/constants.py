@@ -135,6 +135,14 @@ class SimulationParameters:
 	# reduction_before_synapses: bool = False
 	Hay_biophys: str = "L5PCbiophys3.hoc"
 	# use_mm: bool = False
+
+	# recorders
+	record_soma_spikes: bool = True
+	record_axon_spikes: bool = False
+	record_all_channels: bool = False
+	record_all_synapses: bool = False
+	record_all_v: bool = True
+
  
   # stylized (depracating)
 	# build_stylized: bool = False
