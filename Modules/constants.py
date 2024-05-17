@@ -25,7 +25,7 @@ class SimulationParameters:
   
   #record
 	# ECP
-	record_ecp: bool = True
+	record_ecp: bool = False
 	record_seg_to_seg: bool = False
  
 	all_synapses_off: bool = False
@@ -115,7 +115,7 @@ class SimulationParameters:
 	save_every_ms: int = 1000
 	path: str = ''
 
-	# Reduction
+	# Reduction (depracating)
 	reduce_cell: bool = False
 	expand_cable: bool = False
 	reduction_frequency: int = 0
@@ -131,14 +131,34 @@ class SimulationParameters:
 	segs_per_lambda: int = 10
  
 	# new mar 2024
-	test_morphology: bool = False
-	reduction_before_synapses: bool = False
+	# test_morphology: bool = False
+	# reduction_before_synapses: bool = False
 	Hay_biophys: str = "L5PCbiophys3.hoc"
-	use_mm: bool = False
+	# use_mm: bool = False
  
-  # stylized -.-
-	build_stylized: bool = False
-	geometry_file: str = "geom_parameters.csv"
+  # stylized (depracating)
+	# build_stylized: bool = False
+	# geometry_file: str = "geom_parameters.csv"
+ 
+	# EPSPs (depracating?)
+	only_one_synapse: bool = False
+	one_syn_index: int = 0
+	simulate_EPSPs: bool = False
+  
+  # recorders
+	record_soma_spikes: bool = True
+	record_axon_spikes: bool = False
+	record_all_channels: bool = False
+	record_all_synapses: bool = False
+	record_all_v: bool = True
+ 
+	# new reduction parameters
+	reduce_cell_NRCE: bool = False # depracting NRCE
+	reduce_cell_selective:bool = False
+	reduce_tufts: bool = False
+	reduce_basals: bool = False
+	reduce_obliques: bool = False
+  
 
 class HayParameters(SimulationParameters):
 	channel_names = [
