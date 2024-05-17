@@ -479,20 +479,28 @@ class CellModel:
 	def add_spike_recorder(self, sec: object, var_name: str, spike_threshold: float):
 		self.recorders.append(SpikeRecorder(sec = sec, var_name = var_name, spike_threshold = spike_threshold))
 	
-	def add_synapse_recorders(self, var_name: str) -> None:
+	def add_synapse_recorders(self, var_name: str, synapse=None) -> None:
 		rec_list = SynapseRecorderList(var_name)
-		for syn in self.synapses:
-			try: rec_list.add(SynapseRecorder(syn.h_syn, var_name))
-			except: continue
+		if synapse is None:
+			for syn in self.synapses:
+				try: rec_list.add(SynapseRecorder(syn.h_syn, var_name))
+				except: continue
+		else:
+			rec_list.add(SynapseRecorder(synapse.h_syn, var_name))
 		self.recorders.append(rec_list)
 
-	def add_segment_recorders(self, var_name: str) -> None:
+	def add_segment_recorders(self, var_name: str, segment_to_record=None) -> None:
 		rec_list = SegmentRecorderList(var_name)
-		segments, _ = self.get_segments(["all"])
-		for seg in segments:
+		if segment_to_record is None:
+			segments, _ = self.get_segments(["all"])
+			for seg in segments:
+				try: rec_list.add(SegmentRecorder(seg, var_name))
+				except: rec_list.add(EmptySegmentRecorder())
+			self.recorders.append(rec_list)
+		else:
 			try: rec_list.add(SegmentRecorder(seg, var_name))
 			except: rec_list.add(EmptySegmentRecorder())
-		self.recorders.append(rec_list)
+			self.recorders.append(rec_list)
 	
 	def write_recorder_data(self, path: str, step: int) -> None:
 		os.mkdir(path)
