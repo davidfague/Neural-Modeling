@@ -13,12 +13,14 @@ from constants import SimulationParameters
 from cell_model import CellModel
 from presynaptic import PCBuilder
 from reduction import Reductor
-from morphology_manipulator import MorphologyManipulator
+# from morphology_manipulator import MorphologyManipulator
 import pandas as pd
 import time
 
 from electrotonic_distance import *
 from surface_area import *
+
+from Modules.morph_reduction_utils import get_reduced_cell
 
 from stylized_module import Builder
 
@@ -131,105 +133,44 @@ class CellBuilder:
    
         
     # ----
-    # MARK: where reduction goes 3/2024
-		if self.parameters.reduction_before_synapses:
-				reductor = Reductor(logger = self.logger)
-				cell = self.perform_reduction(reductor = reductor, cell = cell, random_state = random_state)
-   
-				if self.parameters.test_morphology:
-						print(f"morphology:")
-						h.topology()   
-              
-				if self.parameters.use_mm:
-						mm = MorphologyManipulator()
-						self.perform_MM(cell, mm)
-    # ----
-   
-		# Build synapses
+    	# Build synapses
 		if not self.parameters.all_synapses_off:
-				self.logger.log("Building excitatory synapses.")
-				self.build_excitatory_synapses(cell = cell)
+				self.build_synapses(cell, random_state)
 
-				self.logger.log("Building inhibitory synapses.")
-				self.build_inhibitory_synapses(cell = cell)
-
-				self.logger.log("Building soma synapses.")
-				self.build_soma_synapses(cell = cell)
-
-		# Assign spike trains
-
-				self.logger.log("Assigning excitatory spike trains.")
-				self.assign_exitatory_spike_trains(cell = cell, random_state = random_state)
-
-				self.logger.log("Assigning inhibitory spike trains.")
-				self.assign_inhibitory_spike_trains(cell = cell, random_state = random_state)
-
-				self.logger.log("Assigning soma spike trains.")
-				self.assign_soma_spike_trains(cell = cell, random_state = random_state)
-  
-    #---
-		#MARK *** Reduction was Here.
-		# reduce morphology, segmentation, and synapses optionally.
-		if not self.parameters.reduction_before_synapses:
+		if self.parameters.reduce_cell_NRCE: # deprecating, neuron_reduce/cable_expander reduction
 				reductor = Reductor(logger = self.logger)
 				cell = self.perform_reduction(reductor = reductor, cell = cell, random_state = random_state)
+		elif self.parameters.reduce_cell_selective:
+				cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
+                           reduce_basals = self.parameters.reduce_basals, 
+                           reduce_obliques = self.parameters.reduce_obliques, 
+                           cell = cell)
    
-				if self.parameters.test_morphology:
-						print(f"morphology:")
-						h.topology()
-                                 
-        # MARK NEW
-				if self.parameters.use_mm:
-						mm = MorphologyManipulator()
-						self.perform_MM(cell, mm)
 
     #---
       
 		self.logger.log("Finished creating a CellModel object.")
 
-		# @CHECK ----
+		# @CHECK ---- @MARK remove @KEEP as reference for controlling regions of active synapses
 		# Turn off certain presynaptic neurons to simulate in vivo
-		if (self.parameters.CI_on == False) and (self.parameters.trunk_exc_synapses == False):
-			for synapse in cell.synapses:
-				if (
-					(synapse.h_syn.get_segment().sec in cell.apic) and 
-					(synapse.syn_mod in self.parameters.exc_syn_mod) and 
-					(synapse.h_syng.get_segment().sec in cell.get_tufts_obliques()[1] == False) and 
-					(synapse.h_syn.get_segment().sec.y3d(0) < 600)):
-					for netcon in synapse.netcons: netcon.active(False)
-		
-		# Turn off perisomatic exc neurons
-		if (self.parameters.perisomatic_exc_synapses == False):
-			for synapse in cell.synapses:
-				if (
-					(h.distance(synapse.h_syn.get_segment(), cell.soma[0](0.5)) < 75) and 
-					(synapse.syn_mod in self.parameters.exc_syn_mod)):
-					for netcon in synapse.netcons: netcon.active(False)
+#		if (self.parameters.CI_on == False) and (self.parameters.trunk_exc_synapses == False):
+#			for synapse in cell.synapses:
+#				if (
+#					(synapse.h_syn.get_segment().sec in cell.apic) and 
+#					(synapse.syn_mod in self.parameters.exc_syn_mod) and 
+#					(synapse.h_syng.get_segment().sec in cell.get_tufts_obliques()[1] == False) and 
+#					(synapse.h_syn.get_segment().sec.y3d(0) < 600)):
+#					for netcon in synapse.netcons: netcon.active(False)
+#		
+#		# Turn off perisomatic exc neurons
+#		if (self.parameters.perisomatic_exc_synapses == False):
+#			for synapse in cell.synapses:
+#				if (
+#					(h.distance(synapse.h_syn.get_segment(), cell.soma[0](0.5)) < 75) and 
+#					(synapse.syn_mod in self.parameters.exc_syn_mod)):
+#					for netcon in synapse.netcons: netcon.active(False)
    
 		# ----
-		# Set recorders
-		for var_name in self.parameters.channel_names:
-			cell.add_segment_recorders(var_name = var_name)
-
-		cell.add_segment_recorders(var_name = "v")
-   
-		if self.parameters.record_ecp == True:
-			# Create an ECP object for extracellular potential
-			#elec_pos = params.ELECTRODE_POSITION
-			#ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)
-			#     # Reason: (NEURON: Impedance calculation with extracellular not implemented)
-			self.logger.log_warining("Recording ECP adds the extracellular channel to all segments after computing electrotonic distance.\
-                                  This channel is therefore not accounted for in impedence calculation, but it might affect the simulation.")
-			h.cvode.use_fast_imem(1)
-			#for sec in cell.all: sec.insert('extracellular') # may not be needed
-			cell.add_segment_recorders(var_name = "i_membrane_")
-		
-		if not self.parameters.all_synapses_off:
-				for var_name in ["i_AMPA", "i_NMDA"]:
-						cell.add_synapse_recorders(var_name = var_name)
-
-		cell.add_spike_recorder(sec = cell.soma[0], var_name = "soma_spikes", spike_threshold = self.parameters.spike_threshold)
-		cell.add_spike_recorder(sec = cell.axon[0], var_name = "axon_spikes", spike_threshold = self.parameters.spike_threshold)
 
 		# Add current injection
 		if self.parameters.CI_on:
@@ -246,37 +187,59 @@ class CellBuilder:
 		run_time = end_time - start_time
 		self.logger.log(f"Finish building in {run_time}")
     # Record the  runtime to a file
-		runtime_file_path = os.path.join(self.parameters.path, "builder_runtime.txt")
-		with open(runtime_file_path, "w") as runtime_file:
-				runtime_file.write(f"builder runtime: {run_time} seconds")
+		# runtime_file_path = os.path.join(self.parameters.path, "builder_runtime.txt")
+		# os.mkdir(runtime_file_path)
+		# with open(runtime_file_path, "w") as runtime_file:
+		# 		runtime_file.write(f"builder runtime: {run_time} seconds")
         
 		return cell, skeleton_cell
 
-	def perform_MM(self, cell, MM): # need to separate recording nexus_seg_index from this and create constants to control
-		nexus_seg_index, SA_df, L_df, elec_L_of_tufts = MM.run(cell)
-		nexus_seg_index_file_path = os.path.join(self.parameters.path, "nexus_seg_index.txt")
-		with open(nexus_seg_index_file_path, "w") as nexus_seg_index_file:
-				nexus_seg_index_file.write(f"Nexus Seg Index: {nexus_seg_index}")
-		sa_df_to_save = pd.DataFrame(list(SA_df.items()), columns=['Model_Part', 'Surface_Area'])
-		sa_df_to_save.to_csv(os.path.join(self.parameters.path, "SA.csv"), index=False)
-		l_df_to_save = pd.DataFrame(list(L_df.items()), columns=['Model_Part', 'Length'])
-		l_df_to_save.to_csv(os.path.join(self.parameters.path, "L.csv"), index=False)
-		elec_L_of_tufts_file_path = os.path.join(self.parameters.path, "elec_L_of_tufts.txt")
-		with open(elec_L_of_tufts_file_path, "w") as elec_L_of_tufts_file:
-			elec_L_of_tufts_file.write(f"Tuft electrotonic lengths: {elec_L_of_tufts}")
-		if self.parameters.expand_cable:
-			MM.update_reduced_model_tuft_lengths(cell)
-			nexus_seg_index, SA_df, L_df, elec_L_of_tufts = MM.run(cell)
-			nexus_seg_index_file_path = os.path.join(self.parameters.path, "nexus_seg_index.txt")
-			with open(nexus_seg_index_file_path, "w") as nexus_seg_index_file:
-				nexus_seg_index_file.write(f"Nexus Seg Index: {nexus_seg_index}")
-			sa_df_to_save = pd.DataFrame(list(SA_df.items()), columns=['Model_Part', 'Surface_Area'])
-			sa_df_to_save.to_csv(os.path.join(self.parameters.path, "SA_after.csv"), index=False)
-			l_df_to_save = pd.DataFrame(list(L_df.items()), columns=['Model_Part', 'Length'])
-			l_df_to_save.to_csv(os.path.join(self.parameters.path, "L_after.csv"), index=False)
-			elec_L_of_tufts_file_path = os.path.join(self.parameters.path, "elec_L_of_tufts_after.txt")
-			with open(elec_L_of_tufts_file_path, "w") as elec_L_of_tufts_file:
-				elec_L_of_tufts_file.write(f"Tuft electrotonic lengths: {elec_L_of_tufts}")
+	# def perform_MM(self, cell, MM): # need to separate recording nexus_seg_index from this and create constants to control
+	# 	nexus_seg_index, SA_df, L_df, elec_L_of_tufts = MM.run(cell)
+	# 	nexus_seg_index_file_path = os.path.join(self.parameters.path, "nexus_seg_index.txt")
+	# 	with open(nexus_seg_index_file_path, "w") as nexus_seg_index_file:
+	# 			nexus_seg_index_file.write(f"Nexus Seg Index: {nexus_seg_index}")
+	# 	sa_df_to_save = pd.DataFrame(list(SA_df.items()), columns=['Model_Part', 'Surface_Area'])
+	# 	sa_df_to_save.to_csv(os.path.join(self.parameters.path, "SA.csv"), index=False)
+	# 	l_df_to_save = pd.DataFrame(list(L_df.items()), columns=['Model_Part', 'Length'])
+	# 	l_df_to_save.to_csv(os.path.join(self.parameters.path, "L.csv"), index=False)
+	# 	elec_L_of_tufts_file_path = os.path.join(self.parameters.path, "elec_L_of_tufts.txt")
+	# 	with open(elec_L_of_tufts_file_path, "w") as elec_L_of_tufts_file:
+	# 		elec_L_of_tufts_file.write(f"Tuft electrotonic lengths: {elec_L_of_tufts}")
+	# 	if self.parameters.expand_cable:
+	# 		MM.update_reduced_model_tuft_lengths(cell)
+	# 		nexus_seg_index, SA_df, L_df, elec_L_of_tufts = MM.run(cell)
+	# 		nexus_seg_index_file_path = os.path.join(self.parameters.path, "nexus_seg_index.txt")
+	# 		with open(nexus_seg_index_file_path, "w") as nexus_seg_index_file:
+	# 			nexus_seg_index_file.write(f"Nexus Seg Index: {nexus_seg_index}")
+	# 		sa_df_to_save = pd.DataFrame(list(SA_df.items()), columns=['Model_Part', 'Surface_Area'])
+	# 		sa_df_to_save.to_csv(os.path.join(self.parameters.path, "SA_after.csv"), index=False)
+	# 		l_df_to_save = pd.DataFrame(list(L_df.items()), columns=['Model_Part', 'Length'])
+	# 		l_df_to_save.to_csv(os.path.join(self.parameters.path, "L_after.csv"), index=False)
+	# 		elec_L_of_tufts_file_path = os.path.join(self.parameters.path, "elec_L_of_tufts_after.txt")
+	# 		with open(elec_L_of_tufts_file_path, "w") as elec_L_of_tufts_file:
+	# 			elec_L_of_tufts_file.write(f"Tuft electrotonic lengths: {elec_L_of_tufts}")
+ 
+	def build_synapses(self, cell, random_state):
+		# craete synapse objects
+		self.logger.log("Building excitatory synapses.")
+		self.build_excitatory_synapses(cell = cell)
+
+		self.logger.log("Building inhibitory synapses.")
+		self.build_inhibitory_synapses(cell = cell)
+
+		self.logger.log("Building soma synapses.")
+		self.build_soma_synapses(cell = cell)
+
+		# Assign spike trains
+		self.logger.log("Assigning excitatory spike trains.")
+		self.assign_exitatory_spike_trains(cell = cell, random_state = random_state)
+
+		self.logger.log("Assigning inhibitory spike trains.")
+		self.assign_inhibitory_spike_trains(cell = cell, random_state = random_state)
+
+		self.logger.log("Assigning soma spike trains.")
+		self.assign_soma_spike_trains(cell = cell, random_state = random_state)
      
 
 	def perform_reduction(self, reductor, cell, random_state):
