@@ -115,10 +115,10 @@ class CellBuilder:
 		# Build skeleton cell
 		self.logger.log(f"Building {self.cell_type}.")
    
-		if self.parameters.build_stylized:
-			skeleton_cell = self.build_stylized_cell()
+		# if self.parameters.build_stylized:
+		# 	skeleton_cell = self.build_stylized_cell()
 
-		elif self.cell_type == SkeletonCell.Hay:
+		if self.cell_type == SkeletonCell.Hay:
 			skeleton_cell = self.build_Hay_cell()
 
 		elif self.cell_type == SkeletonCell.HayNeymotin:
