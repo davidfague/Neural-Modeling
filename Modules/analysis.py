@@ -18,14 +18,15 @@ class DataReader:
         return parameters
 
     @staticmethod
-    def read_data(sim_folder, sim_file_name):
+    def read_data(sim_folder, sim_file_name, parameters=None):
         
         # For convenience
         if sim_file_name.endswith(".h5"):
             sim_file_name = sim_file_name[:-3]
 
-        with open(os.path.join(sim_folder, "parameters.pickle"), "rb") as file:
-            parameters = pickle.load(file)
+        if parameters is None:
+            with open(os.path.join(sim_folder, "parameters.pickle"), "rb") as file:
+                parameters = pickle.load(file)
 
         step_size = int(parameters.save_every_ms / parameters.h_dt) 
         steps = range(step_size, int(parameters.h_tstop / parameters.h_dt) + 1, step_size)
@@ -43,7 +44,7 @@ class DataReader:
                 elif len(retrieved_data.shape) == 2:
                     # Neuron saves traces inconsistently; sometimes the trace length is (t) and sometimes it is (t+1)
                     # Thus, cut the trace at parameters.save_every_ms
-                    data.append(retrieved_data[:, :parameters.save_every_ms])
+                    data.append(retrieved_data[:, :parameters.save_every_ms*10])
         data = np.concatenate(data, axis = 1)
 
         return data
