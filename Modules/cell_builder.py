@@ -420,12 +420,12 @@ class CellBuilder:
 
 		cell.add_synapses_over_segments(
 			segments = segments,
-			nsyn = self.parameters.inh_synaptic_density,
+			nsyn = self.parameters.inh_synaptic_density if self.parameters.inh_use_density else self.parameters.inh_syn_number,
 			syn_mod = self.parameters.inh_syn_mod,
 			syn_params = self.parameters.inh_syn_params,
 			gmax = self.parameters.inh_gmax_dist,
 			name = "inh",
-			density = True,
+			density = self.parameters.inh_use_density,
 			seg_probs = probs,
 			release_p = None)
 			
@@ -458,12 +458,12 @@ class CellBuilder:
 
 		cell.add_synapses_over_segments(
 			segments = segments,
-			nsyn = self.parameters.exc_synaptic_density,
+			nsyn = self.parameters.exc_synaptic_density if self.parameters.exc_use_density else self.parameters.exc_syn_number,
 			syn_mod = self.parameters.exc_syn_mod,
 			syn_params = self.parameters.exc_syn_params,
 			gmax = gmax_exc_dist,
 			name = "exc",
-			density = True,
+			density = self.parameters.exc_use_density,
 			seg_probs = probs,
 			release_p = None)
 

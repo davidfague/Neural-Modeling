@@ -13,7 +13,7 @@ class SimulationParameters:
 
 	# Environment parameters
 	h_celcius: float = 37 # 34
-	h_tstop: int = 150000 # Sim runtime (ms)
+	h_tstop: int = 5000 # Sim runtime (ms)
 	h_dt: float = 0.1 # Timestep (ms)
 
 	# Current injection
@@ -42,13 +42,17 @@ class SimulationParameters:
 	soma_gmax_dist: float = 0.5
 	exc_scalar: int = 1 # Scales weight
 
-	# Synapse density syns/um 
+	# Density/Number of synapses
 	# Current densities taken from literature on apical main bifurcation, and extrapolated to entire cell.
 	exc_synaptic_density: float = 2.16 # (syn/micron of path length)
 	inh_synaptic_density: float = 0.22 # (syn/micron of path length)
-	use_SA_exc: bool = True # Use surface area instead of lengths for the synapse's segment assignment probabilities
+	exc_use_density: bool = True # setting to false uses "exc_syn_number" instead of "exc_synaptic_density"
+	inh_use_density: bool = True # setting to false uses "inh_syn_number" instead of "inh_synaptic_density"
+	exc_syn_number: int = 700
+	inh_syn_number: int = 150 
+	use_SA_exc: bool = True # Use surface area instead of lengths for the synapse's segment assignment probabilities (does not yet change the total number calculated using density?)
 
-	# Release probability distributions
+	# Synapse Release probability distributions
 	exc_P_release_mean: float = 0.53
 	exc_P_release_std: float = 0.22
 	inh_basal_P_release_mean: float = 0.72
@@ -142,7 +146,6 @@ class SimulationParameters:
 	record_all_channels: bool = False
 	record_all_synapses: bool = False
 	record_all_v: bool = True
-
  
   # stylized (depracating)
 	# build_stylized: bool = False
