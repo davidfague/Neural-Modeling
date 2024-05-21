@@ -133,25 +133,35 @@ class CellBuilder:
    
         
     # ----
-    	# Build synapses
-		if not self.parameters.all_synapses_off:
-				self.build_synapses(cell, random_state)
-
-		if self.parameters.reduce_cell_NRCE: # deprecating, neuron_reduce/cable_expander reduction
-				reductor = Reductor(logger = self.logger)
-				cell = self.perform_reduction(reductor = reductor, cell = cell, random_state = random_state)
-		elif self.parameters.reduce_cell_selective:
+    	# Build synapses @deprecating, neuron_reduce/cable_expander reduction
+		# if not self.parameters.all_synapses_off:
+		# 		self.build_synapses(cell, random_state)
+		# if self.parameters.reduce_cell_NRCE: # @deprecating, neuron_reduce/cable_expander reduction
+		# 		reductor = Reductor(logger = self.logger)
+		# 		cell = self.perform_reduction(reductor = reductor, cell = cell, random_state = random_state)
+  
+	# Build synapses & reduce cell
+		if self.parameters.synapse_mapping:
+			if not self.parameters.all_synapses_off: self.build_synapses(cell, random_state)
+			if self.parameters.reduce_cell_selective:
 				cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
                            reduce_basals = self.parameters.reduce_basals, 
                            reduce_obliques = self.parameters.reduce_obliques, 
                            cell = cell)
+		else:
+			if self.parameters.reduce_cell_selective:
+					cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
+							reduce_basals = self.parameters.reduce_basals, 
+							reduce_obliques = self.parameters.reduce_obliques, 
+							cell = cell)
+					if not self.parameters.all_synapses_off: self.build_synapses(cell, random_state)
    
 
     #---
       
 		self.logger.log("Finished creating a CellModel object.")
 
-		# @CHECK ---- @MARK remove @KEEP as reference for controlling regions of active synapses
+		# @CHECK ---- @MARK remove @KEEP as reference for controlling regions of active synapses?
 		# Turn off certain presynaptic neurons to simulate in vivo
 #		if (self.parameters.CI_on == False) and (self.parameters.trunk_exc_synapses == False):
 #			for synapse in cell.synapses:
@@ -193,32 +203,6 @@ class CellBuilder:
 		# 		runtime_file.write(f"builder runtime: {run_time} seconds")
         
 		return cell, skeleton_cell
-
-	# def perform_MM(self, cell, MM): # need to separate recording nexus_seg_index from this and create constants to control
-	# 	nexus_seg_index, SA_df, L_df, elec_L_of_tufts = MM.run(cell)
-	# 	nexus_seg_index_file_path = os.path.join(self.parameters.path, "nexus_seg_index.txt")
-	# 	with open(nexus_seg_index_file_path, "w") as nexus_seg_index_file:
-	# 			nexus_seg_index_file.write(f"Nexus Seg Index: {nexus_seg_index}")
-	# 	sa_df_to_save = pd.DataFrame(list(SA_df.items()), columns=['Model_Part', 'Surface_Area'])
-	# 	sa_df_to_save.to_csv(os.path.join(self.parameters.path, "SA.csv"), index=False)
-	# 	l_df_to_save = pd.DataFrame(list(L_df.items()), columns=['Model_Part', 'Length'])
-	# 	l_df_to_save.to_csv(os.path.join(self.parameters.path, "L.csv"), index=False)
-	# 	elec_L_of_tufts_file_path = os.path.join(self.parameters.path, "elec_L_of_tufts.txt")
-	# 	with open(elec_L_of_tufts_file_path, "w") as elec_L_of_tufts_file:
-	# 		elec_L_of_tufts_file.write(f"Tuft electrotonic lengths: {elec_L_of_tufts}")
-	# 	if self.parameters.expand_cable:
-	# 		MM.update_reduced_model_tuft_lengths(cell)
-	# 		nexus_seg_index, SA_df, L_df, elec_L_of_tufts = MM.run(cell)
-	# 		nexus_seg_index_file_path = os.path.join(self.parameters.path, "nexus_seg_index.txt")
-	# 		with open(nexus_seg_index_file_path, "w") as nexus_seg_index_file:
-	# 			nexus_seg_index_file.write(f"Nexus Seg Index: {nexus_seg_index}")
-	# 		sa_df_to_save = pd.DataFrame(list(SA_df.items()), columns=['Model_Part', 'Surface_Area'])
-	# 		sa_df_to_save.to_csv(os.path.join(self.parameters.path, "SA_after.csv"), index=False)
-	# 		l_df_to_save = pd.DataFrame(list(L_df.items()), columns=['Model_Part', 'Length'])
-	# 		l_df_to_save.to_csv(os.path.join(self.parameters.path, "L_after.csv"), index=False)
-	# 		elec_L_of_tufts_file_path = os.path.join(self.parameters.path, "elec_L_of_tufts_after.txt")
-	# 		with open(elec_L_of_tufts_file_path, "w") as elec_L_of_tufts_file:
-	# 			elec_L_of_tufts_file.write(f"Tuft electrotonic lengths: {elec_L_of_tufts}")
  
 	def build_synapses(self, cell, random_state):
 		# craete synapse objects
@@ -240,39 +224,6 @@ class CellBuilder:
 
 		self.logger.log("Assigning soma spike trains.")
 		self.assign_soma_spike_trains(cell = cell, random_state = random_state)
-     
-
-	def perform_reduction(self, reductor, cell, random_state):
-		if self.parameters.reduce_cell:
-				cell, nr_seg_to_seg = reductor.reduce_cell(
-						cell_model = cell,  
-						#random_state = random_state,
-						reduction_frequency = self.parameters.reduction_frequency)
-				if self.parameters.record_seg_to_seg and not self.parameters.expand_cable:
-								nr_seg_to_seg_df = pd.DataFrame(list(nr_seg_to_seg.items()), columns=['detailed', 'neuron_reduce'])
-								nr_seg_to_seg_df.to_csv(os.path.join(self.parameters.path, "nr_seg_to_seg.csv"))
-				if self.parameters.expand_cable:
-						cell, ce_seg_to_seg = reductor.expand_cell(
-								cell_model = cell, 
-            		choose_branches = self.parameters.choose_branches, 
-            		reduction_frequency = self.parameters.reduction_frequency, 
-            		random_state = random_state)
-						if self.parameters.record_seg_to_seg:
-								ce_seg_to_seg_df = pd.DataFrame(list(ce_seg_to_seg.items()), columns=['neuron_reduce', 'cable_expander'])
-								ce_seg_to_seg_df.to_csv(os.path.join(self.parameters.path, "ce_seg_to_seg.csv"))
-				cell._assign_sec_coords(random_state)
-            
-		elif self.parameters.expand_cable:
-				raise(ValueError("expand_cable cannot be True without reduce_cell being True"))
-      
-		else: # call standalone reduction methods without NR or CE
-				if self.parameters.optimize_nseg_by_lambda:
-						self.logger.log("Updating nseg using lambda.")
-						reductor.update_model_nseg_using_lambda(cell)
-				if self.parameters.merge_synapses:
-						self.logger.log("Merging synapses.")
-						reductor.merge_synapses(cell)
-		return cell
 
 	def assign_soma_spike_trains(self, cell, random_state) -> None:
 
@@ -604,3 +555,63 @@ class CellBuilder:
 								print(f"Warning: Issue setting {mech} {param} in {sec.name()} to {value}. | value type {type(value)}")
 		
 					section_row[f"mechs.{mech}.{param}"] = value
+  
+	# @DEPRACATING neuron_reduce/cable_expander
+	# def perform_reduction(self, reductor, cell, random_state):
+	# 	if self.parameters.reduce_cell:
+	# 			cell, nr_seg_to_seg = reductor.reduce_cell(
+	# 					cell_model = cell,  
+	# 					#random_state = random_state,
+	# 					reduction_frequency = self.parameters.reduction_frequency)
+	# 			if self.parameters.record_seg_to_seg and not self.parameters.expand_cable:
+	# 							nr_seg_to_seg_df = pd.DataFrame(list(nr_seg_to_seg.items()), columns=['detailed', 'neuron_reduce'])
+	# 							nr_seg_to_seg_df.to_csv(os.path.join(self.parameters.path, "nr_seg_to_seg.csv"))
+	# 			if self.parameters.expand_cable:
+	# 					cell, ce_seg_to_seg = reductor.expand_cell(
+	# 							cell_model = cell, 
+    #         		choose_branches = self.parameters.choose_branches, 
+    #         		reduction_frequency = self.parameters.reduction_frequency, 
+    #         		random_state = random_state)
+	# 					if self.parameters.record_seg_to_seg:
+	# 							ce_seg_to_seg_df = pd.DataFrame(list(ce_seg_to_seg.items()), columns=['neuron_reduce', 'cable_expander'])
+	# 							ce_seg_to_seg_df.to_csv(os.path.join(self.parameters.path, "ce_seg_to_seg.csv"))
+	# 			cell._assign_sec_coords(random_state)
+            
+	# 	elif self.parameters.expand_cable:
+	# 			raise(ValueError("expand_cable cannot be True without reduce_cell being True"))
+      
+	# 	else: # call standalone reduction methods without NR or CE
+	# 			if self.parameters.optimize_nseg_by_lambda:
+	# 					self.logger.log("Updating nseg using lambda.")
+	# 					reductor.update_model_nseg_using_lambda(cell)
+	# 			if self.parameters.merge_synapses:
+	# 					self.logger.log("Merging synapses.")
+	# 					reductor.merge_synapses(cell)
+	# 	return cell  
+  
+    # @DEPCRATING Useful for calculating surface area, length constants... 
+    # def perform_MM(self, cell, MM): # need to separate recording nexus_seg_index from this and create constants to control
+	# 	nexus_seg_index, SA_df, L_df, elec_L_of_tufts = MM.run(cell)
+	# 	nexus_seg_index_file_path = os.path.join(self.parameters.path, "nexus_seg_index.txt")
+	# 	with open(nexus_seg_index_file_path, "w") as nexus_seg_index_file:
+	# 			nexus_seg_index_file.write(f"Nexus Seg Index: {nexus_seg_index}")
+	# 	sa_df_to_save = pd.DataFrame(list(SA_df.items()), columns=['Model_Part', 'Surface_Area'])
+	# 	sa_df_to_save.to_csv(os.path.join(self.parameters.path, "SA.csv"), index=False)
+	# 	l_df_to_save = pd.DataFrame(list(L_df.items()), columns=['Model_Part', 'Length'])
+	# 	l_df_to_save.to_csv(os.path.join(self.parameters.path, "L.csv"), index=False)
+	# 	elec_L_of_tufts_file_path = os.path.join(self.parameters.path, "elec_L_of_tufts.txt")
+	# 	with open(elec_L_of_tufts_file_path, "w") as elec_L_of_tufts_file:
+	# 		elec_L_of_tufts_file.write(f"Tuft electrotonic lengths: {elec_L_of_tufts}")
+	# 	if self.parameters.expand_cable:
+	# 		MM.update_reduced_model_tuft_lengths(cell)
+	# 		nexus_seg_index, SA_df, L_df, elec_L_of_tufts = MM.run(cell)
+	# 		nexus_seg_index_file_path = os.path.join(self.parameters.path, "nexus_seg_index.txt")
+	# 		with open(nexus_seg_index_file_path, "w") as nexus_seg_index_file:
+	# 			nexus_seg_index_file.write(f"Nexus Seg Index: {nexus_seg_index}")
+	# 		sa_df_to_save = pd.DataFrame(list(SA_df.items()), columns=['Model_Part', 'Surface_Area'])
+	# 		sa_df_to_save.to_csv(os.path.join(self.parameters.path, "SA_after.csv"), index=False)
+	# 		l_df_to_save = pd.DataFrame(list(L_df.items()), columns=['Model_Part', 'Length'])
+	# 		l_df_to_save.to_csv(os.path.join(self.parameters.path, "L_after.csv"), index=False)
+	# 		elec_L_of_tufts_file_path = os.path.join(self.parameters.path, "elec_L_of_tufts_after.txt")
+	# 		with open(elec_L_of_tufts_file_path, "w") as elec_L_of_tufts_file:
+	# 			elec_L_of_tufts_file.write(f"Tuft electrotonic lengths: {elec_L_of_tufts}")
