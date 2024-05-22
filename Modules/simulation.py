@@ -11,9 +11,16 @@ import os, datetime
 import pickle, h5py
 import pandas as pd
 
-from multiprocessing import Pool, cpu_count
-
+from multiprocessing import Pool, cpu_count, Lock
 import time
+
+# Global lock and flag for DLL loading
+import threading
+dll_load_lock = threading.Lock()
+dll_loaded = False
+
+# Lock for ensuring `nrn_load_dll` is called only once
+# dll_load_lock = Lock()
 
 # https://stackoverflow.com/questions/31729008/python-multiprocessing-seems-near-impossible-to-do-within-classes-using-any-clas
 def unwrap_self_run_single_simulation(args):
@@ -24,8 +31,10 @@ class Simulation:
     def __init__(self, cell_type: SkeletonCell, title = None):
         self.cell_type = cell_type
         if title:
+          self.title = title
           self.path = f"{title}-{datetime.datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}"
         else:
+          self.title = None
           self.path = f"{cell_type}-{datetime.datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}"
 
         self.logger = Logger(None)
@@ -46,8 +55,20 @@ class Simulation:
         self.logger.log(f"Compiling modfiles.")
         os.system(f"nrnivmodl {self.cell_type.value['modfiles']} > /dev/null 2>&1")
 
-        h.load_file('stdrun.hoc')
-        h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
+        # with dll_load_lock:
+        #     h.load_file('stdrun.hoc')
+        #     h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
+
+        global dll_loaded
+        with dll_load_lock:
+            if not dll_loaded:
+                try:
+                    h.load_file('stdrun.hoc')
+                    h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
+                    dll_loaded = True
+                except RuntimeError as e:
+                    print(f"Error loading DLL: {e}")
+                    dll_loaded = False
         
         pool = Pool(processes = len(self.pool))
         pool.map(unwrap_self_run_single_simulation, zip([self] * len(self.pool), self.pool))
@@ -77,10 +98,10 @@ class Simulation:
         psegs=[]
         
         for entry in seg_data:
-            if parameters.build_stylized:
-                sec_name = entry.section.split(".")[-1]
-            else:
-                sec_name = entry.section.split(".")[1] # name[idx]
+            # if parameters.build_stylized: #@DEPRACATED
+            #     sec_name = entry.section.split(".")[-1]
+            # else:
+            sec_name = entry.section.split(".")[1] # name[idx]
             #print(f"sec_name: {sec_name}")
             seg_sections.append(sec_name.split("[")[0])
             seg_idx.append(sec_name.split("[")[1].split("]")[0])
@@ -109,14 +130,19 @@ class Simulation:
         elec_distances_soma.to_csv(os.path.join(parameters.path, "elec_distance_soma.csv"))
 
         # Compute electrotonic distances from nexus
-        if parameters.reduce_cell and parameters.expand_cable:
-          elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.75))
-        elif parameters.reduce_cell:
-          elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.4))
-        elif parameters.build_stylized:
-          elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.999))
-        else:
-          elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
+        from Modules.cell_model import find_nexus_seg
+        # print(f"NEXUS SEG INDEX: {find_nexus_seg(cell, cell.compute_directed_adjacency_matrix())}")
+        # import pdb; pdb.set_trace()
+        elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = segments[find_nexus_seg(cell, cell.compute_directed_adjacency_matrix())])
+        # @DEPRACATING using find_nexus_seg now
+        # if parameters.reduce_cell and parameters.expand_cable:
+        #   elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.75))
+        # elif parameters.reduce_cell:
+        #   elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.4))
+        # # elif parameters.build_stylized: #@DEPRACATING
+        # #   elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.999))
+        # else:
+        #   elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[36](0.961538))
         elec_distances_nexus.to_csv(os.path.join(parameters.path, "elec_distance_nexus.csv"))
 
         # Save constants
@@ -213,7 +239,7 @@ class Simulation:
             if record_runtime:
               runtime_file_path = os.path.join(path, "simulation_runtime.txt")
               with open(runtime_file_path, "w") as runtime_file:
-                  runtime_file.write(f"Simulation runtime: {simulation_runtime:.3f} seconds")
+                  runtime_file.write(f"{simulation_runtime:.3f} seconds")
             #except Exception as e:
             #  self.logger.log(f"Unexpected error in run_single_simulation: {e}")
             
