@@ -18,7 +18,7 @@ EXCLUDE_MECHANISMS = ('pas', 'na_ion', 'k_ion', 'ca_ion', 'h_ion', 'ttx_ion', )
 def reduce_tree(cell, root_section, original_all_segments, original_seg_data, original_adjacency_matrix, op_id=None):
     all_segments, seg_data = cell.get_segments(['all'])
     adjacency_matrix = cell.compute_directed_adjacency_matrix()
-    print(f"Reducing {root_section} and its descendants to single uniform cylindrical cable.")
+    # print(f"Reducing {root_section} and its descendants to single uniform cylindrical cable.")
     # gather the sections and segments to delete.
     root_seg = root_section(0.000001)
     root_seg_index = all_segments.index(root_seg)
@@ -42,7 +42,7 @@ def reduce_tree(cell, root_section, original_all_segments, original_seg_data, or
     
     # get the new cable properties
     new_cable_properties = reduce_subtree(root_section)
-    print(f"new_cable_properties: {new_cable_properties}")
+    # print(f"new_cable_properties: {new_cable_properties}")
     
     # determine nseg for the new branches
     new_cable_nseg = calculate_nsegs_from_lambda(new_cable_properties) + 3
@@ -54,7 +54,7 @@ def reduce_tree(cell, root_section, original_all_segments, original_seg_data, or
         new_section_name  = 'New.' + root_sec_type + '[' + str(op_id)+ ']'
     else:
         new_section_name  = 'New.' + root_sec_type + '[' + str(num_sec_of_root_sec_type)+ ']'
-    print(new_section_name)
+    # print(new_section_name)
     new_section = h.Section(name=new_section_name)
     apply_params_to_section(new_section, new_cable_properties, new_cable_nseg)
     new_section.connect(root_parent_sec(root_connection_x_loc), 0)
@@ -121,7 +121,7 @@ def reduce_tree(cell, root_section, original_all_segments, original_seg_data, or
         
     return deleted_seg_indices, new_section
 
-def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = False, reduce_obliques = False, cell = None):
+def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = False, reduce_obliques = False, reduce_apic = False, cell = None):
     from Modules.cell_model import find_nexus_seg
     from Modules.adjacency import get_divergent_children_of_branching_segments
     from Modules.cell_builder import CellBuilder
@@ -143,6 +143,10 @@ def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = 
         
         return oblique_roots_with_children
     
+    def get_apic_root_sections(cell):
+        soma_apical_children = [sec for sec in cell.soma[0].children() if sec in cell.apic]
+        return soma_apical_children
+    
     if not cell:
         cell, _ = cell_builder.build_cell()
     
@@ -154,18 +158,28 @@ def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = 
     new_sections = []
     
     root_sections_to_reduce = []
+
+    if reduce_apic and (reduce_tufts or reduce_obliques):
+        raise(ValueError("cannot reduce from begininning of apical tree AND obliques or tufts"))
     
     if reduce_tufts:
+        # cell.logger.log(f"Reducing Tufts")
         tuft_root_sections = get_tuft_root_sections(all_segments, nexus_seg_index)
         root_sections_to_reduce += tuft_root_sections
     
     if reduce_basals:
+        # cell.logger.log(f"Reducing Basals")
         basal_root_sections = get_basal_root_sections(cell)
         root_sections_to_reduce += basal_root_sections
     
     if reduce_obliques:
+        # cell.logger.log(f"Reducing Obliques")
         oblique_root_sections = get_oblique_root_sections(adjacency_matrix, all_segments, cell, nexus_seg_index)
         root_sections_to_reduce += oblique_root_sections
+
+    if reduce_apic:
+        apical_root_sections = get_apic_root_sections(cell)
+        root_sections_to_reduce += apical_root_sections
     
     # import pdb; pdb.set_trace()
     
