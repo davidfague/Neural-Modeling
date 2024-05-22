@@ -128,8 +128,9 @@ class CellBuilder:
 			skeleton_cell = self.build_Neymotin_detailed_cell()
 
 		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger)
-		for model_part in ['all','soma','dend','apic','axon']:
-				print(f"{model_part}: {getattr(cell, model_part)}")
+		# @DEPRACATING debugging
+		# for model_part in ['all','soma','dend','apic','axon']:
+		# 		print(f"{model_part}: {getattr(cell, model_part)}")
    
         
     # ----
@@ -147,14 +148,28 @@ class CellBuilder:
 				cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
                            reduce_basals = self.parameters.reduce_basals, 
                            reduce_obliques = self.parameters.reduce_obliques, 
+						   reduce_apic=self.parameters.reduce_apic,
                            cell = cell)
 		else:
 			if self.parameters.reduce_cell_selective:
 					cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
 							reduce_basals = self.parameters.reduce_basals, 
-							reduce_obliques = self.parameters.reduce_obliques, 
+							reduce_obliques = self.parameters.reduce_obliques,
+							reduce_apic=self.parameters.reduce_apic,
 							cell = cell)
 					if not self.parameters.all_synapses_off: self.build_synapses(cell, random_state)
+			else:
+				if not self.parameters.all_synapses_off: self.build_synapses(cell, random_state)
+		
+		reductor = Reductor(logger = self.logger)
+		if self.parameters.optimize_nseg_by_lambda:
+				self.logger.log("Updating nseg using lambda.")
+				reductor.update_model_nseg_using_lambda(cell)
+		if self.parameters.merge_synapses:
+				self.logger.log("Merging synapses.")
+				reductor.merge_synapses(cell)
+
+
    
 
     #---
@@ -182,7 +197,7 @@ class CellBuilder:
    
 		# ----
 
-		# Add current injection
+		# Add current 
 		if self.parameters.CI_on:
 			cell.set_injection(
 				amp = self.parameters.h_i_amplitude,
@@ -197,10 +212,9 @@ class CellBuilder:
 		run_time = end_time - start_time
 		self.logger.log(f"Finish building in {run_time}")
     # Record the  runtime to a file
-		# runtime_file_path = os.path.join(self.parameters.path, "builder_runtime.txt")
-		# os.mkdir(runtime_file_path)
-		# with open(runtime_file_path, "w") as runtime_file:
-		# 		runtime_file.write(f"builder runtime: {run_time} seconds")
+		runtime_file_path = os.path.join(self.parameters.path, "builder_runtime.txt")
+		with open(runtime_file_path, "w") as runtime_file:
+				runtime_file.write(f"{run_time} seconds")
         
 		return cell, skeleton_cell
  
@@ -322,7 +336,7 @@ class CellBuilder:
 				
 	def build_soma_synapses(self, cell) -> None:
 		
-		if (self.parameters.CI_on) or (not self.parameters.add_soma_inh_synapses):
+		if (not self.parameters.add_soma_inh_synapses):# or (self.parameters.CI_on):
 			return None
 		
 		# inh_soma_P_dist = partial(
@@ -347,8 +361,8 @@ class CellBuilder:
 			
 	def build_inhibitory_synapses(self, cell) -> None:
 		
-		if self.parameters.CI_on:
-			return None
+		# if self.parameters.CI_on:
+		# 	return None
 		
 		# Inhibitory release probability distributions
 		# inh_apic_P_dist = partial(
@@ -382,8 +396,8 @@ class CellBuilder:
 			
 	def build_excitatory_synapses(self, cell) -> None:
 		
-		if self.parameters.CI_on:
-			return None
+		# if self.parameters.CI_on:
+		# 	return None
 
 		# Excitatory gmax distribution
 		gmax_exc_dist = partial(
