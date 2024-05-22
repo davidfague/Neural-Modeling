@@ -139,13 +139,6 @@ class SimulationParameters:
 	# reduction_before_synapses: bool = False
 	Hay_biophys: str = "L5PCbiophys3.hoc"
 	# use_mm: bool = False
-
-	# recorders
-	record_soma_spikes: bool = True
-	record_axon_spikes: bool = False
-	record_all_channels: bool = False
-	record_all_synapses: bool = False
-	record_all_v: bool = True
  
   # stylized (depracating)
 	# build_stylized: bool = False
@@ -165,10 +158,12 @@ class SimulationParameters:
  
 	# new reduction parameters
 	reduce_cell_NRCE: bool = False # depracting NRCE
-	reduce_cell_selective:bool = False
+	reduce_cell_selective:bool = True
 	reduce_tufts: bool = False
+	reduce_apic: bool = False # cannot do apic with tufts or oblique
 	reduce_basals: bool = False
 	reduce_obliques: bool = False
+	synapse_mapping: bool = True # True places synapses on complex cell and maps them using transfer impedance. False places synapses onto reduced cell
   
 
 class HayParameters(SimulationParameters):
