@@ -421,6 +421,15 @@ class CellBuilder:
 		else:
 			raise NotImplementedError
 
+		to_remove = []
+		for seg, id in zip(segments, range(len(segments))):
+			if h.distance(seg, cell.soma[0](0.5)) < 100:
+				to_remove.append(id)
+
+		# Remove segments and probs based on collected indices
+		segments = [seg for i, seg in enumerate(segments) if i not in to_remove]
+		probs = [prob for i, prob in enumerate(probs) if i not in to_remove]
+
 		cell.add_synapses_over_segments(
 			segments = segments,
 			nsyn = self.parameters.exc_synaptic_density if self.parameters.exc_use_density else self.parameters.exc_syn_number,
