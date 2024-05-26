@@ -65,6 +65,8 @@ class Simulation:
         # Build the cell
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
         cell, _ = cell_builder.build_cell()
+        print(f"Synapses: {len(cell.synapses)}")
+        print(f"Sections: {len(cell.all)}")
 
         # Save the (parent, child) adjacency matrix
         adj_matrix = cell.compute_directed_adjacency_matrix()

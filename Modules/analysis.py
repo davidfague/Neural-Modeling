@@ -333,7 +333,7 @@ class CellGraph:
         end_coords = r.apply(self.end_coords)
 
         if color is not None:
-            cmap = colormaps.get_cmap("Spectral")
+            cmap = colormaps.get_cmap("coolwarm")
             # Normalize because color maps are defined in [0, 1]
             norm = colors.Normalize(np.min(color), np.max(color))
             fig.colorbar(cm.ScalarMappable(norm = norm, cmap = cmap), ax = ax, fraction = 0.026, pad = 0.04)
