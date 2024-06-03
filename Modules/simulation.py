@@ -12,6 +12,7 @@ import pickle, h5py
 import pandas as pd
 
 from multiprocessing import Pool, cpu_count, Lock
+import numpy as np
 import time
 
 # Global lock and flag for DLL loading
@@ -86,6 +87,9 @@ class Simulation:
         # Build the cell
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
         cell, _ = cell_builder.build_cell()
+        
+        adj_matrix = cell.compute_directed_adjacency_matrix()
+        np.savetxt(os.path.join(parameters.path, "adj_matrix.txt"), adj_matrix)
 
         # Classify segments by morphology, save coordinates
         segments, seg_data = cell.get_segments(["all"]) # (segments is returned here to preserve NEURON references)
@@ -101,7 +105,7 @@ class Simulation:
             # if parameters.build_stylized: #@DEPRACATED
             #     sec_name = entry.section.split(".")[-1]
             # else:
-            sec_name = entry.section.split(".")[1] # name[idx]
+            sec_name = entry.section.split(".")[-1] # name[idx]
             #print(f"sec_name: {sec_name}")
             seg_sections.append(sec_name.split("[")[0])
             seg_idx.append(sec_name.split("[")[1].split("]")[0])
@@ -113,7 +117,7 @@ class Simulation:
             
         seg_sections = pd.DataFrame({
             "section": seg_sections, 
-            "idx_in_section": seg_idx, 
+            "idx_in_section_type": seg_idx,
             "seg_half_seg_RA": seg_half_seg_RAs,
             "L": seg_Ls,
             "seg":seg,
@@ -128,13 +132,68 @@ class Simulation:
         # Compute electrotonic distances from soma
         elec_distances_soma = cell.compute_electrotonic_distance(from_segment = cell.soma[0](0.5))
         elec_distances_soma.to_csv(os.path.join(parameters.path, "elec_distance_soma.csv"))
+        
+        if not parameters.reduce_apic:
+            nexus_seg_index = cell.find_nexus_seg()
+        else:
+            nexus_seg_index = segments.index(cell.apic[0](0.4)) #New.apic[109](0.386364),New.apic[109](0.431818), chooses seg 0.386. may need to check
+            # raise(NotImplementedError('Need to implement find_nexus_seg for reducing entire apical'))
+        
+        self.replace_dend_with_CI(cell, parameters, segments, nexus_seg_index)
+        # @DEPRACATING replacing with above function
+        # if parameters.disable_apic_37:
+        #     if (parameters.reduce_tufts):
+        #         cell.apic[-1].push()
+        #     else:
+        #         cell.apic[37].push()
+        #     # Delete one of the apical branches and replace with equivalent current injection
+        #     h.disconnect()
+        #     # cell.apic_clamp = h.IClamp(cell.apic[36](0.5))
+        #     # cell.apic_clamp.amp = 10
+        #     # cell.apic_clamp.dur = 2000
+        #     # cell.apic_clamp.delay = 0
+        #     cell.apic_clamp = []
+        #     mean = 0.05367143905642357
+        #     std =  0.07637665047239821
+        #     print("tstop", parameters.h_tstop)
+        #     np.random.seed(123)
+        #     for i in range(parameters.h_tstop):
+        #         clamp_i = h.IClamp(segments[nexus_seg_index])#cell.apic[36](0.5))
+        #         clamp_i.amp = np.abs(np.random.normal(mean, std))
+        #         clamp_i.dur = 1
+        #         clamp_i.delay = i
+        #         cell.apic_clamp.append(clamp_i)
+        # elif parameters.disable_basal_1st:
+        #     for sec in cell.soma[0].children():
+        #         if sec in cell.dend:
+        #             sec.push()
+        #             break
+        #     # Delete one of the apical branches and replace with equivalent current injection
+        #     h.disconnect()
+        #     # cell.apic_clamp = h.IClamp(cell.apic[36](0.5))
+        #     # cell.apic_clamp.amp = 10
+        #     # cell.apic_clamp.dur = 2000
+        #     # cell.apic_clamp.delay = 0
+        #     cell.dend_clamp = []
+        #     mean = -0.002
+        #     std =  0.037
+        #     print("tstop", parameters.h_tstop)
+        #     np.random.seed(123)
+        #     for i in range(parameters.h_tstop):
+        #         clamp_i = h.IClamp(segments[0])#cell.apic[36](0.5))
+        #         clamp_i.amp = np.abs(np.random.normal(mean, std))
+        #         clamp_i.dur = 1
+        #         clamp_i.delay = i
+        #         cell.dend_clamp.append(clamp_i)
+                
+        if parameters.reduce_soma_gpas:
+            cell.soma[0](0.5).g_pas = 10 * cell.soma[0](0.5).g_pas
 
         # Compute electrotonic distances from nexus
-        from Modules.cell_model import find_nexus_seg
+        elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = segments[nexus_seg_index])
         # print(f"NEXUS SEG INDEX: {find_nexus_seg(cell, cell.compute_directed_adjacency_matrix())}")
         # import pdb; pdb.set_trace()
-        elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = segments[find_nexus_seg(cell, cell.compute_directed_adjacency_matrix())])
-        # @DEPRACATING using find_nexus_seg now
+        # @DEPRACATING using find_nexus_seg now @KEEP for reference to the nexus segments of models
         # if parameters.reduce_cell and parameters.expand_cable:
         #   elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = cell.apic[0](0.75))
         # elif parameters.reduce_cell:
@@ -154,6 +213,101 @@ class Simulation:
         else:
           self.set_all_recorders(cell, parameters)
           self.simulate(cell, parameters)
+          
+    def replace_dend_with_CI(self, cell, parameters, segments, nexus_seg_index):
+        # if parameters.reduce_apic: # should be fine since there are no nexus children in this case.
+        #     NotImplementedError()
+        nexus_sec = segments[nexus_seg_index].sec
+        tuft_sections = nexus_sec.children()
+        if parameters.num_tuft_to_replace_with_CI > len(tuft_sections):
+            ValueError()
+        tuft_sections_to_replace = [tuft_sec for i,tuft_sec in enumerate(tuft_sections) if i < parameters.num_tuft_to_replace_with_CI]
+        for i, tuft_section in enumerate(tuft_sections_to_replace):
+            if i == 0:
+                cell.tuft_clamps = []
+                
+            tuft_section.push()
+            h.disconnect()
+            self.delete_sec_and_children(tuft_section, cell)
+            
+            cell.tuft_clamps.append(h.IClamp(nexus_sec(0.999999)))
+            vec_stim = h.Vector()
+            (mean, std) = parameters.tuft_AC_stats[i]
+            np.random.seed(123)
+            stim_values = np.random.normal(mean, std, parameters.h_tstop)
+            
+            vec_stim.from_python(stim_values)
+            vec_time = h.Vector(np.arange(parameters.h_tstop))
+            
+            vec_stim.play(cell.tuft_clamps[i]._ref_amp, vec_time, 1)
+        
+        soma_sec = cell.soma[0]
+        basal_sections= [basal_sec for basal_sec in soma_sec.children() if basal_sec in cell.dend]
+        if parameters.num_basal_to_replace_with_CI > len(basal_sections):
+            ValueError()
+        basal_sections_to_replace = [basal_sec for i,basal_sec in enumerate(basal_sections) if i < parameters.num_basal_to_replace_with_CI]
+        for i, basal_section in enumerate(basal_sections_to_replace):
+            if i == 0:
+                cell.basal_clamps = []
+                
+            basal_section.push()
+            h.disconnect()
+            self.delete_sec_and_children(basal_section, cell)
+            
+            cell.basal_clamps.append(h.IClamp(soma_sec(0.5)))
+            vec_stim = h.Vector()
+            (mean, std) = parameters.basal_AC_stats[i]
+            np.random.seed(123)
+            stim_values = np.random.normal(mean, std, parameters.h_tstop)
+            
+            vec_stim.from_python(stim_values)
+            vec_time = h.Vector(np.arange(parameters.h_tstop))
+
+            vec_stim.play(cell.basal_clamps[i]._ref_amp, vec_time, 1)
+        
+    def delete_sec_and_children(self, section, cell):
+        sections_to_delete = self.get_all_children(section, [])
+        for sec in sections_to_delete:
+            sec_type = str(sec).split('.')[-1].split('[')[0]
+            getattr(cell, sec_type).remove(sec)
+            cell.all.remove(sec)
+            h.delete_section(sec=sec)
+            
+    def get_all_children(self, sec, all_list):
+        all_list.append(sec)
+        for child in sec.children():
+            self.get_all_children(child, all_list)
+        return all_list
+        
+        # @DEPRACATING replace dend with CI
+        # if parameters.disable_apic_37:
+        #     target_section = cell.apic[-1] if (parameters.reduce_cell_selective and parameters.reduce_tufts) else cell.apic[37]
+        #     target_section.push()
+        #     h.disconnect()
+        #     cell.apic_clamp = h.IClamp(target_section(0.5))
+        #     vec_stim = h.Vector()
+        #     mean = 0.05367143905642357
+        #     std = 0.07637665047239821
+        #     np.random.seed(123)
+        #     stim_values = np.random.normal(mean, std, parameters.h_tstop)
+        #     vec_stim.from_python(stim_values)
+        #     vec_time = h.Vector(np.arange(parameters.h_tstop))
+        #     vec_stim.play(cell.apic_clamp._ref_amp, vec_time, 1)
+        # elif parameters.disable_basal_1st:
+        #     for sec in cell.soma[0].children():
+        #         if sec in cell.dend:
+        #             sec.push()
+        #             break
+        #     h.disconnect()
+        #     cell.dend_clamp = h.IClamp(segments[0])
+        #     vec_stim = h.Vector()
+        #     mean = -0.002
+        #     std = 0.037
+        #     np.random.seed(123)
+        #     stim_values = np.random.normal(mean, std, parameters.h_tstop)
+        #     vec_stim.from_python(stim_values)
+        #     vec_time = h.Vector(np.arange(parameters.h_tstop))
+        #     vec_stim.play(cell.dend_clamp._ref_amp, vec_time, 1)
 
     def set_all_recorders(self, cell, parameters: SimulationParameters):
         # Set recorders
@@ -285,6 +439,8 @@ class Simulation:
     #         df_results.to_csv(os.path.join(path, 'EPSP_simulation_results.csv'), index=False)
     
     #         return df_results
+    
+    
 
 def is_indexable(obj: object):
     """
