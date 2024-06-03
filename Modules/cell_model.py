@@ -11,21 +11,7 @@ from logger import Logger
 
 from dataclasses import dataclass
 
-from adjacency import find_branching_seg_with_most_branching_descendants_in_subset_y
-def find_nexus_seg(cell_model, adjacency_matrix): # from MM temporarily
-  all_seg_list, seg_data = cell_model.get_segments(['all'])
-  #print(f"seg_data[379].coords['p1_1']: {seg_data[379].coords['p1_1']}")
-  y_coords = []
-  for i, seg in enumerate(all_seg_list):
-    y_coord = seg_data[i].coords["p1_1"].iloc[0] if not seg_data[i].coords["p1_1"].empty else None
-    y_coords.append(y_coord)
-  #print(f"y_coords: {y_coords}")
-  #print(f"all_seg_list: {all_seg_list}")
-  apical_segment_indices = [i for i, seg in enumerate(all_seg_list) if 'apic' in str(seg)]
-  #print(f"apical_segment_indices: {apical_segment_indices}")
-  nexus_index_in_all_list, _ = find_branching_seg_with_most_branching_descendants_in_subset_y(adjacency_matrix, apical_segment_indices, y_coords)
-  #print(f"The found apical nexus segment is: {all_seg_list[nexus_index_in_all_list]}")
-  return nexus_index_in_all_list
+from adjacency import find_branching_seg_with_most_branching_descendants_in_subset_y, get_divergent_children_of_branching_segments
 
 @dataclass
 class SegmentData:
@@ -272,7 +258,7 @@ class CellModel:
 		datas = []
 
 		for sec in self.all:
-			if (sec.name().split(".")[1].split("[")[0] in section_names) or ("all" in section_names):
+			if (sec.name().split(".")[-1].split("[")[0] in section_names) or ("all" in section_names):
 				for index_in_section, seg in enumerate(sec):
 					data = SegmentData(
 						L = seg.sec.L / seg.sec.nseg,
@@ -322,7 +308,7 @@ class CellModel:
 
 			if release_p is not None:
 				if isinstance(release_p, dict):
-					sec_type = segment.sec.name().split('.')[1][:4]
+					sec_type = segment.sec.name().split(".")[-1].split("[")[0]#segment.sec.name().split('.')[1][:4]
 					p = release_p[sec_type](size = 1)
 				else:
 					p = release_p(size = 1) # release_p is partial
@@ -363,7 +349,7 @@ class CellModel:
 		if target == 'soma':
 			self.current_injection = h.IClamp(self.soma[0](0.5))
 		elif target == 'nexus':
-			nexus_segment = find_nexus_seg(self, self.compute_directed_adjacency_matrix())
+			nexus_segment = self.find_nexus_seg()
 			segments, _ = self.get_segments(['all'])
 			self.current_injection = h.IClamp(segments[nexus_segment])
 		self.current_injection.amp = amp
@@ -371,6 +357,50 @@ class CellModel:
 		self.current_injection.delay = delay
 
 	# ---------- MORPHOLOGY ----------
+ 
+	def find_nexus_seg(self): # TODO: implement for entire apic reduced (in this case nexus is not a branching point and will need to use the seg_to_seg mapping)
+		all_seg_list, seg_data = self.get_segments(['all'])
+		adjacency_matrix = self.compute_directed_adjacency_matrix()
+		#print(f"seg_data[379].coords['p1_1']: {seg_data[379].coords['p1_1']}")
+		y_coords = []
+		for i, seg in enumerate(all_seg_list):
+			y_coord = seg_data[i].coords["p1_1"].iloc[0] if not seg_data[i].coords["p1_1"].empty else None
+			y_coords.append(y_coord)
+		#print(f"y_coords: {y_coords}")
+		#print(f"all_seg_list: {all_seg_list}")
+		apical_segment_indices = [i for i, seg in enumerate(all_seg_list) if 'apic' in str(seg)]
+		#print(f"apical_segment_indices: {apical_segment_indices}")
+		nexus_index_in_all_list, _ = find_branching_seg_with_most_branching_descendants_in_subset_y(adjacency_matrix, apical_segment_indices, y_coords)
+		#print(f"The found apical nexus segment is: {all_seg_list[nexus_index_in_all_list]}")
+		return nexus_index_in_all_list
+ 
+	def get_tuft_root_sections(self):
+		all_segments, _ = self.get_segments(['all'])
+		nexus_seg_index = self.find_nexus_seg()
+		nexus_seg = all_segments[nexus_seg_index]
+		return nexus_seg.sec.children()
+
+	def get_basal_root_sections(self):
+		soma_basal_children = [sec for sec in self.soma[0].children() if sec in self.dend]
+		return soma_basal_children
+
+	def get_oblique_root_sections(self):
+		all_segments, _ = self.get_segments(['all'])
+		nexus_seg_index = self.find_nexus_seg()
+		adjacency_matrix = self.compute_directed_adjacency_matrix()
+		apic_trunk_root_seg_index = all_segments.index(all_segments[0].sec.children()[1](0.0001))
+		oblique_root_seg_indices = get_divergent_children_of_branching_segments(adjacency_matrix, start=apic_trunk_root_seg_index, end=nexus_seg_index)
+		oblique_root_sections = [all_segments[seg_index].sec for seg_index in oblique_root_seg_indices]
+        
+		oblique_roots_with_children = [sec for sec in oblique_root_sections if len(sec.children()) > 0]
+		oblique_roots_with_children_seg_indices = [all_segments.index(seg) for sec in oblique_roots_with_children for seg in sec]
+        
+		return oblique_roots_with_children
+    
+    # older
+	def get_apic_root_sections(self):
+		soma_apical_children = [sec for sec in self.soma[0].children() if sec in self.apic]
+		return soma_apical_children
 
 	def get_basals(self) -> list:
 		return self.find_terminal_sections(self.dend)
