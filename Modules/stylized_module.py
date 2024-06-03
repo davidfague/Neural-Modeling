@@ -128,10 +128,10 @@ class StylizedCell(ABC):
         if ('soma' in name):
           sec_type_index = 0
           name = f'stylized_model[0].soma[{sec_type_index}]'
-        elif ('apic' in name) or ('oblique' in name) or ('tuft' in name):
+        elif ('apic' in name) or ('oblique' in name) or ('tuft' in name) or ('trunk' in name):
           sec_type_index = len(self.apic) + 1
           name = f'stylized_model[0].apic[{sec_type_index}]'
-        elif 'basal' in name:
+        elif ('basal' in name) or ('dend' in name):
           sec_type_index = len(self.dend) + 1
           name = f'stylized_model[0].dend[{sec_type_index}]'
         elif 'axon' in name:
@@ -141,9 +141,9 @@ class StylizedCell(ABC):
         sec = h.Section(name=name, cell=self)
         sec.diam = diam
         self.all.append(sec)
-        if ('apic' in name) or ('oblique' in name) or ('tuft' in name):
+        if ('apic' in name) or ('oblique' in name) or ('tuft' in name) or ('trunk' in name):
           self.apic.append(sec)
-        elif 'basal' in name:
+        elif ('basal' in name) or ('dend' in name):
           self.dend.append(sec)
         elif 'axon' in name:
           self.axon.append(sec)
@@ -361,14 +361,14 @@ class StylizedCell(ABC):
 
         
 
-
-        if self.biophys is not None:
-            # print('length of default_biophys:',len(default_biophys))
-            # print('length of self.biophys:',len(self.biophys))
-            for i in range(len(self.biophys)):
-                if self.biophys[i]>=0:
-                    default_biophys[i]=self.biophys[i]
         self.biophys = default_biophys
+        # if self.biophys is not None:
+        #     # print('length of default_biophys:',len(default_biophys))
+        #     # print('length of self.biophys:',len(self.biophys))
+        #     for i in range(len(self.biophys)):
+        #         if self.biophys[i]>=0:
+        #             default_biophys[i]=self.biophys[i]
+        # self.biophys = default_biophys
 
     def biophysical_division(self):
         """Define biophysical division in morphology"""
@@ -425,18 +425,135 @@ class Cell(StylizedCell):
         super().__init__(geometry,dL,vrest)
         #self.record_soma_v() # uncomment this if want to record soma voltage
     
+#     def set_channels(self):
+#         """Define biophysical properties, insert channels"""
+# #         self.set_all_passive(gl=0.0003)  # soma,dend both have gl
+#         gl_soma=15e-5
+#         gl_dend=1e-5
+#         for sec in self.all:
+#             sec.cm = 1.0
+#             sec.insert('pas')
+#             sec.e_pas = self._vrest
+#         self.soma.g_pas = gl_soma
+#         for sec in self.all[1:]:
+#             sec.g_pas = gl_dend
+#         h.v_init = self._vrest
+        
     def set_channels(self):
         """Define biophysical properties, insert channels"""
-#         self.set_all_passive(gl=0.0003)  # soma,dend both have gl
-        gl_soma=15e-5
-        gl_dend=1e-5
+        self.define_biophys_entries()
+        # common parameters
         for sec in self.all:
-            sec.cm = 1.0
+            sec.cm = 2.0
+            sec.Ra = 100
             sec.insert('pas')
             sec.e_pas = self._vrest
-        self.soma.g_pas = gl_soma
-        for sec in self.all[1:]:
-            sec.g_pas = gl_dend
+        # fixed parameters
+        soma = self.soma
+        soma.cm = 1.0           # Originally 1 
+        soma.insert('NaTa_t')  # Sodium channel
+        soma.insert('SKv3_1')  # Potassium channel
+        soma.insert('Ca_HVA')
+        soma.insert('Ca_LVAst')
+        soma.insert('CaDynamics_E2')
+        soma.insert('Ih')
+        soma.insert('SK_E2')
+        soma.insert('K_Tst')
+        soma.insert('K_Pst')
+        soma.insert('Nap_Et2')
+        soma.ena = 50
+        soma.ek = -85
+        
+
+        for isec in self.grp_ids[1]:        #prox,mid,dist basal; proxtrunk; oblique
+            sec = self.get_sec_by_id(isec) 
+            sec.insert('NaTa_t')
+            sec.insert('SKv3_1')
+            sec.insert('Ca_HVA')
+            sec.insert('Ca_LVAst')
+            sec.insert('Im')
+            sec.insert('CaDynamics_E2')
+            sec.insert('Ih')
+            sec.insert('SK_E2')
+            sec.ena = 50
+            sec.ek = -85
+
+        for isec in self.grp_ids[2]:
+            sec = self.get_sec_by_id(isec)  # Mid Trunk
+            sec.insert('NaTa_t')
+            sec.insert('SKv3_1')
+            sec.insert('Ca_HVA')
+            sec.insert('Ca_LVAst')
+            sec.insert('Im')
+            sec.insert('CaDynamics_E2')
+            sec.insert('Ih')
+            sec.insert('SK_E2')
+            sec.ena = 50
+            sec.ek = -85
+
+
+        for isec in self.grp_ids[3]:
+            sec = self.get_sec_by_id(isec)  # Distal Trunk
+            sec.insert('NaTa_t')
+            sec.insert('SKv3_1')
+            sec.insert('Ca_HVA')
+            sec.insert('Ca_LVAst')
+            sec.insert('Im')
+            sec.insert('CaDynamics_E2')
+            sec.insert('Ih')
+            sec.insert('SK_E2')
+            sec.ena = 50
+            sec.ek = -85
+
+        for isec in self.grp_ids[4]:
+            sec = self.get_sec_by_id(isec)  # Tuft dendrites
+            sec.insert('NaTa_t')
+            sec.insert('SKv3_1')
+            sec.insert('Ca_HVA')
+            sec.insert('Ca_LVAst')
+            sec.insert('Im')
+            sec.insert('CaDynamics_E2')
+            sec.insert('Ih')
+            sec.insert('SK_E2')
+            sec.ena = 50
+            sec.ek = -85
+
+
+        for isec in self.grp_ids[5]:
+            sec = self.get_sec_by_id(isec)  # axon
+            sec.cm = 2.0
+            sec.insert('NaTa_t')
+            sec.insert('SKv3_1')
+            sec.insert('Ca_HVA')
+            sec.insert('Ca_LVAst')
+            sec.insert('Im')
+            sec.insert('CaDynamics_E2')
+            sec.insert('Ih')
+            sec.insert('SK_E2')
+            sec.insert('K_Tst')
+            sec.insert('K_Pst')
+            sec.insert('Nap_Et2')
+            sec.ena = 50
+            sec.ek = -85
+		        
+        for isec in self.grp_ids[6]:
+            sec = self.get_sec_by_id(isec)  # inactive basal dendrites
+            sec.cm = 3.0
+            sec.insert('NaTa_t')
+            sec.insert('SKv3_1')
+            sec.insert('Ca_HVA')
+            sec.insert('Ca_LVAst')
+            sec.insert('CaDynamics_E2')
+            sec.insert('Ih')
+            sec.ena = 50
+            sec.ek = -85
+            # sec.Ra = 100000
+            # sec.e_pas = 200
+
+        # variable parameters
+        for i,entry in enumerate(self.biophys_entries):
+            for sec in self.get_sec_by_id(self.grp_ids[entry[0]]):
+                setattr(sec,entry[1],self.biophys[i])
         h.v_init = self._vrest
     
 #    def record_soma_v(self):
