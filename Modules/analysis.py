@@ -165,16 +165,14 @@ class Trace:
 class CurrentTrace(Trace):
     
     @staticmethod
-    def compute_axial_currents(v, seg_data):
-        cg = CellGraph(seg_data)
-        print("Computing adjacency matrix...")
-        adj_matrix = cg.compute_adjacency_matrix()
-        ac_matrix = np.zeros_like(v)
-        for i in range(cg.N):
+    def compute_axial_currents(v, seg_data, adj_matrix):
+        ac_matrix = np.zeros((len(adj_matrix), len(adj_matrix), v.shape[-1]))
+        for i in range(len(adj_matrix)):
+            # Children
             for j in np.where(adj_matrix[i, :] == 1)[0]:
-                ac = (v[i] - v[j]) / (seg_data.loc[i, "seg_half_seg_RA"] + seg_data.loc[j, "seg_half_seg_RA"])
-                ac_matrix[i, :] = ac_matrix[i, :] + ac
-                ac_matrix[j, :] = ac_matrix[j, :] + ac
+                # Child - parent
+                ac = -(v[i] - v[j]) / (seg_data.loc[i, "seg_half_seg_RA"] + seg_data.loc[j, "seg_half_seg_RA"])
+                ac_matrix[i, j] = ac
         return ac_matrix
 
 def plot_spike_windows(spike_times, v_Na, v_Soma, window_size=10):
