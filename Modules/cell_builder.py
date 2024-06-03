@@ -115,10 +115,10 @@ class CellBuilder:
 		# Build skeleton cell
 		self.logger.log(f"Building {self.cell_type}.")
    
-		# if self.parameters.build_stylized:
-		# 	skeleton_cell = self.build_stylized_cell()
+		if self.parameters.build_stylized:
+			skeleton_cell = self.build_stylized_cell()
 
-		if self.cell_type == SkeletonCell.Hay:
+		elif self.cell_type == SkeletonCell.Hay:
 			skeleton_cell = self.build_Hay_cell()
 
 		elif self.cell_type == SkeletonCell.HayNeymotin:
@@ -143,23 +143,23 @@ class CellBuilder:
   
 	# Build synapses & reduce cell
 		if self.parameters.synapse_mapping:
-			if not self.parameters.all_synapses_off: self.build_synapses(cell, random_state)
-			if self.parameters.reduce_cell_selective:
+			self.build_synapses(cell, random_state)
+			if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
 				cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
                            reduce_basals = self.parameters.reduce_basals, 
                            reduce_obliques = self.parameters.reduce_obliques, 
 						   reduce_apic=self.parameters.reduce_apic,
                            cell = cell)
 		else:
-			if self.parameters.reduce_cell_selective:
+			if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
 					cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
 							reduce_basals = self.parameters.reduce_basals, 
 							reduce_obliques = self.parameters.reduce_obliques,
 							reduce_apic=self.parameters.reduce_apic,
 							cell = cell)
-					if not self.parameters.all_synapses_off: self.build_synapses(cell, random_state)
+					self.build_synapses(cell, random_state)
 			else:
-				if not self.parameters.all_synapses_off: self.build_synapses(cell, random_state)
+				self.build_synapses(cell, random_state)
 		
 		reductor = Reductor(logger = self.logger)
 		if self.parameters.optimize_nseg_by_lambda:
@@ -219,6 +219,10 @@ class CellBuilder:
 		return cell, skeleton_cell
  
 	def build_synapses(self, cell, random_state):
+		if (self.parameters.all_synapses_off):
+			self.logger.log("Not building synapses.")
+			return None
+		
 		# craete synapse objects
 		self.logger.log("Building excitatory synapses.")
 		self.build_excitatory_synapses(cell = cell)
@@ -346,7 +350,10 @@ class CellBuilder:
 		# 	size = 1)
 		
 		segments, seg_data = cell.get_segments(["soma"])
-		probs = [data.membrane_surface_area for data in seg_data]
+		if self.parameters.use_SA_probs:
+			probs = [seg.membrane_surface_area for seg in seg_data]
+		else:
+			probs = [seg.L for seg in seg_data]
 		
 		cell.add_synapses_over_segments(
 			segments = segments,
@@ -416,10 +423,10 @@ class CellBuilder:
 		# 	size = 1)
 
 		segments, seg_data = cell.get_segments(["apic", "dend"])
-		if self.parameters.use_SA_exc:
-			probs = [data.membrane_surface_area for data in seg_data]
+		if self.parameters.use_SA_probs:
+			probs = [seg.membrane_surface_area for seg in seg_data]
 		else:
-			raise NotImplementedError
+			probs = [seg.L for seg in seg_data]
 
 		to_remove = []
 		for seg, id in zip(segments, range(len(segments))):
