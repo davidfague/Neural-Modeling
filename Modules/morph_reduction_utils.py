@@ -15,7 +15,7 @@ from logger import Logger
 from adjacency import get_all_descendants, find_terminal_descendants
 EXCLUDE_MECHANISMS = ('pas', 'na_ion', 'k_ion', 'ca_ion', 'h_ion', 'ttx_ion', )
 
-def reduce_tree(cell, root_section, original_all_segments, original_seg_data, original_adjacency_matrix, op_id=None):
+def reduce_tree(cell, root_section, op_id=None):
     all_segments, seg_data = cell.get_segments(['all'])
     adjacency_matrix = cell.compute_directed_adjacency_matrix()
     # print(f"Reducing {root_section} and its descendants to single uniform cylindrical cable.")
@@ -122,37 +122,14 @@ def reduce_tree(cell, root_section, original_all_segments, original_seg_data, or
     return deleted_seg_indices, new_section
 
 def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = False, reduce_obliques = False, reduce_apic = False, cell = None):
-    from Modules.cell_model import find_nexus_seg
-    from Modules.adjacency import get_divergent_children_of_branching_segments
     from Modules.cell_builder import CellBuilder
-    def get_tuft_root_sections(all_segments, nexus_seg_index):
-        nexus_seg = all_segments[nexus_seg_index]
-        return nexus_seg.sec.children()
-
-    def get_basal_root_sections(cell):
-        soma_basal_children = [sec for sec in cell.soma[0].children() if sec in cell.dend]
-        return soma_basal_children
-
-    def get_oblique_root_sections(adjacency_matrix, all_segments, cell, nexus_seg_index):
-        apic_trunk_root_seg_index = all_segments.index(all_segments[0].sec.children()[1](0.0001))
-        oblique_root_seg_indices = get_divergent_children_of_branching_segments(adjacency_matrix, start=apic_trunk_root_seg_index, end=nexus_seg_index)
-        oblique_root_sections = [all_segments[seg_index].sec for seg_index in oblique_root_seg_indices]
-        
-        oblique_roots_with_children = [sec for sec in oblique_root_sections if len(sec.children()) > 0]
-        oblique_roots_with_children_seg_indices = [all_segments.index(seg) for sec in oblique_roots_with_children for seg in sec]
-        
-        return oblique_roots_with_children
     
-    def get_apic_root_sections(cell):
-        soma_apical_children = [sec for sec in cell.soma[0].children() if sec in cell.apic]
-        return soma_apical_children
-    
-    if not cell:
+    if cell is None:
         cell, _ = cell_builder.build_cell()
     
-    adjacency_matrix = cell.compute_directed_adjacency_matrix()
+    # adjacency_matrix = cell.compute_directed_adjacency_matrix()
     all_segments, original_seg_data = cell.get_segments(['all'])
-    nexus_seg_index = find_nexus_seg(cell, adjacency_matrix)
+    # nexus_seg_index = cell.find_nexus_seg()
     
     all_deleted_seg_indices = []
     new_sections = []
@@ -164,28 +141,28 @@ def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = 
     
     if reduce_tufts:
         # cell.logger.log(f"Reducing Tufts")
-        tuft_root_sections = get_tuft_root_sections(all_segments, nexus_seg_index)
+        tuft_root_sections = cell.get_tuft_root_sections()
         root_sections_to_reduce += tuft_root_sections
     
     if reduce_basals:
         # cell.logger.log(f"Reducing Basals")
-        basal_root_sections = get_basal_root_sections(cell)
+        basal_root_sections = cell.get_basal_root_sections()
         root_sections_to_reduce += basal_root_sections
     
     if reduce_obliques:
         # cell.logger.log(f"Reducing Obliques")
-        oblique_root_sections = get_oblique_root_sections(adjacency_matrix, all_segments, cell, nexus_seg_index)
+        oblique_root_sections = cell.get_oblique_root_sections()
         root_sections_to_reduce += oblique_root_sections
 
     if reduce_apic:
-        apical_root_sections = get_apic_root_sections(cell)
+        apical_root_sections = cell.get_apic_root_sections()
         root_sections_to_reduce += apical_root_sections
     
     # import pdb; pdb.set_trace()
     
     for i,root_section in enumerate(root_sections_to_reduce):
         try:
-            deleted_seg_indices, new_section = reduce_tree(cell, root_section, all_segments, original_seg_data, adjacency_matrix)
+            deleted_seg_indices, new_section = reduce_tree(cell, root_section)
         except Exception as e:
             error_msg = f"Failed to reduce tree for section '{i} {str(root_section)}'. Error: {str(e)}"
             # # Optionally, include additional details:
