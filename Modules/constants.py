@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from synapse import CS2CP_syn_params, CP2CP_syn_params, FSI_syn_params, LTS_syn_params
 
 @dataclass
@@ -50,7 +50,7 @@ class SimulationParameters:
 	inh_use_density: bool = True # setting to false uses "inh_syn_number" instead of "inh_synaptic_density"
 	exc_syn_number: int = 700
 	inh_syn_number: int = 150 
-	use_SA_exc: bool = True # Use surface area instead of lengths for the synapse's segment assignment probabilities (does not yet change the total number calculated using density?)
+	use_SA_probs: bool = True # Use surface area instead of lengths for the synapse's segment assignment probabilities (does not yet change the total number calculated using density?)
 
 	# Synapse Release probability distributions
 	exc_P_release_mean: float = 0.53
@@ -140,9 +140,9 @@ class SimulationParameters:
 	Hay_biophys: str = "L5PCbiophys3.hoc"
 	# use_mm: bool = False
  
-  # stylized (depracating)
-	# build_stylized: bool = False
-	# geometry_file: str = "geom_parameters.csv"
+	# stylized (depracating)
+	build_stylized: bool = False
+	geometry_file: str = "geom_parameters.csv"
  
 	# EPSPs (depracating?)
 	only_one_synapse: bool = False
@@ -158,13 +158,30 @@ class SimulationParameters:
  
 	# new reduction parameters
 	reduce_cell_NRCE: bool = False # depracting NRCE
-	reduce_cell_selective:bool = True
+	# reduce_cell_selective:bool = True
 	reduce_tufts: bool = False
 	reduce_apic: bool = False # cannot do apic with tufts or oblique
 	reduce_basals: bool = False
 	reduce_obliques: bool = False
 	synapse_mapping: bool = True # True places synapses on complex cell and maps them using transfer impedance. False places synapses onto reduced cell
   
+  
+	# CI comp
+	# disable_apic_37: bool = False
+	# disable_basal_1st: bool = False
+	reduce_soma_gpas: bool = False
+	
+	num_basal_to_replace_with_CI: int = 0
+	basal_AC_stats: list = field(default_factory=lambda: [
+        (0.00693, 0.05926), (-0.0007, 0.05307), (0.01526, 0.09936), 
+        (0.00035, 0.0361), (0.00478, 0.17284), (0.01896, 0.07112), 
+        (-0.00153, 0.02512), (-0.00151, 0.03715)
+    ]) # (mean,std) for each basal dendrite in a full 20 sec complex cell sim
+ 
+	num_tuft_to_replace_with_CI: int = 0
+	tuft_AC_stats: list = field(default_factory=lambda: [
+     (0.03897, 0.05233), (0.05814, 0.05911)
+     ])
 
 class HayParameters(SimulationParameters):
 	channel_names = [
