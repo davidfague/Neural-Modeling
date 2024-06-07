@@ -131,29 +131,38 @@ def _analyze_NMDA():
     return H, yedges, xedges, spike_stats
 
 def _analyze_all_and_plot():
-    fig, ax = plt.subplots(1, 3, figsize = (30, 5))
     results = [out for out in [_analyze_Na(), _analyze_NMDA(), _analyze_Ca()]]
+    stats_df = pd.concat([results[i][3] for i in range(3)], axis = 0)
 
-    for i in range(3):
-        im = ax[i].pcolormesh(results[i][2], results[i][1], results[i][0])
-        fig.colorbar(im, ax = ax[i])
-        ax[i].set_xlabel("Duration (ms)")
+    fig, ax = plt.subplot_mosaic(
+        [['left', 'center', 'right'],
+         ['bottom', 'bottom', 'bottom']],
+        constrained_layout = False)
+
+    for i, axname in enumerate(['left', 'center', 'right']):
+        im = ax[axname].pcolormesh(results[i][2], results[i][1], results[i][0])
+        cbar = fig.colorbar(im, ax = ax[axname])
+        if i == 2:
+            cbar.set_label("Percentage of events")
+        ax[axname].set_xlabel("Duration (ms)")
 
         if i == 0:
-            ax[i].set_title("Na spike properties")
-            ax[i].set_ylabel("Conductance (mS / cm2)")
+            ax[axname].set_title("Na spike properties")
+            ax[axname].set_ylabel("Conductance (mS / cm2)")
         
         if i == 1:
-            ax[i].set_title("NMDA spike properties")
-            ax[i].set_ylabel("Charge (nA ms)")
+            ax[axname].set_title("NMDA spike properties")
+            ax[axname].set_ylabel("Charge (nA ms)")
         
         if i == 2:
-            ax[i].set_title("Ca spike properties")
-            ax[i].set_ylabel("Charge (nA ms)")
+            ax[axname].set_title("Ca spike properties")
+            ax[axname].set_ylabel("Charge (nA ms)")
 
-    stats_df = pd.concat([results[i][3] for i in range(3)], axis = 0)
-    print(stats_df.to_markdown())
-    
+    from pandas.plotting import table
+    ax["bottom"].axis('off')
+    tab = table(ax['bottom'], stats_df, loc = 'center', fontsize = 50)
+    tab.auto_set_font_size(False)
+    tab.set_fontsize(9)
 
     plt.show()
 
