@@ -48,7 +48,7 @@ def _analyze_Na():
             durations.append(0)
             continue
         _, downward_crossing = analysis.VoltageTrace.get_crossings(gnaTa[i], threshold)
-        dur, _ = analysis.VoltageTrace.get_duration(spikes, downward_crossing)
+        dur = analysis.VoltageTrace.get_duration(spikes, downward_crossing)
         durations.append(dur)
         Na_spikes.append(spikes)
 
