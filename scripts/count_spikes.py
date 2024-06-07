@@ -8,13 +8,37 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 
+def _compute_spike_statistics(spikes, T, row_name):
+    segment_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
+
+    # Get spike statistics
+    total_spikes = 0
+    spikes_per_segment_per_micron = []
+    for i in range(len(spikes)):
+        total_spikes += len(spikes[i])
+        spikes_per_segment_per_micron.append(len(spikes[i]) / segment_data.loc[i, "L"])
+
+    spike_stats = pd.DataFrame(
+        {
+            "Total spikes": total_spikes,
+            "Avg spikes per segment": np.round(total_spikes / len(spikes), 4),
+            "Avg spikes per segment per ms": np.round(total_spikes / len(spikes) / T, 4),
+            "Avg spikes per micron": np.round(np.mean(spikes_per_segment_per_micron), 4),
+            "Avg spikes per micron per ms": np.round(np.mean(spikes_per_segment_per_micron) / T, 6)
+        },
+        index = [row_name]
+    )
+    return spike_stats
+
+
 def _analyze_Na():
+
+    # Read data
     gnaTa = analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t")
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
     v = analysis.DataReader.read_data(sim_directory, "v")
-    # ina = -1 * analysis.DataReader.read_data(sim_directory, "ina_NaTa_t.h5")
-    segment_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
     
+    # Compute spikes
     threshold = 0.001 / 1000
     durations = []
     Na_spikes = []
@@ -24,56 +48,113 @@ def _analyze_Na():
             durations.append(0)
             continue
         _, downward_crossing = analysis.VoltageTrace.get_crossings(gnaTa[i], threshold)
-        durations.append(analysis.VoltageTrace.get_duration(spikes, downward_crossing))
+        dur, _ = analysis.VoltageTrace.get_duration(spikes, downward_crossing)
+        durations.append(dur)
         Na_spikes.append(spikes)
 
-    total_spikes = 0
-    spikes_per_segment_per_micron = []
-    for i in range(len(Na_spikes)):
-        total_spikes += len(Na_spikes[i])
-        spikes_per_segment_per_micron.append(len(Na_spikes[i]) / segment_data.loc[i, "L"])
-
-    print(f"Avg spikes per segment: {total_spikes / len(Na_spikes)}")
-    print(f"Avg spikes per segment per ms: {total_spikes / len(Na_spikes) / len(gnaTa[0])}")
-    print(f"Avg spikes per micron: {np.mean(spikes_per_segment_per_micron)}")
-    print(f"Avg spikes per segment per ms: {np.mean(spikes_per_segment_per_micron) / len(gnaTa[0])}")
-
-    out = []
+    # Make a duration vs conductance hist
+    all_g = []; all_duration = []
     for i in range(len(gnaTa)):
-        # charges = []
-        # for idx, spike in enumerate(Na_spikes[i]):
-            # charges.append(np.sum(ina[i][int(spike) : int(spike) + int(durations[i][idx])]))
-        
-        out.append(
-            [
-                gnaTa[i][Na_spikes[i].flatten().astype(int)].flatten().tolist(), 
-                durations[i], 
-                [len(Na_spikes[i]) / total_spikes * 100] * len(Na_spikes)
-            ]
-        )
-    gnas = []
-    durs = []
-    vs = []
-    for i in range(len(out)):
-        gnas.extend(out[i][0])
-        durs.extend(out[i][1])
-        vs.extend(out[i][2])
+        for spike_start, duration in zip(Na_spikes[i], durations[i]):
+            if duration < 10:
+                g = gnaTa[i][int(spike_start[0]) : int(spike_start[0] + duration)]
+                all_g.append(np.sum(g) * 1000) # convert to mS / cm2
+                all_duration.append(duration)
 
-    gnaTa_quantiles = np.quantile(gnaTa.flatten()[~np.isnan(gnaTa.flatten())], np.arange(0, 1.05, 0.05))
-    duration_quantiles = np.quantile([item for row in durations for item in row], np.arange(0, 1.05, 0.05))
+
+    H, yedges, xedges = np.histogram2d(all_g, all_duration, bins = 20)
+    H = H / np.sum(H) * 100
     
-    matrix = np.zeros((20, 20))
-    for i in range(len(gnaTa_quantiles) - 1):
-        for j in range(len(duration_quantiles) - 1):
-            inds = np.where((gnas > gnaTa_quantiles[i]) & 
-                            (gnas < gnaTa_quantiles[i + 1]) &
-                            (durs > duration_quantiles[j]) & 
-                            (durs < duration_quantiles[j + 1]))[0]
-            matrix[i, j] = np.mean(np.array(vs)[inds])
-    plt.imshow(matrix.T, origin = 'lower')
-    plt.xlabel("Duration (ms)")
-    plt.ylabel("Conductance (?)")
-    plt.colorbar(label = 'Percentage of events')
+    spike_stats = _compute_spike_statistics(Na_spikes, len(gnaTa[0]), "Na")
+
+    return H, yedges, xedges, spike_stats
+
+def _analyze_Ca():
+
+    # Read data
+    v = analysis.DataReader.read_data(sim_directory, "v")
+    ica = analysis.DataReader.read_data(sim_directory, "ica")
+
+    # Compute spikes
+    charge = []
+    durations = []
+    Ca_spikes = []
+    for i in range(len(v)):
+        left_bounds, right_bounds, sum_current = analysis.VoltageTrace.get_Ca_spikes(v[i], -40, ica[i])
+        Ca_spikes.append(left_bounds)
+        dur = np.array(right_bounds) - np.array(left_bounds)
+        durations.extend(dur.flatten().tolist())
+        charge.extend(sum_current)
+
+    durations = np.array(durations)
+    charge = -np.array(charge)
+
+    inds = np.where((durations < 70) & (durations > 20))[0]
+    durations = durations[inds]
+    charge = charge[inds]
+
+    H, yedges, xedges = np.histogram2d(charge, durations, bins = 20)
+    H = H / np.sum(H) * 100
+    
+    spike_stats = _compute_spike_statistics(Ca_spikes, len(ica[0]), "Ca")
+
+    return H, yedges, xedges, spike_stats
+
+def _analyze_NMDA():
+    # Read data
+    v = analysis.DataReader.read_data(sim_directory, "v")
+    inmda = analysis.DataReader.read_data(sim_directory, "i_NMDA")
+
+    # Compute spikes
+    charge = []
+    durations = []
+    NMDA_spikes = []
+    for i in range(len(v)):
+        left_bounds, right_bounds, sum_current = analysis.VoltageTrace.get_NMDA_spikes(v[i], -40, inmda[i])
+        NMDA_spikes.append(left_bounds)
+        dur = np.array(right_bounds) - np.array(left_bounds)
+        durations.extend(dur.flatten().tolist())
+        charge.extend(sum_current)
+
+    durations = np.array(durations)
+    charge = -np.array(charge)
+
+    inds = np.where((durations < 200) & (durations > 20))[0]
+    durations = durations[inds]
+    charge = charge[inds]
+
+    H, yedges, xedges = np.histogram2d(charge, durations, bins = 20)
+    H = H / np.sum(H) * 100
+    
+    spike_stats = _compute_spike_statistics(NMDA_spikes, len(inmda[0]), "NMDA")
+    
+    return H, yedges, xedges, spike_stats
+
+def _analyze_all_and_plot():
+    fig, ax = plt.subplots(1, 3, figsize = (30, 5))
+    results = [out for out in [_analyze_Na(), _analyze_NMDA(), _analyze_Ca()]]
+
+    for i in range(3):
+        im = ax[i].pcolormesh(results[i][2], results[i][1], results[i][0])
+        fig.colorbar(im, ax = ax[i])
+        ax[i].set_xlabel("Duration (ms)")
+
+        if i == 0:
+            ax[i].set_title("Na spike properties")
+            ax[i].set_ylabel("Conductance (mS / cm2)")
+        
+        if i == 1:
+            ax[i].set_title("NMDA spike properties")
+            ax[i].set_ylabel("Charge (nA ms)")
+        
+        if i == 2:
+            ax[i].set_title("Ca spike properties")
+            ax[i].set_ylabel("Charge (nA ms)")
+
+    stats_df = pd.concat([results[i][3] for i in range(3)], axis = 0)
+    print(stats_df.to_markdown())
+    
+
     plt.show()
 
 if __name__ == "__main__":
@@ -82,4 +163,4 @@ if __name__ == "__main__":
     else:
         raise RuntimeError
     
-    _analyze_Na()
+    _analyze_all_and_plot()
