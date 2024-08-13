@@ -298,8 +298,7 @@ class CellModel:
 
 		return segments
 
-	def get_segment_length(self, seg_idx: int, seg_names: list):
-		segments, _ = self.get_segments(seg_names)
+	def get_segment_length(self, seg_idx: int, segments: list):
 		seg = segments[seg_idx]
 		return seg.sec.L / seg.sec.nseg
 	
