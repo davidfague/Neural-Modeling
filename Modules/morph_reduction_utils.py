@@ -220,7 +220,7 @@ def reduce_tree(cell, root_section, op_id=None):
         
     return deleted_seg_indices, new_section
 
-def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = False, reduce_obliques = False, reduce_apic = False, cell = None):
+def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = 0, reduce_obliques = False, reduce_apic = False, cell = None):
     from Modules.cell_builder import CellBuilder
     
     if cell is None:
@@ -243,9 +243,14 @@ def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = 
         tuft_root_sections = cell.get_tuft_root_sections()
         root_sections_to_reduce += tuft_root_sections
     
-    if reduce_basals:
+    # if reduce_basals:
+    #     # cell.logger.log(f"Reducing Basals")
+    #     basal_root_sections = cell.get_basal_root_sections()
+    #     root_sections_to_reduce += basal_root_sections
+        
+    if reduce_basals > 0:
         # cell.logger.log(f"Reducing Basals")
-        basal_root_sections = cell.get_basal_root_sections()
+        basal_root_sections = cell.get_basal_sections(level = reduce_basals)
         root_sections_to_reduce += basal_root_sections
     
     if reduce_obliques:

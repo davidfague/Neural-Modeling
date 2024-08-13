@@ -147,14 +147,14 @@ class CellBuilder:
 			self.build_synapses(cell, random_state)
 			if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
 				cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
-                           reduce_basals = self.parameters.reduce_basals, 
-                           reduce_obliques = self.parameters.reduce_obliques, 
-						   reduce_apic=self.parameters.reduce_apic,
-                           cell = cell)
+							reduce_basals = self.parameters.reduce_basals,
+							reduce_obliques = self.parameters.reduce_obliques, 
+							reduce_apic=self.parameters.reduce_apic,
+							cell = cell)
 		else:
 			if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
 					cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
-							reduce_basals = self.parameters.reduce_basals, 
+							reduce_basals = self.parameters.reduce_basals,
 							reduce_obliques = self.parameters.reduce_obliques,
 							reduce_apic=self.parameters.reduce_apic,
 							cell = cell)

@@ -161,7 +161,8 @@ class SimulationParameters:
 	# reduce_cell_selective:bool = True
 	reduce_tufts: bool = False
 	reduce_apic: bool = False # cannot do apic with tufts or oblique
-	reduce_basals: bool = False
+	reduce_basals: int = 0 #bool = False
+	# reduce_2nd_basals: bool = False
 	reduce_obliques: bool = False
 	synapse_mapping: bool = True # True places synapses on complex cell and maps them using transfer impedance. False places synapses onto reduced cell
   

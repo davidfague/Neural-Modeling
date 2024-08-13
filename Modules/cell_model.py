@@ -381,8 +381,39 @@ class CellModel:
 		return nexus_seg.sec.children()
 
 	def get_basal_root_sections(self):
-		soma_basal_children = [sec for sec in self.soma[0].children() if sec in self.dend]
-		return soma_basal_children
+		basal_root_sections = [sec for sec in self.soma[0].children() if sec in self.dend]
+		return basal_root_sections
+
+	def get_basal_secondary_sections(self):
+		basal_secondary_sections = []
+		for sec in self.soma[0].children():
+			if sec in self.dend:
+				for second_child in sec.children():
+					if second_child is not None:
+						basal_secondary_sections.append(second_child)
+					else:
+						basal_secondary_sections.append(sec)
+		return basal_secondary_sections
+
+	def get_basal_sections(self, level=1): #@MARK  - Check. Potential
+		if level < 1:
+			raise(ValueError(f"level {level} must be less than 1"))
+		def get_children_at_level(sections, current_level, target_level):
+			if not sections or current_level == target_level:
+				return sections, current_level
+			next_level_sections = []
+			for sec in sections:
+				next_level_sections.extend(sec.children())
+			return get_children_at_level(next_level_sections, current_level + 1, target_level)
+		
+		initial_sections = [sec for sec in self.soma[0].children() if sec in self.dend]
+		sections, reached_level = get_children_at_level(initial_sections, 1, level)
+		
+		while not sections and level > 1:
+			level -= 1
+			sections, reached_level = get_children_at_level(initial_sections, 1, level)
+		
+		return sections
 
 	def get_oblique_root_sections(self):
 		all_segments, _ = self.get_segments(['all'])
