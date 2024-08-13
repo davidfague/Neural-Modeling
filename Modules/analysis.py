@@ -44,7 +44,7 @@ class DataReader:
                 elif len(retrieved_data.shape) == 2:
                     # Neuron saves traces inconsistently; sometimes the trace length is (t) and sometimes it is (t+1)
                     # Thus, cut the trace at parameters.save_every_ms
-                    data.append(retrieved_data[:, :parameters.save_every_ms*10])
+                    data.append(retrieved_data[:, :])#parameters.save_every_ms*parameters.record_every_time_steps])
         data = np.concatenate(data, axis = 1)
 
         return data
