@@ -288,53 +288,6 @@ def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = 
     
     return cell, original_seg_data, all_deleted_seg_indices
 
-# adapted from https://github.com/orena1/neuron_reduce/blob/94b1850607f9c62a205ad8fb695f2fd91d84d87d/neuron_reduce/reducing_methods.py#L317
-def reduce_synapse(synapse_or_segment,
-                   imp_obj,
-                   root_input_impedance,
-                   new_cable_electrotonic_length,
-                   q_subtree):
-    '''
-    Receives an instance of a cell, the location (section + relative
-    location(x)) of a synapse to be reduced, a boolean on_basal that is True if
-    the synapse is on a basal subtree, the number of segments in the reduced
-    cable that this synapse is in, an Impedance calculating Hoc object, the
-    input impedance at the root of this subtree, and the electrotonic length of
-    the reduced cable that represents the current subtree
-    (as a real and as a complex number) -
-    and maps the given synapse to its new location on the reduced cable
-    according to the NeuroReduce algorithm.  Returns the new "post-merging"
-    relative location of the synapse on the reduced cable (x, 0<=x<=1), that
-    represents the middle of the segment that this synapse is located at in the
-    new reduced cable.
-    '''
-    # measures the original transfer impedance from the synapse to the
-    # somatic-proximal end in the subtree root section
-    original_x, original_section = find_synapse_loc_and_sec(synapse_or_segment)
-
-    with push_section(original_section):
-        orig_transfer_imp = imp_obj.transfer(original_x) * 1000000  # ohms
-        orig_transfer_phase = imp_obj.transfer_phase(original_x)
-        # creates a complex Impedance value with the given polar coordinates
-        orig_synapse_transfer_impedance = cmath.rect(orig_transfer_imp, orig_transfer_phase)
-
-    # synapse location could be calculated using:
-    # X = L - (1/q) * arcosh( (Zx,0(f) / ZtreeIn(f)) * cosh(q*L) ),
-    # derived from Rall's cable theory for dendrites (Gal Eliraz)
-    # but we chose to find the X that will give the correct modulus. See comment about L values
-
-    synapse_new_electrotonic_location = find_best_real_X(root_input_impedance,
-                                                         orig_synapse_transfer_impedance,
-                                                         q_subtree,
-                                                         new_cable_electrotonic_length)
-    new_relative_loc_in_section = (float(synapse_new_electrotonic_location) /
-                                   new_cable_electrotonic_length)
-
-    if new_relative_loc_in_section > 1:  # PATCH
-        new_relative_loc_in_section = 0.999999
-
-    return new_relative_loc_in_section
-
 def get_terminal_coordinates(seg_data, terminal_descend_indices):
     '''Check if [[1,2,3],[1,2,3]] is a good way to store output.'''
     terminal_seg_datas = [seg_data[idx] for idx in terminal_descend_indices]
@@ -393,6 +346,53 @@ def push_section(section):
     section.push()
     yield
     h.pop_section()
+    
+# adapted from https://github.com/orena1/neuron_reduce/blob/94b1850607f9c62a205ad8fb695f2fd91d84d87d/neuron_reduce/reducing_methods.py#L317
+def reduce_synapse(synapse_or_segment,
+                   imp_obj,
+                   root_input_impedance,
+                   new_cable_electrotonic_length,
+                   q_subtree):
+    '''
+    Receives an instance of a cell, the location (section + relative
+    location(x)) of a synapse to be reduced, a boolean on_basal that is True if
+    the synapse is on a basal subtree, the number of segments in the reduced
+    cable that this synapse is in, an Impedance calculating Hoc object, the
+    input impedance at the root of this subtree, and the electrotonic length of
+    the reduced cable that represents the current subtree
+    (as a real and as a complex number) -
+    and maps the given synapse to its new location on the reduced cable
+    according to the NeuroReduce algorithm.  Returns the new "post-merging"
+    relative location of the synapse on the reduced cable (x, 0<=x<=1), that
+    represents the middle of the segment that this synapse is located at in the
+    new reduced cable.
+    '''
+    # measures the original transfer impedance from the synapse to the
+    # somatic-proximal end in the subtree root section
+    original_x, original_section = find_synapse_loc_and_sec(synapse_or_segment)
+
+    with push_section(original_section):
+        orig_transfer_imp = imp_obj.transfer(original_x) * 1000000  # ohms
+        orig_transfer_phase = imp_obj.transfer_phase(original_x)
+        # creates a complex Impedance value with the given polar coordinates
+        orig_synapse_transfer_impedance = cmath.rect(orig_transfer_imp, orig_transfer_phase)
+
+    # synapse location could be calculated using:
+    # X = L - (1/q) * arcosh( (Zx,0(f) / ZtreeIn(f)) * cosh(q*L) ),
+    # derived from Rall's cable theory for dendrites (Gal Eliraz)
+    # but we chose to find the X that will give the correct modulus. See comment about L values
+
+    synapse_new_electrotonic_location = find_best_real_X(root_input_impedance,
+                                                         orig_synapse_transfer_impedance,
+                                                         q_subtree,
+                                                         new_cable_electrotonic_length)
+    new_relative_loc_in_section = (float(synapse_new_electrotonic_location) /
+                                   new_cable_electrotonic_length)
+
+    if new_relative_loc_in_section > 1:  # PATCH
+        new_relative_loc_in_section = 0.999999
+
+    return new_relative_loc_in_section
 
 # https://github.com/orena1/neuron_reduce/blob/94b1850607f9c62a205ad8fb695f2fd91d84d87d/neuron_reduce/subtree_reductor_func.py#L212
 def create_segments_to_mech_vals(sections_to_delete,
