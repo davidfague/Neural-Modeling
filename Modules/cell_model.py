@@ -320,19 +320,28 @@ class CellModel:
 			syn_params,
 			gmax,
 			name,
-			density = False,
-			seg_probs = None,
-			release_p = None) -> None:
+			density=False,
+			seg_probs=None,
+			release_p=None,
+			specific_segments=None) -> None:
 		
+		# Check if specific segments are provided
+		if specific_segments is not None:
+			segments = specific_segments
+			nsyn = len(specific_segments)
+
 		total_length = sum([seg.sec.L / seg.sec.nseg for seg in segments])
-		if (density == True):
+		if density and specific_segments is None:
 			nsyn = int(total_length * nsyn)
-		
-		if (seg_probs is None):
+
+		if seg_probs is None:
 			seg_probs = [seg_length / total_length for seg_length in [seg.sec.L / seg.sec.nseg for seg in segments]]
-		
+
 		for _ in range(nsyn):
-			segment = self.random_state.choice(segments, 1, True, seg_probs / np.sum(seg_probs))[0]
+			if specific_segments is None:
+				segment = self.random_state.choice(segments, 1, True, seg_probs / np.sum(seg_probs))[0]
+			else:
+				segment = segments[_]
 
 			if release_p is not None:
 				if isinstance(release_p, dict):
@@ -368,13 +377,14 @@ class CellModel:
 				syn_params["P_0"] = p
 
 			self.synapses.append(Synapse(
-				segment = segment, 
-				syn_mod = syn_mod, 
-				syn_params = syn_params, 
-				gmax = gmax(size = 1) if callable(gmax) else gmax,
-				neuron_r = self.neuron_r,
-				name = name))
-	
+				segment=segment, 
+				syn_mod=syn_mod, 
+				syn_params=syn_params, 
+				gmax=gmax(size=1) if callable(gmax) else gmax,
+				neuron_r=self.neuron_r,
+				name=name))
+
+
 	def get_synapses(self, synapse_names: list):
 		return [syn for syn in self.synapses if syn.name in synapse_names]
 	
