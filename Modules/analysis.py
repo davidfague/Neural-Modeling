@@ -198,60 +198,74 @@ def plot_spike_windows(spike_times, v_Na, v_Soma, window_size=10):
 class VoltageTrace(Trace):
 
     @staticmethod
-    def get_Na_spikes(g_Na: np.ndarray, threshold: float, spikes: np.ndarray, ms_within_spike: float, v_Na: np.ndarray, v_Soma: np.ndarray) -> np.ndarray:
-
-        upward_crossings, _ = VoltageTrace.get_crossings(g_Na, threshold)
+    def get_Na_spikes(g_Na: np.ndarray, threshold: float, spikes: np.ndarray, ms_within_spike: float, v_Na: np.ndarray, v_Soma: np.ndarray):
+        upward_crossings, downward_crossings = VoltageTrace.get_crossings(g_Na, threshold)
 
         if len(upward_crossings) == 0:
-            return np.array([]), np.array([])
+            return np.array([]), np.array([]), np.array([])
 
         Na_spikes = []
+        Na_spike_ends = []
         backprop_AP = []
+
         for sp_time in upward_crossings:
-            # Time of APs before this na spike
+            # Time of APs before this Na spike
             spikes_before_sodium_spike = spikes[spikes < sp_time]
             spikes_after_sodium_spike = spikes[spikes > sp_time]
-            
+
+            # Find the corresponding end time for the current spike
+            spike_end = next((down_time for down_time in downward_crossings if down_time > sp_time), None)
+
             # Na spike starts less than x ms before first AP after Na spike, and Na spike voltage is less than soma voltage at time of Na spike start (bAP that was being counted as Na spike)
             if (len(spikes_after_sodium_spike) > 0):
-                if ((spikes_after_sodium_spike[0] - sp_time) < 5) and (v_Na[sp_time] < v_Soma[sp_time]):
-                    backprop_AP.append(sp_time)    
+                # if ((spikes_after_sodium_spike[0] - sp_time) < 5) and (v_Na[sp_time] < v_Soma[sp_time]):
+                #     backprop_AP.append(sp_time)
 
                 # Na spike has no AP before
-                elif len(spikes_before_sodium_spike) == 0:
+                if len(spikes_before_sodium_spike) == 0:#*******elif len(spikes_before_sodium_spike) == 0:
                     Na_spikes.append(sp_time)
+                    Na_spike_ends.append(spike_end)
     
                 # Na spike is more than x ms after last AP
                 elif (sp_time - spikes_before_sodium_spike[-1] > ms_within_spike):
                     Na_spikes.append(sp_time)
+                    Na_spike_ends.append(spike_end)
                 
                 # Na spike is within x ms after latest AP and counted as a back propagating AP
                 else:
                     backprop_AP.append(sp_time)
-
             else:
                 if len(spikes_before_sodium_spike) == 0:
                     Na_spikes.append(sp_time)
+                    Na_spike_ends.append(spike_end)
     
                 # Na spike is more than x ms after last AP
                 elif (sp_time - spikes_before_sodium_spike[-1] > ms_within_spike):
                     Na_spikes.append(sp_time)
+                    Na_spike_ends.append(spike_end)
                 
                 # Na spike is within x ms after latest AP and counted as a back propagating AP
                 else:
                     backprop_AP.append(sp_time)
 
-        return np.array(Na_spikes), np.array(backprop_AP)
+        return np.array(Na_spikes), np.array(Na_spike_ends), np.array(backprop_AP)
     
     @staticmethod
-    def get_Ca_spikes(v, threshold, ica):
+    def get_Ca_spikes(v, threshold, ica, dur_threshold_in_timesteps = 20):
         upward_crossings, downward_crossings = VoltageTrace.get_crossings(v, threshold)
+        upward_crossings, downward_crossings = VoltageTrace.time_criterion(upward_crossings, downward_crossings, dur_threshold_in_timesteps)
         left_bounds, right_bounds, sum_currents = VoltageTrace.current_criterion(upward_crossings, downward_crossings, ica)
+        left_bounds, right_bounds, sum_currents = VoltageTrace.time_criterion(left_bounds, right_bounds, dur_threshold_in_timesteps, sum_currents=sum_currents, return_list = True)
+        # left_bounds, right_bounds, sum_currents = VoltageTrace.Hausser_current_criterion(upward_crossings, downward_crossings, ica)
+        # checking if we can use time_criterion after current_criterion
+        # print(f"shape legit crossings: {upward_crossings.shape, downward_crossings.shape}") # crossings are shape (n, 1)
+        # print(f"shape bounds: {left_bounds.shape, right_bounds.shape}") # bounds are lists
+        # print(len(left_bounds))
         return left_bounds, right_bounds, sum_currents
     
     @staticmethod
     def get_NMDA_spikes(v, threshold, inmda):
-        return VoltageTrace.get_Ca_spikes(v, threshold, inmda)
+        return VoltageTrace.get_Ca_spikes(v, threshold, inmda, dur_threshold_in_timesteps = 26)
     
     @staticmethod
     def current_criterion(upward_crossings, downward_crossings, control_current):
@@ -288,16 +302,111 @@ class VoltageTrace(Trace):
                     right_bound = (downward_crossings[crossing_index] - upward_crossings[crossing_index])
                     stop = True
                 
-                left_bounds.append(upward_crossings[crossing_index] + left_bound)
-                right_bounds.append(upward_crossings[crossing_index] + right_bound)
-                sum_current.append(
-                    np.sum(control_current[int(upward_crossings[crossing_index] + left_bound) : int(upward_crossings[crossing_index] + right_bound)])
-                    )
+                # calculate the charge
+                current_sum = np.sum(control_current[int(upward_crossings[crossing_index] + left_bound) : int(upward_crossings[crossing_index] + right_bound)])
+                if abs(current_sum) > 0.1: # charge threshold
+                    left_bounds.append(upward_crossings[crossing_index] + left_bound)
+                    right_bounds.append(upward_crossings[crossing_index] + right_bound)
+                    sum_current.append(current_sum) # @MARK there was a divide by 10 in Ben's code, possibly for 0.1 ms dt.
 
                 x30 = x30[x30 > upward_crossings[crossing_index] + right_bound]
                 if len(x30) == 0: stop = True
 
         return left_bounds, right_bounds, sum_current
+    
+    @staticmethod
+    def Hausser_current_criterion(upward_crossings, downward_crossings, control_current, charge_threshold=0.1):
+        spike_start_times = []
+        spike_end_times = []
+        spike_charges = []
+
+        for crossing_index in range(len(upward_crossings)):
+            # e1 = control_current[upward_crossings[crossing_index]]
+
+            # detect peak current and time index within 6 s after Vm_threshold upward crossing
+            crossing_idx = upward_crossings[crossing_index] # Get the index of the crossing
+            values_after_crossing = control_current[int(crossing_idx):int(crossing_idx)+6] # Get the values at the 6 indices after the crossing
+            # @MARK 6 indices are for dt=1ms; use 60 indices for dt=0.1ms
+            # peak_value = min(values_after_crossing) # Find the peak (negative values)
+            # peak_index = values_after_crossing.index(peak_value) + crossing_idx # Get the index where the maximum value occurs
+            peak_index = np.argmin(values_after_crossing) + crossing_idx
+            peak_current = control_current[peak_index] # Set e1 to the maximum value
+
+            # current trace between peak and downward crossing
+            current_after_peak = control_current[int(peak_index):int(downward_crossings[crossing_index])]
+
+            # Boolean masks for currents less than 30% and 15% of peak (a negative value)
+            mask_30 = abs(current_after_peak) < abs(0.3 * peak_current) # where the current magnitiude is less than 30% the peak current magnitude
+            mask_15 = abs(current_after_peak) > abs(0.15 * peak_current)
+
+            if not np.any(mask_30) or not np.any(mask_15):
+                # print("never less than 30%")
+                continue
+
+            left_bound = peak_index # official start of spike is at the peak current
+
+            # Find the first index in the segment where the current is less than 15% of e1
+            x15_indices = np.where(mask_15)[0]
+            if len(x15_indices) == 0:
+                # print('never less than 30%')
+                continue
+            right_bound = left_bound + x15_indices[0]
+
+            # Find the first index in the segment where the current is less than 30% of e1
+            x30_indices = np.where(mask_30)[0]
+            if len(x30_indices) == 0:
+                # print('suspicious never less than 30%')
+                continue
+            charge_bound = left_bound + x30_indices[0] # use 30% crossing to calculate total charge
+
+            # Calculate the total charge from left_bound to current_bound
+            # print(left_bound, current_bound)
+            total_charge = np.sum(np.abs(control_current[int(left_bound):int(charge_bound)])) #@MARK divide by 10 if dt=0.l ms instead of dt=1ms
+            # print(total_current)
+            
+            if total_charge >= charge_threshold:
+                # print('successful detection')
+                spike_start_times.append(left_bound)
+                spike_end_times.append(right_bound)
+                spike_charges.append(total_charge)
+            else:
+                pass# print('current threshold not met')
+
+        return spike_start_times, spike_end_times, spike_charges
+    @staticmethod
+    def time_criterion(upward_crossings, downward_crossings, dur_threshold_in_timesteps = 26, sum_currents=None, return_list = False, dur_max_threshold_in_timesteps = 250): # rihgt-now, timestep is in ms. 26 ms-NMDA; 20 ms-Ca
+        
+        # Check if the length of crossings is even
+        if len(upward_crossings) != len(downward_crossings):
+            raise ValueError("Mismatch in length of upward and downward crossings")
+        elif (len(upward_crossings) == 0) and (sum_currents is not None):
+            return upward_crossings, downward_crossings, sum_currents
+        elif (len(upward_crossings) == 0):
+            return upward_crossings, downward_crossings
+
+        if isinstance(downward_crossings, list):
+            upward_crossings = np.array(upward_crossings)
+            downward_crossings = np.array(downward_crossings)
+            
+        # Calculate durations
+        durations = downward_crossings - upward_crossings
+        
+        # Apply time threshold
+        valid_indices = (durations > dur_threshold_in_timesteps) & (durations < dur_max_threshold_in_timesteps)
+        if return_list:
+            legit_up_crossings = list(upward_crossings[valid_indices])
+            legit_down_crossings = list(downward_crossings[valid_indices])
+        else:
+            legit_up_crossings = upward_crossings[valid_indices].reshape(-1,1)
+            legit_down_crossings = downward_crossings[valid_indices].reshape(-1,1)
+            
+        if sum_currents is not None:
+            sum_currents = list(np.array(sum_currents).reshape(-1,1)[valid_indices])
+            return legit_up_crossings, legit_down_crossings, sum_currents
+        else:
+            return legit_up_crossings, legit_down_crossings
+        
+        
     
 
 class CellGraph:
