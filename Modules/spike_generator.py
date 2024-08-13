@@ -9,9 +9,10 @@ def minmax(x):
 
 class SpikeTrain:
 
-	def __init__(self, spike_times, T):
+	def __init__(self, spike_times, T, mean_fr):
 		self.spike_times = spike_times
 		self.T = T
+		self.mean_fr = mean_fr
 
 class PoissonTrainGenerator:
 	# Win_size = 1 ms

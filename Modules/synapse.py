@@ -137,10 +137,12 @@ class Synapse:
         self.pc = None
         self.netcons = []
         
-    
-    
     def set_spike_train_for_pc(self, mean_fr, spike_train):
         self.pc.set_spike_train(mean_fr, spike_train)
+        nc = h.NetCon(self.pc.vecstim, self.h_syn, 1, 0, 1)
+        self.netcons.append(nc)
+        
+    def set_spike_train_from_pc(self):
         nc = h.NetCon(self.pc.vecstim, self.h_syn, 1, 0, 1)
         self.netcons.append(nc)
 

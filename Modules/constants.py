@@ -35,7 +35,7 @@ class SimulationParameters:
 	trunk_exc_synapses: bool = True
 	perisomatic_exc_synapses: bool = True
 	add_soma_inh_synapses: bool = True
-	num_soma_inh_syns: int = 150
+	num_soma_inh_syns: int = 450 # 150 PCs * ~3 divergence
 
 	# gmax distributions
 	exc_gmax_mean_0: float = 2.3#1.5 # 1.5-1.6 is good
@@ -52,8 +52,8 @@ class SimulationParameters:
 	inh_synaptic_density: float = 0.22 # (syn/micron of path length)
 	exc_use_density: bool = True # setting to false uses "exc_syn_number" instead of "exc_synaptic_density"
 	inh_use_density: bool = True # setting to false uses "inh_syn_number" instead of "inh_synaptic_density"
-	exc_syn_number: int = 700
-	inh_syn_number: int = 150 
+	exc_syn_number: int = 26112
+	inh_syn_number: int = 3066 
 	use_SA_probs: bool = True # Use surface area instead of lengths for the synapse's segment assignment probabilities (does not yet change the total number calculated using density?)
 
 	# Synapse Release probability distributions
@@ -75,22 +75,35 @@ class SimulationParameters:
 	inh_syn_mod: str = 'GABA_AB_STP'#'int2pyr'#'GABA_AB_STP'
 
 	# Firing rate distributions
-	exc_mean_fr: float = 4.43
-	exc_std_fr: float = 2.9
+	use_levy_dist_for_exc: bool = True
 	inh_prox_mean_fr: float = 16.9
 	inh_prox_std_fr: float = 14.3
 	inh_distal_mean_fr: float = 3.9
 	inh_distal_std_fr: float = 4.9
+	exc_mean_fr: float = 4.43
+	exc_std_fr: float = 2.9
+  	# exc FR FR/FR curve
+	exc_constant_fr: bool = False # exc synapses will have firing rate of 0 + self.parameters.excFR_increase
+	excFR_increase: float = 0.0
 
 	# syn_params
 	# exc_syn_params: tuple = if 'AMPA' in exc_syn_mod: (CS2CP_syn_params, CP2CP_syn_params) else: PN2PN_syn_params # 90%, 10%
 	# inh_syn_params: tuple = if 'GABA' in inh_syn_mod: (FSI_syn_params, LTS_syn_params) else: (PV2PN_syn_params, SOM2PN_syn_params)# (proximal, distal)
 
 	# kmeans clustering
-	exc_n_FuncGroups: int = 24
-	exc_n_PreCells_per_FuncGroup: int = 15
-	inh_distributed_n_FuncGroups: int = 24
-	inh_distributed_n_PreCells_per_FuncGroup: int = 15
+	exc_n_FuncGroups: int = 50
+	exc_n_PreCells_per_FuncGroup: int = 100
+	inh_n_FuncGroups: int = 10
+	inh_n_PreCells_per_FuncGroup: int = 50
+	soma_n_fun_gr: int = 1
+	soma_n_pc_per_fg: int = 150
+    # "divergence":
+    # {
+    #     "exc": {"min":2, "max":8},
+    #     "peri_inh": {"m":2.8, "s":1.9, "min":1, "max":5},
+    #     "basal_inh": {"m":2.7, "s":1.6, "min":1 , "max":5},
+    #     "apic_inh": {"m":12, "s":3, "min":6 , "max":18}
+    # },
 
 	# Excitatory dend
 	exc_functional_group_span: int = 100
