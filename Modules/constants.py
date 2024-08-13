@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
-from synapse import CS2CP_syn_params, CP2CP_syn_params, FSI_syn_params, LTS_syn_params
+from synapse import CS2CP_syn_params, CP2CP_syn_params, FSI_syn_params, LTS_syn_params, PV2PN_syn_params, SOM2PN_syn_params, PN2PN_syn_params
+
+import numpy as np
 
 @dataclass
 class SimulationParameters:
@@ -68,8 +70,8 @@ class SimulationParameters:
 	
  
 	# syn_mod
-	exc_syn_mod: str = 'AMPA_NMDA_STP'
-	inh_syn_mod: str = 'GABA_AB_STP'
+	exc_syn_mod: str = 'AMPA_NMDA_STP'#'pyr2pyr'#'AMPA_NMDA_STP'
+	inh_syn_mod: str = 'GABA_AB_STP'#'int2pyr'#'GABA_AB_STP'
 
 	# Firing rate distributions
 	exc_mean_fr: float = 4.43
@@ -80,8 +82,8 @@ class SimulationParameters:
 	inh_distal_std_fr: float = 4.9
 
 	# syn_params
-	exc_syn_params: tuple = (CS2CP_syn_params, CP2CP_syn_params) # 90%, 10%
-	inh_syn_params: tuple = (FSI_syn_params, LTS_syn_params)
+	# exc_syn_params: tuple = if 'AMPA' in exc_syn_mod: (CS2CP_syn_params, CP2CP_syn_params) else: PN2PN_syn_params # 90%, 10%
+	# inh_syn_params: tuple = if 'GABA' in inh_syn_mod: (FSI_syn_params, LTS_syn_params) else: (PV2PN_syn_params, SOM2PN_syn_params)# (proximal, distal)
 
 	# kmeans clustering
 	exc_n_FuncGroups: int = 24
@@ -189,6 +191,21 @@ class SimulationParameters:
      (0.03897, 0.05233), (0.05814, 0.05911)
      ])
 
+	def __post_init__(self):
+		if 'AMPA' in self.exc_syn_mod:
+			self.exc_syn_params = (CS2CP_syn_params, CP2CP_syn_params)
+		elif 'pyr2pyr' in self.exc_syn_mod:
+			self.exc_syn_params = PN2PN_syn_params
+		else:
+			raise(NotImplementedError(f"desired {self.exc_syn_mod} syn_params not specified"))
+
+		if 'GABA' in self.inh_syn_mod:
+			self.inh_syn_params = (FSI_syn_params, LTS_syn_params)
+		elif 'int2pyr' in self.inh_syn_mod:
+			self.inh_syn_params = (PV2PN_syn_params, SOM2PN_syn_params)
+		else:
+			raise(NotImplementedError(f"desired {self.inh_syn_mod} syn_params not specified"))
+            
 class HayParameters(SimulationParameters):
 	channel_names = [
 		'i_pas', 

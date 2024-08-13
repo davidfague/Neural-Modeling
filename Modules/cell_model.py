@@ -349,14 +349,23 @@ class CellModel:
 
 			# Create synapse
 			segment_distance = h.distance(segment, self.soma[0](0.5))
-			if (isinstance(syn_params, tuple)) or ((isinstance(syn_params, list))):
+			if isinstance(syn_params, (tuple, list)):  # select a syn_param dictionary from the options
 				# Excitatory
-				if 'AMPA' in syn_mod:
-					syn_params = np.random.choice(syn_params, p = (0.9, 0.1))
+				if 'AMPA' in syn_mod or 'pyr2pyr' in syn_mod:
+					syn_params = np.random.choice(syn_params, p=(0.9, 0.1))
 				# Inhibitory
-				elif 'GABA' in syn_mod:
+				elif 'GABA' in syn_mod or 'int2pyr' in syn_mod:
 					# Second option is for > 100 um from soma, else first option
 					syn_params = syn_params[1] if segment_distance > 100 else syn_params[0]
+				else:
+					raise NotImplementedError(f"syn_param selection for syn_mod: {syn_mod} not implemented")
+			elif isinstance(syn_params, dict):
+				pass  # its okay
+			else:
+				raise NotImplementedError(f"syn_param selection of type {type(syn_params)} for syn_mod: {syn_mod}")
+
+			if 'int2pyr' in syn_mod or 'pyr2pyr' in syn_mod:  # these modfiles do release probability computation as spikes arrive during simulation instead of before
+				syn_params["P_0"] = p
 
 			self.synapses.append(Synapse(
 				segment = segment, 

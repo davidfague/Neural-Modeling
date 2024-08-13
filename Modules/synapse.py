@@ -6,34 +6,105 @@ Exp2Syn_syn_params = {
     'tau2': 3.0
 }
 
-LTS_syn_params = {
+# For Segev synapse modfiles
+# Inh distal
+LTS_syn_params = { # for GABA_AB_STP.mod
     'e_GABAA': -90.,
     'Use': 0.3,
     'Dep': 25.,
     'Fac': 100.
 }
-
 # Inh perisomatic
-FSI_syn_params = {
+FSI_syn_params = { # for GABA_AB_STP.mod
     'e_GABAA': -90.,
     'Use': 0.3,
     'Dep': 400.,
     'Fac': 0.
 }
-
 # Exc choice of two:
-CS2CP_syn_params = {
+CS2CP_syn_params = { # for AMPA_NMDA_STP.mod
     'tau_d_AMPA': 5.2,
     'Use': 0.41,
     'Dep': 532.,
     'Fac': 65.
 }
-
-CP2CP_syn_params = {
+CP2CP_syn_params = { # for AMPA_NMDA_STP.mod
     'tau_d_AMPA': 5.2,
     'Use': 0.37,
     'Dep': 31.7,
     'Fac': 519.
+}
+
+# For Ben's synapse modfiles
+# Inh perisomatic
+PV2PN_syn_params = { # for int2pyr.mod
+    # "level_of_detail": "int2pyr",
+    "AlphaTmax_gaba": 1.52,
+    "Beta_gaba": 0.14,
+    "Cdur_gaba": 0.7254,
+    "gbar_gaba": 1,
+    "Erev_gaba": -75,
+    "initW": 1,
+    "Wmax": 3,
+    "Wmin": 0.25,
+    "delay": 2,
+    "con_pattern": 1,
+    "lambda1": 1,
+    "lambda2": 0.01,
+    "threshold1": 0.5,
+    "threshold2": 0.6,
+    "tauD1": 40,
+    "d1": 0.7,
+    "tauD2": 500,
+    "d2": 0.7,
+    "tauF": 1,
+    "f": 1
+}
+# Inh dendritic
+SOM2PN_syn_params = { # for int2pyr.mod
+    # "level_of_detail": "int2pyr",
+    "AlphaTmax_gaba": 1.52,
+    "Beta_gaba": 0.14,
+    "Cdur_gaba": 0.7254,
+    "gbar_gaba": 0.006,
+    "Erev_gaba": -75,
+    "initW": 1,
+    "Wmax": 3,
+    "Wmin": 0.25,
+    "delay": 2,
+    "con_pattern": 1,
+    "lambda1": 1,
+    "lambda2": 0.01,
+    "threshold1": 0.5,
+    "threshold2": 0.6,
+    "tauD1": 200,
+    "d1": 0.8,
+    "tauD2": 1,
+    "d2": 1,
+    "tauF": 1,
+    "f": 1
+}
+# Exc
+PN2PN_syn_params = { # for pyr2pyr.mod
+    # "level_of_detail": "pyr2pyr",
+    "AlphaTmax_ampa": 5,
+    "Beta_ampa": 0.5882,
+    "Cdur_ampa": .2,
+    "gbar_ampa": 0.001,
+    "Erev_ampa": 0,
+    "AlphaTmax_nmda": 3.4483,
+    "Beta_nmda": 0.0233,
+    "Cdur_nmda": 0.29,
+    "gbar_nmda": 0.0005,
+    "Erev_nmda": 0,
+    "initW": 5,
+    "delay": 0.9,
+    "tauD1": 35,
+    "d1": 0.95,
+    "tauD2": 250,
+    "d2": 0.8,
+    "tauF": 1,
+    "f": 1
 }
 
 
@@ -56,8 +127,8 @@ class Synapse:
           self.syn_mod = syn_mod
           self.h_syn = getattr(h, self.syn_mod)(segment)
           self.set_gmax_var_and_current_type_based_on_syn_mod(syn_mod)
-          self.set_syn_params(syn_params)
           self.set_gmax_val(gmax)
+          self.set_syn_params(syn_params)
           self.set_random_generator(neuron_r)
 
         self.name = name
@@ -82,7 +153,14 @@ class Synapse:
     def set_syn_params(self, syn_params) -> None:
         self.syn_params = syn_params
         for key, value in syn_params.items():
-            if callable(value):
+            if key in ['delay', 'con_pattern', 'initW']: # these variables are parameters that do not get set to the h_syn: "delay' is not a defined hoc variable name.""
+                continue # initW from the syn params is not used.
+            elif key in ['Wmax', 'Wmin']: # bound the plastic weight around its original value
+                if self.gmax_var == 'initW':
+                    setattr(self.h_syn, key, value * self.gmax_val)
+                else:
+                    raise(f"gmax_var must be 'initw' for syn_param {key}")
+            elif callable(value): # set syn params
                 setattr(self.h_syn, key, value(size = 1))
             else:
                 setattr(self.h_syn, key, value)
