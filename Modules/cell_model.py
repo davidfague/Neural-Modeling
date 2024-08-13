@@ -336,16 +336,17 @@ class CellModel:
 
 			if release_p is not None:
 				if isinstance(release_p, dict):
-					sec_type = segment.sec.name().split(".")[-1].split("[")[0]#segment.sec.name().split('.')[1][:4]
-					p = release_p[sec_type](size = 1)
+					sec_type = segment.sec.name().split(".")[-1].split("[")[0]
+					p = release_p[sec_type](size=1)
 				else:
-					p = release_p(size = 1) # release_p is partial
+					p = release_p(size=1)  # release_p is partial
 
-				pu = self.random_state.uniform(low = 0, high = 1, size = 1)
-				
-				# Drop synapses with too low release probability
-				if p < pu: continue
-			
+				pu = self.random_state.uniform(low=0, high=1, size=1)
+
+				# Drop synapses with too low release probability unless syn_mod is 'int2pyr' or 'pyr2pyr'
+				if p < pu and 'int2pyr' not in syn_mod and 'pyr2pyr' not in syn_mod:
+					continue
+
 			# Create synapse
 			segment_distance = h.distance(segment, self.soma[0](0.5))
 			if (isinstance(syn_params, tuple)) or ((isinstance(syn_params, list))):

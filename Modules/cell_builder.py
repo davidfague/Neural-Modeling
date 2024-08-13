@@ -64,20 +64,31 @@ def log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip):
 	s = gmax_scalar * float(np.clip(val, clip[0], clip[1]))
 	return s
 
-def binned_log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip):
-	val = np.random.lognormal(gmax_mean, gmax_std, size)
-	s = gmax_scalar * float(np.clip(val, clip[0], clip[1]))
+def precompute_bin_means(gmax_mean, gmax_std, gmax_scalar, clip, large_sample_size=10000):
+    # Generate a large number of log-normal distributed values
+    val = np.random.lognormal(gmax_mean, gmax_std, large_sample_size)
+    s = gmax_scalar * np.clip(val, clip[0], clip[1])
 
-	# Bin
-	num_bins = 10
-	bin_size = (clip[1] - clip[0]) / num_bins
-	bins = np.arange(0, clip[1], bin_size)
-	ind = np.digitize(s, bins)
+    # Determine bins and compute the mean for each bin
+    num_bins = 10
+    bin_edges = np.percentile(s, np.linspace(0, 100, num_bins + 1))
+    bin_means = [(bin_edges[i] + bin_edges[i+1]) / 2 for i in range(num_bins)]
 
-	if ind == num_bins:
-		return bins[-1]
-	else:
-		return bins[ind]
+    return bin_means
+
+def binned_log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip, bin_means):
+    # Generate log-normal distributed values
+    val = np.random.lognormal(gmax_mean, gmax_std, size)
+    # Clip the values
+    s = gmax_scalar * np.clip(val, clip[0], clip[1])
+    # Assign each value to the nearest bin mean
+    binned_values = np.zeros_like(s)
+    for i in range(size):
+        # Find the bin the value belongs to
+        bin_index = np.digitize(s[i], bin_means) - 1
+        # Assign the value to the bin mean
+        binned_values[i] = bin_means[bin_index]
+    return binned_values
 
 # Firing rate distribution
 def exp_levy_dist(alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1):
@@ -354,11 +365,11 @@ class CellBuilder:
 		if (not self.parameters.add_soma_inh_synapses):# or (self.parameters.CI_on):
 			return None
 		
-		# inh_soma_P_dist = partial(
-		# 	P_release_dist, 
-		# 	P_mean = self.parameters.inh_soma_P_release_mean, 
-		# 	P_std = self.parameters.inh_soma_P_release_std, 
-		# 	size = 1)
+		inh_soma_P_dist = partial(
+			P_release_dist, 
+			P_mean = self.parameters.inh_soma_P_release_mean, 
+			P_std = self.parameters.inh_soma_P_release_std, 
+			size = 1)
 		
 		segments, seg_data = cell.get_segments(["soma"])
 		if self.parameters.use_SA_probs:
@@ -375,7 +386,7 @@ class CellBuilder:
 			name = "soma",
 			density = False,
 			seg_probs = probs,
-			release_p = None)
+			release_p = inh_soma_P_dist)
 			
 	def build_inhibitory_synapses(self, cell) -> None:
 		
@@ -383,20 +394,20 @@ class CellBuilder:
 		# 	return None
 		
 		# Inhibitory release probability distributions
-		# inh_apic_P_dist = partial(
-		# 	P_release_dist, 
-		# 	P_mean = self.parameters.inh_apic_P_release_mean, 
-		# 	P_std = self.parameters.inh_apic_P_release_std, 
-		# 	size = 1)
-		# inh_basal_P_dist = partial(
-		# 	P_release_dist, 
-		# 	P_mean = self.parameters.inh_basal_P_release_mean, 
-		# 	P_std = self.parameters.inh_basal_P_release_std, 
-		# 	size = 1)
+		inh_apic_P_dist = partial(
+			P_release_dist, 
+			P_mean = self.parameters.inh_apic_P_release_mean, 
+			P_std = self.parameters.inh_apic_P_release_std, 
+			size = 1)
+		inh_basal_P_dist = partial(
+			P_release_dist, 
+			P_mean = self.parameters.inh_basal_P_release_mean, 
+			P_std = self.parameters.inh_basal_P_release_std, 
+			size = 1)
 		
-		# inh_P_dist = {}
-		# inh_P_dist["apic"] = inh_apic_P_dist
-		# inh_P_dist["dend"] = inh_basal_P_dist
+		inh_P_dist = {}
+		inh_P_dist["apic"] = inh_apic_P_dist
+		inh_P_dist["dend"] = inh_basal_P_dist
 		
 		segments, seg_data = cell.get_segments(["apic", "dend"])
 		probs = [data.membrane_surface_area for data in seg_data]
@@ -410,7 +421,7 @@ class CellBuilder:
 			name = "inh",
 			density = self.parameters.inh_use_density,
 			seg_probs = probs,
-			release_p = None)
+			release_p = inh_P_dist)
 			
 	def build_excitatory_synapses(self, cell) -> None:
 		
@@ -418,20 +429,31 @@ class CellBuilder:
 		# 	return None
 
 		# Excitatory gmax distribution
-		gmax_exc_dist = partial(
-			binned_log_norm_dist,#log_norm_dist, 
-			self.parameters.exc_gmax_mean_0, 
-			self.parameters.exc_gmax_std_0, 
-			self.parameters.exc_scalar, 
-			size = 1, 
-			clip = self.parameters.exc_gmax_clip)
-		
-		# exc release probability distribution everywhere
-		# exc_P_dist = partial(
-		# 	P_release_dist, 
-		# 	P_mean = self.parameters.exc_P_release_mean, 
-		# 	P_std = self.parameters.exc_P_release_std, 
-		# 	size = 1)
+		if self.parameters.exc_gmax_binned:
+			bin_means = precompute_bin_means(self.parameters.exc_gmax_mean_0, self.parameters.exc_gmax_std_0, self.parameters.exc_scalar, self.parameters.exc_gmax_clip)
+			gmax_exc_dist = partial(
+				binned_log_norm_dist,
+				self.parameters.exc_gmax_mean_0, 
+				self.parameters.exc_gmax_std_0, 
+				self.parameters.exc_scalar, 
+				size = 1, 
+				clip = self.parameters.exc_gmax_clip,
+				bin_means = bin_means) # enable for binned_log_norm_dist
+		else:
+			gmax_exc_dist = partial(
+				log_norm_dist,
+				self.parameters.exc_gmax_mean_0, 
+				self.parameters.exc_gmax_std_0, 
+				self.parameters.exc_scalar, 
+				size = 1, 
+				clip = self.parameters.exc_gmax_clip)
+  
+  		# exc release probability distribution
+		exc_P_dist = partial(
+			P_release_dist, 
+			P_mean = self.parameters.exc_P_release_mean, 
+			P_std = self.parameters.exc_P_release_std, 
+			size = 1)
 
 		segments, seg_data = cell.get_segments(["apic", "dend"])
 		if self.parameters.use_SA_probs:
@@ -457,7 +479,7 @@ class CellBuilder:
 			name = "exc",
 			density = self.parameters.exc_use_density,
 			seg_probs = probs,
-			release_p = None)
+			release_p = exc_P_dist)
 
 	def build_stylized_cell(self) -> object:
 		geometry_path = os.path.join(self.stylized_templates_folder, self.parameters.geometry_file)

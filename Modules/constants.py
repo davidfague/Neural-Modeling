@@ -41,6 +41,7 @@ class SimulationParameters:
 	inh_gmax_dist: float = 0.5
 	soma_gmax_dist: float = 0.5
 	exc_scalar: int = 1 # Scales weight
+	exc_gmax_binned: bool = False # controls if the exc gmax values should be limited on the values they can take (helps with merging synapses)
 
 	# Density/Number of synapses
 	# Current densities taken from literature on apical main bifurcation, and extrapolated to entire cell.
@@ -61,7 +62,11 @@ class SimulationParameters:
 	inh_apic_P_release_std: float = 0.08
 	inh_soma_P_release_mean: float = 0.88
 	inh_soma_P_release_std: float = 0.05
-
+	# use_P_release_constants: bool = False # can maybe move this to the __init__ like syn_params
+	# exc_P_release_constant: float = 0.6
+	# inh_P_release_constant: float = 0.25 # from Ben's code
+	
+ 
 	# syn_mod
 	exc_syn_mod: str = 'AMPA_NMDA_STP'
 	inh_syn_mod: str = 'GABA_AB_STP'
