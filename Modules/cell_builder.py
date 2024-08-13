@@ -254,7 +254,6 @@ class CellBuilder:
 		# 	all_nseg.append(nseg)
 		# 	sec.nseg = 1+2*int(sec.L/10)
 
-  
 		print(f"soma segments:{cell.get_segments_without_data(['soma'])}")
 		# craete synapse objects
 		self.logger.log("Building excitatory synapses.")
