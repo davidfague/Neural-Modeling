@@ -38,11 +38,11 @@ class SimulationParameters:
 	num_soma_inh_syns: int = 450 # 150 PCs * ~3 divergence
 
 	# gmax distributions
-	exc_gmax_mean_0: float = 2.3#1.5 # 1.5-1.6 is good
-	exc_gmax_std_0: float = 0.2
-	exc_gmax_clip: tuple = (0, 15)
-	inh_gmax_dist: float = 0.5
-	soma_gmax_dist: float = 0.5
+	inh_gmax_dist: float = 5#0.5
+	soma_gmax_dist: float = 5#0.5
+	exc_gmax_mean_0: float = np.log(0.45) - 0.5 * np.log((0.35/0.45)**2+1)#0.45#2.3#1.5 # 1.5-1.6 is good
+	exc_gmax_std_0: float = np.sqrt(np.log((0.35/0.45)**2 + 1))#0.35
+	exc_gmax_clip: tuple = (0,5)#(0, 15)
 	exc_scalar: int = 1 # Scales weight
 	exc_gmax_binned: bool = False # controls if the exc gmax values should be limited on the values they can take (helps with merging synapses)
 
