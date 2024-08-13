@@ -414,7 +414,7 @@ class Simulation:
                     # Save data
                     cell.write_recorder_data(
                         os.path.join(path, f"saved_at_step_{time_step}"), 
-                        int(1 / parameters.h_dt))
+                        parameters.record_every_time_steps)
                     if log: self.logger.log("Finished writing data")
     
                     # Reinitialize recording vectors

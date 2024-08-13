@@ -138,6 +138,7 @@ class SimulationParameters:
 
 	# Log, plot and save
 	save_every_ms: int = 1000
+	record_every_time_steps: int = 1 # 10 converts from dt=0.1 ms to saved_dt=1 ms # 1 keeps at 0.1 ms
 	path: str = ''
 
 	# Reduction (depracating)
