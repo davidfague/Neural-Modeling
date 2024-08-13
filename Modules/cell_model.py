@@ -288,6 +288,20 @@ class CellModel:
 					datas.append(data)
 
 		return segments, datas
+
+	def get_segments_without_data(self, section_names: list) -> tuple:
+		segments = []
+		for sec in self.all:
+			if (sec.name().split(".")[-1].split("[")[0] in section_names) or ("all" in section_names):
+				for index_in_section, seg in enumerate(sec):
+					segments.append(seg)
+
+		return segments
+
+	def get_segment_length(self, seg_idx: int, seg_names: list):
+		segments, _ = self.get_segments(seg_names)
+		seg = segments[seg_idx]
+		return seg.sec.L / seg.sec.nseg
 	
 	def get_seg_index(self, segment: object):
 		indx = 0

@@ -99,9 +99,12 @@ class Simulation:
         seg_half_seg_RAs = []
         seg = []
         seg_Ls = []
+        sec_Ls = []
+        sec_Ds = []
+        seg_distance = []
         psegs=[]
         
-        for entry in seg_data:
+        for i,entry in enumerate(seg_data):
             # if parameters.build_stylized: #@DEPRACATED
             #     sec_name = entry.section.split(".")[-1]
             # else:
@@ -114,6 +117,10 @@ class Simulation:
             seg.append(entry.seg)
             seg_Ls.append(entry.L)
             psegs.append(entry.pseg)
+            sec_Ls.append(segments[i].sec.L)
+            sec_Ds.append(segments[i].sec.diam)
+            seg_distance.append(h.distance(segments[0], segments[i]))
+            
             
         seg_sections = pd.DataFrame({
             "section": seg_sections, 
@@ -121,7 +128,10 @@ class Simulation:
             "seg_half_seg_RA": seg_half_seg_RAs,
             "L": seg_Ls,
             "seg":seg,
-            "pseg":psegs
+            "pseg":psegs,
+            "Section_L":sec_Ls,
+            "Section_diam":sec_Ds,
+            "Distance":seg_distance
             })
 
         seg_coords = pd.concat(seg_coords)
