@@ -69,7 +69,7 @@ class SummaryStatistics:
             sta = sta + trace[:, int(sp_time - win_length // 2): int(sp_time + win_length // 2)]
 
         # Average over all spikes
-        sta = sta / len(spike_times)
+        sta = sta / (len(spike_times) + 1e-15)
 
         return sta
 
