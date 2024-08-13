@@ -194,13 +194,18 @@ class CellModel:
 		return xyz
 	
 	def get_coords_of_segments_in_section(self, sec) -> pd.DataFrame:
+     
+		for i in range(sec.n3d() - 1, 0, -1):
+			if (sec.x3d(i) == sec.x3d(i-1)) and (sec.y3d(i) == sec.y3d(i-1)) and (sec.z3d(i) == sec.z3d(i-1)):
+				print(f"Removing duplicate coordinate at index {i} in section {sec.name()}")
+				h.pt3dremove(i, sec=sec)
 
 		seg_coords = np.zeros((sec.nseg, 13))
 
 		seg_length = sec.L / sec.nseg
 		arc_lengths = [sec.arc3d(i) for i in range(sec.n3d())]
 		coords = np.array([[sec.x3d(i), sec.y3d(i), sec.z3d(i)] for i in range(sec.n3d())])
-
+  
 		seg_idx_in_sec = 0
 		for seg in sec:
 			start = seg.x * sec.L - seg_length / 2
@@ -216,14 +221,20 @@ class CellModel:
 				pt = coords[i] + (coords[i+1] - coords[i]) * t
 	
 				# Calculate the start and end points of the segment
-				direction = (coords[i+1] - coords[i]) / np.linalg.norm(coords[i+1] - coords[i])
+				norm = np.linalg.norm(coords[i+1] - coords[i])
+				if norm == 0:
+					print(f"Zero norm encountered in section {sec.name()}, coords[{i}] = {coords[i]}, coords[{i+1}] = {coords[i+1]}")
+				direction = (coords[i+1] - coords[i]) / norm
 
 				# p0
 				seg_coords[seg_idx_in_sec, 0:3] = pt - direction * seg_length / 2
 				# Correct the start point if it goes before 3D coordinates
 				while (i > 0) and (start < arc_lengths[i]):  # Added boundary check i > 0
 					i -= 1
-					direction = (coords[i+1] - coords[i]) / np.linalg.norm(coords[i+1] - coords[i])
+					norm = np.linalg.norm(coords[i+1] - coords[i])
+					if norm == 0:
+						print(f"Zero norm encountered in section {sec.name()}, coords[{i}] = {coords[i]}, coords[{i+1}] = {coords[i+1]}")
+					direction = (coords[i+1] - coords[i]) / norm
 					seg_coords[seg_idx_in_sec, 0:3] = coords[i] + direction * (start - arc_lengths[i])
 
 				# p05
@@ -235,7 +246,10 @@ class CellModel:
 				# Correct the end point if it goes beyond 3D coordinates
 				while (end > arc_lengths[i+1]) and (i+2 < len(arc_lengths)):
 					i += 1
-					direction = (coords[i+1] - coords[i]) / np.linalg.norm(coords[i+1] - coords[i])
+					norm = np.linalg.norm(coords[i+1] - coords[i])
+					if norm == 0:
+						print(f"Zero norm encountered in section {sec.name()}, coords[{i}] = {coords[i]}, coords[{i+1}] = {coords[i+1]}")
+					direction = (coords[i+1] - coords[i]) / norm
 					seg_coords[seg_idx_in_sec, 6:9] = coords[i] + direction * (end - arc_lengths[i])
 	
 				seg_coords[seg_idx_in_sec, 9] = seg.diam / 2
