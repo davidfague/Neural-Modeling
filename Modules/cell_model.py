@@ -26,7 +26,7 @@ class SegmentData:
 
 class CellModel:
 
-	FREQS = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, 'gamma': 30}
+	FREQS = {'delta': 1, 'theta': 4, 'alpha': 8, 'beta': 12, '25':25, 'gamma': 30}
 
 	def __init__(
 			self, 
