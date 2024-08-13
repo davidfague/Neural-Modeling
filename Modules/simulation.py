@@ -33,10 +33,10 @@ class Simulation:
         self.cell_type = cell_type
         if title:
           self.title = title
-          self.path = f"{title}-{datetime.datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}"
+          self.path = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}-{title}"
         else:
           self.title = None
-          self.path = f"{cell_type}-{datetime.datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}"
+          self.path = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}-{cell_type}"
 
         self.logger = Logger(None)
         self.pool = []
@@ -50,7 +50,8 @@ class Simulation:
         self.logger.log(f"Total number of proccessors: {cpu_count()}")
 
         # Create the simulation parent folder
-        os.mkdir(self.path)
+        if not os.path.exists(self.path):
+            os.mkdir(self.path)
 
         # Compile the modfiles and suppress output
         self.logger.log(f"Compiling modfiles.")
@@ -378,6 +379,8 @@ class Simulation:
             cell.add_spike_recorder(sec = cell.axon[0], var_name = "axon_spikes", spike_threshold = parameters.spike_threshold)          
       
     def simulate(self, cell, parameters: SimulationParameters, log=True, record_runtime=True, path=None):
+            #@MARK TODO: Can change this to cells a list of cells to record. 
+            # This is because if you build cells in a notebook and then simulate them 1 at a time then all cells will get solved for each cell.
             if path is None:
                 path = parameters.path
                 
