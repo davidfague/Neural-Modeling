@@ -191,8 +191,9 @@ class CellBuilder:
 				self.logger.log("Merging synapses.")
 				reductor.merge_synapses(cell)
 
-
-   
+		# set v_init for all compartments
+		h.v_init = self.parameters.h_v_init
+		h.finitialize(h.v_init)
 
     #---
       

@@ -396,11 +396,11 @@ class Simulation:
             h.tstop = parameters.h_tstop
             h.dt = parameters.h_dt
             h.steps_per_ms = 1 / h.dt
-            if is_indexable(cell.soma):
-                h.v_init = cell.soma[0].e_pas
-            else:
-                h.v_init = cell.soma.e_pas
-    
+            # if is_indexable(cell.soma):
+            #     h.v_init = cell.soma[0].e_pas
+            # else:
+            #     h.v_init = cell.soma.e_pas
+            h.v_init = parameters.h_v_init
             h.finitialize(h.v_init)
     
             if log: self.logger.log("Starting simulation.")
