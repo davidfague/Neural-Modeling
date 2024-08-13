@@ -139,7 +139,6 @@ class Simulation:
             nexus_seg_index = segments.index(cell.apic[0](0.4)) #New.apic[109](0.386364),New.apic[109](0.431818), chooses seg 0.386. may need to check
             # raise(NotImplementedError('Need to implement find_nexus_seg for reducing entire apical'))
         
-        self.replace_dend_with_CI(cell, parameters, segments, nexus_seg_index)
         # @DEPRACATING replacing with above function
         # if parameters.disable_apic_37:
         #     if (parameters.reduce_tufts):
@@ -214,70 +213,102 @@ class Simulation:
           self.set_all_recorders(cell, parameters)
           self.simulate(cell, parameters)
           
-    def replace_dend_with_CI(self, cell, parameters, segments, nexus_seg_index):
-        # if parameters.reduce_apic: # should be fine since there are no nexus children in this case.
-        #     NotImplementedError()
-        nexus_sec = segments[nexus_seg_index].sec
-        tuft_sections = nexus_sec.children()
-        if parameters.num_tuft_to_replace_with_CI > len(tuft_sections):
-            ValueError()
-        tuft_sections_to_replace = [tuft_sec for i,tuft_sec in enumerate(tuft_sections) if i < parameters.num_tuft_to_replace_with_CI]
-        for i, tuft_section in enumerate(tuft_sections_to_replace):
-            if i == 0:
-                cell.tuft_clamps = []
+    # def replace_dend_with_CI(self, cell, parameters, segments, nexus_seg_index):
+    #     replace_start_time = time.time()
+    #     # if parameters.reduce_apic: # should be fine since there are no nexus children in this case.
+    #     #     NotImplementedError()
+    #     nexus_sec = segments[nexus_seg_index].sec
+    #     tuft_sections = nexus_sec.children()
+    #     if parameters.num_tuft_to_replace_with_CI > len(tuft_sections):
+    #         ValueError()
+    #     tuft_sections_to_replace = [tuft_sec for i,tuft_sec in enumerate(tuft_sections) if i < parameters.num_tuft_to_replace_with_CI]
+    #     for i, tuft_section in enumerate(tuft_sections_to_replace):
+    #         if i == 0:
+    #             cell.tuft_clamps = []
                 
-            tuft_section.push()
-            h.disconnect()
-            self.delete_sec_and_children(tuft_section, cell)
+    #         tuft_section.push()
+    #         h.disconnect()
+    #         self.delete_sec_and_children(tuft_section, cell)
             
-            cell.tuft_clamps.append(h.IClamp(nexus_sec(0.999999)))
-            vec_stim = h.Vector()
-            (mean, std) = parameters.tuft_AC_stats[i]
-            np.random.seed(123)
-            stim_values = np.random.normal(mean, std, parameters.h_tstop)
+    #         cell.tuft_clamps.append(h.IClamp(nexus_sec(0.999999)))
+    #         vec_stim = h.Vector()
+    #         (mean, std) = parameters.tuft_AC_stats[i]
+    #         np.random.seed(123)
+    #         stim_values = np.random.normal(mean, std, parameters.h_tstop)
             
-            vec_stim.from_python(stim_values)
-            vec_time = h.Vector(np.arange(parameters.h_tstop))
+    #         vec_stim.from_python(stim_values)
+    #         vec_time = h.Vector(np.arange(parameters.h_tstop))
             
-            vec_stim.play(cell.tuft_clamps[i]._ref_amp, vec_time, 1)
+    #         vec_stim.play(cell.tuft_clamps[i]._ref_amp, vec_time, 1)
         
-        soma_sec = cell.soma[0]
-        basal_sections= [basal_sec for basal_sec in soma_sec.children() if basal_sec in cell.dend]
-        if parameters.num_basal_to_replace_with_CI > len(basal_sections):
-            ValueError()
-        basal_sections_to_replace = [basal_sec for i,basal_sec in enumerate(basal_sections) if i < parameters.num_basal_to_replace_with_CI]
-        for i, basal_section in enumerate(basal_sections_to_replace):
-            if i == 0:
-                cell.basal_clamps = []
+    #     soma_sec = cell.soma[0]
+    #     basal_sections= [basal_sec for basal_sec in soma_sec.children() if basal_sec in cell.dend]
+    #     if parameters.num_basal_to_replace_with_CI > len(basal_sections):
+    #         ValueError()
+    #     basal_sections_to_replace = [basal_sec for i,basal_sec in enumerate(basal_sections) if i < parameters.num_basal_to_replace_with_CI]
+    #     for i, basal_section in enumerate(basal_sections_to_replace):
+    #         if i == 0:
+    #             cell.basal_clamps = []
                 
-            basal_section.push()
-            h.disconnect()
-            self.delete_sec_and_children(basal_section, cell)
+    #         basal_section.push()
+    #         h.disconnect()
+    #         self.delete_sec_and_children(basal_section, cell)
             
-            cell.basal_clamps.append(h.IClamp(soma_sec(0.5)))
-            vec_stim = h.Vector()
-            (mean, std) = parameters.basal_AC_stats[i]
-            np.random.seed(123)
-            stim_values = np.random.normal(mean, std, parameters.h_tstop)
+    #         cell.basal_clamps.append(h.IClamp(soma_sec(0.5)))
+    #         vec_stim = h.Vector()
+    #         (mean, std) = parameters.basal_AC_stats[i]
+    #         np.random.seed(123)
+    #         stim_values = np.random.normal(mean, std, parameters.h_tstop)
             
-            vec_stim.from_python(stim_values)
-            vec_time = h.Vector(np.arange(parameters.h_tstop))
+    #         vec_stim.from_python(stim_values)
+    #         vec_time = h.Vector(np.arange(parameters.h_tstop))
 
-            vec_stim.play(cell.basal_clamps[i]._ref_amp, vec_time, 1)
+    #         vec_stim.play(cell.basal_clamps[i]._ref_amp, vec_time, 1)
+
+    #     replace_end_time = time.time()
+    #     total_replace_time = replace_end_time - replace_start_time
         
-    def delete_sec_and_children(self, section, cell):
-        sections_to_delete = self.get_all_children(section, [])
-        for sec in sections_to_delete:
-            sec_type = str(sec).split('.')[-1].split('[')[0]
-            getattr(cell, sec_type).remove(sec)
-            cell.all.remove(sec)
-            h.delete_section(sec=sec)
+    #     replace_file_path = os.path.join(parameters.path, "replace_runtime.txt")
+    #     with open(replace_file_path, "w") as replace_file:
+    #         replace_file.write(f"{total_replace_time:.3f} seconds")
+        
+        
+        
+    # def delete_sec_and_children(self, section, cell):
+    #     # Get all sections to be deleted
+    #     sections_to_delete = self.get_all_children(section, [])
+    #     # Gather all hoc synapse objects from cell.synapses
+    #     all_syn_hocobjs = [syn.h_syn for syn in cell.synapses]
+    #     # Initialize a list to store indices of synapses to remove
+    #     syn_to_remove_ids = []
+    #     # Iterate through all sections to be deleted
+    #     for sec in sections_to_delete:
+    #         # Gather all point processes (synapses) on this section
+    #         synapse_pps = [pp for seg in sec for pp in seg.point_processes()]
             
-    def get_all_children(self, sec, all_list):
-        all_list.append(sec)
-        for child in sec.children():
-            self.get_all_children(child, all_list)
-        return all_list
+    #         # Find indices of these point processes in the list of all hoc synapse objects
+    #         for pp in synapse_pps:
+    #             if pp in all_syn_hocobjs:
+    #                 syn_index = all_syn_hocobjs.index(pp)
+    #                 syn_to_remove_ids.append(syn_index)
+    #                 # Remove the reference to the point process
+    #                 for netcon in cell.synapses[syn_index].netcons:
+    #                     netcon.setpost(None)
+    #                 cell.synapses[syn_index].h_syn = None
+                
+    #         # Remove the section from the cell and delete it
+    #         sec_type = str(sec).split('.')[-1].split('[')[0]
+    #         getattr(cell, sec_type).remove(sec)
+    #         cell.all.remove(sec)
+    #         h.delete_section(sec=sec)
+    #     # Remove synapses from cell.synapses based on the collected indices
+    #     cell.synapses = [syn for i, syn in enumerate(cell.synapses) if i not in syn_to_remove_ids]
+            
+    # def get_all_children(self, sec, all_list):
+    #     all_list.append(sec)
+    #     for child in sec.children():
+    #         self.get_all_children(child, all_list)
+    #     return all_list
         
         # @DEPRACATING replace dend with CI
         # if parameters.disable_apic_37:

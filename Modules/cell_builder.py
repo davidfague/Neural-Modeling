@@ -20,7 +20,7 @@ import time
 from electrotonic_distance import *
 from surface_area import *
 
-from Modules.morph_reduction_utils import get_reduced_cell
+from Modules.morph_reduction_utils import get_reduced_cell, replace_dend_with_CI
 
 from stylized_module import Builder
 
@@ -128,6 +128,7 @@ class CellBuilder:
 			skeleton_cell = self.build_Neymotin_detailed_cell()
 
 		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger)
+
 		# @DEPRACATING debugging
 		# for model_part in ['all','soma','dend','apic','axon']:
 		# 		print(f"{model_part}: {getattr(cell, model_part)}")
@@ -160,6 +161,16 @@ class CellBuilder:
 					self.build_synapses(cell, random_state)
 			else:
 				self.build_synapses(cell, random_state)
+    
+		# replace with current injection
+		replace_start_time = time.time()
+		if (self.parameters.num_basal_to_replace_with_CI + self.parameters.num_tuft_to_replace_with_CI) > 0:
+			cell = replace_dend_with_CI(cell, self.parameters)
+		replace_end_time = time.time()
+		total_replace_time = replace_end_time - replace_start_time
+		replace_file_path = os.path.join(self.parameters.path, "replace_runtime.txt")
+		with open(replace_file_path, "w") as replace_file:
+			replace_file.write(f"{total_replace_time:.3f} seconds")
 		
 		reductor = Reductor(logger = self.logger)
 		if self.parameters.optimize_nseg_by_lambda:
