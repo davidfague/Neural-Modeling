@@ -144,7 +144,7 @@ def reduce_tree(cell, root_section, op_id=None):
     # print(f"new_cable_properties: {new_cable_properties}")
     
     # determine nseg for the new branches
-    new_cable_nseg = calculate_nsegs_from_lambda(new_cable_properties) + 3
+    new_cable_nseg = calculate_nsegs_from_lambda(new_cable_properties)# + 3
     
     # create reduced branches
     root_sec_type = str(root_section).split('.')[-1].split('[')[0]

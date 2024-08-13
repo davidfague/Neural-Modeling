@@ -183,10 +183,11 @@ class CellBuilder:
 		with open(replace_file_path, "w") as replace_file:
 			replace_file.write(f"{total_replace_time:.3f} seconds")
 		
+		# merge synapses/optimize nseg by lambda
 		reductor = Reductor(logger = self.logger)
 		if self.parameters.optimize_nseg_by_lambda:
 				self.logger.log("Updating nseg using lambda.")
-				reductor.update_model_nseg_using_lambda(cell)
+				reductor.update_model_nseg_using_lambda(cell, segs_per_lambda=self.parameters.segs_per_lambda)
 		if self.parameters.merge_synapses:
 				self.logger.log("Merging synapses.")
 				reductor.merge_synapses(cell)
