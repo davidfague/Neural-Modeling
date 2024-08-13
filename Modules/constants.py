@@ -17,6 +17,7 @@ class SimulationParameters:
 	h_celcius: float = 37 # 34
 	h_tstop: int = 5000 # Sim runtime (ms)
 	h_dt: float = 0.1 # Timestep (ms)
+	h_v_init: float = -77.2 # resting voltage all compartments (mV)
 
 	# Current injection
 	CI_on: bool = False
