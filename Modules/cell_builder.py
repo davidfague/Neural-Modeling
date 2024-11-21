@@ -346,16 +346,17 @@ class CellBuilder:
 		synapse_names = ["soma"],
 		seg_names = ["soma"]
 		) #5,20
+		firing_rates = PoissonTrainGenerator.generate_lambdas_by_delaying(self.parameters.h_tstop, exc_spike_trains)
 		for fg in soma_fgs: # one fr profile per fg
-			firing_rates = PoissonTrainGenerator.generate_lambdas_by_delaying(self.parameters.h_tstop, exc_spike_trains)
+			# In this case the firing rate profile is the average exc spike train delayed. All functional groups would have the same, unless we subset by nearby exc spike train only
 			for pc in fg.presynaptic_cells: # one spike train per pc
 				mean_fr = proximal_inh_dist(size = 1)
-				firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(firing_rates, desired_mean=mean_fr)#, divide_1000=True)
+				pc_firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(firing_rates, desired_mean=mean_fr)#, divide_1000=True)
 				spike_train = PoissonTrainGenerator.generate_spike_train(
-				lambdas = firing_rates, 
+				lambdas = pc_firing_rates, 
 				random_state = random_state)
 				pc.set_spike_train(spike_train.mean_fr, spike_train.spike_times)
-		for syn in cell.get_synapses("soma"):
+		for syn in cell.get_synapses(["soma"]):
 			if syn.h_syn.get_segment() in cell.get_segments_without_data(["soma"]):
 				syn.set_spike_train_from_pc()
 
@@ -493,36 +494,42 @@ class CellBuilder:
 			)
 		}
 		
-		# Inhibitory release probability distributions
-		inh_apic_P_dist = partial(
-			P_release_dist, 
-			P_mean = self.parameters.inh_apic_P_release_mean, 
-			P_std = self.parameters.inh_apic_P_release_std, 
-			size = 1)
-		inh_basal_P_dist = partial(
-			P_release_dist, 
-			P_mean = self.parameters.inh_basal_P_release_mean, 
-			P_std = self.parameters.inh_basal_P_release_std, 
-			size = 1)
-		
-		inh_P_dist = {}
-		inh_P_dist["apic"] = inh_apic_P_dist
-		inh_P_dist["dend"] = inh_basal_P_dist
-		
-		segments, seg_data = cell.get_segments(["apic", "dend"])
-		probs = [data.membrane_surface_area for data in seg_data]
+		# Retrieve segments and their associated membrane surface areas
+		apic_segments, apic_seg_data = cell.get_segments(["apic"])
+		dend_segments, dend_seg_data = cell.get_segments(["dend"])
+		apic_probs = [data.membrane_surface_area for data in apic_seg_data]
+		dend_probs = [data.membrane_surface_area for data in dend_seg_data]
 
-		cell.add_synapses_over_segments(
-			segments = segments,
-			nsyn = self.parameters.inh_synaptic_density if self.parameters.inh_use_density else self.parameters.inh_syn_number,
-			syn_mod = self.parameters.inh_syn_mod,
-			syn_params = self.parameters.inh_syn_params,
-			gmax = self.parameters.inh_gmax_dist,
-			name = "inh",
-			density = self.parameters.inh_use_density,
-			seg_probs = probs,
-			release_p = inh_P_dist)
-			
+		# Determine whether to use density or a fixed number of synapses
+		if self.parameters.inh_use_density:
+			synapse_count = self.parameters.inh_synaptic_density
+		else:
+			apic_length = sum([seg.sec.L / seg.sec.nseg for seg in apic_segments])
+			dend_length = sum([seg.sec.L / seg.sec.nseg for seg in dend_segments])
+			total_length = apic_length + dend_length
+			synapse_count = {
+				"apic": int(self.parameters.inh_syn_number * apic_length / total_length),
+				"dend": int(self.parameters.inh_syn_number * dend_length / total_length)
+			}
+
+		# Helper function to add synapses over segments
+		def add_synapses(segment_type, segments, segment_probs, gmax):
+			cell.add_synapses_over_segments(
+				segments=segments,
+				nsyn=synapse_count if self.parameters.inh_use_density else synapse_count[segment_type],
+				syn_mod=self.parameters.inh_syn_mod,
+				syn_params=self.parameters.inh_syn_params,
+				gmax=gmax,
+				name="inh",
+				density=self.parameters.inh_use_density,
+				seg_probs=segment_probs,
+				release_p=inh_P_dist
+			)
+
+		# Add synapses to apical and basal segments
+		add_synapses("apic", apic_segments, apic_probs, self.parameters.apic_inh_gmax_dist)
+		add_synapses("dend", dend_segments, dend_probs, self.parameters.basal_inh_gmax_dist)
+		
 	def build_excitatory_synapses(self, cell) -> None:
 		
 		# if self.parameters.CI_on:
