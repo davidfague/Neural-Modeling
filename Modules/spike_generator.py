@@ -149,7 +149,7 @@ class PoissonTrainGenerator:
 		units mHz'''
   		# Can't have negative firing rates (precision reasons)
 		if np.sum(lambdas < 0) != 0:
-			warnings.warn("Found non-positive lambdas before shifing a mean.")
+			warnings.warn("Found negative lambdas before shifting a mean.")
 			lambdas[lambdas < 0] = 1e-15 
 		# print(np.sum(lambdas < 0),lambdas)
 		# if divide_1000:
@@ -160,7 +160,7 @@ class PoissonTrainGenerator:
   
   		# Can't have negative firing rates (precision reasons)
 		if np.sum(lambdas < 0) != 0:
-			warnings.warn("Found non-positive lambdas after shifing a mean.")
+			warnings.warn("Found negative lambdas after shifting a mean.")
 			lambdas[lambdas < 0] = 1e-15 
    
 		return lambdas
