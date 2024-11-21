@@ -89,8 +89,9 @@ class Simulation:
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
         cell, _ = cell_builder.build_cell()
         
-        adj_matrix = cell.compute_directed_adjacency_matrix()
-        np.savetxt(os.path.join(parameters.path, "adj_matrix.txt"), adj_matrix)
+        if parameters.save_adj_matrix:
+            adj_matrix = cell.compute_directed_adjacency_matrix()
+            np.savetxt(os.path.join(parameters.path, "adj_matrix.txt"), adj_matrix)
 
         # Classify segments by morphology, save coordinates
         segments, seg_data = cell.get_segments(["all"]) # (segments is returned here to preserve NEURON references)
