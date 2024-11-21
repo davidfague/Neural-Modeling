@@ -40,7 +40,9 @@ class SimulationParameters:
 	# gmax distributions
 	inh_gmax_dist: float = 5#0.5
 	soma_gmax_dist: float = 5#0.5
-	exc_gmax_mean_0: float = np.log(0.45) - 0.5 * np.log((0.35/0.45)**2+1)#0.45#2.3#1.5 # 1.5-1.6 is good
+	apic_inh_gmax_dist: float = 2.8
+	basal_inh_gmax_dist: float = 2.4
+	exc_gmax_mean_0: float = (np.log(0.45) - 0.5 * np.log((0.35/0.45)**2+1))#0.45#2.3#1.5 # 1.5-1.6 is good
 	exc_gmax_std_0: float = np.sqrt(np.log((0.35/0.45)**2 + 1))#0.35
 	exc_gmax_clip: tuple = (0,5)#(0, 15)
 	exc_scalar: int = 1 # Scales weight
@@ -77,13 +79,13 @@ class SimulationParameters:
 	synaptic_currents_to_record =["i_AMPA", "i_NMDA"]#['iampa', 'inmda']# listed are for pyr2pyr.	for AMPA_NMDA: ["i_AMPA", "i_NMDA"]
 
 	# Firing rate distributions
-	use_levy_dist_for_exc: bool = True
+	use_levy_dist_for_exc: bool = False
 	inh_prox_mean_fr: float = 16.9
 	inh_prox_std_fr: float = 14.3
 	inh_distal_mean_fr: float = 3.9
 	inh_distal_std_fr: float = 4.9
-	exc_mean_fr: float = 4.43
-	exc_std_fr: float = 2.9
+	exc_mean_fr: float = 6.7967#4.43
+	exc_std_fr: float = 4.3#3.4503#2.9
   	# exc FR FR/FR curve
 	exc_constant_fr: bool = False # exc synapses will have firing rate of 0 + self.parameters.excFR_increase
 	excFR_increase: float = 0.0
