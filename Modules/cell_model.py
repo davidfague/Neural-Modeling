@@ -594,7 +594,11 @@ class CellModel:
 		if synapse is None:
 			for syn in self.synapses:
 				try: rec_list.add(SynapseRecorder(syn.h_syn, var_name))
-				except: continue
+				except:
+						if str(syn.h_syn) == 'int2pyr' and 'gaba' in var_name.lower():
+							print(f'failed: {print(syn.h_syn)}, {var_name}')
+						elif str(syn.h_syn) == 'pyr2pyr' and 'nmda' in var_name.lower():
+							print(f'failed: {print(syn.h_syn)}, {var_name}')
 		else:
 			rec_list.add(SynapseRecorder(synapse.h_syn, var_name))
 		self.recorders.append(rec_list)
