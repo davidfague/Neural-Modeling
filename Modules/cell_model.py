@@ -443,6 +443,7 @@ class CellModel:
 		return basal_secondary_sections
 
 	def get_basal_sections(self, level=1): #@MARK  - Check. Potential
+		'''Function for getting basal sections at a section depth (i.e. the last sections upto n sections from the soma)'''
 		if level < 1:
 			raise(ValueError(f"level {level} must be less than 1"))
 		def get_children_at_level(sections, current_level, target_level):
@@ -462,8 +463,9 @@ class CellModel:
 		
 		return sections
 
+
 	def get_oblique_root_sections(self):
-		all_segments, _ = self.get_segments(['all'])
+		all_segments = self.get_segments_without_data(['all'])
 		nexus_seg_index = self.find_nexus_seg()
 		adjacency_matrix = self.compute_directed_adjacency_matrix()
 		apic_trunk_root_seg_index = all_segments.index(all_segments[0].sec.children()[1](0.0001))
