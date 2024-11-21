@@ -24,6 +24,8 @@ from Modules.morph_reduction_utils import get_reduced_cell, replace_dend_with_CI
 
 from stylized_module import Builder
 
+import h5py
+
 #from reduction_utils import update_model_nseg_using_lambda, merge_synapses
 
 class SkeletonCell(Enum):
@@ -253,7 +255,7 @@ class CellBuilder:
 		# 	nseg = sec.nseg
 		# 	all_nseg.append(nseg)
 		# 	sec.nseg = 1+2*int(sec.L/10)
-
+  
 		print(f"soma segments:{cell.get_segments_without_data(['soma'])}")
 		# craete synapse objects
 		self.logger.log("Building excitatory synapses.")
@@ -269,7 +271,9 @@ class CellBuilder:
 		self.logger.log("Assigning excitatory spike trains.")
 		self.assign_excitatory_spike_trains(cell = cell, random_state = random_state)
   
-		exc_spike_trains = [syn.pc.spike_train for syn in cell.get_synapses('exc')]
+		# calc exc for delayed inhibition
+		exc_spike_trains = [syn.pc.spike_train for syn in cell.get_synapses(['exc'])]
+     
 		# exc_mean_frs = [syn.pc.mean_fr for syn in cell.get_synapses('exc')]
 
 		self.logger.log("Assigning inhibitory spike trains.")
@@ -377,7 +381,7 @@ class CellBuilder:
 				random_state = random_state)
 				pc.set_spike_train(spike_train.mean_fr, spike_train.spike_times)
 
-		for syn in cell.get_synapses("inh"):
+		for syn in cell.get_synapses(["inh"]):
 				if syn.h_syn.get_segment() in cell.get_segments_without_data(["dend", "apic"]):
 					syn.set_spike_train_from_pc()
 
@@ -419,7 +423,7 @@ class CellBuilder:
 				# print(spike_train.spike_times)
 				pc.set_spike_train(spike_train.mean_fr, spike_train.spike_times)
 
-		for syn in cell.get_synapses("exc"):
+		for syn in cell.get_synapses(["exc"]):
 				exc_spike_trains.append(spike_train.spike_times)
 				exc_mean_frs.append(spike_train.mean_fr)
 				syn.set_spike_train_from_pc()
@@ -459,6 +463,22 @@ class CellBuilder:
 		
 		# if self.parameters.CI_on:
 		# 	return None
+			
+		# Define release probability distributions for apical and basal segments
+		inh_P_dist = {
+			"apic": partial(
+				P_release_dist, 
+				P_mean=self.parameters.inh_apic_P_release_mean, 
+				P_std=self.parameters.inh_apic_P_release_std, 
+				size=1
+			),
+			"dend": partial(
+				P_release_dist, 
+				P_mean=self.parameters.inh_basal_P_release_mean, 
+				P_std=self.parameters.inh_basal_P_release_std, 
+				size=1
+			)
+		}
 		
 		# Inhibitory release probability distributions
 		inh_apic_P_dist = partial(
