@@ -47,7 +47,7 @@ proc geom_nseg() {local nSec, L1, L2, D1, D2, nSeg1, nSeg2
   soma area(.5) // make sure diam reflects 3d points
   nSec = 0
   forsec all {
-    nseg = 1 + 2*int(L/40)
+    nseg = 1 + 2*int(L/10) //40)
     nSec = nSec + 1
   }
 
