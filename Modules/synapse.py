@@ -9,14 +9,14 @@ Exp2Syn_syn_params = {
 # For Segev synapse modfiles
 # Inh distal
 LTS_syn_params = { # for GABA_AB_STP.mod
-    'e_GABAA': -90.,
+    'e_GABAA': -75.0,#-90.,
     'Use': 0.3,
     'Dep': 25.,
     'Fac': 100.
 }
 # Inh perisomatic
 FSI_syn_params = { # for GABA_AB_STP.mod
-    'e_GABAA': -90.,
+    'e_GABAA': -75.0,#-90.,
     'Use': 0.3,
     'Dep': 400.,
     'Fac': 0.
