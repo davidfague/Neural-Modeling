@@ -73,6 +73,8 @@ class SimulationParameters:
 	# syn_mod
 	exc_syn_mod: str = 'AMPA_NMDA_STP'#'pyr2pyr'#'AMPA_NMDA_STP'
 	inh_syn_mod: str = 'GABA_AB_STP'#'int2pyr'#'GABA_AB_STP'
+ 
+	synaptic_currents_to_record =["i_AMPA", "i_NMDA"]#['iampa', 'inmda']# listed are for pyr2pyr.	for AMPA_NMDA: ["i_AMPA", "i_NMDA"]
 
 	# Firing rate distributions
 	use_levy_dist_for_exc: bool = True
