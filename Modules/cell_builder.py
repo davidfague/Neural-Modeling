@@ -281,6 +281,19 @@ class CellBuilder:
 
 		self.logger.log("Assigning soma spike trains.")
 		self.assign_soma_spike_trains(cell = cell, random_state = random_state, exc_spike_trains=exc_spike_trains)
+  
+		# record spike trains
+		if self.parameters.record_spike_trains:
+			spike_train_data = {
+				'exc_spike_trains': exc_spike_trains,
+				'soma_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses(['soma'])],
+				'inh_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses(['inh'])]
+			}
+			for dataset_name, data in spike_train_data.items():
+				file_path = os.path.join(self.parameters.path, f'{dataset_name}.h5')
+				with h5py.File(file_path, 'w') as h5f:
+					for i, sequence in enumerate(data):
+						h5f.create_dataset(f'spike_train_{i}', data=sequence)
 
 		#@CHECKING resulting mean firing rate distribution
 		# print(f"exc_mean_frs result distribution {np.mean(exc_mean_frs), np.std(exc_mean_frs)}")
