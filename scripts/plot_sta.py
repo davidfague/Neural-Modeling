@@ -15,49 +15,57 @@ import traceback
 # (1) control for bursts
 
 # https://github.com/dbheadley/InhibOnDendComp/blob/master/src/mean_dendevt.py
-def _plot_sta(sta, quantiles, title, xlabel_spike_type, ylabel_ed_from, limit=True) -> plt.figure:
-    x_ticks = np.arange(0, 100, 5)
-    x_tick_labels = ['{}'.format(i) for i in np.arange(-50, 50, 5)]
+def _plot_sta(sta, quantiles, title, xlabel_spike_type, ylabel_ed_from, cbar_spike_type, limit=True) -> plt.figure:
+    x_ticks = np.arange(0, 60, 5)
+    x_tick_labels = ['{}'.format(i) for i in np.arange(-30, 30, 5)]
     
-    fig = plt.figure(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(8, 6))  # Creating figure and axes for plot customization
     
     if limit:
-      # Calculate mean and standard deviation of sta
-      mean_val = np.mean(sta)
-      std_val = np.std(sta)
+        # Calculate mean and standard deviation of sta
+        mean_val = np.mean(sta)
+        std_val = np.std(sta)
   
-      # Calculate limits as within 95% of the mean
-      lower_limit = mean_val - 0.99 * std_val
-      upper_limit = mean_val + 0.99 * std_val
+        # Calculate limits as within 95% of the mean
+        lower_limit = mean_val - 0.99 * std_val
+        upper_limit = mean_val + 0.99 * std_val
   
-      # Set vmin and vmax to the calculated limits
-      plt.imshow(sta, cmap=sns.color_palette("coolwarm", as_cmap=True), vmin=lower_limit, vmax=upper_limit)
+        # Set vmin and vmax to the calculated limits and plot the image
+        img = ax.imshow(sta, cmap=sns.color_palette("coolwarm", as_cmap=True), vmin=lower_limit, vmax=upper_limit)
     else:
-      plt.imshow(sta, cmap = sns.color_palette("coolwarm", as_cmap = True))
+        # Plot the image without limits
+        img = ax.imshow(sta, cmap=sns.color_palette("coolwarm", as_cmap=True))
   
-    plt.title(title)
-    plt.xticks(ticks=x_ticks - 0.5, labels=x_tick_labels)
-    plt.xlabel(f'Time w.r.t. {xlabel_spike_type} spikes (ms)')
-    plt.yticks(ticks=np.arange(11) - 0.5, labels=np.round(quantiles, 3))
-    plt.ylabel(f"Elec. dist. quantile (from {ylabel_ed_from})")
-    plt.colorbar(label="average of each binned segment's percent change from mean spike rate during entire interval")
+    # Setting the title and labels with the provided information
+    ax.set_title(title)
+    ax.set_xticks(ticks=x_ticks)
+    ax.set_xticklabels(x_tick_labels)
+    ax.set_xlabel(f'Time from {xlabel_spike_type} spikes (ms)')
+    ax.set_yticks(ticks=np.arange(11) - 0.5)
+    ax.set_yticklabels(np.round(quantiles, 3))
+    ax.set_ylabel(f"transfer impendance ratio from {ylabel_ed_from}")
+    
+    # Creating color bar matched to the axes of the plot
+    # mean percent change from baseline {cbar_spike_type} spike rate
+    cbar = fig.colorbar(img, ax=ax, shrink = 0.5, label=r"$\Delta\mu$% " + cbar_spike_type + " spike rate")
+    
     return fig
 
-def _compute_sta_for_each_train_in_a_list(list_of_trains, spikes) -> np.ndarray:
+def _compute_sta_for_each_train_in_a_list(list_of_trains, spikes, win_length=60) -> np.ndarray:
 
     parameters = analysis.DataReader.load_parameters(sim_directory)
 
     stas = []
     for train in list_of_trains:
         if len(train) == 0: 
-            stas.append(np.zeros((1, 100)))
+            stas.append(np.zeros((1, win_length)))
             continue
         cont_train = np.zeros(parameters.h_tstop)
         cont_train[train] = 1
 
         # Skip spikes that are in the beginning of the trace
         cont_train[:parameters.skip] = 0
-        sta = analysis.SummaryStatistics.spike_triggered_average(cont_train.reshape((1, -1)), spikes, 100)
+        sta = analysis.SummaryStatistics.spike_triggered_average(cont_train.reshape((1, -1)), spikes, win_length)
 
         # Normalize by average
         sta = (sta - np.mean(cont_train)) / (np.mean(cont_train) + 1e-15) * 100 # percent change from mean
@@ -73,6 +81,7 @@ def _map_stas_to_quantiles_and_plot(
         elec_dist_from,
         title,
         xlabel_spike_type, 
+        cbar_spike_type,
         indexes = None) -> None:
     
     if section not in ["apic", "dend"]: raise ValueError
@@ -98,10 +107,10 @@ def _map_stas_to_quantiles_and_plot(
         var_to_bin = elec_dist
     )
 
-    fig = _plot_sta(sta_binned, quantiles, title, xlabel_spike_type, elec_dist_from)
+    fig = _plot_sta(sta_binned, quantiles, title, xlabel_spike_type, elec_dist_from, cbar_spike_type)
     plt.show()
     if save:
-        fig.savefig(os.path.join(sim_directory, f"{elec_dist_from}_{title}_wrt{xlabel_spike_type}.png"), dpi = fig.dpi)
+        fig.savefig(os.path.join(save_directory, f"{section}_{elec_dist_from}_{cbar_spike_type}_wrt_{xlabel_spike_type}.png"), dpi = fig.dpi)
 
 def _analyze_Na():
 
@@ -360,14 +369,18 @@ def _analyze_spike_relationships(sim_directory, spike_type, wrt_spike_type, sect
         else:
             raise ValueError("Invalid 'with respect to' spike type")
 
+        print(f"sim_directory: {sim_directory}")
+
         sta = _compute_sta_for_each_train_in_a_list(spikes, wrt_spikes)
         _map_stas_to_quantiles_and_plot(
             sta=sta,
             spikes=spikes,
             section=section,
             elec_dist_from=elec_dist,
-            title=f"{section}-{spike_type}",
+            # title=f"{sim_directory.split('/')[-2].split('_')[1]} model {section} {spike_type} spike rate around {wrt_spike_type} spiketimes",
+            title=f"{sim_directory.split('/')[-1]} model {section} {spike_type} spike rate around {wrt_spike_type} spiketimes",
             xlabel_spike_type=wrt_spike_type,
+            cbar_spike_type=spike_type,
             indexes=indexes
         )
         print(f"SUCCESS analyzing {spike_type} spikes w.r.t. {wrt_spike_type} spikes in {section} section, {elec_dist} distance:")        
@@ -380,7 +393,6 @@ def analyze_all_spike_relationships(sim_directory):
     sections = ["apic", "dend"]
     spike_types = ["Na", "Ca", "NMDA", "soma_spikes"]
     elec_dists = ["soma", "nexus"]
-
     for spike_type in spike_types:
         for wrt_spike_type in spike_types:
             for section in sections:
@@ -404,11 +416,14 @@ if __name__ == "__main__":
 
     # Save figures or just show them
     save = "-s" in sys.argv # (global)
+    if "-s" in sys.argv:
+        save_directory = sys.argv[sys.argv.index("-s") + 1]
 
     logger = Logger()
 
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
     parameters = analysis.DataReader.load_parameters(sim_directory)
+    #print(soma_spikes)
     logger.log(f"Soma firing rate: {round(soma_spikes.shape[1] * 1000 / parameters.h_tstop, 2)} Hz")
 
     try:
@@ -416,6 +431,8 @@ if __name__ == "__main__":
         analyze_all_spike_relationships(sim_directory)
     except Exception:
         print(traceback.format_exc())
+          
+        
 
 #    try:
 #        logger.log("Analyzing Na.")
