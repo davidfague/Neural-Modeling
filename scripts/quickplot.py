@@ -14,7 +14,7 @@ def plot_sim_file(h5file):
 	plt.savefig(f"quickplot.png")
 
 def plot_sim_folder(sim_folder, sim_file_name):
-	data_to_plot = DataReader.read_data(sim_folder, sim_file_name)
+	data_to_plot = DataReader.read_data(sim_folder, sim_file_name)[0][:]
 	plt.plot(data_to_plot)
 	plt.savefig(f"quickplot.png")
 
