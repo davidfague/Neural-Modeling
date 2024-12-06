@@ -8,6 +8,8 @@ from config import params
 import os
 import analysis
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use a non-interactive backend
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -15,11 +17,11 @@ from ecp import ECP
 
 #from plotting_utils import plot_simulation_results
 
-def plot_LFP():
+def plot_LFP(sim_directory, save_dir):
     i_membrane = analysis.DataReader.read_data(sim_directory, "i_membrane_")
     morph = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
     Vm = analysis.DataReader.read_data(sim_directory, "v")
-    
+
     #dl: A NumPy array of shape [nseg, 3], representing the directional vectors from the start to the end of each segment.
     #pc: A NumPy array of shape [nseg, 3], representing the center points of each segment.
     #r: A NumPy array of shape [nseg], representing the radius of each segment.
@@ -30,12 +32,11 @@ def plot_LFP():
     #morph['dl'] = np.sqrt((morph['dl_0']**2) + (morph['dl_1']**2) + (morph['dl_2']**2))
     #morph['dl'] = morph.apply(lambda row: np.array([row['dl_0'], row['dl_1'], row['dl_2']]), axis=1)
 
-    
     # Construct 'pc' and 'dl' arrays from the DataFrame
     pc = morph[['pc_0', 'pc_1', 'pc_2']].to_numpy()
     dl = morph[['dl_0', 'dl_1', 'dl_2']].to_numpy()
     r = morph['r'].to_numpy()
-    
+
     # Create the seg_coords dictionary
     morph = {
         'pc': pc,
@@ -44,36 +45,31 @@ def plot_LFP():
     }
     print("morph['pc']: {morph['pc']}")
     print("morph['dl']: {morph['dl']}")
-    
+
     elec_pos = params.ELECTRODE_POSITION
     ecp = ECP(i_membrane, seg_coords=morph, min_distance=params.MIN_DISTANCE)
-    elec_pos=params.ELECTRODE_POSITION
+    elec_pos = params.ELECTRODE_POSITION
     ecp.set_electrode_positions(elec_pos)
     ecp.calc_ecp()
-    
+
     loc_param = [0., 0., 45., 0., 1., 0.]
     lfp = ecp.calc_ecp().T  # Unit: mV
-    #plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index,
-		#				loc_param, lfp, elec_pos, plot_lfp_heatmap, plot_lfp_traces)
-   
+
     parameters = analysis.DataReader.load_parameters(sim_directory)
-    #print(parameters)
-    #print(morph.keys())
-    #print(morph['idx_in_section'], morph['section'])
-    t = np.arange(0, parameters.h_tstop, parameters.h_dt)
-    soma_seg_index=0
-    axon_seg_index=10
-    basal_seg_index=20
-    tuft_seg_index=30
-    nexus_seg_index=40
-    trunk_seg_index=15
+    t = np.arange(0, parameters.h_tstop + 1)  # ), parameters.h_dt)
+    soma_seg_index = 0
+    axon_seg_index = 10
+    basal_seg_index = 20
+    tuft_seg_index = 30
+    nexus_seg_index = 40
+    trunk_seg_index = 15
     plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, nexus_seg_index, trunk_seg_index,
-    				loc_param, lfp, elec_pos)
+                            loc_param, lfp, elec_pos, save_dir=save_dir)
 
 def plot_simulation_results(t, Vm, soma_seg_index, axon_seg_index, basal_seg_index, tuft_seg_index, 
 							nexus_seg_index, trunk_seg_index, loc_param, lfp, elec_pos, 
 				       xlim = None, ylim = None, figsize: tuple = None, vlim = 'auto',
-							show = True, save_dir = None):
+							show = False, save_dir = None):
 	if xlim is None:
 		xlim=t[[0, -1]]
 	v_soma = Vm[soma_seg_index]
@@ -439,5 +435,9 @@ if __name__ == "__main__":
         sim_directory = sys.argv[sys.argv.index("-d") + 1] # (global)
     else:
         raise RuntimeError
-    
-    plot_LFP()
+
+    if "-s" in sys.argv:
+        save_dir = sys.argv[sys.argv.index("-s") + 1] # (global)
+    else:
+        raise RuntimeError
+    plot_LFP(sim_directory, save_dir)
