@@ -295,6 +295,46 @@ class CellBuilder:
 					for i, sequence in enumerate(data):
 						h5f.create_dataset(f'spike_train_{i}', data=sequence)
 
+		# Record synapse distributions
+		if self.parameters.record_synapse_distributions:
+			all_segments = self.get_segments_without_data(['all'])
+			soma_synapses = cell.get_synapses(['soma'])
+			inh_synapses = cell.get_synapses(['inh'])
+			exc_synapses = cell.get_synapses(['exc'])
+			synapse_data = {
+				'synapse_type': (
+					['soma_inh'] * len(soma_synapses) +
+					['inh'] * len(inh_synapses) +
+					['exc'] * len(exc_synapses)
+				),
+				'mean_firing_rate': (
+					[syn.pc.mean_fr for syn in soma_synapses] +
+					[syn.pc.mean_fr for syn in inh_synapses] +
+					[syn.pc.mean_fr for syn in exc_synapses]
+				),
+				'weight': (
+					[syn.gmax_val for syn in soma_synapses] +
+					[syn.gmax_val for syn in inh_synapses] +
+					[syn.gmax_val for syn in exc_synapses]
+				),
+				'seg_id': (
+					[all_segments.index(syn.h_syn.get_segment()) for syn in soma_synapses] +
+					[all_segments.index(syn.h_syn.get_segment()) for syn in inh_synapses] +
+					[all_segments.index(syn.h_syn.get_segment()) for syn in exc_synapses]
+				),
+				'pc_name': (
+					[syn.pc.name for syn in soma_synapses] +
+					[syn.pc.name for syn in inh_synapses] +
+					[syn.pc.name for syn in exc_synapses]
+				)
+			}
+			# Save synapse data to file
+			synapse_file_path = os.path.join(self.parameters.path, 'synapse_data.h5')
+			with h5py.File(synapse_file_path, 'w') as h5f:
+				for key, values in synapse_data.items():
+					h5f.create_dataset(key, data=values)
+
+
 		#@CHECKING resulting mean firing rate distribution
 		# print(f"exc_mean_frs result distribution {np.mean(exc_mean_frs), np.std(exc_mean_frs)}")
 
