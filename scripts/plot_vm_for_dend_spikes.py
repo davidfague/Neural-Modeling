@@ -101,7 +101,7 @@ def plot_voltage_for_segments_where_spikes_occur(
     if include_legend:
         ax.legend()
 
-    plt.show()
+    plt.show(fig)
 
     if save:
         fig.savefig(os.path.join(sim_directory, f"Vm_{title+'_'+section}.png"), dpi=fig.dpi)
@@ -212,7 +212,7 @@ if __name__ == "__main__":
     # Save figures or just show them
     save = "-s" in sys.argv # (global)
 
-    logger = Logger()
+    logger = Logger()    
 
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
     parameters = analysis.DataReader.load_parameters(sim_directory)
