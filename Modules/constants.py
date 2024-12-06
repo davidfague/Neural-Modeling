@@ -184,6 +184,7 @@ class SimulationParameters:
 	record_all_synapses: bool = False
 	record_all_v: bool = True
 	record_spike_trains: bool = False
+	record_synapse_distributions: bool = False
  
 	# new reduction parameters
 	reduce_cell_NRCE: bool = False # depracting NRCE
