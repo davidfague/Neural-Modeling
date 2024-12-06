@@ -10,6 +10,10 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 
+import sys
+
+sys.path.append(os.path.abspath("../Modules"))
+
 DUR_TO_USE = 150 # seconds of simulation
 
 def count_events(sim_path):
@@ -68,7 +72,6 @@ def read_segs(sim_directory):
 
 def get_dfs_from_path(sim_path):
     segs = read_segs(sim_path)
-    import analysis
     spks = analysis.DataReader.read_data(sim_path, "soma_spikes")
     spktimes = spks[0][:]
     spkinds = np.sort((spktimes*10).astype(int))
