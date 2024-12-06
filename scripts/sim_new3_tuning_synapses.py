@@ -16,12 +16,12 @@ import math
 synapse_keys = ['None']  # Options: 'None', 'NoMapping', 'MappingMerging', etc.
 use_SA_probs = True
 syn_numbers_to_use = 'Full'  # Options: '1000', 'Full', etc.
-common_attributes_to_use = 'sta'  # Options: 'sta', 'FI', 'FI_ExcFR'
+common_attributes_to_use = 'sta' # Options: 'sta', 'FI', 'FI_ExcFR'
 morphology_keys = ['Complex']  # Options: 'Complex', 'Branches', 'Trees'
 replace_w_CI_keys = ['None']  # Options: 'None', 'Tufts', 'Basals&Tufts', etc.
-numpy_random_states = [1000]  # Add more seeds if needed
+numpy_random_states = [1000, 2000, 10000, 20000, 100000, 200000]  # Add more seeds if needed
 neuron_random_states = None
-sim_title = 'ZiaoSynapses_final_detailed_refactored150sec'
+sim_title = 'ZiaoSynapses_final_detailed_random_seeding_sta_testing'
 
 syn_numbers = {
     'Density': {'inh': None, 'exc': None},
@@ -31,8 +31,8 @@ syn_numbers = {
 }
 
 # Define the template for common attributes
-common_attributes_dict = {
-    'sta': {
+common_attributes_dict = { # simulation options
+    'sta': { # in vivo simulation
         'h_tstop': 150000,
         'merge_synapses': False,
         'record_ecp': False,
@@ -45,7 +45,7 @@ common_attributes_dict = {
         'exc_syn_number': syn_numbers[syn_numbers_to_use]['exc'],
         'use_SA_probs': use_SA_probs
     },
-    'FI': {
+    'FI': { # ramp current injection
         'h_tstop': 5000,
         'save_every_ms': 5000,
         'all_synapses_off': False,
@@ -58,7 +58,7 @@ common_attributes_dict = {
         'exc_syn_number': syn_numbers[syn_numbers_to_use]['exc'],
         'use_SA_probs': use_SA_probs
     },
-    'FI_ExcFR': {
+    'FI_ExcFR': { # instead of ramp current injection, ramps excitatory firing rates
         'h_tstop': 5000,
         'save_every_ms': 5000,
         'all_synapses_off': False,
@@ -73,13 +73,13 @@ common_attributes_dict = {
     }
 }
 
-morphology_attributes = {
+morphology_attributes = { #  model morphological reduction options
     'Complex': {'base_sim_name': 'Complex'},
     'Branches': {'base_sim_name': 'Branches', 'reduce_obliques': True, 'reduce_tufts': True, 'reduce_basals': 3},
     'Trees': {'base_sim_name': 'Trees', 'reduce_apic': True, 'reduce_basals': 1}
 }
 
-replace_w_CI_attributes = {
+replace_w_CI_attributes = { # replacing dendrites with current injection options
     'None': {'sim_name_add_suffix': ''},
     'Basals': {'sim_name_add_suffix': 'REPBasals', 'num_basal_to_replace_with_CI': 8},
     '1Basal': {'sim_name_add_suffix': 'REP1Basal', 'num_basal_to_replace_with_CI': 1},
@@ -88,7 +88,7 @@ replace_w_CI_attributes = {
     'Basals&Tufts': {'sim_name_add_suffix': 'REPBasals&Tufts', 'num_basal_to_replace_with_CI': 8, 'num_tuft_to_replace_with_CI': 2}
 }
 
-varying_syn_attributes = {
+varying_syn_attributes = { # synapse reduction options
     'None': {'sim_name_add_suffix': ''},
     'NoMapping': {'sim_name_add_suffix': 'NoMapping', 'synapse_mapping': False},
     'Merging': {'sim_name_add_suffix': 'Merging', 'merge_synapses': True},
