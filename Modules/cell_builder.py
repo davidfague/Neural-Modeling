@@ -297,7 +297,7 @@ class CellBuilder:
 
 		# Record synapse distributions
 		if self.parameters.record_synapse_distributions:
-			all_segments = self.get_segments_without_data(['all'])
+			all_segments = cell.get_segments_without_data(['all'])
 			soma_synapses = cell.get_synapses(['soma'])
 			inh_synapses = cell.get_synapses(['inh'])
 			exc_synapses = cell.get_synapses(['exc'])

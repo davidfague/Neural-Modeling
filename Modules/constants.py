@@ -232,15 +232,15 @@ class SimulationParameters:
 class HayParameters(SimulationParameters):
 	channel_names = [
 		'i_pas', 
-		'ik', 
+		# 'ik', 
 		'ica', 
 		'ina', 
 		'ihcn_Ih', 
 		'gNaTa_t_NaTa_t', 
-		'ina_NaTa_t', 
-		'ina_Nap_Et2', 
-		'ik_SKv3_1', 
-		'ik_SK_E2', 
+		# 'ina_NaTa_t', 
+		# 'ina_Nap_Et2', 
+		# 'ik_SKv3_1', 
+		# 'ik_SK_E2', 
 		'ik_Im', 
 		'ica_Ca_HVA', 
 		'ica_Ca_LVAst']
