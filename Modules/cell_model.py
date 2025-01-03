@@ -539,6 +539,12 @@ class CellModel:
 			for i, seg in enumerate(segments):
 				elec_distance[i, col_idx] = active_imp.ratio(seg.sec(seg.x))
 				elec_distance[i, col_idx + 1] = passive_imp.ratio(seg.sec(seg.x))
+
+				# potential alternative to impedance_ratio:
+				# input_impedance = imp_obj.input(sec=subtree_root_section) * 1000000
+				# input_phase = imp_obj.input_phase(CLOSE_TO_SOMA_EDGE, sec=subtree_root_section)
+				# creates a complex impedance value out of the given polar coordinates
+				# input_impedance = cmath.rect(input_impedance, input_phase)
 			colnames.append(f"{freq_name}_active")
 			colnames.append(f"{freq_name}_passive")
 			col_idx = col_idx + 2
