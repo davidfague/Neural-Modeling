@@ -1,3 +1,5 @@
+'''Note that this code is dependent on morphology reconstructions utilizing the section-type names: soma, axon, dend, apic. 
+additionally, the code assumes that the morphology is reconstructed starting from the soma i.e. the soma is the first 'parent' section'''
 import numpy as np
 import pandas as pd
 import os, h5py
@@ -405,7 +407,7 @@ class CellModel:
 
 	# ---------- MORPHOLOGY ----------
  
-	def find_nexus_seg(self): # TODO: implement for entire apic reduced (in this case nexus is not a branching point and will need to use the seg_to_seg mapping)
+	def find_nexus_seg(self): # TODO: implement for reducing apic to single cable (in this case nexus is not a branching point and will need to use the seg_to_seg mapping)
 		all_seg_list, seg_data = self.get_segments(['all'])
 		adjacency_matrix = self.compute_directed_adjacency_matrix()
 		#print(f"seg_data[379].coords['p1_1']: {seg_data[379].coords['p1_1']}")
@@ -422,103 +424,190 @@ class CellModel:
 		return nexus_index_in_all_list
  
 	def get_tuft_root_sections(self):
-		all_segments, _ = self.get_segments(['all'])
-		nexus_seg_index = self.find_nexus_seg()
-		nexus_seg = all_segments[nexus_seg_index]
-		return nexus_seg.sec.children()
+		# all_segments, _ = self.get_segments(['all'])
+		# nexus_seg_index = self.find_nexus_seg()
+		# nexus_seg = all_segments[nexus_seg_index]
+		# return nexus_seg.sec.children()
+		# return self.get_segments(['all'])[0][self.find_nexus_seg()].sec.children()
+		NotImplementedError(f"DEPRECATED: use cell_model.get_root_sections('tuft') instead")
 
 	def get_basal_root_sections(self):
-		basal_root_sections = [sec for sec in self.soma[0].children() if sec in self.dend]
-		return basal_root_sections
+		# basal_root_sections = [sec for sec in self.soma[0].children() if sec in self.dend]
+		# return basal_root_sections
+		NotImplementedError(f"DEPRECATED: use cell_model.get_root_sections('basal') instead")
 
 	def get_basal_secondary_sections(self):
-		basal_secondary_sections = []
-		for sec in self.soma[0].children():
-			if sec in self.dend:
-				for second_child in sec.children():
-					if second_child is not None:
-						basal_secondary_sections.append(second_child)
-					else:
-						basal_secondary_sections.append(sec)
-		return basal_secondary_sections
+		# basal_secondary_sections = []
+		# for sec in self.soma[0].children():
+		# 	if sec in self.dend:
+		# 		for second_child in sec.children():
+		# 			if second_child is not None:
+		# 				basal_secondary_sections.append(second_child)
+		# 			else:
+		# 				basal_secondary_sections.append(sec)
+		# return basal_secondary_sections
+		NotImplementedError(f"DEPRECATED: use cell_model.get_sections_at_branching_level('basal', 2)")
 
 	def get_basal_sections(self, level=1): #@MARK  - Check. Potential
-		'''Function for getting basal sections at a section depth (i.e. the last sections upto n sections from the soma)'''
+		# '''Function for getting basal sections at a section depth (i.e. the last sections upto n sections from the soma)'''
+		# if level < 1:
+		# 	raise(ValueError(f"level {level} must be less than 1"))
+		# def get_children_at_level(sections, current_level, target_level):
+		# 	if not sections or current_level == target_level:
+		# 		return sections, current_level
+		# 	next_level_sections = []
+		# 	for sec in sections:
+		# 		next_level_sections.extend(sec.children())
+		# 	return get_children_at_level(next_level_sections, current_level + 1, target_level)
+		
+		# initial_sections = [sec for sec in self.soma[0].children() if sec in self.dend]
+		# sections, reached_level = get_children_at_level(initial_sections, 1, level)
+		
+		# while not sections and level > 1:
+		# 	level -= 1
+		# 	sections, reached_level = get_children_at_level(initial_sections, 1, level)
+		
+		# return sections
+		NotImplementedError(f"DEPRECATED: use cell_model.get_sections_at_branching_level('basal', level)")
+	
+	# @MARK Check that this one works as intended; check if level = inf returns terminal sections.
+	def get_sections_at_branching_level(self, sec_type_to_get, level=1):
+		'''Function for getting sec_type_to_get sections at a section depth 
+		(i.e., the last sections up to n sections from the soma).
+		Ex:
+		Suppose the basal tree has the following structure basal1 is the root, basal2 is child to the root, 
+		basal3 and basal4 are child to basal2, basal5 is child to basal4.
+		In this scenario:
+		level=1 returns: basal1, 1
+		level=2 returns: basal2, 2
+		level=3 returns [basal3, basal4], [3, 3]
+		level=4 returns [basal3, basal5], [3,4] since basal3 and basal4 are the terminal children and they have 2 and 3 generations above them, respectively
+		'''
+		
 		if level < 1:
-			raise(ValueError(f"level {level} must be less than 1"))
+			raise ValueError(f"level {level} must be greater than or equal to 1")
+		
 		def get_children_at_level(sections, current_level, target_level):
 			if not sections or current_level == target_level:
-				return sections, current_level
+				return sections, [current_level] * len(sections)
 			next_level_sections = []
+			next_level_reached = []
 			for sec in sections:
-				next_level_sections.extend(sec.children())
-			return get_children_at_level(next_level_sections, current_level + 1, target_level)
+				children = sec.children()
+				next_level_sections.extend(children)
+				next_level_reached.extend([current_level + 1] * len(children))
+			child_sections, child_levels = get_children_at_level(next_level_sections, current_level + 1, target_level)
+			return child_sections, next_level_reached[:len(child_sections)]
 		
-		initial_sections = [sec for sec in self.soma[0].children() if sec in self.dend]
-		sections, reached_level = get_children_at_level(initial_sections, 1, level)
+		# Get the root sections of the specified type
+		initial_sections = self.get_root_sections(sec_type_to_get)
+		sections, reached_levels = get_children_at_level(initial_sections, 1, level)
 		
+		# Adjust the level downwards if no sections are found at the target level
 		while not sections and level > 1:
 			level -= 1
-			sections, reached_level = get_children_at_level(initial_sections, 1, level)
-		
-		return sections
+			sections, reached_levels = get_children_at_level(initial_sections, 1, level)
 
+		if not sections:
+			raise ValueError(f"sections returned from get_sections_at_branching_level is {sections}")
+		
+		return sections, reached_levels
 
 	def get_oblique_root_sections(self):
-		all_segments = self.get_segments_without_data(['all'])
-		nexus_seg_index = self.find_nexus_seg()
-		adjacency_matrix = self.compute_directed_adjacency_matrix()
-		apic_trunk_root_seg_index = all_segments.index(all_segments[0].sec.children()[1](0.0001))
-		oblique_root_seg_indices = get_divergent_children_of_branching_segments(adjacency_matrix, start=apic_trunk_root_seg_index, end=nexus_seg_index)
-		oblique_root_sections = [all_segments[seg_index].sec for seg_index in oblique_root_seg_indices]
+		# all_segments = self.get_segments_without_data(['all'])
+		# nexus_seg_index = self.find_nexus_seg()
+		# adjacency_matrix = self.compute_directed_adjacency_matrix()
+		# apic_trunk_root_seg_index = all_segments.index(all_segments[0].sec.children()[1](0.0001))
+		# oblique_root_seg_indices = get_divergent_children_of_branching_segments(adjacency_matrix, start=apic_trunk_root_seg_index, end=nexus_seg_index)
+		# oblique_root_sections = [all_segments[seg_index].sec for seg_index in oblique_root_seg_indices]
         
-		oblique_roots_with_children = [sec for sec in oblique_root_sections if len(sec.children()) > 0]
-		oblique_roots_with_children_seg_indices = [all_segments.index(seg) for sec in oblique_roots_with_children for seg in sec]
+		# oblique_roots_with_children = [sec for sec in oblique_root_sections if len(sec.children()) > 0]
+		# oblique_roots_with_children_seg_indices = [all_segments.index(seg) for sec in oblique_roots_with_children for seg in sec]
         
-		return oblique_roots_with_children
+		# return oblique_roots_with_children
+		NotImplementedError(f"DEPRECATED: use oblique_roots_with_children = [sec for sec in cell_model.get_root_sections('oblique') if len(sec.children()) > 0]")
     
-    # older
+    # @DEPRACATING
 	def get_apic_root_sections(self):
-		soma_apical_children = [sec for sec in self.soma[0].children() if sec in self.apic]
-		return soma_apical_children
+	# 	soma_apical_children = [sec for sec in self.soma[0].children() if sec in self.apic]
+	# 	return soma_apical_children
+		NotImplementedError(f"DEPRECATED: use cell_model.get_root_sections('apic')")
+
+	# newer function merging get_tuft_root_sections, get_basal_root_sections, get_oblique_root_sections
+	def get_root_sections(self, sec_type_to_get: str) -> list:
+		''' 
+		possible inputs: 'dend', 'basal', 'apic', 'trunk', 'oblique', 'tuft'
+		'''
+		actual_root_sec_types = self.get_actual_sec_types(self, sec_type_to_get)
+		# parent_sec = self.soma[0] if sec_type_to_get in ['dend','basal','apic','trunk'] else self.get_segments(['all'])[0][self.find_nexus_seg()] if sec_type_to_get in ['tuft'] else NotImplementedError(f"{sec_type_to_get}")
+		if sec_type_to_get in ['dend','basal','apic','trunk']:
+			parent_sec = self.soma[0]
+		elif sec_type_to_get in ['tuft']:
+			parent_sec = self.get_segments(['all'])[0][self.find_nexus_seg()]
+		elif sec_type_to_get in ['oblique']:
+			return [self.get_segments_without_data(['all'])[i].sec for i in get_divergent_children_of_branching_segments(self.compute_directed_adjacency_matrix(), start=self.get_segments_without_data(['all']).index(self.get_root_sections('trunk')[0](0.0001)), end=self.find_nexus_seg())]
+		else:
+			NotImplementedError(f"{sec_type_to_get}")
+		root_sections = [sec for sec in parent_sec.children() if sec in getattr(self, actual_root_sec_types)]
+		return root_sections
+	
+	def get_actual_sec_types(self, sec_type_to_get):
+		'''converts 'basal' to 'dend', 'trunk', 'oblique', 'tuft' to 'apic' (the 'actual' names that are the conventional attributes of cell_model and templates.)'''
+		return 'dend' if sec_type_to_get in ['dend','basal'] else 'apic' if sec_type_to_get in ['apic','trunk','oblique','tuft'] else NotImplementedError(f"{sec_type_to_get}")
+	
+	# @MARK deprecate--possibly only used for counting total number of terminal branches (get_basals, get_tufts_obliques, get_nbranch)
+	# if so then this can be just get_nbranch repeatedly calling new function: get_terminal_sections(type_to_get)
 
 	def get_basals(self) -> list:
-		return self.find_terminal_sections(self.dend)
+		# return self.find_terminal_sections(self.dend)
+		NotImplementedError(f"DEPRECATING: use find_terminal_sections('basal')")
 	
 	def get_tufts_obliques(self) -> tuple:
-		tufts = []
-		obliques = []
-		for sec in self.find_terminal_sections(self.apic):
-			if h.distance(self.soma[0](0.5), sec(0.5)) > 800:
-				tufts.append(sec)
-			else:
-				obliques.append(sec)
+		# '''only gathers terminal sections'''
+		# tufts = []
+		# obliques = []
+		# nexus_path_distance = h.distance(self.get_segments(self.soma[0](0.5), ['all'])[0][self.find_nexus_seg()])
+		# for sec in self.find_terminal_sections(self.apic):
+		# 	if h.distance(self.soma[0](0.5), sec(0.5)) > nexus_path_distance:
+		# 		tufts.append(sec)
+		# 	else:
+		# 		obliques.append(sec)
 
-		return tufts, obliques
+		# return tufts, obliques
+		NotImplementedError(f"DEPRECATING: use find_terminal_sections('tuft'), find_terminal_sections('oblique')")
 	
 	def get_nbranch(self) -> int:
-		tufts, _ = self.get_tufts()
-		basals = self.get_basals()
-		return len(tufts) + len(basals) if len(tufts) == 1 else len(tufts) - 1 + len(basals)
+		'''counts tuft and basal terminal branches
+		@DEPRECATING: can probably be deprecated or replaced with utilizing: len(get_sections_at_branching_level(sec_type_to_get, inf)) '''
+		# tufts, _ = self.get_tufts_obliques()
+		# basals = self.get_basals()
+		# return len(tufts) + len(basals) if len(tufts) == 1 else len(tufts) - 1 + len(basals)
+		return len(self.find_terminal_sections('tuft')) + len(self.find_terminal_sections('basal'))
 	
-	def find_terminal_sections(self, region: list) -> list:
+	def find_terminal_sections(self, sec_type_to_get: str) -> list:
 		'''
+		possible inputs: 'all', 'apic', 'dend', 'soma', 'axon' (attributes of cell_model)
+		Can be modified to allow 'tuft', 'oblique', 'trunk' inputs like get_root_sections
 		Finds all terminal sections by iterating over all sections and returning those which are not parent sections.
+		(it is probably faster to check if sec.children() is empty)
+		@DEPRECATING: Can probably be depracated or replaced with utilizing: get_sections_at_branching_level(sec_type_to_get, inf)
 		'''
-		# Find non-terminal sections
-		parent_sections = []
-		for sec in self.all:
-			if sec.parentseg() is None:
-				continue
-			
-			if sec.parentseg().sec not in parent_sections:
-				parent_sections.append(sec.parentseg().sec)
-			
-		terminal_sections = []
-		for sec in region:
-			if (sec not in parent_sections):
-				terminal_sections.append(sec)
+		actual_sec_type = self.get_actual_sec_types(sec_type_to_get)
+		# Find non-terminal sections (list of sections that are parent)
+		# parent_sections = [sec.parentseg().sec for sec in self.all if sec.parentseg() is not None] # check ''' '''
+		# terminal_sections = [sec for sec in getattr(self, actual_sec_type) if sec not in parent_sections]
 
+		terminal_sections = [sec for sec in getattr(self, actual_sec_type) if sec.children() is None] # @MARK check 'is None' works
+
+		if sec_type_to_get == 'tuft':
+			nexus_path_distance = h.distance(self.get_segments(self.soma[0](0.5), ['all'])[0][self.find_nexus_seg()])
+			terminal_sections = [sec for sec in terminal_sections if h.distance(self.soma[0](0.5), sec(0.5)) > nexus_path_distance]
+		elif sec_type_to_get == 'oblique':
+			nexus_path_distance = h.distance(self.get_segments(self.soma[0](0.5), ['all'])[0][self.find_nexus_seg()])
+			terminal_sections = [sec for sec in terminal_sections if h.distance(self.soma[0](0.5), sec(0.5)) < nexus_path_distance]
+
+		if terminal_sections == []:
+			ValueError(f"no terminal sections {terminal_sections} returned for sec_type_to_get:{sec_type_to_get}") # might happen if 'is None' does not work
 		return terminal_sections
 	
 	def compute_electrotonic_distance(self, from_segment) -> pd.DataFrame:
