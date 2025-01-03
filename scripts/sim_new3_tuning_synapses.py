@@ -14,14 +14,14 @@ import math
 
 # Configuration parameters and options
 synapse_keys = ['None']  # Options: 'None', 'NoMapping', 'MappingMerging', etc.
-use_SA_probs = True
+use_SA_probs = False
 syn_numbers_to_use = 'Full'  # Options: '1000', 'Full', etc.
-common_attributes_to_use = 'sta' # Options: 'sta', 'FI', 'FI_ExcFR'
-morphology_keys = ['Complex']  # Options: 'Complex', 'Branches', 'Trees'
-replace_w_CI_keys = ['None']  # Options: 'None', 'Tufts', 'Basals&Tufts', etc.
-numpy_random_states = [1000, 2000, 10000, 20000, 100000, 200000]  # Add more seeds if needed
+common_attributes_to_use = 'tuning_syanpses' # Options: 'sta', 'FI', 'FI_ExcFR', 'tuning_synapses', 'checking_synapse_distributions'
+morphology_keys = ['Complex']  # Options: 'Complex', 'Branches', 'Trees' (can do multiple)
+replace_w_CI_keys = ['None']  # Options: 'None', 'Tufts', 'Basals&Tufts', etc. (can do multiple)
+numpy_random_states = [1000]  # Add more seeds if needed (can do multiple)
 neuron_random_states = None
-sim_title = 'ZiaoSynapses_final_detailed_random_seeding_sta_testing'
+sim_title = 'BenSynapses_final_detailed_syn_dist_analysis'
 
 syn_numbers = {
     'Density': {'inh': None, 'exc': None},
@@ -32,8 +32,8 @@ syn_numbers = {
 
 # Define the template for common attributes
 common_attributes_dict = { # simulation options
-    'sta': { # in vivo simulation
-        'h_tstop': 150000,
+    'sta': { # in vivo simulation with recording currents/conductances
+        'h_tstop': 30000,
         'merge_synapses': False,
         'record_ecp': False,
         'record_all_channels': True,
@@ -43,7 +43,8 @@ common_attributes_dict = { # simulation options
         'inh_use_density': syn_numbers_to_use == 'Density',
         'inh_syn_number': syn_numbers[syn_numbers_to_use]['inh'],
         'exc_syn_number': syn_numbers[syn_numbers_to_use]['exc'],
-        'use_SA_probs': use_SA_probs
+        'use_SA_probs': use_SA_probs,
+        'record_synapse_distributions': False
     },
     'FI': { # ramp current injection
         'h_tstop': 5000,
@@ -70,7 +71,35 @@ common_attributes_dict = { # simulation options
         'inh_syn_number': syn_numbers[syn_numbers_to_use]['inh'],
         'exc_syn_number': syn_numbers[syn_numbers_to_use]['exc'],
         'use_SA_probs': use_SA_probs
-    }
+    },
+    'checking_synapse_distributions': { # short in vivo simulation recording resulting synapse parameters/distributions (location, weight, etc.)
+        'h_tstop': 1000,
+        'merge_synapses': False,
+        'record_ecp': False,
+        'record_all_channels': False,
+        'record_all_synapses': False,
+        'record_spike_trains': False,
+        'exc_use_density': syn_numbers_to_use == 'Density',
+        'inh_use_density': syn_numbers_to_use == 'Density',
+        'inh_syn_number': syn_numbers[syn_numbers_to_use]['inh'],
+        'exc_syn_number': syn_numbers[syn_numbers_to_use]['exc'],
+        'use_SA_probs': use_SA_probs,
+        'record_synapse_distributions': True
+    },
+    'tuning_synases': { # in vivo simulation
+        'h_tstop': 15000,
+        'merge_synapses': False,
+        'record_ecp': False,
+        'record_all_channels': False,
+        'record_all_synapses': False,
+        'record_spike_trains': False,
+        'exc_use_density': syn_numbers_to_use == 'Density',
+        'inh_use_density': syn_numbers_to_use == 'Density',
+        'inh_syn_number': syn_numbers[syn_numbers_to_use]['inh'],
+        'exc_syn_number': syn_numbers[syn_numbers_to_use]['exc'],
+        'use_SA_probs': use_SA_probs,
+        'record_synapse_distributions': False
+    },
 }
 
 morphology_attributes = { #  model morphological reduction options
@@ -94,159 +123,6 @@ varying_syn_attributes = { # synapse reduction options
     'Merging': {'sim_name_add_suffix': 'Merging', 'merge_synapses': True},
     'MappingMerging': {'sim_name_add_suffix': 'MappingMerging', 'synapse_mapping': True, 'merge_synapses': True}
 }
-# New inhibitory gmax ranges
-# inh_gmax_range_apic = np.arange(2.4, 3.2, 0.1)  # Apical range: 2.8 ± 0.4 with step 0.1
-# inh_gmax_range_dend = np.arange(2.0, 2.8, 0.4)  # Basal/Dendritic range: 2.4 ± 0.4 with step 0.4
-# soma_gmax_range = np.arange(0.25, 0.70, 0.15)  # from 0.25 to 0.55 by 0.15
-# closest: InhGmaxApic3.0_InhGmaxDend2.0_SomaGmax0.55
-# inh_gmax_range_apic = np.arange(2.6, 3.45, 0.05)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(1.8, 2.4, 0.2)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(0.4, 1, 0.1)  # from 0.40 to 0.9 by 0.1
-# cloesest: Complex_InhGmaxApic3.4_InhGmaxDend2.0_SomaGmax0.9_ExcGmax-1.0351_Np1000
-# inh_gmax_range_apic = np.arange(3.3, 4.6, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(1.8, 2.3, 0.1)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(0.8, 3.1, 0.1)  # from 0.8 to 3.0 by 0.1
-# Closest: Complex_InhGmaxApic4.4_InhGmaxDend2.2_SomaGmax2.0_ExcGmax-1.0351_Np1000
-
-# inh_gmax_range_apic = np.arange(4.5, 5.6, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(1.5, 2.4, 0.1)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(2.0, 3.0, 0.1)  # from 0.8 to 3.0 by 0.1
-
-# Closest: Complex_InhGmaxApic4.6_InhGmaxDend2.4_SomaGmax2.1_ExcGmax-1.0351_Np1000
-# Complex_InhGmaxApic4.3_InhGmaxDend2.0_SomaGmax1.8_ExcGmax-1.0351_Np1000
-
-# inh_gmax_range_apic = np.arange(4, 6, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(2.0, 2.8, 0.1)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(1.8, 2.2, 0.1)  # from 0.8 to 3.0 by 0.1
-
-#Complex_InhGmaxApic5.9_InhGmaxDend2.0_SomaGmax2.1_ExcGmax-1.0351_Np1000
-# inh_gmax_range_apic = np.arange(5.9, 8.1, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(1.0, 2.1, 0.1)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(2.1, 2.5, 0.1)  # from 0.8 to 3.0 by 0.1
-#Complex_InhGmaxApic5.9_InhGmaxDend2.0_SomaGmax2.1_ExcGmax-1.0351_Np1000
-#Complex_InhGmaxApic6.2_InhGmaxDend1.0_SomaGmax2.3_ExcGmax-1.0351_Np1000
-# inh_gmax_range_apic = np.arange(5.9, 8.1, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(0.1, 1.3, 0.1)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(2.1, 2.5, 0.1)  # from 0.8 to 3.0 by 0.1
-#InhGmaxApic7.0_InhGmaxDend0.5_SomaGmax2.3_ExcGmax-1.0351_Np1000
-# inh_gmax_range_apic = np.arange(6.9, 7.6, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(0.1, 1.0, 0.1)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(2.1, 4.1, 0.1)  # from 0.8 to 3.0 by 0.1
-# Complex_InhGmaxApic6.9_InhGmaxDend0.1_SomaGmax2.3_ExcGmax-1.0351_Np1000
-# inh_gmax_range_apic = [6.9]
-# inh_gmax_range_dend = [0.1]
-# soma_gmax_range = [2.3]
-
-# now retuning inhibitory weights with updated excitatory firing rates.
-# inh_gmax_range_apic = np.arange(10.0, 10.5, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(3.0, 3.5, 0.1)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(4.0, 4.5, 0.1)  # from 0.8 to 3.0 by 0.1
-# Complex_InhGmaxApic10.1_InhGmaxDend3.2_SomaGmax4.1_ExcGmax-1.0351_Np1000
-inh_gmax_range_apic = np.arange(15.0, 24.0, 1.0)  # Apical range: 3.0 ± 0.4 with step 0.05
-inh_gmax_range_dend = [3.2]#np.arange(3.2, 3.5, 1.0)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-soma_gmax_range = np.arange(5.0, 14.0, 1.0)  # from 0.8 to 3.0 by 0.1
-# Complex_InhGmaxApic21.0_InhGmaxDend3.2_SomaGmax13.0_ExcGmax-1.0351_Np1000
-# need to raise apic inhibition. dend looks pretty good, soma firing rate pretty good
-inh_gmax_range_apic = np.arange(21.0, 35.0, 1.0)  # Apical range: 3.0 ± 0.4 with step 0.05
-inh_gmax_range_dend = np.arange(3.1, 3.5, 1.0)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-soma_gmax_range = np.arange(10.0, 16.0, 1.0)  # from 0.8 to 3.0 by 0.1
-
-# Complex_InhGmaxApic27.0_InhGmaxDend3.1_SomaGmax10.0_ExcGmax-1.0351_Np1000
-# Complex_InhGmaxApic30.0_InhGmaxDend3.1_SomaGmax12.0_ExcGmax-1.0351_Np1000
-# Complex_InhGmaxApic31.0_InhGmaxDend3.1_SomaGmax15.0_ExcGmax-1.0351_Np1000
-# Complex_InhGmaxApic39.0_InhGmaxDend3.1_SomaGmax10.0_ExcGmax-1.0351_Np1000
-# inh_gmax_range_apic = np.arange(115, 180, 1.0)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = [3.1]#np.arange(3.1, 3.5, 1.0)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = [10.0]#np.arange(10.0, 15.0, 1.0)  # from 0.8 to 3.0 by 0.1
-# Complex_InhGmaxApic145.0_InhGmaxDend3.1_SomaGmax10.0_ExcGmax-1.0351_Np1000
-# inh_gmax_range_apic = np.arange(140.0, 151.0, 1.0)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(1.0, 10.0, 1.0)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(1.0, 10.0, 1.0)  # from 0.8 to 3.0 by 0.1
-
-# # Complex_InhGmaxApic150.0_InhGmaxDend3.0_SomaGmax2.0_ExcGmax-1.0351_Np1000
-# inh_gmax_range_apic = np.arange(153.0, 177.0, 2.0)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(2.0, 4.8, 0.2)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(1.0, 3.2, 0.2)  # from 0.8 to 3.0 by 0.1
-# Complex_InhGmaxApic152.0_InhGmaxDend3.8_SomaGmax1.4_ExcGmax-1.0351_Np1000
-
-# Complex_InhGmaxApic175.0_InhGmaxDend4.6_SomaGmax3.0_ExcGmax-1.0351_Np1000
-# about to use the following, but first; testing the old synpase modfiles?
-# inh_gmax_range_apic = np.arange(175.0, 198.0, 4.0)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(4.6, 5.8, 0.2)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(2.8, 4.0, 0.2)  # from 0.8 to 3.0 by 0.1
-# Complex_InhGmaxApic195.0_InhGmaxDend5.8_SomaGmax4.0_ExcGmax-1.0351_Np1000
-
-
-# inh_gmax_range_apic = np.arange(195.0, 220.0, 4.0)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(5.8, 7.0, 0.2)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(4.0, 6.0, 0.2)  # from 0.8 to 3.0 by 0.1
-# Complex_InhGmaxApic207.0_InhGmaxDend7.0_SomaGmax5.8_ExcGmax-1.0351_Np1000
-
-# inh_gmax_range_apic = np.arange(205.0, 210.0, 1.0)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(6.8, 8.0, 0.2)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(5.4, 7.0, 0.2)  # from 0.8 to 3.0 by 0.1
-# Complex_InhGmaxApic205.0_InhGmaxDend7.2_SomaGmax5.4_ExcGmax-1.0351_Np1000
-
-# inh_gmax_range_apic = np.arange(203.0, 207.0, 1.0)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(6.8, 7.6, 0.2)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(5.0, 6.2, 0.2)  # from 0.8 to 3.0 by 0.1
-# Complex_InhGmaxApic204.0_InhGmaxDend7.0_SomaGmax6.0_ExcGmax-1.0351_Np1000
-# Complex_InhGmaxApic204.0_InhGmaxDend7.0_SomaGmax6.0_ExcGmax-1.0351_Np1000
-
-# for Ziao Synapses (after changing their reversal potentials to match Ben's.)
-inh_gmax_range_apic = [204]
-inh_gmax_range_dend = [7.0]  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-soma_gmax_range = [6.0]  # from 0.8 to 3.0 by 0.1
-
-# # for Ben Synapses
-# inh_gmax_range_apic = np.arange(3.3, 4.6, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(1.8, 2.3, 0.1)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(0.8, 3.1, 0.1)  # from 0.8 to 3.0 by 0.1
-
-# # for Ben Synapses
-# inh_gmax_range_apic = np.arange(1.9, 2.2, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(0.001, .01, 0.001)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(0.001, .01, 0.001)  # from 0.8 to 3.0 by 0.1Complex_InhGmaxApic0.9_InhGmaxDend0.1_SomaGmax0.1_ExcGmax-1.0351_Np1000
-# # Complex_InhGmaxApic2.2_InhGmaxDend0.009_SomaGmax0.003_ExcGmax-1.0351_Np1000
-# inh_gmax_range_apic = np.arange(2.2, 3.1, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(0.009, .021, 0.001)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(0.001, .006, 0.001)
-# # '2024-09-05-09-06-52-TuningBenInhSynapses/Complex_InhGmaxApic2.9_InhGmaxDend0.011_SomaGmax0.001_ExcGmax-1.0351_Np1000'
-# inh_gmax_range_apic = np.arange(3.0, 4.1, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(0.009, .012, 0.001)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(0.0005, .0020, 0.0005)
-# # Complex_InhGmaxApic3.6_InhGmaxDend0.009_SomaGmax0.001_ExcGmax-1.0351_Np1000
-# inh_gmax_range_apic = np.arange(3.6, 5.1, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(0.007, .012, 0.001)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(0.0008, .0014, 0.0001)
-# Complex_InhGmaxApic4.5_InhGmaxDend0.007_SomaGmax0.001_ExcGmax-1.0351_Np1000
-# inh_gmax_range_apic = np.arange(3.6, 5.1, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(0.001, .010, 0.001)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(0.0008, .0014, 0.0001)
-#2024-09-06-10-33-43-TuningBenInhSynapses/Complex_InhGmaxApic4.5_InhGmaxDend0.007_SomaGmax0.001_ExcGmax-1.0351_Np1000
-# '2024-09-06-10-33-43-TuningBenInhSynapses/Complex_InhGmaxApic5.0_InhGmaxDend0.005_SomaGmax0.001_ExcGmax-1.0351_Np1000'
-# inh_gmax_range_apic = np.arange(5.0, 7.1, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-# inh_gmax_range_dend = np.arange(0.003, .0055, 0.0005)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-# soma_gmax_range = np.arange(0.0008, .0014, 0.0001)
-# 2024-09-09-11-26-53-TuningBenInhSynapses/Complex_InhGmaxApic5.9_InhGmaxDend0.003_SomaGmax0.0011_ExcGmax-1.0351_Np1000
-# KEEP: 2024-09-09-11-26-53-TuningBenInhSynapses/Complex_InhGmaxApic6.5_InhGmaxDend0.003_SomaGmax0.0012_ExcGmax-1.0351_Np1000
-inh_gmax_range_apic = np.arange(5.9, 7.1, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-inh_gmax_range_dend = np.arange(0.0005, .0035, 0.0005)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-soma_gmax_range = np.arange(0.00010, .0017, 0.0001)
-# 2024-09-10-14-14-59-TuningBenInhSynapses/Complex_InhGmaxApic6.4_InhGmaxDend0.0015_SomaGmax0.0005_ExcGmax-1.0351_Np1000
-# 2024-09-10-14-14-59-TuningBenInhSynapses/Complex_InhGmaxApic6.4_InhGmaxDend0.0015_SomaGmax0.0016_ExcGmax-1.0351_Np1000
-inh_gmax_range_apic = np.arange(6.0, 7.1, 0.1)  # Apical range: 3.0 ± 0.4 with step 0.05
-inh_gmax_range_dend = np.arange(0.001, .0025, 0.0005)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-soma_gmax_range = np.arange(0.0016, .0032, 0.0001)
-# 2024-09-11-12-05-06-TuningBenInhSynapses/Complex_InhGmaxApic6.7_InhGmaxDend0.0015_SomaGmax0.0017_ExcGmax-1.0351_Np1000
-# '2024-09-11-12-05-06-TuningBenInhSynapses/Complex_InhGmaxApic6.7_InhGmaxDend0.0015_SomaGmax0.0029_ExcGmax-1.0351_Np1000'
-inh_gmax_range_apic = np.arange(6.5, 6.95, 0.05)  # Apical range: 3.0 ± 0.4 with step 0.05
-inh_gmax_range_dend = np.arange(0.001, .002, 0.0001)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-soma_gmax_range = np.arange(0.0020, .0035, 0.0001)
-# '2024-09-13-15-53-59-TuningBenInhSynapses/Complex_InhGmaxApic6.95_InhGmaxDend0.0015_SomaGmax0.0028_ExcGmax-1.0351_Np1000'
-inh_gmax_range_apic = np.arange(6.95, 7.35, 0.05)  # Apical range: 3.0 ± 0.4 with step 0.05
-inh_gmax_range_dend = np.arange(0.001, .002, 0.0001)  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-soma_gmax_range = np.arange(0.0020, .0035, 0.0001)
 
 # settling on  '2024-09-16-09-35-21-TuningBenInhSynapses/Complex_InhGmaxApic7.1_InhGmaxDend0.0016_SomaGmax0.0025_ExcGmax-1.0351_Np1000'
 inh_gmax_range_apic = [7.1]
@@ -254,9 +130,9 @@ inh_gmax_range_dend = [0.0016]
 soma_gmax_range = [0.0025]
 
 # for Ziao Synapses (after changing their reversal potentials to match Ben's.)
-inh_gmax_range_apic = [204]
-inh_gmax_range_dend = [7.0]  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
-soma_gmax_range = [6.0]  # from 0.8 to 3.0 by 0.1
+# inh_gmax_range_apic = [204]
+# inh_gmax_range_dend = [7.0]  # Basal/Dendritic range: 2.0 ± 0.2 with step 0.2
+# soma_gmax_range = [6.0]  # from 0.8 to 3.0 by 0.1
 
 mean = (np.log(0.45) - 0.5 * np.log((0.35 / 0.45) ** 2 + 1))
 exc_gmax_mean_range = [mean]  # Example excitatory gmax mean range
