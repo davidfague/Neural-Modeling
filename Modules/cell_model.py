@@ -283,8 +283,8 @@ class CellModel:
 						section = sec.name(),
 						index_in_section = index_in_section,
 						seg_half_seg_RA = 0.01 * seg.sec.Ra * (sec.L / 2 / seg.sec.nseg) / (np.pi * (seg.diam / 2) ** 2),
-            seg = str(seg),
-            pseg = str(sec.parentseg()) if index_in_section==0 else str(sec((index_in_section-0.5)/seg.sec.nseg)) # x = middle of previous segment
+            			seg = str(seg),
+            			pseg = str(sec.parentseg()) if index_in_section==0 else str(sec((index_in_section-0.5)/seg.sec.nseg)) # x = middle of previous segment
 					)
 					segments.append(seg)
 					datas.append(data)
