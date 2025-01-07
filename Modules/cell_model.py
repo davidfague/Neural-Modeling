@@ -419,7 +419,7 @@ class CellModel:
 
 
 	def get_synapses(self, synapse_names: list):
-		return [syn for syn in self.synapses if syn.name in synapse_names]
+		return [syn for syn in self.synapses if (syn.name in synapse_names) or ('all' in synapse_names)]
 	
 	# ---------- CURRENT INJECTION ----------
 
