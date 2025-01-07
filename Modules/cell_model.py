@@ -577,12 +577,11 @@ class CellModel:
 		''' 
 		possible inputs: 'dend', 'basal', 'apic', 'trunk', 'oblique', 'tuft'
 		'''
-		actual_root_sec_types = self.get_actual_sec_types(self, sec_type_to_get)
-		# parent_sec = self.soma[0] if sec_type_to_get in ['dend','basal','apic','trunk'] else self.get_segments(['all'])[0][self.find_nexus_seg()] if sec_type_to_get in ['tuft'] else NotImplementedError(f"{sec_type_to_get}")
+		actual_root_sec_types = self.get_actual_sec_types(sec_type_to_get)
 		if sec_type_to_get in ['dend','basal','apic','trunk']:
 			parent_sec = self.soma[0]
 		elif sec_type_to_get in ['tuft']:
-			parent_sec = self.get_segments(['all'])[0][self.find_nexus_seg()]
+			parent_sec = self.get_segments(['all'])[0][self.find_nexus_seg()].sec
 		elif sec_type_to_get in ['oblique']:
 			return [self.get_segments_without_data(['all'])[i].sec for i in get_divergent_children_of_branching_segments(self.compute_directed_adjacency_matrix(), start=self.get_segments_without_data(['all']).index(self.get_root_sections('trunk')[0](0.0001)), end=self.find_nexus_seg())]
 		else:
