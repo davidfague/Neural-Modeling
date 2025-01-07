@@ -3,6 +3,7 @@ import pickle
 import os
 import numpy as np
 from functools import partial
+from typing import List, Union
 import scipy.stats as st
 
 from neuron import h
@@ -259,10 +260,10 @@ class CellBuilder:
 		print(f"soma segments:{cell.get_segments_without_data(['soma'])}")
 		# craete synapse objects
 		self.logger.log("Building excitatory synapses.")
-		self.build_excitatory_synapses(cell = cell)
+		self.build_exc_synapses_by_type(cell = cell)
 
 		self.logger.log("Building inhibitory synapses.")
-		self.build_inhibitory_synapses(cell = cell)
+		self.build_inh_synapses(cell = cell)
 
 		self.logger.log("Building soma synapses.")
 		self.build_soma_synapses(cell = cell)
@@ -272,9 +273,10 @@ class CellBuilder:
 		self.assign_excitatory_spike_trains(cell = cell, random_state = random_state)
   
 		# calc exc for delayed inhibition
-		exc_spike_trains = [syn.pc.spike_train for syn in cell.get_synapses(['exc'])]
+		exc_spike_trains = [syn.pc.spike_train for syn in cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])]
      
-		# exc_mean_frs = [syn.pc.mean_fr for syn in cell.get_synapses('exc')]
+		exc_mean_frs = [syn.pc.mean_fr for syn in cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])]
+		print(f"exc_mean_frs: {exc_mean_frs}")
 
 		self.logger.log("Assigning inhibitory spike trains.")
 		self.assign_inhibitory_spike_trains(cell = cell, random_state = random_state, exc_spike_trains=exc_spike_trains)
@@ -286,8 +288,8 @@ class CellBuilder:
 		if self.parameters.record_spike_trains:
 			spike_train_data = {
 				'exc_spike_trains': exc_spike_trains,
-				'soma_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses(['soma'])],
-				'inh_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses(['inh'])]
+				'soma_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses(['soma_inh'])],
+				'inh_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses(['inh', 'inh_dend','inh_apic'])]
 			}
 			for dataset_name, data in spike_train_data.items():
 				file_path = os.path.join(self.parameters.path, f'{dataset_name}.h5')
@@ -298,9 +300,9 @@ class CellBuilder:
 		# Record synapse distributions
 		if self.parameters.record_synapse_distributions:
 			all_segments = cell.get_segments_without_data(['all'])
-			soma_synapses = cell.get_synapses(['soma'])
-			inh_synapses = cell.get_synapses(['inh'])
-			exc_synapses = cell.get_synapses(['exc'])
+			soma_synapses = cell.get_synapses(['soma_inh'])
+			inh_synapses = cell.get_synapses(['inh', 'inh_dend', 'inh_apic'])
+			exc_synapses = cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"], all_with_prefix=True)
 			synapse_data = {
 				'synapse_type': (
 					['soma_inh'] * len(soma_synapses) +
@@ -383,7 +385,7 @@ class CellBuilder:
 		cell = cell,
 		n_func_gr = self.parameters.soma_n_fun_gr,
 		n_pc_per_fg = self.parameters.soma_n_pc_per_fg,
-		synapse_names = ["soma"],
+		synapse_names = ["soma_inh"],
 		seg_names = ["soma"]
 		) #5,20
 		firing_rates = PoissonTrainGenerator.generate_lambdas_by_delaying(self.parameters.h_tstop, exc_spike_trains)
@@ -396,8 +398,8 @@ class CellBuilder:
 				lambdas = pc_firing_rates, 
 				random_state = random_state)
 				pc.set_spike_train(spike_train.mean_fr, spike_train.spike_times)
-		for syn in cell.get_synapses(["soma"]):
-			if syn.h_syn.get_segment() in cell.get_segments_without_data(["soma"]):
+		for syn in cell.get_synapses(["soma_inh"]):
+			if syn.h_syn.get_segment() in cell.get_segments_without_data(["soma_inh"]):
 				syn.set_spike_train_from_pc()
 
 
@@ -419,7 +421,7 @@ class CellBuilder:
 			cell = cell,
 			n_func_gr = self.parameters.inh_n_FuncGroups,
 			n_pc_per_fg = self.parameters.inh_n_PreCells_per_FuncGroup,
-			synapse_names = ["inh"],
+			synapse_names = ["inh", "inh_dend", "inh_apic"],
 			seg_names = ["dend", "apic"]
 		)
 		for fg in inh_fgs: # one fr profile per fg
@@ -430,12 +432,13 @@ class CellBuilder:
 				else:
 					mean_fr = distal_inh_dist(size = 1)
 				firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(firing_rates, desired_mean=mean_fr)#, divide_1000=True)
+				print(f"firing_rates: {firing_rates}")
 				spike_train = PoissonTrainGenerator.generate_spike_train(
 				lambdas = firing_rates, 
 				random_state = random_state)
 				pc.set_spike_train(spike_train.mean_fr, spike_train.spike_times)
 
-		for syn in cell.get_synapses(["inh"]):
+		for syn in cell.get_synapses(["inh", "inh_dend", "inh_apic"]):
 				if syn.h_syn.get_segment() in cell.get_segments_without_data(["dend", "apic"]):
 					syn.set_spike_train_from_pc()
 
@@ -458,7 +461,7 @@ class CellBuilder:
 			cell = cell,
 			n_func_gr = self.parameters.exc_n_FuncGroups,
 			n_pc_per_fg = self.parameters.exc_n_PreCells_per_FuncGroup,
-			synapse_names = ["exc"],
+			synapse_names = ["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"],
 			seg_names = ["all"]
 		)
 		for fg in exc_fgs: # one fr profile per fg
@@ -477,156 +480,242 @@ class CellBuilder:
 				# print(spike_train.spike_times)
 				pc.set_spike_train(spike_train.mean_fr, spike_train.spike_times)
 
-		for syn in cell.get_synapses(["exc"]):
+		for syn in cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"]):
 				exc_spike_trains.append(spike_train.spike_times)
 				exc_mean_frs.append(spike_train.mean_fr)
 				syn.set_spike_train_from_pc()
     
 		return exc_spike_trains, exc_mean_frs
 
-				
-	def build_soma_synapses(self, cell) -> None:
-		
-		if (not self.parameters.add_soma_inh_synapses):# or (self.parameters.CI_on):
-			return None
-		
-		inh_soma_P_dist = partial(
-			P_release_dist, 
-			P_mean = self.parameters.inh_soma_P_release_mean, 
-			P_std = self.parameters.inh_soma_P_release_std, 
-			size = 1)
-		
-		segments, seg_data = cell.get_segments(["soma"])
-		if self.parameters.use_SA_probs:
-			probs = [seg.membrane_surface_area for seg in seg_data]
-		else:
-			probs = [seg.L for seg in seg_data]
-		
-		cell.add_synapses_over_segments(
-			segments = segments,
-			nsyn = self.parameters.num_soma_inh_syns,
-			syn_mod = self.parameters.inh_syn_mod,
-			syn_params = self.parameters.inh_syn_params,
-			gmax = self.parameters.soma_gmax_dist,
-			name = "soma",
-			density = False,
-			seg_probs = probs,
-			release_p = inh_soma_P_dist)
-			
-	def build_inhibitory_synapses(self, cell) -> None:
-		
-		# if self.parameters.CI_on:
-		# 	return None
-			
-		# Define release probability distributions for apical and basal segments
-		inh_P_dist = {
-			"apic": partial(
-				P_release_dist, 
-				P_mean=self.parameters.inh_apic_P_release_mean, 
-				P_std=self.parameters.inh_apic_P_release_std, 
-				size=1
-			),
-			"dend": partial(
-				P_release_dist, 
-				P_mean=self.parameters.inh_basal_P_release_mean, 
-				P_std=self.parameters.inh_basal_P_release_std, 
+	def build_synapses_with_specs(self, 
+					cell, 
+					sec_type_to_get: Union[str, List[str]], 
+					synapse_type: str, 
+					use_density: bool,
+					synaptic_density: float = None,
+					syn_number: int = None,
+					gmax_dist_params: dict = None,
+					P_release_params: dict = None,
+					name: str = None,
+					exclude_within: float = None) -> None:
+		"""
+		Builds synapses of a given type on specified segments.
+
+		Parameters:
+			cell: The cell object on which synapses will be built.
+			sec_type_to_get: The segment type(s) to retrieve ('dend', 'apic', etc.). Can be a string or list of strings.
+			synapse_type: Type of synapse ('inh', 'exc', etc.).
+			use_density: Whether to distribute synapses based on density or a fixed count.
+			synaptic_density: Density of synapses per unit length (required if use_density is True).
+			syn_number: Total number of synapses to distribute (required if use_density is False).
+			gmax_dist_params: Parameters for gmax distribution (mean, std, etc.).
+			P_release_params: Parameters for release probability distribution (mean, std, etc.).
+			name: Name for the synapse type (e.g., 'soma', 'inh', 'exc').
+			exclude_within: Distance from soma to exclude segments (optional).
+		"""
+		if gmax_dist_params is None or P_release_params is None:
+			raise ValueError("Both gmax_dist_params and P_release_params must be provided.")
+
+		# Create gmax and P_release distributions
+		if gmax_dist_params['dist_func'] is not None:
+			gmax_dist = partial(
+				gmax_dist_params['dist_func'],
+				**gmax_dist_params['params'],
 				size=1
 			)
-		}
-		
-		# Retrieve segments and their associated membrane surface areas
-		apic_segments, apic_seg_data = cell.get_segments(["apic"])
-		dend_segments, dend_seg_data = cell.get_segments(["dend"])
-		apic_probs = [data.membrane_surface_area for data in apic_seg_data]
-		dend_probs = [data.membrane_surface_area for data in dend_seg_data]
-
-		# Determine whether to use density or a fixed number of synapses
-		if self.parameters.inh_use_density:
-			synapse_count = self.parameters.inh_synaptic_density
 		else:
-			apic_length = sum([seg.sec.L / seg.sec.nseg for seg in apic_segments])
-			dend_length = sum([seg.sec.L / seg.sec.nseg for seg in dend_segments])
-			total_length = apic_length + dend_length
-			synapse_count = {
-				"apic": int(self.parameters.inh_syn_number * apic_length / total_length),
-				"dend": int(self.parameters.inh_syn_number * dend_length / total_length)
+			gmax_dist = gmax_dist_params['params']['gmax_mean']
+
+		P_dist = partial(
+			P_release_params['dist_func'],
+			**P_release_params['params'],
+			size=1
+		)
+
+		# Get segments of the specified type(s)
+		if isinstance(sec_type_to_get, str):
+			sec_type_to_get = [sec_type_to_get]
+
+		segments = []
+		segment_probs = []
+
+		for sec_type in sec_type_to_get:
+			segs = cell.get_segments_of_type(sec_type)
+			segments.extend(segs)
+			if self.parameters.use_SA_probs:
+				segment_probs.extend([np.pi * seg.diam * (seg.sec.L / seg.sec.nseg) for seg in segs])
+			else:
+				segment_probs.extend([seg.sec.L / seg.sec.nseg for seg in segs])
+
+		# Optionally exclude segments close to the soma
+		if exclude_within is not None:
+			to_remove = [
+				i for i, seg in enumerate(segments)
+				if self.h.distance(seg, cell.soma[0](0.5)) < exclude_within
+			]
+			segments = [seg for i, seg in enumerate(segments) if i not in to_remove]
+			segment_probs = [prob for i, prob in enumerate(segment_probs) if i not in to_remove]
+
+		# Calculate synapse count or density
+		if use_density:
+			nsyn = synaptic_density
+		else: #@MARK in this case we should iterate through the segments of types sec_type_to_get if it is a list and calculate the proportional length/area for each type.
+			NotImplementedError(f"When specifying total inh synapses we have to calc the number needed for apic, dend. This functionality was inadvertently removed when merging functions. See commit history.")
+			total_length = sum(segment_probs)
+			# print(f"syn_number: {syn_number} \n segment_probs: {segment_probs} \n total_length: {total_length}")
+			nsyn = int(syn_number * sum(segment_probs) / total_length) if total_length > 0 else 0 
+			# @ MARK originaly this was two iterations through apic,dend segment_probs to calculate the number for each
+
+		# Add synapses to the cell
+		cell.add_synapses_over_segments(
+			segments=segments,
+			nsyn=nsyn,
+			syn_mod=self.parameters.inh_syn_mod if 'inh' in name else self.parameters.exc_syn_mod if 'exc' in name else NotImplementedError(f"'inh' or 'exc' should be in 'name'"),
+			syn_params=self.parameters.inh_syn_params if 'inh' in name else self.parameters.exc_syn_params if 'exc' in name else NotImplementedError(f"'inh' or 'exc' should be in 'name'"),
+			gmax=gmax_dist,
+			name=name or synapse_type,
+			density=use_density,
+			seg_probs=segment_probs,
+			release_p=P_dist
+		)
+
+	def build_soma_synapses(self, cell):
+		self.build_synapses_with_specs(
+		cell=cell,
+		sec_type_to_get='soma',
+		synapse_type='inh',
+		use_density=False,
+		syn_number=self.parameters.num_soma_inh_syns,
+		gmax_dist_params={
+			'dist_func': None,
+			'params': {
+				'gmax_mean': self.parameters.soma_gmax_dist,
+				# 'gmax_std': self.parameters.soma_gmax_std,
+				# 'clip': self.parameters.soma_gmax_clip
 			}
+		},
+		P_release_params={
+			'dist_func': P_release_dist,
+			'params': {
+				'P_mean': self.parameters.inh_soma_P_release_mean,
+				'P_std': self.parameters.inh_soma_P_release_std
+			}
+		},
+		name='soma_inh'
+		)
+		
+	def build_inh_synapses(self, cell):
+		# Calculate total length or surface area
+		if self.parameters.use_SA_probs:
+			total_length = sum(segment.membrane_surface_area for segment in cell.get_segments(['apic', 'dend'])[1])
+		else:
+			total_length = sum(segment.L for segment in cell.get_segments(['apic', 'dend'])[1])
 
-		# Helper function to add synapses over segments
-		def add_synapses(segment_type, segments, segment_probs, gmax):
-			cell.add_synapses_over_segments(
-				segments=segments,
-				nsyn=synapse_count if self.parameters.inh_use_density else synapse_count[segment_type],
-				syn_mod=self.parameters.inh_syn_mod,
-				syn_params=self.parameters.inh_syn_params,
-				gmax=gmax,
-				name="inh",
-				density=self.parameters.inh_use_density,
-				seg_probs=segment_probs,
-				release_p=inh_P_dist
+		# Prepare lists for syn_numbers, gmax_means, and sec_types
+		syn_numbers = [
+			self.parameters.inh_syn_number * (
+				sum(segment.membrane_surface_area for segment in cell.get_segments(['apic'])[1])
+				if self.parameters.use_SA_probs else
+				sum(segment.L for segment in cell.get_segments(['apic'])[1])
+			) / total_length,
+			self.parameters.inh_syn_number * (
+				sum(segment.membrane_surface_area for segment in cell.get_segments(['dend'])[1])
+				if self.parameters.use_SA_probs else
+				sum(segment.L for segment in cell.get_segments(['dend'])[1])
+			) / total_length
+		]
+		gmax_means = [self.parameters.apic_inh_gmax_dist, self.parameters.basal_inh_gmax_dist]
+		sec_types = ['apic', 'dend']
+		P_release_means = [self.parameters.inh_apic_P_release_mean, self.parameters.inh_basal_P_release_mean]
+		P_release_stds = [self.parameters.inh_apic_P_release_std, self.parameters.inh_basal_P_release_std]
+
+		# Iterate using zip
+		for syn_number, gmax_mean, sec_type_to_get, P_release_mean, P_release_std in zip(syn_numbers, gmax_means, sec_types, P_release_means, P_release_stds):
+			self.build_synapses_with_specs(
+			cell=cell,
+			sec_type_to_get=sec_type_to_get,
+			synapse_type='inh',
+			use_density=self.parameters.inh_use_density,
+			synaptic_density=self.parameters.inh_synaptic_density,
+			syn_number=syn_number,
+			gmax_dist_params={
+				'dist_func': None,
+				'params': {
+					'gmax_mean': gmax_mean, #@MARK what about parameters.inh_gmax_mean
+					# 'gmax_std': self.parameters.inh_gmax_std,
+					# 'clip': self.parameters.inh_gmax_clip
+				}
+			},
+			P_release_params={
+				'dist_func': P_release_dist,
+				'params': {
+					'P_mean': P_release_mean,
+					'P_std': P_release_std
+				}
+			},
+			name='inh'
 			)
 
-		# Add synapses to apical and basal segments
-		add_synapses("apic", apic_segments, apic_probs, self.parameters.apic_inh_gmax_dist)
-		add_synapses("dend", dend_segments, dend_probs, self.parameters.basal_inh_gmax_dist)
-		
-	def build_excitatory_synapses(self, cell) -> None:
-		
-		# if self.parameters.CI_on:
-		# 	return None
+	def build_exc_synapses(self, cell, sec_type_to_get: Union[str, List[str]], gmax_dist_params: dict, exclude_within: float = None):
+		"""
+		Builds excitatory synapses for specified segment types.
 
-		# Excitatory gmax distribution
-		if self.parameters.exc_gmax_binned:
-			bin_means = precompute_bin_means(self.parameters.exc_gmax_mean_0, self.parameters.exc_gmax_std_0, self.parameters.exc_scalar, self.parameters.exc_gmax_clip)
-			gmax_exc_dist = partial(
-				binned_log_norm_dist,
-				self.parameters.exc_gmax_mean_0, 
-				self.parameters.exc_gmax_std_0, 
-				self.parameters.exc_scalar, 
-				size = 1, 
-				clip = self.parameters.exc_gmax_clip,
-				bin_means = bin_means) # enable for binned_log_norm_dist
-		else:
-			gmax_exc_dist = partial(
-				log_norm_dist,
-				self.parameters.exc_gmax_mean_0, 
-				self.parameters.exc_gmax_std_0, 
-				self.parameters.exc_scalar, 
-				size = 1, 
-				clip = self.parameters.exc_gmax_clip)
-  
-  		# exc release probability distribution
-		exc_P_dist = partial(
-			P_release_dist, 
-			P_mean = self.parameters.exc_P_release_mean, 
-			P_std = self.parameters.exc_P_release_std, 
-			size = 1)
+		Parameters:
+			cell: The cell object on which synapses will be built.
+			sec_type_to_get: The segment type(s) to retrieve (e.g., 'apic', 'dend'). Can be a string or list of strings.
+			gmax_dist_params: Parameters for gmax distribution (mean, std, etc.).
+			exclude_within: Distance from soma to exclude segments (optional).
+		"""
+		self.build_synapses_with_specs(
+			cell=cell,
+			sec_type_to_get=sec_type_to_get,
+			synapse_type='exc',
+			use_density=self.parameters.exc_use_density,
+			synaptic_density=self.parameters.exc_synaptic_density if self.parameters.exc_use_density else None,
+			syn_number=self.parameters.exc_syn_number if not self.parameters.exc_use_density else None,
+			gmax_dist_params=gmax_dist_params,
+			P_release_params={
+				'dist_func': P_release_dist,
+				'params': {
+					'P_mean': self.parameters.exc_P_release_mean,
+					'P_std': self.parameters.exc_P_release_std
+				}
+			},
+			name=f"exc_{sec_type_to_get}",
+			exclude_within=exclude_within
+		)
 
-		segments, seg_data = cell.get_segments(["apic", "dend"])
-		if self.parameters.use_SA_probs:
-			probs = [seg.membrane_surface_area for seg in seg_data]
-		else:
-			probs = [seg.L for seg in seg_data]
-
-		to_remove = []
-		for seg, id in zip(segments, range(len(segments))):
-			if h.distance(seg, cell.soma[0](0.5)) < 100:
-				to_remove.append(id)
-
-		# Remove segments and probs based on collected indices
-		segments = [seg for i, seg in enumerate(segments) if i not in to_remove]
-		probs = [prob for i, prob in enumerate(probs) if i not in to_remove]
-
-		cell.add_synapses_over_segments(
-			segments = segments,
-			nsyn = self.parameters.exc_synaptic_density if self.parameters.exc_use_density else self.parameters.exc_syn_number,
-			syn_mod = self.parameters.exc_syn_mod,
-			syn_params = self.parameters.exc_syn_params,
-			gmax = gmax_exc_dist,
-			name = "exc",
-			density = self.parameters.exc_use_density,
-			seg_probs = probs,
-			release_p = exc_P_dist)
+	def build_exc_synapses_by_type(self, cell):
+		self.build_exc_synapses(cell, sec_type_to_get = "trunk", gmax_dist_params = {
+        "dist_func": binned_log_norm_dist if self.parameters.bin_exc_gmax else log_norm_dist,
+        "params": {
+            "gmax_mean": self.parameters.trunk_exc_gmax_mean,
+            "gmax_std": self.parameters.trunk_exc_gmax_std,
+			'gmax_scalar': self.parameters.exc_scalar,
+            "clip": self.parameters.exc_gmax_clip
+        	}
+		}
+		)
+		self.build_exc_synapses(cell, sec_type_to_get = "oblique", gmax_dist_params = {
+        "dist_func": binned_log_norm_dist if self.parameters.bin_exc_gmax else log_norm_dist,
+        "params": {
+            "gmax_mean": self.parameters.oblique_exc_gmax_mean,
+            "gmax_std": self.parameters.oblique_exc_gmax_std,
+			'gmax_scalar': self.parameters.exc_scalar,
+            "clip": self.parameters.exc_gmax_clip
+        	}
+		}
+		)
+		self.build_exc_synapses(cell, sec_type_to_get = "tuft", gmax_dist_params = {
+        "dist_func": binned_log_norm_dist if self.parameters.bin_exc_gmax else log_norm_dist,
+        "params": {
+            "gmax_mean": self.parameters.tuft_exc_gmax_mean,
+            "gmax_std": self.parameters.tuft_exc_gmax_std,
+			'gmax_scalar': self.parameters.exc_scalar,
+            "clip": self.parameters.exc_gmax_clip
+        	}
+		}
+		)
 
 	def build_stylized_cell(self) -> object:
 		geometry_path = os.path.join(self.stylized_templates_folder, self.parameters.geometry_file)
