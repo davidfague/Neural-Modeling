@@ -590,6 +590,24 @@ class CellModel:
 		root_sections = [sec for sec in parent_sec.children() if sec in getattr(self, actual_root_sec_types)]
 		return root_sections
 	
+	def get_segments_of_type(self, sec_type_to_get: str):
+		def gather_segments_recursively(section):
+			"""Recursively gather all segments from the given section and its descendants."""
+			# Collect segments from the current section
+			segments = [seg for seg in section]
+			# Recurse into all children of the current section
+			for child_section in section.children():
+				# Recursively gather segments from the child and its descendants
+				segments.extend(gather_segments_recursively(child_section))
+			return segments
+
+		all_segments = []
+		# Start the recursive gathering from all root sections of the specified type
+		for root_section in self.get_root_sections(sec_type_to_get):
+			all_segments.extend(gather_segments_recursively(root_section))
+		
+		return all_segments
+	
 	def get_actual_sec_types(self, sec_type_to_get):
 		'''converts 'basal' to 'dend', 'trunk', 'oblique', 'tuft' to 'apic' (the 'actual' names that are the conventional attributes of cell_model and templates.)'''
 		return 'dend' if sec_type_to_get in ['dend','basal'] else 'apic' if sec_type_to_get in ['apic','trunk','oblique','tuft'] else NotImplementedError(f"{sec_type_to_get}")
