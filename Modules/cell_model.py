@@ -311,6 +311,38 @@ class CellModel:
 				if seg == segment: return indx
 				indx += 1
 
+	def calculate_furcation_level(self):
+		"""
+		Calculate the furcation level of each segment and align results with all_segments.
+		
+		Returns:
+			list: A list of furcation levels, where the order matches the rows of all_segments.
+		"""
+		all_segments = self.get_segments("all")
+		furcation_levels = [0] * len(all_segments)  # Initialize furcation levels with default 0
+
+		# Helper function to get all parent sections
+		def get_parent_sections(section):
+			"""Recursively gather all parent sections up to the root."""
+			parents = []
+			current_section = section.parent
+			while current_section is not None:
+				parents.append(current_section)
+				current_section = current_section.parent
+			return parents
+
+		# Iterate over all segments and compute furcation levels
+		for i, seg in enumerate(all_segments):
+			section = seg.sec
+			parent_sections = get_parent_sections(section)
+			furcation_level = 0
+			for parent in parent_sections:
+				if len(parent.children()) > 1:  # Branching point
+					furcation_level += 1
+			furcation_levels[i] = furcation_level
+
+		return furcation_levels
+
 	# ---------- SYNAPSES ----------
 				
 	def add_synapses_over_segments(
