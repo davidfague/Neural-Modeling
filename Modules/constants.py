@@ -46,7 +46,13 @@ class SimulationParameters:
 	exc_gmax_std_0: float = np.sqrt(np.log((0.35/0.45)**2 + 1))#0.35
 	exc_gmax_clip: tuple = (0,5)#(0, 15)
 	exc_scalar: int = 1 # Scales weight
-	exc_gmax_binned: bool = False # controls if the exc gmax values should be limited on the values they can take (helps with merging synapses)
+	bin_exc_gmax: bool = False # controls if the exc gmax values should be limited on the values they can take (helps with merging synapses)
+	trunk_exc_gmax_mean: float = exc_gmax_mean_0
+	trunk_exc_gmax_std: float = exc_gmax_std_0
+	oblique_exc_gmax_mean: float = exc_gmax_mean_0
+	oblique_exc_gmax_std: float = exc_gmax_std_0
+	tuft_exc_gmax_mean: float = exc_gmax_mean_0
+	tuft_exc_gmax_std: float = exc_gmax_std_0
 
 	# Density/Number of synapses
 	# Current densities taken from literature on apical main bifurcation, and extrapolated to entire cell.
@@ -73,10 +79,10 @@ class SimulationParameters:
 	
  
 	# syn_mod
-	exc_syn_mod: str = 'AMPA_NMDA_STP'#'pyr2pyr'#'AMPA_NMDA_STP'
-	inh_syn_mod: str = 'GABA_AB_STP'#'int2pyr'#'GABA_AB_STP'
+	exc_syn_mod: str = 'pyr2pyr'#'AMPA_NMDA_STP'
+	inh_syn_mod: str = 'int2pyr'#'GABA_AB_STP'
  
-	synaptic_currents_to_record =["i_AMPA", "i_NMDA"]#['iampa', 'inmda']# listed are for pyr2pyr.	for AMPA_NMDA: ["i_AMPA", "i_NMDA"]
+	synaptic_currents_to_record =['iampa', 'inmda']# listed are for pyr2pyr.	for AMPA_NMDA: ["i_AMPA", "i_NMDA"]
 
 	# Firing rate distributions
 	use_levy_dist_for_exc: bool = False
