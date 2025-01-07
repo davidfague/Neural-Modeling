@@ -590,18 +590,53 @@ class CellModel:
 		return root_sections
 	
 	def get_segments_of_type(self, sec_type_to_get: str):
-		def gather_segments_recursively(section):
-			"""Recursively gather all segments from the given section and its descendants."""
-			# Collect segments from the current section
-			segments = [seg for seg in section]
-			# Recurse into all children of the current section
+		def gather_segments_recursively(section, stop_segments=None):
+			"""
+			Recursively gather all segments from the given section and its descendants,
+			stopping if a segment is in the `stop_segments` list.
+			"""
+			if stop_segments is None:
+				stop_segments = set()
+			
+			segments = []
+			for seg in section:
+				if seg in stop_segments:
+					return segments  # Stop recursion if we hit a stopping segment
+				segments.append(seg)
+			
 			for child_section in section.children():
-				# Recursively gather segments from the child and its descendants
-				segments.extend(gather_segments_recursively(child_section))
+				segments.extend(gather_segments_recursively(child_section, stop_segments))
+			
 			return segments
 
+		# Handle the 'trunk' special case
+		if sec_type_to_get == 'trunk':
+			# Get the stopping segments: oblique and tuft root sections' first segments
+			oblique_roots = self.get_root_sections("oblique")
+			tuft_roots = self.get_root_sections("tuft")
+
+			# Include the first segment (index == 0) from each oblique and tuft root
+			stop_segments = {
+				seg for root in oblique_roots for idx, seg in enumerate(root) if idx == 0
+			}.union(
+				{seg for root in tuft_roots for idx, seg in enumerate(root) if idx == 0}
+			)
+
+			# # include nexus_seg (not needed since tuft is used.)
+			# nexus_seg = self.get_nexus_segment()  # Assume this is a method to retrieve the nexus segment
+			# if nexus_seg is not None:
+			# 	stop_segments.add(nexus_seg)
+
+			# Gather segments for trunk, stopping at `stop_segments`
+			all_segments = []
+			for root_section in self.get_root_sections("trunk"):
+				all_segments.extend(gather_segments_recursively(root_section, stop_segments))
+			return all_segments
+		elif sec_type_to_get == 'soma':
+			return [seg for seg in self.soma[0]]
+
+		# General case: Gather all segments for the specified section type
 		all_segments = []
-		# Start the recursive gathering from all root sections of the specified type
 		for root_section in self.get_root_sections(sec_type_to_get):
 			all_segments.extend(gather_segments_recursively(root_section))
 		
