@@ -471,9 +471,11 @@ class CellModel:
 		NotImplementedError(f"DEPRECATED: use cell_model.get_sections_at_branching_level('basal', level)")
 	
 	# @MARK Check that this one works as intended; check if level = inf returns terminal sections.
-	def get_sections_at_branching_level(self, sec_type_to_get, level=1):
+	def get_sections_at_branching_level(self, sec_type_to_get, level=1, exact_level=False):
 		'''Function for getting sec_type_to_get sections at a section depth 
 		(i.e., the last sections up to n sections from the soma).
+		exact_level = False will return the other terminal branches if they do not branch to the specified depth.
+		
 		Ex:
 		Suppose the basal tree has the following structure basal1 is the root, basal2 is child to the root, 
 		basal3 and basal4 are child to basal2, basal5 is child to basal4.
@@ -511,6 +513,11 @@ class CellModel:
 		if not sections:
 			raise ValueError(f"sections returned from get_sections_at_branching_level is {sections}")
 		
+		if exact_level:
+			sections, reached_levels = zip(*[
+				(sec, lvl) for sec, lvl in zip(sections, reached_levels) if lvl == level
+			])
+
 		return sections, reached_levels
 
 	def get_oblique_root_sections(self):
