@@ -176,9 +176,12 @@ class PoissonTrainGenerator:
 		return delayed_trains
 
 	@staticmethod
-	def rhythmic_modulation(lambdas: np.ndarray):
-		t = np.linspace(0, 1, len(lambdas))
-		lambdas = lambdas + lambdas * np.sin(2 * np.pi * t)
+	def rhythmic_modulation(lambdas: np.ndarray, frequency: float, depth_of_mod: float, delta_t: float):
+		'''mod_trace = mean_fr * (1 + depth_of_mod * np.sin((2 * np.pi * f * t ) + P))
+		assynes that delta_t in ms, frequency in hz.'''
+		assert 0<=depth_of_mod<=1
+		t = np.linspace(0, len(lambdas) * delta_t * 1e-3, len(lambdas)) # Time array in seconds
+		lambdas = lambdas + lambdas * depth_of_mod * np.sin(2 * np.pi * frequency * t)
 		return lambdas
 	
 	@staticmethod
