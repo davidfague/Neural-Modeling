@@ -37,15 +37,14 @@ class PoissonTrainGenerator:
 	def generate_lambdas_from_pink_noise(
 			num: int,
 			random_state: np.random.RandomState,
-			lambda_mean: float = 1.0,
-			rhythmic_modulation: bool = False) -> np.ndarray:
+			lambda_mean: float = 1.0) -> np.ndarray:
 		
 		# Get lambdas
 		lambdas = PoissonTrainGenerator.generate_pink_noise(num_obs = num, random_state = random_state, mean = lambda_mean)
 
 		# Apply modulation
-		if rhythmic_modulation:
-			lambdas = PoissonTrainGenerator.rhythmic_modulation(lambdas)
+		# if rhythmic_mod_depth != 0:
+			# lambdas = PoissonTrainGenerator.rhythmic_modulation(lambdas, rhythmic_mod_frequency, rhythmic_mod_depth, delta_t)
 		
 		# # Can't have negative firing rates (precision reasons)
 		# if np.sum(lambdas < 0) != 0:
@@ -180,8 +179,8 @@ class PoissonTrainGenerator:
 		'''mod_trace = mean_fr * (1 + depth_of_mod * np.sin((2 * np.pi * f * t ) + P))
 		assynes that delta_t in ms, frequency in hz.'''
 		assert 0<=depth_of_mod<=1
-		if depth_of_mod == 0: # same as no modulation
-			return lambdas
+		assert frequency > 0
+		assert delta_t > 0
 		t = np.linspace(0, len(lambdas) * delta_t * 1e-3, len(lambdas)) # Time array in seconds
 		lambdas = lambdas + lambdas * depth_of_mod * np.sin(2 * np.pi * frequency * t)
 		return lambdas

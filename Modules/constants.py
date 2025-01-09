@@ -96,6 +96,13 @@ class SimulationParameters:
 	exc_constant_fr: bool = False # exc synapses will have firing rate of 0 + self.parameters.excFR_increase
 	excFR_increase: float = 0.0
 
+	# input rhythmic modulation # default modulation_depth = 0 (currently only implemented for inhibitory)
+	rhyth_depth_inh_perisomatic: float = 0.15 # > 100 microns from soma
+	rhyth_frequency_inh_perisomatic: float = 64 # (hz)
+	rhyth_depth_inh_distal: float = 0.15 # < 100 microns from soma
+	rhyth_frequency_inh_distal: float = 16 # (hz)
+	
+
 	# syn_params
 	# exc_syn_params: tuple = if 'AMPA' in exc_syn_mod: (CS2CP_syn_params, CP2CP_syn_params) else: PN2PN_syn_params # 90%, 10%
 	# inh_syn_params: tuple = if 'GABA' in inh_syn_mod: (FSI_syn_params, LTS_syn_params) else: (PV2PN_syn_params, SOM2PN_syn_params)# (proximal, distal)
