@@ -180,6 +180,8 @@ class PoissonTrainGenerator:
 		'''mod_trace = mean_fr * (1 + depth_of_mod * np.sin((2 * np.pi * f * t ) + P))
 		assynes that delta_t in ms, frequency in hz.'''
 		assert 0<=depth_of_mod<=1
+		if depth_of_mod == 0: # same as no modulation
+			return lambdas
 		t = np.linspace(0, len(lambdas) * delta_t * 1e-3, len(lambdas)) # Time array in seconds
 		lambdas = lambdas + lambdas * depth_of_mod * np.sin(2 * np.pi * frequency * t)
 		return lambdas
