@@ -16,12 +16,12 @@ import math
 synapse_keys = ['None']  # Options: 'None', 'NoMapping', 'MappingMerging', etc.
 use_SA_probs = False
 syn_numbers_to_use = 'Full'  # Options: '1000', 'Full', etc.
-common_attributes_to_use = 'tuning_syanpses' # Options: 'sta', 'FI', 'FI_ExcFR', 'tuning_synapses', 'checking_synapse_distributions'
+common_attributes_to_use = 'tuning_synapses' # Options: 'sta', 'FI', 'FI_ExcFR', 'tuning_synapses', 'checking_synapse_distributions'
 morphology_keys = ['Complex']  # Options: 'Complex', 'Branches', 'Trees' (can do multiple)
 replace_w_CI_keys = ['None']  # Options: 'None', 'Tufts', 'Basals&Tufts', etc. (can do multiple)
-numpy_random_states = [1000]  # Add more seeds if needed (can do multiple)
+numpy_random_states = [1000, 10000000]  # Add more seeds if needed (can do multiple)
 neuron_random_states = None
-sim_title = 'BenSynapses_final_detailed_syn_dist_analysis'
+sim_title = 'BenSynapses_testing_depth_of_mod'#'BenSynapses_final_detailed_syn_dist_analysis'
 
 syn_numbers = {
     'Density': {'inh': None, 'exc': None},
@@ -86,8 +86,8 @@ common_attributes_dict = { # simulation options
         'use_SA_probs': use_SA_probs,
         'record_synapse_distributions': True
     },
-    'tuning_synases': { # in vivo simulation
-        'h_tstop': 15000,
+    'tuning_synapses': { # in vivo simulation (not fully implemented yet: needs sim title adjustment)
+        'h_tstop': 10000,
         'merge_synapses': False,
         'record_ecp': False,
         'record_all_channels': False,
@@ -137,6 +137,8 @@ soma_gmax_range = [0.0025]
 mean = (np.log(0.45) - 0.5 * np.log((0.35 / 0.45) ** 2 + 1))
 exc_gmax_mean_range = [mean]  # Example excitatory gmax mean range
 
+all_depth_of_mod_range = [0, 0.1, 0.25, 0.5, 0.75, 1]
+
 # Generate varying attributes by combining morphology, replace_w_CI, and synapse attributes
 varying_attributes = []
 for morph_key in morphology_keys:
@@ -153,11 +155,11 @@ for morph_key in morphology_keys:
             varying_attributes.append(combined_attrs)
 
 # Function to generate simulations
-def generate_simulations(neuron_random_states, numpy_random_states, varying_attributes, common_attributes_dict, inh_gmax_range_apic, inh_gmax_range_dend, soma_gmax_range):
+def generate_simulations(neuron_random_states, numpy_random_states, varying_attributes, common_attributes_dict, inh_gmax_range_apic, inh_gmax_range_dend, soma_gmax_range, all_depth_of_mod_range=[0]):
     all_parameters = []
 
-    def create_parameters(numpy_seed, neuron_seed, attributes, inh_gmax_apic, inh_gmax_dend, soma_gmax, exc_gmax_mean, amp=None, excFR_increase=None):
-        sim_name_parts = [attributes['base_sim_name'], f"InhGmaxApic{round(inh_gmax_apic, 4)}", f"InhGmaxDend{round(inh_gmax_dend, 4)}", f"SomaGmax{round(soma_gmax, 4)}", f"ExcGmax{round(exc_gmax_mean,4)}", f"Np{numpy_seed}"]
+    def create_parameters(numpy_seed, neuron_seed, attributes, inh_gmax_apic, inh_gmax_dend, soma_gmax, exc_gmax_mean, amp=None, excFR_increase=None, all_depth_of_mod=0):
+        sim_name_parts = [attributes['base_sim_name'], f"InhGmaxApic{round(inh_gmax_apic, 4)}", f"InhGmaxDend{round(inh_gmax_dend, 4)}", f"SomaGmax{round(soma_gmax, 4)}", f"ExcGmax{round(exc_gmax_mean,4)}", f"Np{numpy_seed}", f"RhythDepth{all_depth_of_mod}"]
         if neuron_seed is not None:
             sim_name_parts.append(f"Neu{neuron_seed}")
         if amp is not None:
@@ -174,6 +176,8 @@ def generate_simulations(neuron_random_states, numpy_random_states, varying_attr
             'exc_gmax_mean_0': exc_gmax_mean,
             'numpy_random_state': numpy_seed,
             'sim_name': sim_name,
+            'rhyth_depth_inh_perisomatic': all_depth_of_mod,
+            'rhyth_depth_inh_distal': all_depth_of_mod,
             **{k: v for k, v in attributes.items() if k != 'base_sim_name'}
         }
 
@@ -194,22 +198,23 @@ def generate_simulations(neuron_random_states, numpy_random_states, varying_attr
     if not neuron_random_states:
         neuron_random_states = [None]
 
-    for inh_gmax_apic in inh_gmax_range_apic:
-        for inh_gmax_dend in inh_gmax_range_dend:
-            for soma_gmax in soma_gmax_range:
-                for exc_gmax_mean in exc_gmax_mean_range:
-                    for numpy_seed in numpy_random_states:
-                        for neuron_seed in neuron_random_states:
-                            for attributes in varying_attributes:
-                                current_common_attributes = common_attributes_dict
-                                if 'CI_on' in current_common_attributes:
-                                    for amp in np.arange(0, 2.1, 0.5):
-                                        all_parameters.append(create_parameters(numpy_seed, neuron_seed, attributes, inh_gmax_apic, inh_gmax_dend, soma_gmax, exc_gmax_mean, amp=amp))
-                                elif 'exc_constant_fr' in current_common_attributes:
-                                    for excFR_increase in np.arange(0, 8.1, 2):
-                                        all_parameters.append(create_parameters(numpy_seed, neuron_seed, attributes, inh_gmax_apic, inh_gmax_dend, soma_gmax, exc_gmax_mean, excFR_increase=excFR_increase))
-                                else:
-                                    all_parameters.append(create_parameters(numpy_seed, neuron_seed, attributes, inh_gmax_apic, inh_gmax_dend, soma_gmax, exc_gmax_mean))
+    for all_depth_of_mod in all_depth_of_mod_range:
+        for inh_gmax_apic in inh_gmax_range_apic:
+            for inh_gmax_dend in inh_gmax_range_dend:
+                for soma_gmax in soma_gmax_range:
+                    for exc_gmax_mean in exc_gmax_mean_range:
+                        for numpy_seed in numpy_random_states:
+                            for neuron_seed in neuron_random_states:
+                                for attributes in varying_attributes:
+                                    current_common_attributes = common_attributes_dict
+                                    if 'CI_on' in current_common_attributes:
+                                        for amp in np.arange(0, 2.1, 0.5):
+                                            all_parameters.append(create_parameters(numpy_seed, neuron_seed, attributes, inh_gmax_apic, inh_gmax_dend, soma_gmax, exc_gmax_mean, amp=amp, all_depth_of_mod=all_depth_of_mod))
+                                    elif 'exc_constant_fr' in current_common_attributes:
+                                        for excFR_increase in np.arange(0, 8.1, 2):
+                                            all_parameters.append(create_parameters(numpy_seed, neuron_seed, attributes, inh_gmax_apic, inh_gmax_dend, soma_gmax, exc_gmax_mean, excFR_increase=excFR_increase, all_depth_of_mod=all_depth_of_mod))
+                                    else:
+                                        all_parameters.append(create_parameters(numpy_seed, neuron_seed, attributes, inh_gmax_apic, inh_gmax_dend, soma_gmax, exc_gmax_mean, all_depth_of_mod=all_depth_of_mod))
 
     return all_parameters
 
