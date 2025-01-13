@@ -504,7 +504,9 @@ class CellModel:
 	
 	# @MARK Check that this one works as intended; check if level = inf returns terminal sections.
 	def get_sections_at_branching_level(self, sec_type_to_get, level=1, exact_level=False):
-		'''Function for getting sec_type_to_get sections at a section depth 
+		'''
+		'sec_type_to_get' possible inputs: 'dend', 'basal', 'apic', 'trunk', 'oblique', 'tuft'
+		Function for getting sec_type_to_get sections at a section depth 
 		(i.e., the last sections up to n sections from the soma).
 		exact_level = False will return the other terminal branches if they do not branch to the specified depth.
 		
@@ -515,7 +517,8 @@ class CellModel:
 		level=1 returns: basal1, 1
 		level=2 returns: basal2, 2
 		level=3 returns [basal3, basal4], [3, 3]
-		level=4 returns [basal3, basal5], [3,4] since basal3 and basal4 are the terminal children and they have 2 and 3 generations above them, respectively
+		(level=4, false) returns [basal3, basal5], [3,4] since basal3 and basal4 are the terminal children and they have 2 and 3 generations above them, respectively
+		(level=4, true) returns [basal5], [4] basal5 is the only section with exactl 4 ascendants
 		'''
 		
 		if level < 1:
