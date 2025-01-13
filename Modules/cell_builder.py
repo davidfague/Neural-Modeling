@@ -257,7 +257,7 @@ class CellBuilder:
 		# 	all_nseg.append(nseg)
 		# 	sec.nseg = 1+2*int(sec.L/10)
   
-		print(f"soma segments:{cell.get_segments_without_data(['soma'])}")
+		# print(f"soma segments:{cell.get_segments_without_data(['soma'])}")
 		# craete synapse objects
 		self.logger.log("Building excitatory synapses.")
 		self.build_exc_synapses_by_type(cell = cell)
@@ -276,7 +276,7 @@ class CellBuilder:
 		exc_spike_trains = [syn.pc.spike_train for syn in cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])]
      
 		exc_mean_frs = [syn.pc.mean_fr for syn in cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])]
-		print(f"exc_mean_frs: {exc_mean_frs}")
+		# print(f"exc_mean_frs: {exc_mean_frs}")
 
 		self.logger.log("Assigning inhibitory spike trains.")
 		self.assign_inhibitory_spike_trains(cell = cell, random_state = random_state, exc_spike_trains=exc_spike_trains)
@@ -438,7 +438,7 @@ class CellBuilder:
 					rhyth_mod_freq_to_use = self.parameters.rhyth_frequency_inh_distal
 				firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(firing_rates, desired_mean=mean_fr)#, divide_1000=True)
 				firing_rates = PoissonTrainGenerator.rhythmic_modulation(firing_rates, rhyth_mod_freq_to_use, rhyth_mod_depth_to_use, self.parameters.h_dt)
-				print(f"firing_rates: {firing_rates}")
+				# print(f"firing_rates: {firing_rates}")
 				spike_train = PoissonTrainGenerator.generate_spike_train(
 				lambdas = firing_rates, 
 				random_state = random_state)
