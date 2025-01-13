@@ -190,7 +190,7 @@ class SimulationParameters:
 	one_syn_index: int = 0
 	simulate_EPSPs: bool = False
   
-  # recorders
+  	# recorders
 	record_soma_spikes: bool = True
 	record_axon_spikes: bool = False
 	record_all_channels: bool = False
@@ -202,11 +202,10 @@ class SimulationParameters:
 	# new reduction parameters
 	reduce_cell_NRCE: bool = False # depracting NRCE
 	# reduce_cell_selective:bool = True
-	reduce_tufts: bool = False
-	reduce_apic: bool = False # cannot do apic with tufts or oblique
-	reduce_basals: int = 0 #bool = False
-	# reduce_2nd_basals: bool = False
-	reduce_obliques: bool = False
+	reduce_tufts: int = 0
+	reduce_obliques: int = 0
+	reduce_apic: int = 0 # cannot do apic with tufts or oblique
+	reduce_basals: int = 0
 	synapse_mapping: bool = True # True places synapses on complex cell and maps them using transfer impedance. False places synapses onto reduced cell
   
   
