@@ -157,43 +157,43 @@ class CellBuilder:
 		# 		cell = self.perform_reduction(reductor = reductor, cell = cell, random_state = random_state)
   
 	# Build synapses & reduce cell
-		if self.parameters.synapse_mapping:
-			self.build_synapses(cell, random_state)
-			if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
-				cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
-							reduce_basals = self.parameters.reduce_basals,
-							reduce_obliques = self.parameters.reduce_obliques, 
-							reduce_apic=self.parameters.reduce_apic,
-							cell = cell)
-		else:
-			if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
-					cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
-							reduce_basals = self.parameters.reduce_basals,
-							reduce_obliques = self.parameters.reduce_obliques,
-							reduce_apic=self.parameters.reduce_apic,
-							cell = cell)
-					self.build_synapses(cell, random_state)
-			else:
-				self.build_synapses(cell, random_state)
+		# if self.parameters.synapse_mapping:
+		# 	self.build_synapses(cell, random_state)
+		# 	if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
+		# 		cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
+		# 					reduce_basals = self.parameters.reduce_basals,
+		# 					reduce_obliques = self.parameters.reduce_obliques, 
+		# 					reduce_apic=self.parameters.reduce_apic,
+		# 					cell = cell)
+		# else:
+		# 	if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
+		# 			cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
+		# 					reduce_basals = self.parameters.reduce_basals,
+		# 					reduce_obliques = self.parameters.reduce_obliques,
+		# 					reduce_apic=self.parameters.reduce_apic,
+		# 					cell = cell)
+		# 			self.build_synapses(cell, random_state)
+		# 	else:
+		# 		self.build_synapses(cell, random_state)
     
-		# replace with current injection
-		replace_start_time = time.time()
-		if (self.parameters.num_basal_to_replace_with_CI + self.parameters.num_tuft_to_replace_with_CI) > 0:
-			cell = replace_dend_with_CI(cell, self.parameters)
-		replace_end_time = time.time()
-		total_replace_time = replace_end_time - replace_start_time
-		replace_file_path = os.path.join(self.parameters.path, "replace_runtime.txt")
-		with open(replace_file_path, "w") as replace_file:
-			replace_file.write(f"{total_replace_time:.3f} seconds")
+		# # replace with current injection
+		# replace_start_time = time.time()
+		# if (self.parameters.num_basal_to_replace_with_CI + self.parameters.num_tuft_to_replace_with_CI) > 0:
+		# 	cell = replace_dend_with_CI(cell, self.parameters)
+		# replace_end_time = time.time()
+		# total_replace_time = replace_end_time - replace_start_time
+		# replace_file_path = os.path.join(self.parameters.path, "replace_runtime.txt")
+		# with open(replace_file_path, "w") as replace_file:
+		# 	replace_file.write(f"{total_replace_time:.3f} seconds")
 		
-		# merge synapses/optimize nseg by lambda
-		reductor = Reductor(logger = self.logger)
-		if self.parameters.optimize_nseg_by_lambda:
-				self.logger.log("Updating nseg using lambda.")
-				reductor.update_model_nseg_using_lambda(cell, segs_per_lambda=self.parameters.segs_per_lambda)
-		if self.parameters.merge_synapses:
-				self.logger.log("Merging synapses.")
-				reductor.merge_synapses(cell)
+		# # merge synapses/optimize nseg by lambda
+		# reductor = Reductor(logger = self.logger)
+		# if self.parameters.optimize_nseg_by_lambda:
+		# 		self.logger.log("Updating nseg using lambda.")
+		# 		reductor.update_model_nseg_using_lambda(cell, segs_per_lambda=self.parameters.segs_per_lambda)
+		# if self.parameters.merge_synapses:
+		# 		self.logger.log("Merging synapses.")
+		# 		reductor.merge_synapses(cell)
 
 		# set v_init for all compartments
 		h.v_init = self.parameters.h_v_init
