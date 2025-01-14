@@ -11,10 +11,11 @@ import seaborn as sns
 import numpy as np
 
 import sys
-
+sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../Modules"))
+from Modules import analysis
 
-DUR_TO_USE = 150 # seconds of simulation
+DUR_TO_USE = 10 # seconds of simulation
 
 def count_events(sim_path):
     segs_na_df, segs_nmda_df, segs_ca_df = get_dfs_from_path(sim_path)
@@ -69,37 +70,54 @@ def read_segs(sim_directory):
 
         segs.loc[segs.Type=='dend','Elec_distanceQ'] = pd.qcut(segs.loc[segs.Type=='dend','Elec_distance'], 10, labels=False)
         segs.loc[segs.Type=='apic','Elec_distanceQ'] = pd.qcut(segs.loc[segs.Type=='apic','Elec_distance'], 10, labels=False)
+        return segs
 
 def get_dfs_from_path(sim_path):
     segs = read_segs(sim_path)
     spks = analysis.DataReader.read_data(sim_path, "soma_spikes")
     spktimes = spks[0][:]
     spkinds = np.sort((spktimes*10).astype(int))
+    na = analysis.DataReader.read_data(sim_path, "gNaTa_t_NaTa_t").T
 
     # na
-    na_df = pd.read_csv(os.path.join(sim_path, 'nmda.csv'))
-    for i in np.random.choice(na_df[(na_df.na_lower_bound>20) & (na_df.na_lower_bound<1400000)].index,10000):
-        seg = na_df.loc[i,'segmentID']
-        if not pd.isnull(na_df.loc[i,'na_lower_bound']):
-            spkt = int(na_df.loc[i,'na_lower_bound'])
-            trace = na[spkt-10:spkt+10,seg]#['report']['biophysical']['data'][spkt-10:spkt+10,seg]
-            peak_value = np.max(trace)
-            half_peak = peak_value/2
-            duration = np.arange(0,20)[trace>half_peak] + spkt - 10
-            na_df.loc[i,'duration_low'] = duration[0]
-            na_df.loc[i,'duration_high'] = duration[-1]
-            na_df.loc[i,'peak_value'] = peak_value
-        else:
-            na_df.loc[i,'duration_low'] = np.nan
-            na_df.loc[i,'duration_high'] = np.nan
-            na_df.loc[i,'peak_value'] = np.nan    
+    na_df = pd.read_csv(os.path.join(sim_path, 'na.csv'))
+
+    max_retries = 1000  # Number of retries
+    for _ in range(max_retries):
+        try:
+            for i in np.random.choice(na_df[(na_df.na_lower_bound > 20) & (na_df.na_lower_bound < 1400000)].index, 10000):
+                seg = na_df.loc[i, 'segmentID']
+                if not pd.isnull(na_df.loc[i, 'na_lower_bound']):
+                    spkt = int(na_df.loc[i, 'na_lower_bound'])
+                    # Ensure trace slicing does not go out of bounds
+                    trace_start = max(0, spkt - 10)
+                    trace_end = min(na.shape[0], spkt + 10)
+                    trace = na[trace_start:trace_end, seg]
+                    
+                    if len(trace) == 20:  # Ensure the trace is the expected length
+                        peak_value = np.max(trace)
+                        half_peak = peak_value / 2
+                        duration = np.arange(trace_start - (spkt - 10), trace_end - (spkt - 10))[trace > half_peak] + trace_start - (spkt - 10)
+                        na_df.loc[i, 'duration_low'] = duration[0]
+                        na_df.loc[i, 'duration_high'] = duration[-1]
+                        na_df.loc[i, 'peak_value'] = peak_value
+                    else:
+                        raise ValueError(f"Trace length is {len(trace)} not 20, retrying...")
+                else:
+                    raise ValueError("Invalid na_lower_bound, retrying...")
+            break  # Exit the retry loop if no errors occur
+        except Exception as e:
+            print(f"Retry {_ + 1}/{max_retries} failed: {e}")
+    else:
+        print("Maximum retries reached. Unable to process.")
+
     na_df['duration'] = (na_df['duration_high'] - na_df['duration_low'] + 1)/10
     seg_na_df = na_df.groupby('segmentID')['na_lower_bound'].count().reset_index().rename(columns={'na_lower_bound':'num_na_spikes'})
     segs_na_df = segs.set_index('segmentID').join(seg_na_df.set_index('segmentID'))
     segs_na_df.loc[segs_na_df.num_na_spikes>1000,'num_na_spikes'] = 1000
 
     # ca
-    ca_df = pd.read_csv(os.path.join(sim_path, 'nmda.csv'))
+    ca_df = pd.read_csv(os.path.join(sim_path, 'ca.csv'))
     ca_df['dist_from_soma_spike'] = ca_df['ca_lower_bound'].apply(lambda x: np.min(np.abs(x-spkinds)))
     ca_df['duration'] = (ca_df['ca_upper_bound'] - ca_df['ca_lower_bound'])/10
     ca_df['mag_dur'] = ca_df['mag']/ca_df['duration']
@@ -127,6 +145,7 @@ def get_dfs_from_path(sim_path):
 
 
 def main():
+    '''Deprecating'''
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Run find_events_ben.py for each simulation directory.")
     parser.add_argument("-d", "--directory", required=True, help="Path to the directory containing simulation folders.")
@@ -159,7 +178,64 @@ def main():
             except subprocess.CalledProcessError as e:
                 print(f"Error running find_events_ben.py for {sim_path}: {e}")
 
+# if __name__ == "__main__":
+    # main()
+    #####
+    # ben = False
+    # if "-d" in sys.argv: # arg is a simulation directory
+    #     sim_directory = sys.argv[sys.argv.index("-d") + 1] # (global)
+    #     spike_table = count_events(sim_directory)
+    #     spike_table.to_csv(os.path.join(sim_directory, "spike_table.csv"))
+    # elif "-f" in sys.argv: # arg is a simulations folder of simulation directories
+    #     simulations_directory = sys.argv[sys.argv.index("-f") + 1]
+    #     print(f"simulations_directory: {simulations_directory}")
+    #     for sim_directory in os.listdir(simulations_directory):
+    #         sim_path = os.path.join(simulations_directory, sim_directory)
+    #         spike_table = count_events(sim_path)
+    #         spike_table.to_csv(os.path.join(sim_path, "spike_table.csv"))
+    # else:
+    #     raise RuntimeError
+
+def aggregate_simulation_data(simulations_directory):
+    combined_table = []
+    
+    for sim_directory in os.listdir(simulations_directory):
+        sim_path = os.path.join(simulations_directory, sim_directory)
+        if not os.path.isdir(sim_path):
+            continue  # Skip non-directory files
+            
+        spike_table = count_events(sim_path)
+        spike_table['simulation_directory'] = sim_directory  # Add directory name to the table
+        combined_table.append(spike_table)
+    
+    # Combine all DataFrames into one
+    if combined_table:
+        combined_table = pd.concat(combined_table, ignore_index=True)
+    else:
+        combined_table = pd.DataFrame()
+    
+    return combined_table
+
 if __name__ == "__main__":
-    main()
+    if "-d" in sys.argv:  # Single simulation directory
+        sim_directory = sys.argv[sys.argv.index("-d") + 1]
+        spike_table = count_events(sim_directory)
+        spike_table.to_csv(os.path.join(sim_directory, "spike_table.csv"), index=False)
+        print(spike_table)
+    elif "-f" in sys.argv:  # Folder containing multiple simulation directories
+        simulations_directory = sys.argv[sys.argv.index("-f") + 1]
+        print(f"simulations_directory: {simulations_directory}")
+        
+        combined_table = aggregate_simulation_data(simulations_directory)
+        
+        if not combined_table.empty:
+            combined_csv_path = os.path.join(simulations_directory, "combined_spike_table.csv")
+            combined_table.to_csv(combined_csv_path, index=False)
+            print(f"Combined table saved to {combined_csv_path}")
+            print(combined_table)
+        else:
+            print("No valid simulation data found in the directory.")
+    else:
+        raise RuntimeError("No valid arguments provided. Use -d for a single directory or -f for a folder of directories.")
 
 #TODO: store spike_table for each simulation, compute mean,std across simulations for each spike type in the table.
