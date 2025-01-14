@@ -109,8 +109,11 @@ def load_data(sim_directory, ben):
         hva = analysis.DataReader.read_data(sim_directory, "ica_Ca_HVA").T
         lva = analysis.DataReader.read_data(sim_directory, "ica_Ca_LVAst").T
         ih = analysis.DataReader.read_data(sim_directory, "ihcn_Ih").T
-        nmda = analysis.DataReader.read_data(sim_directory, "i_NMDA")
-        # nmda = analysis.DataReader.read_data(sim_directory, "inmda").T
+        parameters = analysis.DataReader.load_parameters(sim_directory)
+        if parameters.exc_syn_mod == 'pyr2pyr': # two types with different variable name
+            nmda = analysis.DataReader.read_data(sim_directory, "inmda").T
+        else:
+            nmda = analysis.DataReader.read_data(sim_directory, "i_NMDA").T
         # na = analysis.DataReader.read_data(sim_directory, "na")
         spktimes = spks[0][:]
         spkinds = np.sort((spktimes*10).astype(int))
@@ -261,14 +264,23 @@ def compute_nmda_df(nmda, v, segs, sim_directory, ben):
     if ben: segs_nmda_df.to_csv('nmda.csv')
     else: segs_nmda_df.to_csv(os.path.join(sim_directory, 'nmda.csv'))
 
+def compute_dfs(sim_directory, ben):
+    na, hva, lva, ih, nmda, v, spkinds, segs = load_data(sim_directory, ben)
+    compute_na_df(na, segs, spkinds, sim_directory, ben)
+    compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben)
+    compute_nmda_df(nmda, v, segs, sim_directory, ben)
+
 if __name__ ==  "__main__":
     ben = False
     if "-d" in sys.argv:
         sim_directory = sys.argv[sys.argv.index("-d") + 1] # (global)
+        compute_dfs(sim_directory, ben)
+    elif "-f" in sys.argv:
+        simulations_directory = sys.argv[sys.argv.index("-f") + 1]
+        print(f"simulations_directory: {simulations_directory}")
+        for sim_directory in os.listdir(simulations_directory):
+            print(f"sim_directory: {sim_directory}")
+            compute_dfs(os.path.join(simulations_directory, sim_directory), ben)
     else:
         raise RuntimeError
-    na, hva, lva, ih, nmda, v, spkinds, segs = load_data(sim_directory, ben)
-
-    compute_na_df(na, segs, spkinds, sim_directory, ben)
-    compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben)
-    compute_nmda_df(nmda, v, segs, sim_directory, ben)
+    
