@@ -143,13 +143,16 @@ class PoissonTrainGenerator:
 		return -np.log(1 - spike_probs)
 
 	@staticmethod
-	def shift_mean_of_lambdas(lambdas, desired_mean):
+	def shift_mean_of_lambdas(lambdas, desired_mean, logger=None):
 		'''frs: np.array of firing rates that will be lamda
 		units mHz'''
   		# Can't have negative firing rates (precision reasons)
 		if np.sum(lambdas < 0) != 0:
-			warnings.warn("Found negative lambdas before shifting a mean.")
-			lambdas[lambdas < 0] = 1e-15 
+			if logger:
+				logger.log(f"Found {np.sum(lambdas < 0)} negative lambdas out of {len(lambdas)} BEFORE shifting a mean.")
+			else:
+				warnings.warn(f"Found {np.sum(lambdas < 0)} negative lambdas out of {len(lambdas)} BEFORE shifting a mean.")
+
 		# print(np.sum(lambdas < 0),lambdas)
 		# if divide_1000:
 		# 	desired_mean = desired_mean / 1000 # shift
@@ -159,7 +162,10 @@ class PoissonTrainGenerator:
   
   		# Can't have negative firing rates (precision reasons)
 		if np.sum(lambdas < 0) != 0:
-			warnings.warn("Found negative lambdas after shifting a mean.")
+			if logger:
+				logger.log(f"Found {np.sum(lambdas < 0)} negative lambdas out of {len(lambdas)} AFTER shifting a mean. REPLACING with 1e-15")
+			else:
+				warnings.warn(f"Found {np.sum(lambdas < 0)} negative lambdas out of {len(lambdas)} AFTER shifting a mean. REPLACING with 1e-15")
 			lambdas[lambdas < 0] = 1e-15 
    
 		return lambdas

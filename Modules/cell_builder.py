@@ -393,7 +393,7 @@ class CellBuilder:
 			# In this case the firing rate profile is the average exc spike train delayed. All functional groups would have the same, unless we subset by nearby exc spike train only
 			for pc in fg.presynaptic_cells: # one spike train per pc
 				mean_fr = proximal_inh_dist(size = 1)
-				pc_firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(firing_rates, desired_mean=mean_fr)#, divide_1000=True)
+				pc_firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(firing_rates, desired_mean=mean_fr, logger=self.logger)#, divide_1000=True)
 				pc_firing_rates = PoissonTrainGenerator.rhythmic_modulation(pc_firing_rates, self.parameters.rhyth_frequency_inh_perisomatic, self.parameters.rhyth_depth_inh_perisomatic, self.parameters.h_dt)
 				spike_train = PoissonTrainGenerator.generate_spike_train(
 				lambdas = pc_firing_rates, 
@@ -436,7 +436,7 @@ class CellBuilder:
 					mean_fr = distal_inh_dist(size = 1)
 					rhyth_mod_depth_to_use = self.parameters.rhyth_depth_inh_distal
 					rhyth_mod_freq_to_use = self.parameters.rhyth_frequency_inh_distal
-				firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(firing_rates, desired_mean=mean_fr)#, divide_1000=True)
+				firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(firing_rates, desired_mean=mean_fr, logger=self.logger)#, divide_1000=True)
 				firing_rates = PoissonTrainGenerator.rhythmic_modulation(firing_rates, rhyth_mod_freq_to_use, rhyth_mod_depth_to_use, self.parameters.h_dt)
 				# print(f"firing_rates: {firing_rates}")
 				spike_train = PoissonTrainGenerator.generate_spike_train(
@@ -479,7 +479,7 @@ class CellBuilder:
 					lambda_mean_fr = 0 + self.parameters.excFR_increase
 				else:
 					lambda_mean_fr = (mean_fr_dist(size = 1) + self.parameters.excFR_increase)
-				firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(lambdas=firing_rates, desired_mean=lambda_mean_fr)
+				firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(lambdas=firing_rates, desired_mean=lambda_mean_fr, logger=self.logger)
 				spike_train = PoissonTrainGenerator.generate_spike_train(
 				lambdas = firing_rates, 
 				random_state = random_state)
