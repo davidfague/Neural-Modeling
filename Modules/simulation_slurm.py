@@ -136,8 +136,8 @@ class Simulation:
     			#for sec in cell.all: sec.insert('extracellular') # may not be needed
             cell.add_segment_recorders(var_name = "i_membrane_")
     		
-        if (parameters.record_all_synapses):
-            for var_name in ["i_AMPA", "i_NMDA"]:
+        if (not parameters.all_synapses_off) and (parameters.record_all_synapses):
+            for var_name in parameters.synaptic_currents_to_record:#["i_AMPA", "i_NMDA"], "igaba", "inmda"]: # additional for pyr2pyr and int2pyr synapses.
                 cell.add_synapse_recorders(var_name = var_name)
         if parameters.record_soma_spikes:
             cell.add_spike_recorder(sec = cell.soma[0], var_name = "soma_spikes", spike_threshold = parameters.spike_threshold)
