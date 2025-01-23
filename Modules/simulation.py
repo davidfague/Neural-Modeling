@@ -47,7 +47,7 @@ class Simulation:
 
     def run(self):
         self.logger.log(f"Total number of jobs: {len(self.pool)}")
-        self.logger.log(f"Total number of proccessors: {cpu_count()}")
+        # self.logger.log(f"cpu_count(): {cpu_count()}") # potentially misleading
 
         # Create the simulation parent folder
         if not os.path.exists(self.path):
@@ -72,7 +72,12 @@ class Simulation:
                     print(f"Error loading DLL: {e}")
                     dll_loaded = False
         
-        pool = Pool(processes = len(self.pool))
+        # pool = Pool(processes = len(self.pool))
+        slurm_cpus = int(os.getenv('SLURM_CPUS_ON_NODE', 1))
+        self.logger.log(f"Total number of slurm CPUs: {slurm_cpus}")
+        num_processes = min(len(self.pool), slurm_cpus)  # Limit to SLURM-allocated CPUs
+        self.logger.log(f"Total number of proccesses: {num_processes}")
+        pool = Pool(processes = num_processes)
         pool.map(unwrap_self_run_single_simulation, zip([self] * len(self.pool), self.pool))
         pool.close()
         pool.join()
