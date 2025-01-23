@@ -1,3 +1,4 @@
+'''note the check that will prevent recomputing: if not os.path.exists(os.path.join(sim_directory, 'nmda.csv'))     '''
 import pandas as pd
 import h5py
 import numpy as np
@@ -280,7 +281,8 @@ if __name__ ==  "__main__":
         print(f"simulations_directory: {simulations_directory}")
         for sim_directory in os.listdir(simulations_directory):
             print(f"sim_directory: {sim_directory}")
-            compute_dfs(os.path.join(simulations_directory, sim_directory), ben)
+            if not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
+                compute_dfs(os.path.join(simulations_directory, sim_directory), ben)
     else:
         raise RuntimeError
     
