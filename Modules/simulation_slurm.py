@@ -17,10 +17,10 @@ class Simulation:
         self.cell_type = cell_type
         if title:
           self.title = title
-          self.path = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}-{title}"
+          self.path = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')}-{title}"#-%S')}-{title}" # had to remove seconds because with mpi the timing can be slightly off.
         else:
           self.title = None
-          self.path = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}-{cell_type}"
+          self.path = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')}-{cell_type}"#-%S')}-{cell_type}"
 
         self.logger = Logger(None)
         self.pool = []
