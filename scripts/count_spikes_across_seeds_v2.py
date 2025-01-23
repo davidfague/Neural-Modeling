@@ -3,13 +3,12 @@ import subprocess
 import argparse
 import pandas as pd
 import numpy as np
-
-DUR_TO_USE = 150  # seconds of simulation
+import analysis
 
 def get_dfs_from_path(sim_path):
     segs = read_segs(sim_path)
-    import analysis
     spks = analysis.DataReader.read_data(sim_path, "soma_spikes")
+    DUR_TO_USE = analysis.DataReader.load_parameters(sim_path).h_tstop / 1000
     spktimes = spks[0][:]
     spkinds = np.sort((spktimes*10).astype(int))
 
@@ -64,6 +63,7 @@ def get_dfs_from_path(sim_path):
 
 def count_events(sim_path):
     segs_na_df, segs_nmda_df, segs_ca_df = get_dfs_from_path(sim_path)
+    DUR_TO_USE = analysis.DataReader.load_parameters(sim_path).h_tstop / 1000
 
     rows = []
     spike_types = {
