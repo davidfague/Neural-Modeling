@@ -25,9 +25,13 @@ class Simulation:
         self.logger = Logger(None)
         self.pool = []
 
+        # Create the simulations parent folder
+        if not os.path.exists(self.path):
+            os.mkdir(self.path)
+
     def run_single_simulation(self, parameters: SimulationParameters):
         
-        parameters.path = os.path.join(parameters.sim_name)
+        parameters.path = os.path.join(self.path, parameters.sim_name) # fixing the path os.path.join(parameters.sim_name)
 
         # Create a folder to save to
         os.mkdir(parameters.path)
