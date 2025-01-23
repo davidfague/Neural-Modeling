@@ -12,6 +12,8 @@ from Modules.cell_builder import SkeletonCell
 from neuron import h
 import pickle
 
+sim_title = 'BenSynapses_testing_depth_of_mod_more_seeds'
+
 if __name__ == "__main__":
 
     print(rank)
@@ -23,7 +25,7 @@ if __name__ == "__main__":
         # Already loaded
         pass 
 
-    sim = Simulation(SkeletonCell.Hay)
+    sim = Simulation(SkeletonCell.Hay, sim_title)
 
     # Load parameters for this pid
     with open(f"params/{rank}.pickle", "rb") as file:
