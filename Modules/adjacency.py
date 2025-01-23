@@ -180,3 +180,22 @@ def get_divergent_children_of_branching_segments(adjacency_matrix, start, end):
                         divergent_children.append(child)
                     
     return divergent_children
+
+def get_children_indices(parent_idx, adjacency_matrix):
+    """
+    Get the column indices representing the children of a given parent segment.
+
+    Args:
+        parent_idx (int): Row index of the parent segment in the adjacency matrix.
+        adjacency_matrix (numpy.ndarray): Directed adjacency matrix.
+
+    Returns:
+        List[int]: Column indices representing the children of the parent segment.
+    """
+    if parent_idx < 0 or parent_idx >= adjacency_matrix.shape[0]:
+        raise ValueError("Invalid parent index")
+
+    # Find all column indices where value == 1 (indicating children)
+    children_indices = list(np.where(adjacency_matrix[parent_idx, :] == 1)[0])
+
+    return children_indices
