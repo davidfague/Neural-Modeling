@@ -3,7 +3,7 @@
 NEURON {
 	POINT_PROCESS pyr2pyrSUM
 	:USEION ca READ eca	
-	NONSPECIFIC_CURRENT I
+	NONSPECIFIC_CURRENT i
   RANGE inmda, iampa
 	RANGE initW
 	RANGE Cdur_nmda, AlphaTmax_nmda, Beta_nmda, Erev_nmda, gbar_nmda, W_nmda, on_nmda, g_nmda
