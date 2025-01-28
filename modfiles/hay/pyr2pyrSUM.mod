@@ -4,7 +4,7 @@ NEURON {
 	POINT_PROCESS pyr2pyrSUM
 	:USEION ca READ eca	
 	NONSPECIFIC_CURRENT i
-  RANGE inmda, iampa
+	RANGE inmda, iampa
 	RANGE initW
 	RANGE Cdur_nmda, AlphaTmax_nmda, Beta_nmda, Erev_nmda, gbar_nmda, W_nmda, on_nmda, g_nmda
 	RANGE Cdur_ampa, AlphaTmax_ampa, Beta_ampa, Erev_ampa, gbar_ampa, W, on_ampa, g_ampa
@@ -99,6 +99,8 @@ PARAMETER {
 
 ASSIGNED {
 	v (mV)
+
+	i (nA)
 
 	inmda (nA)
 	g_nmda (uS)
@@ -216,8 +218,7 @@ BREAKPOINT {
 
 	g_ampa = gbar_ampa*r_ampa*facfactor
 	iampa = W*g_ampa*(v - Erev_ampa)
-
-  i = iampa + inmda
+	i = iampa + inmda
 
 	:ICa = P0*g_nmda*(v - eca)*sfunc(v)
 	
