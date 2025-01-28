@@ -13,6 +13,7 @@ begintemplate L5PCtemplate
   objref SecSyn, this
   objref all, somatic, apical, axonal, basal
   strdef tstr
+  public Vinit
 
 //$s1 - morphology file name
 proc init() {localobj nl,import
@@ -22,6 +23,7 @@ proc init() {localobj nl,import
 	apical = new SectionList()
 	axonal = new SectionList()
 	forall delete_section()
+	Vinit = -77.2
 
   nl = new Import3d_Neurolucida3()
   nl.quiet = 1
