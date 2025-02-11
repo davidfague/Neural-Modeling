@@ -277,8 +277,8 @@ class CellModel:
 			if (sec.name().split(".")[-1].split("[")[0] in section_names) or ("all" in section_names):
 				for index_in_section, seg in enumerate(sec):
 					data = SegmentData(
-						L = seg.sec.L / seg.sec.nseg,
-						membrane_surface_area = np.pi * seg.diam * (seg.sec.L / seg.sec.nseg),
+						L = self.calc_seg_L(seg),
+						membrane_surface_area = self.calc_seg_SA(seg),
 						coords = self.get_coords_of_segments_in_section(sec).iloc[index_in_section, :].to_frame(1).T,
 						section = sec.name(),
 						index_in_section = index_in_section,
@@ -289,7 +289,16 @@ class CellModel:
 					segments.append(seg)
 					datas.append(data)
 
+		if segments == []:
+			raise ValueError(f"segments is empty. {section_names} is probably invalid.")
+
 		return segments, datas
+	
+	def calc_seg_L(self, seg): #@MARK make static method?
+		return seg.sec.L / seg.sec.nseg
+
+	def calc_seg_SA(self, seg): #@MARK make static method?
+		return np.pi * seg.diam * (seg.sec.L / seg.sec.nseg)
 
 	def get_segments_without_data(self, section_names: list) -> tuple:
 		segments = []
@@ -297,6 +306,9 @@ class CellModel:
 			if (sec.name().split(".")[-1].split("[")[0] in section_names) or ("all" in section_names):
 				for index_in_section, seg in enumerate(sec):
 					segments.append(seg)
+
+		if segments == []:
+			raise ValueError(f"segments is empty. {section_names} is probably invalid.")
 
 		return segments
 
@@ -637,12 +649,21 @@ class CellModel:
 			return all_segments
 		elif sec_type_to_get == 'soma':
 			return [seg for seg in self.soma[0]]
+		elif sec_type_to_get == 'distal_apic':
+			return [seg for sec in self.apic for seg in sec if (h.distance(self.soma[0](0.5), seg) > 100)]
+		elif sec_type_to_get == 'distal_basal':
+			return [seg for sec in self.dend for seg in sec if (h.distance(self.soma[0](0.5), seg) > 100)]
+		elif sec_type_to_get == 'perisomatic':
+			return [seg for sec in self.all for seg in sec if ((h.distance(self.soma[0](0.5), seg) <= 100) and sec not in self.axon)]
 
 		# General case: Gather all segments for the specified section type
 		all_segments = []
 		for root_section in self.get_root_sections(sec_type_to_get):
 			all_segments.extend(gather_segments_recursively(root_section))
 		
+		if all_segments == []:
+			raise ValueError("all_segments is empty. check intended implementation")
+
 		return all_segments
 	
 	def get_actual_sec_types(self, sec_type_to_get):
