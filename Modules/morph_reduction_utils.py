@@ -2,7 +2,7 @@ import collections
 CableParams = collections.namedtuple('CableParams',
                                      'length, diam, space_const,'
                                      'cm, rm, ra, e_pas, electrotonic_length')
-
+import time
 import math
 import cmath
 import numpy as np
@@ -180,6 +180,7 @@ def reduce_tree(cell, root_section, op_id=None):
     imp_obj, root_input_impedance = measure_input_impedance_of_subtree(root_section, reduction_frequency)
     root_q = calculate_subtree_q(root_section, reduction_frequency)
     synapses_on_deleted_sections = [syn for syn in cell.synapses if syn.h_syn.get_segment() in root_seg_descendants + list(root_section)]
+    start_mapping_time = time.time()  # Record start time
     for synapse in synapses_on_deleted_sections:
             x = reduce_synapse(synapse,
                     imp_obj,
@@ -187,6 +188,8 @@ def reduce_tree(cell, root_section, op_id=None):
                     new_cable_properties.electrotonic_length,
                     root_q)
             synapse.h_syn.loc(x, sec=new_section)
+    end_mapping_time = time.time() # Record end time
+    mapping_time = end_mapping_time - start_mapping_time
     
     # # Merge Synapses
     # # go over all point processes in this segment and see whether one
@@ -218,7 +221,7 @@ def reduce_tree(cell, root_section, op_id=None):
         cell.all.remove(sec)
         h.delete_section(sec=sec)
         
-    return deleted_seg_indices, new_section
+    return deleted_seg_indices, new_section, mapping_time
 
 def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = 0, reduce_obliques = False, reduce_apic = False, cell = None):
     from Modules.cell_builder import CellBuilder
@@ -263,10 +266,11 @@ def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = 
         root_sections_to_reduce += apical_root_sections
     
     # import pdb; pdb.set_trace()
-    
+    mapping_time_total = 0
     for i,root_section in enumerate(root_sections_to_reduce):
         try:
-            deleted_seg_indices, new_section = reduce_tree(cell, root_section)
+            deleted_seg_indices, new_section, mapping_time = reduce_tree(cell, root_section)
+            mapping_time_total = mapping_time_total + mapping_time
         except Exception as e:
             error_msg = f"Failed to reduce tree for section '{i} {str(root_section)}'. Error: {str(e)}"
             # # Optionally, include additional details:
@@ -285,6 +289,8 @@ def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = 
     
     new_segments = [seg for new_section in new_sections for seg in list(new_section)]
     all_segments_after_reduction, new_seg_data = cell.get_segments(['all'])
+
+    cell_builder.logger.log(f"Additional time for mapping synapses: {mapping_time_total}")
     
     return cell, original_seg_data, all_deleted_seg_indices
 
