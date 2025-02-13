@@ -134,9 +134,12 @@ class PCBuilder:
         for name in synapse_names:
             synapses = cell.get_synapses(synapse_names)
             for synapse in synapses:
-                if synapse.pc is not None:
+                if synapse.pc is not None: # pc already assigned
                     continue
-                seg_index = segments.index(synapse.h_syn.get_segment())
+                if synapse.h_syn.get_segment() in segments:
+                    seg_index = segments.index(synapse.h_syn.get_segment())
+                else:
+                    continue
                 if seg_index not in functional_group.seg_idxs:
                     continue
                 # Find the presynaptic cells that have this segment
