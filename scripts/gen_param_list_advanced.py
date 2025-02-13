@@ -1,4 +1,4 @@
-N_workers = 9
+N_workers = 20
 import sys
 
 # Add paths for module imports
@@ -41,7 +41,7 @@ ci_replacements_to_use = ['None']
 # ci_replacements_to_use = ['None', 'Basals', '1Basal', 'Tufts', '1Tuft', 'Basals&Tufts']
 
 # Seeds: provide lists of seeds. Use [None] if not applicable.
-numpy_random_states = [5000]  
+numpy_random_states = [5000, 33333, 444444, 55555555, 7777777]  
 neuron_random_states = [None]
 
 # select_parameters_to_vary: parameters to vary across simulations.
@@ -50,21 +50,42 @@ neuron_random_states = [None]
 #   - "sim_name_suffix": a string that will prefix the (optionally rounded) value
 select_parameters_to_vary = {
     'rhyth_depth_inh_perisomatic': {
-         'values': [0],  # add more values to vary this parameter if desired
+         'values': [0,0.01],  # add more values to vary this parameter if desired
          'sim_name_suffix': 'DepthPeriInh'
     },
     'rhyth_depth_inh_distal': {
-         'values': [0],  # add more values here if needed
+         'values': [0,0.01],  # add more values here if needed
          'sim_name_suffix': 'DepthDistalInh'
     },
     'exc_scalar_basal': {
-        'values': [1.5, 1.6, 1.7],
+        'values': [1.6],
         'sim_name_suffix': 'BasalExcScale'
     },
     'exc_scalar_apical': {
-        'values': [0.5, 0.6, 0.7],
-        'sim_name_suffix': 'BasalExcScale'
-    }
+        'values': [1.05],
+        'sim_name_suffix': 'ApicalExcScale'
+    },
+    # 'exc_gmax_clip': {
+    #     'values': [(0,3), (0,5)],
+    #     'sim_name_suffix': 'ExcClip'
+    # },
+    'inh_dendritic_gmax_dist': {
+        'values':[
+            #{
+            # 'distal_apic': (1.4035*2, 0.08474*2),
+            # 'distal_basal': (1.4035*1.5, 0.08474)
+            # },
+            # {
+            # 'distal_apic': (1.4035*4, 0.08474*4),
+            # 'distal_basal': (1.4035*1.5, 0.08474)
+            # },
+            {
+            'distal_apic': (1.4035*10, 0.08474*4),
+            'distal_basal': (1.4035*1.4, 0.08474)
+            }],
+        'sim_name_suffix':
+            'InhGmax',
+    },
 }
 
 #######################################
@@ -74,7 +95,7 @@ select_parameters_to_vary = {
 # Simulation type parameters
 sim_type_params_all = {
     'sta': {  # in vivo simulation with recording currents/conductances
-        'h_tstop': 2000,
+        'h_tstop': 10000,
         'merge_synapses': False,
         'record_ecp': False,
         'record_all_channels': True,
@@ -165,6 +186,18 @@ ci_replacements = {
 # Helper functions for generating sets #
 #########################################
 
+def format_value(value):
+    if isinstance(value, float):
+        return f"{value:.4f}"
+    elif isinstance(value, tuple):
+        # Customize tuple formatting, e.g., join elements with a dash:
+        return '-'.join(str(x) for x in value)
+    elif isinstance(value, dict):
+        # Order keys and format nicely
+        return '_'.join(f"{k}-{value[k]}" for k in sorted(value))
+    else:
+        return str(value)
+
 def get_parameter_combinations(param_dict):
     """
     Given a dictionary (select_parameters_to_vary) where each key maps to a dict with:
@@ -185,10 +218,7 @@ def get_parameter_combinations(param_dict):
             combo[key] = value
             # Only add suffix if more than one value is provided.
             if len(param_dict[key]['values']) > 1:
-                if isinstance(value, float):
-                    formatted = f"{value:.4f}"
-                else:
-                    formatted = str(value)
+                formatted = format_value(value)
                 suffix_parts.append(f"{param_dict[key]['sim_name_suffix']}{formatted}")
         # Join the parts if any, else an empty string.
         combo['sim_name_suffix'] = '_'.join(suffix_parts) if suffix_parts else ''
