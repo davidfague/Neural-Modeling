@@ -118,7 +118,8 @@ def get_dfs_from_path(sim_path):
 
     # ca
     ca_df = pd.read_csv(os.path.join(sim_path, 'ca.csv'))
-    ca_df['dist_from_soma_spike'] = ca_df['ca_lower_bound'].apply(lambda x: np.min(np.abs(x-spkinds)))
+    # ca_df['dist_from_soma_spike'] = ca_df['ca_lower_bound'].apply(lambda x: np.min(np.abs(x-spkinds)))
+    ca_df['dist_from_soma_spike'] = ca_df['ca_lower_bound'].apply(lambda x: np.min(np.abs(x-spkinds)) if spkinds.size > 0 else np.nan) # nan if there are no spikes...
     ca_df['duration'] = (ca_df['ca_upper_bound'] - ca_df['ca_lower_bound'])/10
     ca_df['mag_dur'] = ca_df['mag']/ca_df['duration']
     ca_df = ca_df[(ca_df.mag<-0.1)&
