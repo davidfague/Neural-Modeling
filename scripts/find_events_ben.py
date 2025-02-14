@@ -280,8 +280,9 @@ if __name__ ==  "__main__":
         simulations_directory = sys.argv[sys.argv.index("-f") + 1]
         print(f"simulations_directory: {simulations_directory}")
         for sim_directory in os.listdir(simulations_directory):
+            full_sim_directory = os.path.join(simulations_directory, sim_directory)
             print(f"sim_directory: {sim_directory}")
-            if not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
+            if not os.path.exists(os.path.join(full_sim_directory, 'nmda.csv')):
                 compute_dfs(os.path.join(simulations_directory, sim_directory), ben)
     else:
         raise RuntimeError
