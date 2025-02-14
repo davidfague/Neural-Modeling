@@ -19,14 +19,14 @@ import math
 #########################################
 
 # Simulation type: choose one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
-sim_type = ['sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'][-1]
+sim_type = ['sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'][0]
 
 # Synapse numbers: choose one of: 'density', 'full_number', '1000', '10000'
 syn_numbers_to_use = ['density', 'full_number', '1000', '10000'][0]
 use_SA_probs = False
 
 # Synapse reduction options: supply a list (even one value works)
-syn_reductions_to_use = ['None']  
+syn_reductions_to_use = ['None']
 # Example for multiple:
 # syn_reductions_to_use = ['None', 'NoMapping', 'Merging', 'MappingMerging']
 
@@ -41,7 +41,7 @@ ci_replacements_to_use = ['None']
 # ci_replacements_to_use = ['None', 'Basals', '1Basal', 'Tufts', '1Tuft', 'Basals&Tufts']
 
 # Seeds: provide lists of seeds. Use [None] if not applicable.
-numpy_random_states = [5000, 33333, 444444, 55555555, 7777777]  
+numpy_random_states = [5000, 33333, 444444, 55555555, 7777777]
 neuron_random_states = [None]
 
 # select_parameters_to_vary: parameters to vary across simulations.
@@ -50,12 +50,14 @@ neuron_random_states = [None]
 #   - "sim_name_suffix": a string that will prefix the (optionally rounded) value
 select_parameters_to_vary = {
     'rhyth_depth_inh_perisomatic': {
-         'values': [0,0.01],  # add more values to vary this parameter if desired
-         'sim_name_suffix': 'DepthPeriInh'
+         'values': [0],  # add more values to vary this parameter if desired
+         'sim_name_suffix': 'DepthPeriInh',
+         'always_include_suffix': True
     },
     'rhyth_depth_inh_distal': {
-         'values': [0,0.01],  # add more values here if needed
-         'sim_name_suffix': 'DepthDistalInh'
+         'values': [0.1, 0.25,0.5, 0.75],  # add more values here if needed
+         'sim_name_suffix': 'DepthDistalInh',
+         'always_include_suffix': True
     },
     'exc_scalar_basal': {
         'values': [1.6],
@@ -217,7 +219,7 @@ def get_parameter_combinations(param_dict):
         for key, value in zip(keys, values):
             combo[key] = value
             # Only add suffix if more than one value is provided.
-            if len(param_dict[key]['values']) > 1:
+            if len(param_dict[key]['values']) > 1 or param_dict[key].get('always_include_suffix', False):
                 formatted = format_value(value)
                 suffix_parts.append(f"{param_dict[key]['sim_name_suffix']}{formatted}")
         # Join the parts if any, else an empty string.
