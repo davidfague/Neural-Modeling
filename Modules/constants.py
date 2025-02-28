@@ -35,53 +35,98 @@ class SimulationParameters:
 	trunk_exc_synapses: bool = True
 	perisomatic_exc_synapses: bool = True
 	add_soma_inh_synapses: bool = True
-	num_soma_inh_syns: int = 450 # 150 PCs * ~3 divergence
+	# num_soma_inh_syns: int = 450 # 150 PCs * ~3 divergence
 
-	# gmax distributions
+	# inh gmax distributions
 	# inh_gmax_dist: float = 5#0.5
-	inh_perisomatic_gmax_dist: tuple = (1.324, 0.373)#(1.324*2, 0.373) # mean, std (normal distribution) #mean*4 is decent too
+	# inh_perisomatic_gmax_dist: tuple = (1.324, 0.373)#(1.324*2, 0.373) # mean, std (normal distribution) #mean*4 is decent too
 	# inh_dendritic_gmax_dist: tuple = (1.4035*2,0.08474)#(1.4035*2*2,0.08474/8) # mean, std (normal distribution)
-	inh_dendritic_gmax_dist: dict = field(default_factory=lambda: {
-        'distal_apic': (1.4035*2, 0.08474*2),
-        'distal_basal': (1.4035*1.5, 0.08474)
-    	})
+	# inh_dendritic_gmax_dist: dict = field(default_factory=lambda: {
+    #     'distal_apic': (1.4035*2, 0.08474*2),
+    #     'distal_basal': (1.4035*1.5, 0.08474)
+    # 	})
 	# soma_gmax_dist: float = 5#0.5
 	# apic_inh_gmax_dist: float = 2.8
 	# basal_inh_gmax_dist: float = 2.4
-	exc_gmax_mean_0: float = (np.log(0.45) - 0.5 * np.log((0.35/0.45)**2+1))#0.45#2.3#1.5 # 1.5-1.6 is good
-	exc_gmax_std_0: float = np.sqrt(np.log((0.35/0.45)**2 + 1))#0.35
-	exc_gmax_clip: tuple = (0,5)#(0,5)#(0, 15)
-	exc_scalar_basal: int = 1#1.5 # Scales weight
-	exc_scalar_apical: int = 1#0.5 # Scales weight
+
+	# exc gmax distributions
 	bin_exc_gmax: bool = False # controls if the exc gmax values should be limited on the values they can take (helps with merging synapses)
-	trunk_exc_gmax_mean: float = exc_gmax_mean_0
-	trunk_exc_gmax_std: float = exc_gmax_std_0
-	oblique_exc_gmax_mean: float = exc_gmax_mean_0
-	oblique_exc_gmax_std: float = exc_gmax_std_0
-	tuft_exc_gmax_mean: float = exc_gmax_mean_0
-	tuft_exc_gmax_std: float = exc_gmax_std_0
+	# exc_gmax_mean_0: float = (np.log(0.45) - 0.5 * np.log((0.35/0.45)**2+1))#0.45#2.3#1.5 # 1.5-1.6 is good
+	# exc_gmax_std_0: float = np.sqrt(np.log((0.35/0.45)**2 + 1))#0.35
+	# exc_gmax_clip: tuple = (0,5)#(0,5)#(0, 15)
+	# exc_scalar_basal: int = 1#1.5 # Scales weight
+	# exc_scalar_apical: int = 1#0.5 # Scales weight
+	# trunk_exc_gmax_mean: float = exc_gmax_mean_0
+	# trunk_exc_gmax_std: float = exc_gmax_std_0
+	# oblique_exc_gmax_mean: float = exc_gmax_mean_0
+	# oblique_exc_gmax_std: float = exc_gmax_std_0
+	# tuft_exc_gmax_mean: float = exc_gmax_mean_0
+	# tuft_exc_gmax_std: float = exc_gmax_std_0
 
 	# Density/Number of synapses
+	exc_use_density: bool = True # NOTE: setting to false uses "exc_syn_number" instead of "exc_synaptic_density"
+	inh_use_density: bool = True # NOTE: setting to false uses "inh_syn_number" instead of "inh_synaptic_density"
+	use_SA_probs: bool = False # NOTE: Use surface area instead of lengths for the synapse's segment assignment probabilities (does not yet change the total number calculated using density?)
+	
 	# Current densities taken from literature on apical main bifurcation, and extrapolated to entire cell.
-	exc_synaptic_density: float = 2.16 # (syn/micron of path length)
-	inh_synaptic_density: float = 0.22 # (syn/micron of path length)
-	exc_use_density: bool = True # setting to false uses "exc_syn_number" instead of "exc_synaptic_density"
-	inh_use_density: bool = True # setting to false uses "inh_syn_number" instead of "inh_synaptic_density"
-	exc_syn_number: int = 26112
-	inh_syn_number: int = 3066 
-	use_SA_probs: bool = True # Use surface area instead of lengths for the synapse's segment assignment probabilities (does not yet change the total number calculated using density?)
+	# exc_synaptic_density: float = 2.16 # (syn/micron of path length)
+	# inh_synaptic_density: float = 0.22 # (syn/micron of path length)
+	# exc_syn_number: int = 26112
+	# inh_syn_number: int = 3066
+	# NOTE: we will be matching synapses weights to PSCs from literature and adjusting the synapse densities to match the proper voltage response
 
+	# NOTE: the 'synapse number' is how many you would expect to be on the whole cell,
+	# the actual syn numbers on that section type are proportionally scaled by surface area or length, whichever is indicated by 'use_SA_probs'
+	# i.e. if trunk is 50% of the cell's length, then N = 0.5 * 26112 will be on the trunk
+	exc_syn_properties: dict = field(default_factory=lambda: { 
+		'trunk': {'syn_density': 2.16/8, 'syn_number': 26112/8, 
+			'gmax_params': {'mean': 0.44*1.003*0.95, 'std': 0.43*1.2*1.25*1.5, 'clip': (0,5), 'scalar': 1}
+			},
+		'oblique': {'syn_density': 2.16/4, 'syn_number': 26112/4,
+			'gmax_params': {'mean': 0.44*1.003*0.95, 'std': 0.43*1.2*1.25*1.5, 'clip': (0,5), 'scalar': 1}
+			},
+		'tuft': {'syn_density': 2.16/4, 'syn_number': 26112/4,
+			'gmax_params': {'mean': 0.44*1.003*0.95, 'std': 0.43*1.2*1.25*1.5, 'clip': (0,5), 'scalar': 1}
+			},
+		'distal_basal': {'syn_density': 2.16, 'syn_number': 26112,
+			'gmax_params': {'mean': 0.44*0.9*1, 'std': 0.43*0.9*1.38*1.3, 'clip': (0,5), 'scalar': 1}
+			},
+	})
+	# NOTE: [trunk, oblique, tuft] fields can be replaced with 'distal_apic' if desired
+	# NOTE: gmax is clipped to (0,10*mean); no scalar implemented.
+	inh_syn_properties: dict = field(default_factory=lambda: {
+		'perisomatic': {'syn_density': 0.22, 'syn_number': 3066,
+			'gmax_params': {'mean': 1.324*2*1.5*1.16, 'std':  0.373*1.25*0.75*0.5},
+			'P_release_params': {'mean': 0.88, 'std': 0.05}
+			},
+		'trunk': {'syn_density': 0.22, 'syn_number': 3066,
+			'gmax_params': {'mean': 1.40353*1.25*1.065, 'std': 0.08474*0.2*0.66*0.1},
+			'P_release_params': {'mean': 0.3, 'std': 0.08}
+			},
+		'oblique': {'syn_density': 0.22, 'syn_number': 3066,
+			'gmax_params': {'mean': 1.40353*1.25*1.065, 'std': 0.08474*0.2*0.66*0.1},
+			'P_release_params': {'mean': 0.3, 'std': 0.08}
+			},
+		'tuft': {'syn_density': 0.22, 'syn_number': 3066,
+			'gmax_params': {'mean': 1.40353*1.25*1.065, 'std': 0.08474*0.2*0.66*0.1},
+			'P_release_params': {'mean': 0.3, 'std': 0.08}
+			},
+		'distal_basal': {'syn_density': 0.22, 'syn_number': 3066,
+			'gmax_params': {'mean': 1.4035*2.2*1.36, 'std': 0.08474*0.916*0.5*.16},
+			'P_release_params': {'mean': 0.72, 'std': 0.1}
+			}
+	})
 	# Synapse Release probability distributions
-	exc_P_release_mean: float = 0.53
+	exc_P_release_mean: float = 0.53 # can move to syn_properties
 	exc_P_release_std: float = 0.22
-	inh_basal_P_release_mean: float = 0.72
-	inh_basal_P_release_std: float = 0.1
-	inh_apic_P_release_mean: float = 0.3
-	inh_apic_P_release_std: float = 0.08
-	inh_soma_P_release_mean: float = 0.88
-	inh_soma_P_release_std: float = 0.05
+	# inh_basal_P_release_mean: float = 0.72
+	# inh_basal_P_release_std: float = 0.1
+	# inh_apic_P_release_mean: float = 0.3
+	# inh_apic_P_release_std: float = 0.08
+	# inh_soma_P_release_mean: float = 0.88
+	# inh_soma_P_release_std: float = 0.05
 	# use_P_release_constants: bool = False # can maybe move this to the __init__ like syn_params
-	# exc_P_release_constant: float = 0.6
+	# exc_P_release_constant: float = 0.6 # from Ben's code
 	# inh_P_release_constant: float = 0.25 # from Ben's code
 	
  
@@ -97,8 +142,17 @@ class SimulationParameters:
 	inh_prox_std_fr: float = 14.3
 	inh_distal_mean_fr: float = 3.9
 	inh_distal_std_fr: float = 4.9
-	exc_mean_fr: float = 6.7967#4.43
+	exc_mean_fr: float = 6.7967 #4.43
 	exc_std_fr: float = 4.3#3.4503#2.9
+
+	# actual results from np seed 5000
+	# number of EXC pcs: 4137. mean/std number of synapses per pc: 5.32, 3.81
+	# number of INH pcs: 433. mean/std number of synapses per pc: 5.17, 3.38
+	# number of SOMA pcs: 81. mean/std number of synapses per pc: 7.02, 5.46
+	# EXC mean fr distribution: 7.28, 4.25
+	# INH mean fr distribution: 6.67, 6.13
+	# SOMA mean fr distribution: 18.78, 12.92
+
   	# exc FR FR/FR curve
 	exc_constant_fr: bool = False # exc synapses will have firing rate of 0 + self.parameters.excFR_increase
 	excFR_increase: float = 0.0
