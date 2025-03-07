@@ -223,7 +223,7 @@ def reduce_tree(cell, root_section, op_id=None):
         
     return deleted_seg_indices, new_section, mapping_time
 
-def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = 0, reduce_obliques = False, reduce_apic = False, cell = None):
+def get_reduced_cell(cell_builder = None, reduce_tufts = 0, reduce_basals = 0, reduce_obliques = 0, reduce_apic = 0, cell = None):
     from Modules.cell_builder import CellBuilder
     
     if cell is None:
@@ -238,13 +238,14 @@ def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = 
     
     root_sections_to_reduce = []
 
-    if reduce_apic and (reduce_tufts or reduce_obliques):
+    if reduce_apic > 0 and (reduce_obliques > 0 or reduce_tufts > 0):
         raise(ValueError("cannot reduce from begininning of apical tree AND obliques or tufts"))
-    
+
     if reduce_tufts > 0:
         # cell.logger.log(f"Reducing Tufts")
-        tuft_root_sections = cell.get_sections_at_branching_level('tuft', level=reduce_basals, exact_level=False)
-        root_sections_to_reduce += tuft_root_sections
+        tuft_root_sections = cell.get_sections_at_branching_level('tuft', level=reduce_tufts, exact_level=False)
+        cell_builder.logger.log(f"Reducing at tuft {reduce_tufts} sections: {tuft_root_sections}")
+        root_sections_to_reduce += tuft_root_sections[0]
     
     # if reduce_basals:
     #     # cell.logger.log(f"Reducing Basals")
@@ -254,17 +255,22 @@ def get_reduced_cell(cell_builder = None, reduce_tufts = False, reduce_basals = 
     if reduce_basals > 0:
         # cell.logger.log(f"Reducing Basals")
         basal_root_sections = cell.get_sections_at_branching_level('basal', level=reduce_basals, exact_level=False)
-        root_sections_to_reduce += basal_root_sections
+        cell_builder.logger.log(f"Reducing at basal {reduce_basals} sections: {basal_root_sections}")
+        root_sections_to_reduce += basal_root_sections[0]
     
     if reduce_obliques > 0:
         # cell.logger.log(f"Reducing Obliques")
         oblique_root_sections = cell.get_sections_at_branching_level('oblique', level=reduce_obliques, exact_level=False)
-        root_sections_to_reduce += oblique_root_sections
+        cell_builder.logger.log(f"Reducing at oblique {reduce_obliques} sections: {oblique_root_sections}")
+        root_sections_to_reduce += oblique_root_sections[0]
 
     if reduce_apic > 0:
         apical_root_sections = cell.get_sections_at_branching_level('apic', level=reduce_apic, exact_level=False)
-        root_sections_to_reduce += apical_root_sections
+        cell_builder.logger.log(f"Reducing at {reduce_apic} apical sections: {apical_root_sections}")
+        root_sections_to_reduce += apical_root_sections[0]
     
+    cell_builder.logger.log(f"Reducing at sections: {root_sections_to_reduce}")
+
     # import pdb; pdb.set_trace()
     mapping_time_total = 0
     for i,root_section in enumerate(root_sections_to_reduce):

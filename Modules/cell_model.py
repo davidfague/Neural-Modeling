@@ -525,12 +525,22 @@ class CellModel:
 		Ex:
 		Suppose the basal tree has the following structure basal1 is the root, basal2 is child to the root, 
 		basal3 and basal4 are child to basal2, basal5 is child to basal4.
+		basal1->basal2->basal3
+		basal1->basal2->basal4->basal5
 		In this scenario:
 		level=1 returns: basal1, 1
 		level=2 returns: basal2, 2
 		level=3 returns [basal3, basal4], [3, 3]
-		(level=4, false) returns [basal3, basal5], [3,4] since basal3 and basal4 are the terminal children and they have 2 and 3 generations above them, respectively
-		(level=4, true) returns [basal5], [4] basal5 is the only section with exactl 4 ascendants
+		(level=4, exact_level=false) returns [basal3, basal5], [3,4] since basal3 and basal4 are the terminal children and they have 2 and 3 generations above them, respectively
+		(level=4, exact_level=true) returns [basal5], [4] basal5 is the only section with exactl 4 ascendants
+		(level=5, exact_level=false) returns [basal3, basal5], [3,4] since there are no level 5s and basal3 and basal4 are the highest level terminal children
+		(level=5, exact_level=true) returns error since there are no level 5 sections.
+
+		actual implementation: gets sections that are the {level}th generation from the root sections of the specified type.
+		If the sections at the target level are not found, the level is decremented until sections are found.
+		If exact_level is True, only sections at the target level are returned.
+		If exact_level is False, sections at the target level are returned if they exist, otherwise, the level is decremented until sections are found.
+		If exact_level is False, terminal sections that happen to be found at a level less than the target level, they are returned with their actual level.
 		'''
 		
 		if level < 1:
@@ -541,12 +551,18 @@ class CellModel:
 				return sections, [current_level] * len(sections)
 			next_level_sections = []
 			next_level_reached = []
+			terminal_sections = []
+			terminal_levels = []
 			for sec in sections:
 				children = sec.children()
-				next_level_sections.extend(children)
-				next_level_reached.extend([current_level + 1] * len(children))
+				if not children:  # Check if the section is a terminal section
+					terminal_sections.append(sec)
+					terminal_levels.append(current_level)
+				else:
+					next_level_sections.extend(children)
+					next_level_reached.extend([current_level + 1] * len(children))
 			child_sections, child_levels = get_children_at_level(next_level_sections, current_level + 1, target_level)
-			return child_sections, next_level_reached[:len(child_sections)]
+			return terminal_sections + child_sections, terminal_levels + child_levels
 		
 		# Get the root sections of the specified type
 		initial_sections = self.get_root_sections(sec_type_to_get)
@@ -563,6 +579,10 @@ class CellModel:
 		if exact_level:
 			sections, reached_levels = zip(*[
 				(sec, lvl) for sec, lvl in zip(sections, reached_levels) if lvl == level
+			])
+		else:
+			sections, reached_levels = zip(*[
+				(sec, lvl) for sec, lvl in zip(sections, reached_levels) if lvl <= level
 			])
 
 		return sections, reached_levels
