@@ -82,14 +82,14 @@ class SimulationParameters:
 		'trunk': {'syn_density': 2.16/8, 'syn_number': 26112/8, 
 			'gmax_params': {'mean': 0.44*1.003*0.95, 'std': 0.43*1.2*1.25*1.5, 'clip': (0,5), 'scalar': 1}
 			},
-		'oblique': {'syn_density': 2.16/4, 'syn_number': 26112/4,
+		'oblique': {'syn_density': 2.16/3.5, 'syn_number': 26112/8,
 			'gmax_params': {'mean': 0.44*1.003*0.95, 'std': 0.43*1.2*1.25*1.5, 'clip': (0,5), 'scalar': 1}
 			},
-		'tuft': {'syn_density': 2.16/4, 'syn_number': 26112/4,
+		'tuft': {'syn_density': 2.16/8, 'syn_number': 26112/8,
 			'gmax_params': {'mean': 0.44*1.003*0.95, 'std': 0.43*1.2*1.25*1.5, 'clip': (0,5), 'scalar': 1}
 			},
-		'distal_basal': {'syn_density': 2.16, 'syn_number': 26112,
-			'gmax_params': {'mean': 0.44*0.9*1, 'std': 0.43*0.9*1.38*1.3, 'clip': (0,5), 'scalar': 1}
+		'distal_basal': {'syn_density': 2.16*1.5, 'syn_number': 26112,
+			'gmax_params': {'mean': 0.44*0.9*1, 'std': 0.43*0.9*1.38*1.3*1.5, 'clip': (0,5), 'scalar': 1}
 			},
 	})
 	# NOTE: [trunk, oblique, tuft] fields can be replaced with 'distal_apic' if desired
@@ -99,7 +99,7 @@ class SimulationParameters:
 			'gmax_params': {'mean': 1.324*2*1.5*1.16, 'std':  0.373*1.25*0.75*0.5},
 			'P_release_params': {'mean': 0.88, 'std': 0.05}
 			},
-		'trunk': {'syn_density': 0.22, 'syn_number': 3066,
+		'trunk': {'syn_density': 0.22*3, 'syn_number': 3066,
 			'gmax_params': {'mean': 1.40353*1.25*1.065, 'std': 0.08474*0.2*0.66*0.1},
 			'P_release_params': {'mean': 0.3, 'std': 0.08}
 			},
@@ -107,11 +107,11 @@ class SimulationParameters:
 			'gmax_params': {'mean': 1.40353*1.25*1.065, 'std': 0.08474*0.2*0.66*0.1},
 			'P_release_params': {'mean': 0.3, 'std': 0.08}
 			},
-		'tuft': {'syn_density': 0.22, 'syn_number': 3066,
+		'tuft': {'syn_density': 0.22*3.25, 'syn_number': 3066,
 			'gmax_params': {'mean': 1.40353*1.25*1.065, 'std': 0.08474*0.2*0.66*0.1},
 			'P_release_params': {'mean': 0.3, 'std': 0.08}
 			},
-		'distal_basal': {'syn_density': 0.22, 'syn_number': 3066,
+		'distal_basal': {'syn_density': 0.22*1.5, 'syn_number': 3066,
 			'gmax_params': {'mean': 1.4035*2.2*1.36, 'std': 0.08474*0.916*0.5*.16},
 			'P_release_params': {'mean': 0.72, 'std': 0.1}
 			}
