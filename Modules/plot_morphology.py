@@ -75,3 +75,28 @@ def plot_special_segments(seg_data, special_indices, special_colors, title_suffi
     plt.xlim(x_min, x_max)
     plt.ylim(y_min, y_max)
     plt.show()
+
+def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.0, deleted_indices=[]):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    for i, seg in seg_data.iterrows():
+        # Extract x, y, z coordinates
+        x_points = [seg['p0_0'], seg['pc_0'], seg['p1_0']]
+        y_points = [seg['p0_1'], seg['pc_1'], seg['p1_1']]
+        z_points = [seg['p0_2'], seg['pc_2'], seg['p1_2']]
+
+        # Calculate line width and set color based on deleted_indices
+        radius = seg['r'] * radius_scale
+        color = 'red' if i in deleted_indices else 'black'
+        if i in deleted_indices:
+            radius *= 0.1  # adjust multiplier to change red line width
+
+        # Note: the order is (x, z, y) to match the original orientation.
+        ax.plot(x_points, z_points, y_points, linewidth=radius, color=color)
+
+    ax.view_init(elev=elevation, azim=azimuth)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Z')
+    ax.set_zlabel('Y')
+    plt.show()

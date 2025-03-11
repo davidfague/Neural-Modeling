@@ -273,6 +273,7 @@ def create_parameters(numpy_seed, neuron_seed, common_params, morphology_params,
     params.update(varied_params)
     params['sim_name'] = sim_name
     params['numpy_random_state'] = numpy_seed
+    params['morphology_name'] = morphology_params.get('base_sim_name', 'no_morphology_name_provided')
     if neuron_seed is not None:
         params['neuron_random_state'] = neuron_seed
     if amp is not None:

@@ -9,6 +9,9 @@ class SimulationParameters:
 	# Name: required argument
 	sim_name: str
 
+	# optionally name the morphology.
+	morphology_name: str = ''
+
 	# Random state
 	numpy_random_state: int = 130
 	neuron_random_state: int = 90
