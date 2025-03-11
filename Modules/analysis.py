@@ -171,6 +171,7 @@ class CurrentTrace(Trace):
             # Children
             for j in np.where(adj_matrix[i, :] == 1)[0]:
                 # Child - parent
+                # direction from i to j
                 ac = -(v[i] - v[j]) / (seg_data.loc[i, "seg_half_seg_RA"] + seg_data.loc[j, "seg_half_seg_RA"])
                 ac_matrix[i, j] = ac
         return ac_matrix
