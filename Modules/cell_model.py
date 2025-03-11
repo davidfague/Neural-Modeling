@@ -782,7 +782,7 @@ class CellModel:
 
 		segments, _ = self.get_segments(['all'])
 
-		adj_matrix = np.zeros((len(segments), len(segments)))
+		adj_matrix = np.zeros((len(segments), len(segments)), dtype=int)
 
 		for i, seg in enumerate(segments):
 
