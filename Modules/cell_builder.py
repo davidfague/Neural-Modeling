@@ -64,7 +64,7 @@ class SkeletonCell(Enum):
 
 def norm_dist(gmax_mean, gmax_std, size, clip): # inh
   val = np.random.normal(gmax_mean, gmax_std, size)
-  s = np.clip(val, clip[0], clip[1])
+  s = float(np.clip(val, clip[0], clip[1]))
   return s
 
 
@@ -73,7 +73,7 @@ def log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip):
 	s = gmax_scalar * float(np.clip(val, clip[0], clip[1]))
 	return s
 
-def precompute_bin_means(gmax_mean, gmax_std, gmax_scalar, clip, large_sample_size=10000):
+def precompute_bin_means(gmax_mean, gmax_std, gmax_scalar, clip, large_sample_size=10000): # should make this work for any function so we can use for norm_dist, too.
     # Generate a large number of log-normal distributed values
     val = np.random.lognormal(gmax_mean, gmax_std, large_sample_size)
     s = gmax_scalar * np.clip(val, clip[0], clip[1])
@@ -257,10 +257,12 @@ class CellBuilder:
 		self.assign_excitatory_spike_trains(cell = cell, random_state = random_state)
   
 		# calc exc for delayed inhibition
-		exc_spike_trains = [syn.pc.spike_train for syn in cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])]
+		# exc_spike_trains = [syn.pc.spike_train for syn in cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])]
+		exc_spike_trains = [syn.pc.spike_train for syn in cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])]
 		self.logger.log(f"{len(exc_spike_trains)} exc spikes trains")
 
-		exc_mean_frs = [syn.pc.mean_fr for syn in cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])]
+		# exc_mean_frs = [syn.pc.mean_fr for syn in cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])]
+		exc_mean_frs = [syn.pc.mean_fr for syn in cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])]
 		# print(f"exc_mean_frs: {exc_mean_frs}")
 
 		self.logger.log("Assigning soma spike trains.")
@@ -326,37 +328,57 @@ class CellBuilder:
 		# Record synapse distributions
 		if self.parameters.record_synapse_distributions:
 			all_segments = cell.get_segments_without_data(['all'])
-			soma_synapses = cell.get_synapses(['soma_inh'])
-			inh_synapses = cell.get_synapses(['inh', 'inh_distal_basal', 'inh_distal_apic'])
+			# soma_synapses = cell.get_synapses(['soma_inh'])
+			# if len(soma_synapses) == 0:
+			# 	print("No soma synapses found. Feel free to delete.")
+			# inh_synapses = cell.get_synapses(['inh', 'inh_distal_basal', 'inh_distal_apic'])
+			inh_synapses = cell.get_synapses([f'inh_{sec_type}' for sec_type in self.parameters.inh_syn_properties.keys()])
 			# exc_synapses = cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"], all_with_prefix=True)
-			exc_synapses = cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])
+			# exc_synapses = cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])
+			exc_synapses = cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])
 			synapse_data = {
 				'synapse_type': (
-					['soma_inh'] * len(soma_synapses) +
-					['inh'] * len(inh_synapses) +
-					['exc'] * len(exc_synapses)
+					# [syn.name for syn in soma_synapses] +
+					[syn.name for syn in inh_synapses] +
+					[syn.name for syn in exc_synapses]
+					# ['soma_inh'] * len(soma_synapses) +
+					# ['inh'] * len(inh_synapses) +
+					# ['exc'] * len(exc_synapses)
 				),
 				'mean_firing_rate': (
-					[syn.pc.mean_fr for syn in soma_synapses] +
+					# [syn.pc.mean_fr for syn in soma_synapses] +
 					[syn.pc.mean_fr for syn in inh_synapses] +
 					[syn.pc.mean_fr for syn in exc_synapses]
 				),
 				'weight': (
-					[syn.gmax_val for syn in soma_synapses] +
+					# [syn.gmax_val for syn in soma_synapses] +
 					[syn.gmax_val for syn in inh_synapses] +
 					[syn.gmax_val for syn in exc_synapses]
 				),
 				'seg_id': (
-					[all_segments.index(syn.h_syn.get_segment()) for syn in soma_synapses] +
+					# [all_segments.index(syn.h_syn.get_segment()) for syn in soma_synapses] +
 					[all_segments.index(syn.h_syn.get_segment()) for syn in inh_synapses] +
 					[all_segments.index(syn.h_syn.get_segment()) for syn in exc_synapses]
 				),
 				'pc_name': (
-					[syn.pc.name for syn in soma_synapses] +
+					# [syn.pc.name for syn in soma_synapses] +
 					[syn.pc.name for syn in inh_synapses] +
 					[syn.pc.name for syn in exc_synapses]
 				)
 			}
+
+			# # Check which elements are of object dtype since that is giving error.
+			# for key, values in synapse_data.items():
+			# 	values_array = np.array(values)
+			# 	if values_array.dtype == np.object:
+			# 		print(f"Key '{key}' has object dtype: {values_array.dtype}")
+			# 		print(f"Unique values: {np.unique(values_array)}")
+			# 		for idx,value in enumerate(values_array):
+			# 			synapse_type = synapse_data['synapse_type'][idx]
+			# 			print(f"{synapse_type} Value type: {type(value)}, value: {value}")
+			# 	else:
+			# 		print(f"Key '{key}' has dtype: {values_array.dtype}")
+
 			# Save synapse data to file
 			synapse_file_path = os.path.join(self.parameters.path, 'synapse_data.h5')
 			with h5py.File(synapse_file_path, 'w') as h5f:
