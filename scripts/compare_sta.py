@@ -15,6 +15,9 @@ def _compute_sta_for_each_train_in_a_list(sim_dir, list_of_trains, spikes, win_l
 
     parameters = analysis.DataReader.load_parameters(sim_dir)
 
+    # print(f"list_of_trains.shape(): {np.shape(list_of_trains)}")
+    # print(f"spikes.shape() {np.shape(spikes)}")
+    # print(f"parameters.h_tstop {parameters.h_tstop}")
     stas = []
     if len(list_of_trains) == 0:
         return None
@@ -22,7 +25,7 @@ def _compute_sta_for_each_train_in_a_list(sim_dir, list_of_trains, spikes, win_l
         if len(train) == 0: 
             stas.append(np.zeros((1, win_length)))
             continue
-        cont_train = np.zeros(parameters.h_tstop)
+        cont_train = np.zeros(int(parameters.h_tstop / parameters.h_dt) +1)
         cont_train[train] = 1
 
         # Skip spikes that are in the beginning of the trace
@@ -79,10 +82,11 @@ def _map_stas_to_quantiles(
 
 
 def _analyze_spike_relationships(sim_directory, spike_type, wrt_spike_type, section, elec_dist, quantiles = None):
+    parameters = analysis.DataReader.load_parameters(sim_directory)
     v = analysis.DataReader.read_data(sim_directory, "v")
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
     ica = analysis.DataReader.read_data(sim_directory, "ica")
-    inmda = analysis.DataReader.read_data(sim_directory, "i_NMDA")
+    inmda = analysis.DataReader.read_data(sim_directory, parameters.synaptic_currents_to_record[1] if 'nmda' in parameters.synaptic_currents_to_record[1].lower() else ValueError(f"'nmda' not in {parameters.synaptic_currents_to_record[1].lower()}"))
     seg_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
 
     indexes = seg_data[seg_data["section"] == section].index

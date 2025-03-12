@@ -187,6 +187,25 @@ def compute_na_df(na, segs, spkinds, sim_directory, ben):
 
     na_df.reset_index(inplace=True, drop=True)
     segs_na_df = segs.set_index('segmentID').join(na_df.set_index('segmentID')).reset_index()
+    # additional from event histograms ################################
+    # for i in np.random.choice(na_df[(segs_na_df.na_lower_bound>20) & (segs_na_df.na_lower_bound<1400000)].index,10000):
+    #     seg = segs_na_df.loc[i,'segmentID']
+    #     if not pd.isnull(segs_na_df.loc[i,'na_lower_bound']):
+    #         spkt = int(segs_na_df.loc[i,'na_lower_bound'])
+    #         trace = na[spkt-10:spkt+10,seg]#['report']['biophysical']['data'][spkt-10:spkt+10,seg]
+    #         peak_value = np.max(trace)
+    #         half_peak = peak_value/2
+    #         duration = np.arange(0,20)[trace>half_peak] + spkt - 10
+    #         segs_na_df.loc[i,'duration_low'] = duration[0]
+    #         segs_na_df.loc[i,'duration_high'] = duration[-1]
+    #         segs_na_df.loc[i,'peak_value'] = peak_value
+    #     else:
+    #         segs_na_df.loc[i,'duration_low'] = np.nan
+    #         segs_na_df.loc[i,'duration_high'] = np.nan
+    #         segs_na_df.loc[i,'peak_value'] = np.nan
+            
+    # segs_na_df['duration'] = (segs_na_df['duration_high'] - segs_na_df['duration_low'] + 1)/10
+    ####################################################
     if ben:segs_na_df.to_csv('na.csv')
     else: segs_na_df.to_csv(os.path.join(sim_directory, 'na.csv'))
 
@@ -267,9 +286,12 @@ def compute_nmda_df(nmda, v, segs, sim_directory, ben):
 
 def compute_dfs(sim_directory, ben):
     na, hva, lva, ih, nmda, v, spkinds, segs = load_data(sim_directory, ben)
-    compute_na_df(na, segs, spkinds, sim_directory, ben)
-    compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben)
-    compute_nmda_df(nmda, v, segs, sim_directory, ben)
+    if not os.path.exists(os.path.join(sim_directory, 'na.csv')):
+        compute_na_df(na, segs, spkinds, sim_directory, ben)
+    if not os.path.exists(os.path.join(full_path_sim, 'ca.csv')):
+        compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben)
+    if not os.path.exists(os.path.join(full_path_sim, 'nmda.csv')):
+        compute_nmda_df(nmda, v, segs, sim_directory, ben)
 
 if __name__ ==  "__main__":
     ben = False
@@ -280,10 +302,9 @@ if __name__ ==  "__main__":
         simulations_directory = sys.argv[sys.argv.index("-f") + 1]
         print(f"simulations_directory: {simulations_directory}")
         for sim_directory in os.listdir(simulations_directory):
-            full_sim_directory = os.path.join(simulations_directory, sim_directory)
+            full_path_sim = os.path.join(simulations_directory, sim_directory)
             print(f"sim_directory: {sim_directory}")
-            if not os.path.exists(os.path.join(full_sim_directory, 'nmda.csv')):
-                compute_dfs(os.path.join(simulations_directory, sim_directory), ben)
+            compute_dfs(full_path_sim, ben)
     else:
         raise RuntimeError
     
