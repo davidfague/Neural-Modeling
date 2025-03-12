@@ -1,4 +1,4 @@
-N_workers = 20
+N_workers = 1
 import sys
 
 # Add paths for module imports
@@ -19,7 +19,7 @@ import math
 #########################################
 
 # Simulation type: choose one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
-sim_type = ['sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'][0]
+sim_type = ['sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'][-1]
 
 # Synapse numbers: choose one of: 'density', 'full_number', '1000', '10000'
 syn_numbers_to_use = ['density', 'full_number', '1000', '10000'][0]
@@ -41,7 +41,7 @@ ci_replacements_to_use = ['None']
 # ci_replacements_to_use = ['None', 'Basals', '1Basal', 'Tufts', '1Tuft', 'Basals&Tufts']
 
 # Seeds: provide lists of seeds. Use [None] if not applicable.
-numpy_random_states = [5000, 33333, 444444, 55555555, 7777777]
+numpy_random_states = [5000]
 neuron_random_states = [None]
 
 # select_parameters_to_vary: parameters to vary across simulations.
@@ -50,44 +50,44 @@ neuron_random_states = [None]
 #   - "sim_name_suffix": a string that will prefix the (optionally rounded) value
 select_parameters_to_vary = {
     'rhyth_depth_inh_perisomatic': {
-         'values': [0],  # add more values to vary this parameter if desired
+         'values': [0.0], # add more values to vary this parameter if desired
          'sim_name_suffix': 'DepthPeriInh',
-         'always_include_suffix': True
+         'always_include_suffix': False
     },
     'rhyth_depth_inh_distal': {
-         'values': [0.1, 0.25,0.5, 0.75],  # add more values here if needed
+         'values': [0.0],  # next [0.1, 0.25] # add more values here if needed
          'sim_name_suffix': 'DepthDistalInh',
-         'always_include_suffix': True
+         'always_include_suffix': False
     },
     'exc_scalar_basal': {
-        'values': [1.6],
+        'values': [1],
         'sim_name_suffix': 'BasalExcScale'
     },
     'exc_scalar_apical': {
-        'values': [1.05],
+        'values': [1],
         'sim_name_suffix': 'ApicalExcScale'
     },
     # 'exc_gmax_clip': {
     #     'values': [(0,3), (0,5)],
     #     'sim_name_suffix': 'ExcClip'
     # },
-    'inh_dendritic_gmax_dist': {
-        'values':[
-            #{
-            # 'distal_apic': (1.4035*2, 0.08474*2),
-            # 'distal_basal': (1.4035*1.5, 0.08474)
-            # },
-            # {
-            # 'distal_apic': (1.4035*4, 0.08474*4),
-            # 'distal_basal': (1.4035*1.5, 0.08474)
-            # },
-            {
-            'distal_apic': (1.4035*10, 0.08474*4),
-            'distal_basal': (1.4035*1.4, 0.08474)
-            }],
-        'sim_name_suffix':
-            'InhGmax',
-    },
+    # 'inh_dendritic_gmax_dist': {
+    #     'values':[
+    #         #{
+    #         # 'distal_apic': (1.4035*2, 0.08474*2),
+    #         # 'distal_basal': (1.4035*1.5, 0.08474)
+    #         # },
+    #         # {
+    #         # 'distal_apic': (1.4035*4, 0.08474*4),
+    #         # 'distal_basal': (1.4035*1.5, 0.08474)
+    #         # },
+    #         {
+    #         'distal_apic': (1.4035*10, 0.08474*4),
+    #         'distal_basal': (1.4035*1.4, 0.08474)
+    #         }],
+    #     'sim_name_suffix':
+    #         'InhGmax',
+    # },
 }
 
 #######################################
@@ -137,7 +137,7 @@ sim_type_params_all = {
         'record_all_channels': False,
         'record_all_synapses': False,
         'record_spike_trains': False,
-        'record_synapse_distributions': False
+        'record_synapse_distributions': True
     },
 }
 # Select the simulation type parameters for the chosen simulation type.
@@ -274,6 +274,7 @@ def create_parameters(numpy_seed, neuron_seed, common_params, morphology_params,
     params['sim_name'] = sim_name
     params['numpy_random_state'] = numpy_seed
     params['morphology_name'] = morphology_params.get('base_sim_name', 'no_morphology_name_provided')
+    params['sim_type'] = sim_type
     if neuron_seed is not None:
         params['neuron_random_state'] = neuron_seed
     if amp is not None:
