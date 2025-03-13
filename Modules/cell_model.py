@@ -666,20 +666,26 @@ class CellModel:
 			all_segments = []
 			for root_section in self.get_root_sections("trunk"):
 				all_segments.extend(gather_segments_recursively(root_section, stop_segments))
+			all_segments = [seg for seg in all_segments if (h.distance(self.soma[0](0.5), seg) < 400)]
 			return all_segments
 		elif sec_type_to_get == 'soma':
 			return [seg for seg in self.soma[0]]
 		elif sec_type_to_get == 'distal_apic':
-			return [seg for sec in self.apic for seg in sec if (h.distance(self.soma[0](0.5), seg) > 100)]
+			return [seg for sec in self.apic for seg in sec if (h.distance(self.soma[0](0.5), seg) > 50)]
+		elif sec_type_to_get == 'nexus':
+			return [seg for sec in self.apic for seg in sec if ((h.distance(self.soma[0](0.5), seg) > 400) and (h.distance(self.soma[0](0.5), seg) < 800))]
 		elif sec_type_to_get == 'distal_basal':
-			return [seg for sec in self.dend for seg in sec if (h.distance(self.soma[0](0.5), seg) > 100)]
+			return [seg for sec in self.dend for seg in sec if (h.distance(self.soma[0](0.5), seg) > 50)]
 		elif sec_type_to_get == 'perisomatic':
-			return [seg for sec in self.all for seg in sec if ((h.distance(self.soma[0](0.5), seg) <= 100) and sec not in self.axon)]
+			return [seg for sec in self.all for seg in sec if ((h.distance(self.soma[0](0.5), seg) <= 50) and ((sec not in self.axon) and (sec not in self.soma)))]
 
 		# General case: Gather all segments for the specified section type
 		all_segments = []
 		for root_section in self.get_root_sections(sec_type_to_get):
 			all_segments.extend(gather_segments_recursively(root_section))
+		
+		if sec_type_to_get == 'tuft': # subset the segments that have been gathered for tuft to not include nexus
+			all_segments = [seg for seg in all_segments if (h.distance(self.soma[0](0.5), seg) > 800)]
 		
 		if all_segments == []:
 			raise ValueError("all_segments is empty. check intended implementation")
