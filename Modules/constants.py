@@ -86,26 +86,26 @@ class SimulationParameters:
 	# i.e. if trunk is 50% of the cell's length, then N = 0.5 * 26112 will be on the trunk
 	exc_syn_properties: dict = field(default_factory=lambda: { 
 		'trunk': {'syn_density': 2.16*0.5, 'syn_number': 26112/8, 
-			'gmax_params': {'mean': 0.44*1.003*0.95*(3/6), 'std': 0.43*1.2*1.25*1.5, 'clip': (0,1.5), 'scalar': 1}
+			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
 			},
 		'oblique': {'syn_density': 2.16*0.5, 'syn_number': 26112/8,
-			'gmax_params': {'mean': 0.44*1.003*0.95*(3/6), 'std': 0.43*1.2*1.25*1.5, 'clip': (0,1.5), 'scalar': 1}
+			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
 			},
 		'tuft': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
-			'gmax_params': {'mean': 0.44*1.003*0.95*(3/6), 'std': 0.43*1.2*1.25*1.5, 'clip': (0,1.5), 'scalar': 1}
+			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
 			},
 		'nexus':{'syn_density': 2.16*0.05, 'syn_number': 26112/8,
-			'gmax_params': {'mean': 0.44*1.003*0.95*(3/6), 'std': 0.43*1.2*1.25*1.5, 'clip': (0,1.5), 'scalar': 1}
+			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
 			},
 		'distal_basal': {'syn_density': 2.16*1.2, 'syn_number': 26112,
-			'gmax_params': {'mean': 0.44*0.9*1, 'std': 0.43*0.9*1.38*1.3*1.5, 'clip': (0,1.5), 'scalar': 1}
+			'gmax_params': {'mean': 0.396, 'std': 1.04, 'clip': (0,1.5), 'scalar': 1}
 			},
 	})
 	# NOTE: [trunk, oblique, tuft] fields can be replaced with 'distal_apic' if desired
 	# NOTE: gmax is clipped to (0,10*mean); no scalar implemented.
 	inh_syn_properties: dict = field(default_factory=lambda: {
 		'perisomatic': {'syn_density': 0.22*2, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.324*2*1.5*1.16, 'std':  0.373*1.25*0.75*0.5},
+			'gmax_params': {'mean': 4.6, 'std':  0.175},
 			'P_release_params': {'mean': 0.88, 'std': 0.05}
 			},
 		'trunk': {'syn_density': 0.22, 'syn_number': 3066,
@@ -113,7 +113,7 @@ class SimulationParameters:
 			'P_release_params': {'mean': 0.3, 'std': 0.08}
 			},
 		'oblique': {'syn_density': 0.22, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87, 'std': 0.08474},#*0.2*0.66*0.1},
+			'gmax_params': {'mean': 1.87*2, 'std': 0.08474},#*0.2*0.66*0.1},
 			'P_release_params': {'mean': 0.3, 'std': 0.08}
 			},
 		'tuft': {'syn_density': 0.22*1.5, 'syn_number': 3066,
@@ -121,7 +121,7 @@ class SimulationParameters:
 			'P_release_params': {'mean': 0.3, 'std': 0.08}
 			},
 		'nexus': {'syn_density': 0.22*1.5, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.40353*1.25*1.065*10, 'std': 0.08474},#0.08474*0.2*0.66*0.1},
+			'gmax_params': {'mean': 1.87*10, 'std': 0.08474},#0.08474*0.2*0.66*0.1},
 			'P_release_params': {'mean': 0.3, 'std': 0.08}
 			},
 		'distal_basal': {'syn_density': 0.22, 'syn_number': 3066,
