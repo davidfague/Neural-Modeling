@@ -85,14 +85,14 @@ class SimulationParameters:
 	# the actual syn numbers on that section type are proportionally scaled by surface area or length, whichever is indicated by 'use_SA_probs'
 	# i.e. if trunk is 50% of the cell's length, then N = 0.5 * 26112 will be on the trunk
 	exc_syn_properties: dict = field(default_factory=lambda: { 
-		'trunk': {'syn_density': 2.16*0.5, 'syn_number': 26112/8, 
+		'trunk': {'syn_density': 2.16*0.25, 'syn_number': 26112/8, 
 			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
 			},
-		'oblique': {'syn_density': 2.16*0.5, 'syn_number': 26112/8,
+		'oblique': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
 			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
 			},
 		'tuft': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
-			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
+			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,2), 'scalar': 1}
 			},
 		'nexus':{'syn_density': 2.16*0.05, 'syn_number': 26112/8,
 			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
@@ -104,8 +104,8 @@ class SimulationParameters:
 	# NOTE: [trunk, oblique, tuft] fields can be replaced with 'distal_apic' if desired
 	# NOTE: gmax is clipped to (0,10*mean); no scalar implemented.
 	inh_syn_properties: dict = field(default_factory=lambda: {
-		'perisomatic': {'syn_density': 0.22*2, 'syn_number': 3066,
-			'gmax_params': {'mean': 4.6, 'std':  0.175},
+		'perisomatic': {'syn_density': 0.22*1.3, 'syn_number': 3066,
+			'gmax_params': {'mean': 4.6*0.75, 'std':  0.175},
 			'P_release_params': {'mean': 0.88, 'std': 0.05}
 			},
 		'trunk': {'syn_density': 0.22, 'syn_number': 3066,
@@ -113,11 +113,11 @@ class SimulationParameters:
 			'P_release_params': {'mean': 0.3, 'std': 0.08}
 			},
 		'oblique': {'syn_density': 0.22, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87*2, 'std': 0.08474},#*0.2*0.66*0.1},
+			'gmax_params': {'mean': 1.87*4, 'std': 0.08474},#*0.2*0.66*0.1},
 			'P_release_params': {'mean': 0.3, 'std': 0.08}
 			},
 		'tuft': {'syn_density': 0.22*1.5, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87*10, 'std': 0.08474},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
+			'gmax_params': {'mean': 1.87*8, 'std': 0.08474},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
 			'P_release_params': {'mean': 0.3, 'std': 0.08}
 			},
 		'nexus': {'syn_density': 0.22*1.5, 'syn_number': 3066,
