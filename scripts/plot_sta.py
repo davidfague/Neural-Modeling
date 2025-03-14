@@ -60,7 +60,7 @@ def _compute_sta_for_each_train_in_a_list(list_of_trains, spikes, win_length=60)
         if len(train) == 0: 
             stas.append(np.zeros((1, win_length)))
             continue
-        cont_train = np.zeros(parameters.h_tstop)
+        cont_train = np.zeros(int(parameters.h_tstop / parameters.h_dt))
         cont_train[train] = 1
 
         # Skip spikes that are in the beginning of the trace
@@ -120,7 +120,7 @@ def _analyze_Na():
     
     Na_spikes = []
     for i in range(len(gnaTa)):
-        spikes, _ = analysis.VoltageTrace.get_Na_spikes(gnaTa[i], 0.001 / 1000, soma_spikes, 2, v[i], v[0])
+        spikes, _, _ = analysis.VoltageTrace.get_Na_spikes(gnaTa[i], 0.001 / 1000, soma_spikes, 2, v[i], v[0])
         Na_spikes.append(spikes)
 
     sta = _compute_sta_for_each_train_in_a_list(Na_spikes, soma_spikes)
@@ -176,7 +176,11 @@ def _analyze_Na():
                 
             try:
                 # NMDA
-                inmda = analysis.DataReader.read_data(sim_directory, "i_NMDA")
+                print(parameters.exc_syn_mod)
+                if parameters.exc_syn_mod == 'pyr2pyr': # two types with different variable name
+                    inmda = analysis.DataReader.read_data(sim_directory, "inmda")
+                else:
+                    inmda = analysis.DataReader.read_data(sim_directory, "i_NMDA")
                 NMDA_spikes = []
                 for i in indexes:
                     left_bounds, _, _ = analysis.VoltageTrace.get_NMDA_spikes(v[i], -40, inmda[i])
@@ -245,7 +249,10 @@ def _analyze_Ca():
 def _analyze_NMDA():
 
     v = analysis.DataReader.read_data(sim_directory, "v")
-    inmda = analysis.DataReader.read_data(sim_directory, "i_NMDA")
+    if parameters.exc_syn_mod == 'pyr2pyr': # two types with different variable name
+        inmda = analysis.DataReader.read_data(sim_directory, "inmda")
+    else:
+        inmda = analysis.DataReader.read_data(sim_directory, "i_NMDA")
     ica = analysis.DataReader.read_data(sim_directory, "ica")
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
 
@@ -318,7 +325,10 @@ def _analyze_spike_relationships(sim_directory, spike_type, wrt_spike_type, sect
     v = analysis.DataReader.read_data(sim_directory, "v")
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
     ica = analysis.DataReader.read_data(sim_directory, "ica")
-    inmda = analysis.DataReader.read_data(sim_directory, "i_NMDA")
+    if parameters.exc_syn_mod == 'pyr2pyr': # two types with different variable name
+        inmda = analysis.DataReader.read_data(sim_directory, "inmda")
+    else:
+        inmda = analysis.DataReader.read_data(sim_directory, "i_NMDA")
     seg_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
 
     indexes = seg_data[seg_data["section"] == section].index
@@ -327,7 +337,7 @@ def _analyze_spike_relationships(sim_directory, spike_type, wrt_spike_type, sect
         if spike_type == "Na":
             spikes = []
             for i in range(len(v)):
-                spike_times, _ = analysis.VoltageTrace.get_Na_spikes(v[i], 0.001 / 1000, soma_spikes, 2, v[i], v[0])
+                spike_times, _, _ = analysis.VoltageTrace.get_Na_spikes(v[i], 0.001 / 1000, soma_spikes, 2, v[i], v[0])
                 spikes.append(spike_times)
         elif spike_type == "Ca":
             spikes = []
@@ -349,7 +359,7 @@ def _analyze_spike_relationships(sim_directory, spike_type, wrt_spike_type, sect
         elif wrt_spike_type == "Na":
             wrt_spikes = []
             for i in range(len(v)):
-                spike_times, _ = analysis.VoltageTrace.get_Na_spikes(v[i], 0.001 / 1000, soma_spikes, 2, v[i], v[0])
+                spike_times, _, _ = analysis.VoltageTrace.get_Na_spikes(v[i], 0.001 / 1000, soma_spikes, 2, v[i], v[0])
                 wrt_spikes.extend(spike_times)
             wrt_spikes = np.sort(np.unique(wrt_spikes))
             
@@ -409,28 +419,57 @@ def analyze_all_spike_relationships(sim_directory):
 
 if __name__ == "__main__":
 
-    if "-d" in sys.argv:
-        sim_directory = sys.argv[sys.argv.index("-d") + 1] # (global)
-    else:
-        raise RuntimeError
-
     # Save figures or just show them
     save = "-s" in sys.argv # (global)
-    if "-s" in sys.argv:
-        save_directory = sys.argv[sys.argv.index("-s") + 1]
 
-    logger = Logger()
+    if "-d" in sys.argv:
+        sim_directory = sys.argv[sys.argv.index("-d") + 1] # (global)
 
-    soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
-    parameters = analysis.DataReader.load_parameters(sim_directory)
-    #print(soma_spikes)
-    logger.log(f"Soma firing rate: {round(soma_spikes.shape[1] * 1000 / parameters.h_tstop, 2)} Hz")
+        # Save figures or just show them
+        if save:
+            save_directory = sys.argv[sys.argv.index("-s") + 1]
 
-    try:
-        logger.log("Analyzing all spike relationships.")
-        analyze_all_spike_relationships(sim_directory)
-    except Exception:
-        print(traceback.format_exc())
+        logger = Logger()
+
+        soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
+        parameters = analysis.DataReader.load_parameters(sim_directory)
+        #print(soma_spikes)
+        logger.log(f"Soma firing rate: {round(soma_spikes.shape[1] * 1000 / parameters.h_tstop, 2)} Hz")
+
+        try:
+            logger.log("Analyzing all spike relationships.")
+            analyze_all_spike_relationships(sim_directory)
+        except Exception:
+            print(traceback.format_exc())
+
+    elif "-f" in sys.argv:
+        simulations_dir = sys.argv[sys.argv.index("-f") + 1]
+
+        for sim_folder in os.listdir(simulations_dir):
+            sim_directory = os.path.join(simulations_dir, sim_folder)
+            print(f"Analyzing {sim_directory}")
+
+            # Save figures or just show them
+            if save:
+                save_directory = os.path.join(sim_directory, "STAs")
+                if not os.path.exists(save_directory):
+                    os.makedirs(save_directory)
+
+            logger = Logger()
+
+            soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
+            parameters = analysis.DataReader.load_parameters(sim_directory)
+            #print(soma_spikes)
+            logger.log(f"Soma firing rate: {round(soma_spikes.shape[1] * 1000 / parameters.h_tstop, 2)} Hz")
+
+            try:
+                logger.log("Analyzing all spike relationships.")
+                analyze_all_spike_relationships(sim_directory)
+            except Exception:
+                print(traceback.format_exc())
+            
+    else:
+        raise RuntimeError
           
         
 
