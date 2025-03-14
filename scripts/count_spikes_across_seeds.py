@@ -17,7 +17,53 @@ from Modules import analysis
 
 DUR_TO_USE = 10 # seconds of simulation
 
-def count_events(sim_path):
+def count_events_per_micron_per_second(sim_path):
+    segs_na_df, segs_nmda_df, segs_ca_df = get_dfs_from_path(sim_path)
+
+    # Initialize an empty list to collect rows before converting them into a DataFrame
+    rows = []
+
+    # Define the spike types and their corresponding DataFrames and output column names
+    spike_types = {
+        'num_nmda_spikes': ('Total_NMDA_Spikes_per_micron', segs_nmda_df),
+        'num_na_spikes': ('Total_NA_Spikes_per_micron', segs_na_df),
+        'num_ca_spikes': ('Total_CA_Spikes_per_micron', segs_ca_df)
+    }
+
+    # Calculate the spikes per second per micron for each segment type
+    for seg_type in ['apic', 'dend']:
+        row = {'Segment_Type': seg_type}
+        for spike_field, (column_name, df) in spike_types.items():
+            # # Select only the segments of the current type
+            # sub_df = df[df.Type == seg_type]
+            # # Sum the number of spikes and segment lengths
+            # total_spikes = sub_df[spike_field].sum()
+            # total_length = sub_df['L'].sum()
+            # # Avoid division by zero: if total_length is zero, set rate to zero
+            # if total_length > 0:
+            #     spikes_per_micron = round(total_spikes / (DUR_TO_USE * total_length), 8)
+            # else:
+            #     spikes_per_micron = 0
+                        # Filter for segments of the current type and ensure segment length is not zero
+            # row[column_name] = spikes_per_micron
+
+            sub_df = df[(df.Type == seg_type) & (df['L'] != 0)]
+            
+            # Calculate the spike density for each segment individually, then sum them up.
+            # Each segment's density is (spike count) / (DUR_TO_USE * segment length)
+            if not sub_df.empty:
+                density_sum = (sub_df[spike_field] / (DUR_TO_USE * sub_df['L'])).sum()
+                row[column_name] = density_sum
+            else:
+                row[column_name] = 0
+        rows.append(row)
+
+    # Convert the list of rows into a DataFrame
+    spike_density_table = pd.DataFrame(rows)
+    return spike_density_table
+
+
+def count_events_per_second(sim_path):
     segs_na_df, segs_nmda_df, segs_ca_df = get_dfs_from_path(sim_path)
 
     # Initialize an empty list to collect rows before converting them into a DataFrame
@@ -29,6 +75,7 @@ def count_events(sim_path):
         'num_na_spikes': ('Total_NA_Spikes', segs_na_df),
         'num_ca_spikes': ('Total_CA_Spikes', segs_ca_df)
     }
+    print(f"segs_na_df: {segs_na_df}")
 
     # Calculate the total number of spikes for each segment type and spike type
     for seg_type in ['apic', 'dend']:
@@ -173,7 +220,7 @@ def main():
                     ["python", "find_events_ben.py", "-d", sim_path],
                     check=True
                 )
-                spike_table = count_events(sim_path)
+                spike_table = count_events_per_second(sim_path)
                 spike_table.to_csv(os.path.join(sim_path, "spike_table.csv"))
 
             except subprocess.CalledProcessError as e:
@@ -205,7 +252,7 @@ def aggregate_simulation_data(simulations_directory):
         if not os.path.isdir(sim_path):
             continue  # Skip non-directory files
             
-        spike_table = count_events(sim_path)
+        spike_table = count_events_per_second(sim_path)
         spike_table['simulation_directory'] = sim_directory  # Add directory name to the table
         combined_table.append(spike_table)
     
@@ -220,7 +267,7 @@ def aggregate_simulation_data(simulations_directory):
 if __name__ == "__main__":
     if "-d" in sys.argv:  # Single simulation directory
         sim_directory = sys.argv[sys.argv.index("-d") + 1]
-        spike_table = count_events(sim_directory)
+        spike_table = count_events_per_second(sim_directory)
         spike_table.to_csv(os.path.join(sim_directory, "spike_table.csv"), index=False)
         print(spike_table)
     elif "-f" in sys.argv:  # Folder containing multiple simulation directories
