@@ -30,18 +30,20 @@ class Simulation:
             os.mkdir(self.path)
 
     def run_single_simulation(self, parameters: SimulationParameters):
-        
-        parameters.path = os.path.join(self.path, parameters.sim_name) # fixing the path os.path.join(parameters.sim_name)
 
-        # Create a folder to save to
-        os.mkdir(parameters.path)
+        single_sim_path = os.path.join(self.path, parameters.sim_name)
+        if not os.path.exists(single_sim_path):
+            os.mkdir(single_sim_path)
+        
+        parameters.path = single_sim_path # fixing the path os.path.join(parameters.sim_name)
+        self.logger.set_path(single_sim_path)
 
         # Build the cell
         cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
         cell, _ = cell_builder.build_cell()
         
         adj_matrix = cell.compute_directed_adjacency_matrix()
-        np.savetxt(os.path.join(parameters.path, "adj_matrix.txt"), adj_matrix)
+        np.savetxt(os.path.join(parameters.path, "adj_matrix.txt"), adj_matrix.astype(int))
 
         # Classify segments by morphology, save coordinates
         segments, seg_data = cell.get_segments(["all"]) # (segments is returned here to preserve NEURON references)
@@ -209,6 +211,7 @@ class Simulation:
             if log: self.logger.log(f"Finish simulation in {simulation_runtime:.3f} seconds")
             # Record the simulation runtime to a file
             if record_runtime:
+              self.logger.log_runtime("simulation_slurm", "simulate", simulation_runtime)
               runtime_file_path = os.path.join(path, "simulation_runtime.txt")
               with open(runtime_file_path, "w") as runtime_file:
                   runtime_file.write(f"{simulation_runtime:.3f} seconds")

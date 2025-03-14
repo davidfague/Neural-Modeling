@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 import psutil
 from multiprocessing import current_process
+import csv
 
 class Logger:
 
@@ -10,6 +11,10 @@ class Logger:
             self.path = None
         else:
             self.path = os.path.join(path, "log.txt")
+        
+    def set_path(self, path: str):
+        self.path = os.path.join(path, "log.txt")
+        self.runtime_path = os.path.join(path, "runtimes.csv")
 
     def log(self, msg: str):
         if self.path is None:
@@ -37,4 +42,7 @@ class Logger:
             print(f"({datetime.now()})-[PID: {current_process().pid}]–[MEMORY]: available {round(memory.available * 1e-9, 2)}, used: {memory.percent}% of total.", 
                   file = open(self.path, "a"))
 
-
+    def log_runtime(self, module_name, function_name, runtime):
+        with open(self.runtime_path, mode="a", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow([datetime.now(), module_name, function_name, runtime])

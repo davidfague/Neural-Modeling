@@ -81,7 +81,7 @@ class Reductor():
         self.log_with_timestamp(f'expanded cell.all: {cell_model.all}')
         unique_netcons = set(netcon for syn in cell_model.synapses for netcon in syn.netcons) # debbuging
         if len(unique_netcons) != len(netcons_list):
-          selg.log_with_timestep(f'len(unique netcons after expansion) != len(original netcons list) {len(unique_netcons)} {len(netcons_list)}')
+          self.log_with_timestep(f'len(unique netcons after expansion) != len(original netcons list) {len(unique_netcons)} {len(netcons_list)}')
 
         return cell_model, seg_to_seg
     

@@ -297,6 +297,7 @@ def get_reduced_cell(cell_builder = None, reduce_tufts = 0, reduce_basals = 0, r
     all_segments_after_reduction, new_seg_data = cell.get_segments(['all'])
 
     cell_builder.logger.log(f"Additional time for mapping synapses: {mapping_time_total}")
+    cell_builder.logger.log_runtime('morph_reduction_utils', 'map_synapses', mapping_time_total)
     
     return cell, original_seg_data, all_deleted_seg_indices
 
