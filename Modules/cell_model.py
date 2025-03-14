@@ -666,7 +666,7 @@ class CellModel:
 			all_segments = []
 			for root_section in self.get_root_sections("trunk"):
 				all_segments.extend(gather_segments_recursively(root_section, stop_segments))
-			all_segments = [seg for seg in all_segments if (h.distance(self.soma[0](0.5), seg) < 400)]
+			all_segments = [seg for seg in all_segments if ((h.distance(self.soma[0](0.5), seg) < 400) and (seg.sec in self.apic))]
 			return all_segments
 		elif sec_type_to_get == 'soma':
 			return [seg for seg in self.soma[0]]
