@@ -98,7 +98,7 @@ def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.
         radius = seg['r'] * radius_scale
         color = 'red' if i in deleted_indices else 'black'
         if i in deleted_indices:
-            radius *= 0.1  # adjust multiplier to change red line width
+            radius *= 2  # adjust multiplier to change red line width
 
         # Note: the order is (x, z, y) to match the original orientation.
         ax.plot(x_points, z_points, y_points, linewidth=radius, color=color)
