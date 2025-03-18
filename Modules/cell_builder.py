@@ -23,6 +23,8 @@ from surface_area import *
 
 from Modules.morph_reduction_utils import get_reduced_cell, replace_dend_with_CI
 
+from Modules.allen_interfacing import load_skeleton_cell_from_allen
+
 from stylized_module import Builder
 
 import h5py
@@ -60,6 +62,13 @@ class SkeletonCell(Enum):
 		"morph": None,
 		"template": "PTcell.hoc",
 		"pickle": None
+	}
+	Allen = {
+		"biophys": None,
+		"morph": None,
+		"template": None,
+		"pickle": None,
+		"directory": "../Allen/Cell_477127614"
 	}
 
 def norm_dist(gmax_mean, gmax_std, size, clip): # inh
@@ -146,6 +155,9 @@ class CellBuilder:
 
 		elif self.cell_type == SkeletonCell.NeymotinDetailed:
 			skeleton_cell = self.build_Neymotin_detailed_cell()
+
+		elif self.cell_type == SkeletonCell.Allen:
+			skeleton_cell = self.build_Allen_cell()
 
 		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger)
 
@@ -772,6 +784,10 @@ class CellBuilder:
 		h.load_file(os.path.join(self.templates_folder, SkeletonCell.NeymotinReduced.value["template"]))
 		skeleton_cell = h.CP_Cell()
 
+		return skeleton_cell
+	
+	def build_Allen_cell(self) -> object:
+		skeleton_cell = load_skeleton_cell_from_allen(SkeletonCell.Allen.value["directory"])
 		return skeleton_cell
 
 	def is_indexable(self, obj: object):

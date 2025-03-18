@@ -1,0 +1,22 @@
+{
+    "R-in": 100,
+    "cm": [
+        {
+          "section": "soma",
+          "cm": 1
+        },
+        {
+          "section": "axon",
+          "cm": 1
+        },
+        {
+          "section": "dend",
+          "cm": 1
+        },
+        {
+          "section": "apic",
+          "cm": 1
+        }
+      ],
+    "e_pas": -65.75
+}

@@ -29,7 +29,7 @@ if __name__ == "__main__":
         # Already loaded
         pass 
 
-    sim = Simulation(SkeletonCell.Hay, sim_title)
+    sim = Simulation(SkeletonCell.Allen, sim_title)
 
     # Load parameters for this pid
     with open(f"params/{rank}.pickle", "rb") as file:
