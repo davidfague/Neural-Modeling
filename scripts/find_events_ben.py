@@ -285,7 +285,8 @@ def compute_nmda_df(nmda, v, segs, sim_directory, ben):
     else: segs_nmda_df.to_csv(os.path.join(sim_directory, 'nmda.csv'))
 
 def compute_dfs(sim_directory, ben):
-    na, hva, lva, ih, nmda, v, spkinds, segs = load_data(sim_directory, ben)
+    if not os.path.exists(os.path.join(sim_directory, 'na.csv')) or not os.path.exists(os.path.join(full_path_sim, 'ca.csv')) or not os.path.exists(os.path.join(full_path_sim, 'nmda.csv')):
+        na, hva, lva, ih, nmda, v, spkinds, segs = load_data(sim_directory, ben)
     if not os.path.exists(os.path.join(sim_directory, 'na.csv')):
         compute_na_df(na, segs, spkinds, sim_directory, ben)
     if not os.path.exists(os.path.join(full_path_sim, 'ca.csv')):
