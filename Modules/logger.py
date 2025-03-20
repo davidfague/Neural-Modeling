@@ -43,6 +43,11 @@ class Logger:
                   file = open(self.path, "a"))
 
     def log_runtime(self, module_name, function_name, runtime):
+        file_exists = os.path.exists(self.runtime_path)
+        file_empty = not file_exists or os.path.getsize(self.runtime_path) == 0
+
         with open(self.runtime_path, mode="a", newline="") as file:
             writer = csv.writer(file)
+            if file_empty:
+                writer.writerow(["timestamp", "module", "function", "runtime"])
             writer.writerow([datetime.now(), module_name, function_name, runtime])
