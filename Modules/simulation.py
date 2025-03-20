@@ -150,10 +150,10 @@ class Simulation:
         elec_distances_soma = cell.compute_electrotonic_distance(from_segment = cell.soma[0](0.5))
         elec_distances_soma.to_csv(os.path.join(parameters.path, "elec_distance_soma.csv"))
         
-        if not parameters.reduce_apic:
-            nexus_seg_index = cell.find_nexus_seg()
-        else:
-            nexus_seg_index = segments.index(cell.apic[0](0.4)) #New.apic[109](0.386364),New.apic[109](0.431818), chooses seg 0.386. may need to check
+        # if not parameters.reduce_apic:
+        #     nexus_seg_index = cell.find_nexus_seg()
+        # else:
+        nexus_seg_index = segments.index(cell.apic[0](0.4)) #New.apic[109](0.386364),New.apic[109](0.431818), chooses seg 0.386. may need to check
             # raise(NotImplementedError('Need to implement find_nexus_seg for reducing entire apical'))
         
         # @DEPRACATING replacing with above function

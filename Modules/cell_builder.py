@@ -68,7 +68,8 @@ class SkeletonCell(Enum):
 		"morph": None,
 		"template": None,
 		"pickle": None,
-		"directory": "../Allen/Cell_477127614"
+		"directory": "../Allen/477127614-497232641",
+		"modfiles": "../Allen/477127614-497232641/modfiles"
 	}
 
 def norm_dist(gmax_mean, gmax_std, size, clip): # inh
@@ -203,7 +204,7 @@ class CellBuilder:
 		replace_file_path = os.path.join(self.parameters.path, "replace_runtime.txt")
 		with open(replace_file_path, "w") as replace_file:
 			replace_file.write(f"{total_replace_time:.3f} seconds")
-		self.logger.log_runtime("cell_builder", "replace_dend_with_CI", total_replace_time)
+		# self.logger.log_runtime("cell_builder", "replace_dend_with_CI", total_replace_time)
 		
 		# merge synapses/optimize nseg by lambda
 		reductor = Reductor(logger = self.logger)
@@ -234,7 +235,7 @@ class CellBuilder:
 		end_time = time.time()
 		run_time = end_time - start_time
 		self.logger.log(f"Finish building in {run_time}")
-		self.logger.log_runtime("cell_builder", "build_cell", run_time)
+		# self.logger.log_runtime("cell_builder", "build_cell", run_time)
     	# Record the  runtime to a file
 		runtime_file_path = os.path.join(self.parameters.path, "builder_runtime.txt")
 		with open(runtime_file_path, "w") as runtime_file:

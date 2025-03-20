@@ -84,51 +84,76 @@ class SimulationParameters:
 	# NOTE: the 'synapse number' is how many you would expect to be on the whole cell,
 	# the actual syn numbers on that section type are proportionally scaled by surface area or length, whichever is indicated by 'use_SA_probs'
 	# i.e. if trunk is 50% of the cell's length, then N = 0.5 * 26112 will be on the trunk
+
+	# L5
+	# exc_syn_properties: dict = field(default_factory=lambda: { 
+	# 	'trunk': {'syn_density': 2.16*0.25, 'syn_number': 26112/8, 
+	# 		'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
+	# 		},
+	# 	'oblique': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
+	# 		'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
+	# 		},
+	# 	'tuft': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
+	# 		'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,2), 'scalar': 1}
+	# 		},
+	# 	'nexus':{'syn_density': 2.16*0.05, 'syn_number': 26112/8,
+	# 		'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
+	# 		},
+	# 	'distal_basal': {'syn_density': 2.16*1.2, 'syn_number': 26112,
+	# 		'gmax_params': {'mean': 0.396, 'std': 1.04, 'clip': (0,1.5), 'scalar': 1}
+	# 		},
+	# })
+
+	# L2-3
 	exc_syn_properties: dict = field(default_factory=lambda: { 
-		'trunk': {'syn_density': 2.16*0.25, 'syn_number': 26112/8, 
+		'apic': {'syn_density': 2.16*0.25, 'syn_number': 26112/8, 
 			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
 			},
-		'oblique': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
+		'dend': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
 			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
-			},
-		'tuft': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
-			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,2), 'scalar': 1}
-			},
-		'nexus':{'syn_density': 2.16*0.05, 'syn_number': 26112/8,
-			'gmax_params': {'mean': 0.42*0.5, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}
-			},
-		'distal_basal': {'syn_density': 2.16*1.2, 'syn_number': 26112,
-			'gmax_params': {'mean': 0.396, 'std': 1.04, 'clip': (0,1.5), 'scalar': 1}
-			},
+			}
 	})
+
 	# NOTE: [trunk, oblique, tuft] fields can be replaced with 'distal_apic' if desired
 	# NOTE: gmax is clipped to (0,10*mean); no scalar implemented.
+	# inh_syn_properties: dict = field(default_factory=lambda: {
+	# 	'apic': {'syn_density': 0.22*1.3, 'syn_number': 3066,
+	# 		'gmax_params': {'mean': 4.6*0.75, 'std':  0.175},
+	# 		'P_release_params': {'mean': 0.88, 'std': 0.05}
+	# 		},
+	# 	'trunk': {'syn_density': 0.22, 'syn_number': 3066,
+	# 		'gmax_params': {'mean': 1.87, 'std': 0.08474},#*0.2*0.66*0.1},
+	# 		'P_release_params': {'mean': 0.3, 'std': 0.08}
+	# 		},
+	# 	'oblique': {'syn_density': 0.22, 'syn_number': 3066,
+	# 		'gmax_params': {'mean': 1.87*4, 'std': 0.08474},#*0.2*0.66*0.1},
+	# 		'P_release_params': {'mean': 0.3, 'std': 0.08}
+	# 		},
+	# 	'tuft': {'syn_density': 0.22*1.5, 'syn_number': 3066,
+	# 		'gmax_params': {'mean': 1.87*8, 'std': 0.08474},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
+	# 		'P_release_params': {'mean': 0.3, 'std': 0.08}
+	# 		},
+	# 	'nexus': {'syn_density': 0.22*1.5, 'syn_number': 3066,
+	# 		'gmax_params': {'mean': 1.87*10, 'std': 0.08474},#0.08474*0.2*0.66*0.1},
+	# 		'P_release_params': {'mean': 0.3, 'std': 0.08}
+	# 		},
+	# 	'distal_basal': {'syn_density': 0.22, 'syn_number': 3066,
+	# 		'gmax_params': {'mean': 1.87, 'std': 0.08474},#0.08474*0.916*0.5*.16},
+	# 		'P_release_params': {'mean': 0.72, 'std': 0.1}
+	# 		}
+	# })
+
 	inh_syn_properties: dict = field(default_factory=lambda: {
-		'perisomatic': {'syn_density': 0.22*1.3, 'syn_number': 3066,
+		'apic': {'syn_density': 0.22*1.3, 'syn_number': 3066,
 			'gmax_params': {'mean': 4.6*0.75, 'std':  0.175},
 			'P_release_params': {'mean': 0.88, 'std': 0.05}
 			},
-		'trunk': {'syn_density': 0.22, 'syn_number': 3066,
+		'dend': {'syn_density': 0.22, 'syn_number': 3066,
 			'gmax_params': {'mean': 1.87, 'std': 0.08474},#*0.2*0.66*0.1},
 			'P_release_params': {'mean': 0.3, 'std': 0.08}
 			},
-		'oblique': {'syn_density': 0.22, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87*4, 'std': 0.08474},#*0.2*0.66*0.1},
-			'P_release_params': {'mean': 0.3, 'std': 0.08}
-			},
-		'tuft': {'syn_density': 0.22*1.5, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87*8, 'std': 0.08474},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
-			'P_release_params': {'mean': 0.3, 'std': 0.08}
-			},
-		'nexus': {'syn_density': 0.22*1.5, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87*10, 'std': 0.08474},#0.08474*0.2*0.66*0.1},
-			'P_release_params': {'mean': 0.3, 'std': 0.08}
-			},
-		'distal_basal': {'syn_density': 0.22, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87, 'std': 0.08474},#0.08474*0.916*0.5*.16},
-			'P_release_params': {'mean': 0.72, 'std': 0.1}
-			}
 	})
+
 	# Synapse Release probability distributions
 	exc_P_release_mean: float = 0.53 # can move to syn_properties
 	exc_P_release_std: float = 0.22
