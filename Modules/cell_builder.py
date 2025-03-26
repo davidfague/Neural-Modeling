@@ -331,12 +331,12 @@ class CellBuilder:
 			)
 
   
-		# record spike trains
+		# record spike trains #@MARK need to update this to gather the names of the synapses for each spike train.
 		if self.parameters.record_spike_trains:
 			spike_train_data = {
 				'exc_spike_trains': exc_spike_trains,
 				'soma_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses(['inh_perisomatic'])],
-				'inh_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses(['inh_distal_basal','inh_distal_apic'])]
+				'inh_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses([self.parameters.inh_syn_properties.keys()])]
 			}
 			for dataset_name, data in spike_train_data.items():
 				file_path = os.path.join(self.parameters.path, f'{dataset_name}.h5')
