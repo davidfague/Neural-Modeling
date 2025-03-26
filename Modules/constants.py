@@ -319,17 +319,17 @@ class SimulationParameters:
 			raise(NotImplementedError(f"desired {self.inh_syn_mod} syn_params not specified"))
             
 class HayParameters(SimulationParameters):
-	channel_names = [
-		'i_pas', 
+	channel_names = [ # to record
+		# 'i_pas', 
 		# 'ik', 
-		'ica', 
-		'ina', 
+		# 'ica', 
+		# 'ina', 
 		'ihcn_Ih', 
 		'gNaTa_t_NaTa_t', 
 		# 'ina_NaTa_t', 
 		# 'ina_Nap_Et2', 
 		# 'ik_SKv3_1', 
 		# 'ik_SK_E2', 
-		'ik_Im', 
+		# 'ik_Im', 
 		'ica_Ca_HVA', 
 		'ica_Ca_LVAst']
