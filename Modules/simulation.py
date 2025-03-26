@@ -38,7 +38,7 @@ class Simulation:
           self.title = None
           self.path = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}-{cell_type}"
 
-        self.logger = Logger(None)
+        self.logger = Logger(self.path)
         self.pool = []
 
     def submit_job(self, parameters: SimulationParameters):
