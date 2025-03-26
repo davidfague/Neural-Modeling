@@ -427,7 +427,9 @@ if __name__ == "__main__":
 
         # Save figures or just show them
         if save:
-            save_directory = sys.argv[sys.argv.index("-s") + 1]
+            save_directory = os.path.join(sim_directory, "STAs")
+            if not os.path.exists(save_directory):
+                os.makedirs(save_directory)
 
         logger = Logger()
 
