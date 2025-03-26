@@ -41,8 +41,14 @@ ci_replacements_to_use = ['None']
 # ci_replacements_to_use = ['None', 'Basals', '1Basal', 'Tufts', '1Tuft', 'Basals&Tufts']
 
 # Seeds: provide lists of seeds. Use [None] if not applicable.
-numpy_random_states = [5000]
+numpy_random_states = [5000, 4444444, 999999999, 77777, 33333333, 
+                       12346456, 98654721, 54367, 213904, 465982, 
+                       20184657, 3333, 901, 43656, 888888, 
+                       12435, 678534, 99835, 7865134, 9812763]
 neuron_random_states = [None]
+
+default_inh_syn_properties = HayParameters('').inh_syn_properties  # get a copy of the default
+default_exc_syn_properties = HayParameters('').exc_syn_properties
 
 # select_parameters_to_vary: parameters to vary across simulations.
 # Each key maps to a dict containing:
@@ -50,13 +56,31 @@ neuron_random_states = [None]
 #   - "sim_name_suffix": a string that will prefix the (optionally rounded) value
 select_parameters_to_vary = {
     'rhyth_depth_inh_perisomatic': {
-         'values': [0.0], # add more values to vary this parameter if desired
+         'values': [0.015], # add more values to vary this parameter if desired
          'sim_name_suffix': 'DepthPeriInh',
-         'always_include_suffix': False
+         'always_include_suffix': True
     },
     'rhyth_depth_inh_distal': {
-         'values': [0.0],  # next [0.1, 0.25] # add more values here if needed
+         'values': [0.015],  # next [0.1, 0.25] # add more values here if needed
          'sim_name_suffix': 'DepthDistalInh',
+         'always_include_suffix': True
+    },
+    'inh_syn_properties': {
+         'values': [ # copy default and override the nested value:
+             { **default_inh_syn_properties, 'tuft': { **default_inh_syn_properties['tuft'],
+                      'syn_density': 0.22*1.5*0.75 } },
+         ],
+         'sim_name_suffix': 'InhTuftDensity',
+         'nested_key': 'tuft.syn_density', # give the key to extract the value for simulation naming purposes
+         'always_include_suffix': True
+    },
+    'exc_syn_properties': {
+         'values': [ # copy default and override the nested value:
+             { **default_exc_syn_properties, 'tuft': { **default_exc_syn_properties['tuft'],
+                      'syn_density': 2.16*0.4*0.25 } },
+         ],
+         'sim_name_suffix': 'ExcTuftDensity',
+         'nested_key': 'tuft.syn_density', # give the key to extract the value for simulation naming purposes
          'always_include_suffix': False
     },
     'exc_scalar_basal': {
@@ -131,13 +155,13 @@ sim_type_params_all = {
         'record_synapse_distributions': True
     },
     'tuning': {  # in vivo simulation (not fully implemented)
-        'h_tstop': 2000,
+        'h_tstop': 5000,
         'merge_synapses': False,
         'record_ecp': False,
         'record_all_channels': False,
         'record_all_synapses': False,
         'record_spike_trains': False,
-        'record_synapse_distributions': True
+        'record_synapse_distributions': False
     },
 }
 # Select the simulation type parameters for the chosen simulation type.
@@ -170,8 +194,8 @@ syn_reductions = {
 # Morphology options dictionary
 morphologies = {
     'Complex': {'base_sim_name': 'Complex'},
-    'Branches': {'base_sim_name': 'Branches', 'reduce_obliques': 1, 'reduce_tufts': 1, 'reduce_basals': 3},
-    'Trees': {'base_sim_name': 'Trees', 'reduce_apic': 1, 'reduce_basals': 1}
+    'ReduceBranches': {'base_sim_name': 'ReduceBranches', 'reduce_obliques': 2, 'reduce_tufts': 2, 'reduce_basals': 4},
+    'ReduceTrees': {'base_sim_name': 'ReduceTrees', 'reduce_apic': 1, 'reduce_basals': 1}
 }
 
 # Current-injection (CI) replacement options dictionary
@@ -200,17 +224,15 @@ def format_value(value):
     else:
         return str(value)
 
+import itertools
+
 def get_parameter_combinations(param_dict):
     """
-    Given a dictionary (select_parameters_to_vary) where each key maps to a dict with:
-       - "values": list of possible values
-       - "sim_name_suffix": a label prefix
-    Returns a list of dictionaries (one per combination). For each key, if the list of values
-    has more than one entry, a suffix is generated (optionally rounding floats to 4 decimals)
-    and added (underscored) to the 'sim_name_suffix' field of the combination.
+    Build combinations from param_dict where values can be scalars or dictionaries.
+    If a dictionary is passed and a 'nested_key' is specified in the parameter spec,
+    that nested value is used to generate the suffix.
     """
     keys = list(param_dict.keys())
-    # Build a list of lists (one per parameter) containing the possible values.
     value_lists = [param_dict[k]['values'] for k in keys]
     combinations = []
     for values in itertools.product(*value_lists):
@@ -218,14 +240,60 @@ def get_parameter_combinations(param_dict):
         suffix_parts = []
         for key, value in zip(keys, values):
             combo[key] = value
-            # Only add suffix if more than one value is provided.
+            # Only add suffix if more than one value is provided or forced.
             if len(param_dict[key]['values']) > 1 or param_dict[key].get('always_include_suffix', False):
-                formatted = format_value(value)
+                # If value is a dict and a nested key is provided, extract that nested value.
+                if isinstance(value, dict) and 'nested_key' in param_dict[key]:
+                    nested_keys = param_dict[key]['nested_key'].split('.')
+                    nested_value = value
+                    for nk in nested_keys:
+                        nested_value = nested_value[nk]
+                    formatted = format_value(nested_value)
+                else:
+                    formatted = format_value(value)
                 suffix_parts.append(f"{param_dict[key]['sim_name_suffix']}{formatted}")
-        # Join the parts if any, else an empty string.
         combo['sim_name_suffix'] = '_'.join(suffix_parts) if suffix_parts else ''
         combinations.append(combo)
     return combinations
+
+def get_index_matched_parameter_combinations(param_dict):
+    """
+    Build index-matched combinations from param_dict where values can be scalars or dictionaries.
+    If a dictionary is passed and a 'nested_key' is specified in the parameter spec,
+    that nested value is used to generate the suffix.
+    """
+    keys = list(param_dict.keys())
+    max_len = max(len(param_dict[k]['values']) for k in keys)
+    
+    # Validate: all lists with len > 1 must have the same length.
+    for k in keys:
+        val_len = len(param_dict[k]['values'])
+        if val_len not in [1, max_len]:
+            raise ValueError(f"Parameter '{k}' has {val_len} values, but others have {max_len}. All varying parameters must match in length.")
+    
+    combinations = []
+    for i in range(max_len):
+        combo = {}
+        suffix_parts = []
+        for key in keys:
+            values = param_dict[key]['values']
+            value = values[i] if len(values) > 1 else values[0]
+            combo[key] = value
+            if len(values) > 1 or param_dict[key].get('always_include_suffix', False):
+                if isinstance(value, dict) and 'nested_key' in param_dict[key]:
+                    nested_keys = param_dict[key]['nested_key'].split('.')
+                    nested_value = value
+                    for nk in nested_keys:
+                        nested_value = nested_value[nk]
+                    formatted = format_value(nested_value)
+                else:
+                    formatted = format_value(value)
+                suffix_parts.append(f"{param_dict[key]['sim_name_suffix']}{formatted}")
+        combo['sim_name_suffix'] = '_'.join(suffix_parts) if suffix_parts else ''
+        combinations.append(combo)
+    
+    return combinations
+
 
 def create_parameters(numpy_seed, neuron_seed, common_params, morphology_params,
                       syn_reduction_params, ci_replacement_params, varied_params,
@@ -311,7 +379,8 @@ def generate_simulations(neuron_random_states, numpy_random_states, select_param
                         ci_replacement_params = ci_replacements[ci_choice]
                         
                         # Get all combinations of varied parameters.
-                        varied_params_list = get_parameter_combinations(select_params)
+                        # varied_params_list = get_parameter_combinations(select_params)
+                        varied_params_list = get_index_matched_parameter_combinations(select_params)
                         
                         for varied in varied_params_list:
                             # If the simulation uses current injection, iterate over amplitudes.
