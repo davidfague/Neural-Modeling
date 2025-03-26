@@ -242,6 +242,9 @@ class SimulationParameters:
 	# (may need to add an update to the CellModel class instance's segments list and seg_info list.)
 	optimize_nseg_by_lambda: bool = False
 	# nseg_per_lambda: int = 10
+
+	set_nseg_by_length: bool = True
+	microns_per_segment: int = 5
 	# Whether or not to merge synapses after optimizing nseg by lambda. 
 	# (synapses should already be merged by the reduce_cell_func, 
 	# but could be merged again if optimize_nseg_by_lambda lowers nseg.)
