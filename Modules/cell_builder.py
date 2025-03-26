@@ -207,6 +207,11 @@ class CellBuilder:
 		
 		# merge synapses/optimize nseg by lambda
 		reductor = Reductor(logger = self.logger)
+		if self.parameters.set_nseg_by_length:
+			self.logger.log("Setting nseg by length.")
+			for sec in cell.all:
+				if sec not in cell.soma:
+					sec.nseg = 1+int(sec.L/self.parameters.microns_per_segment)
 		if self.parameters.optimize_nseg_by_lambda:
 				self.logger.log("Updating nseg using lambda.")
 				reductor.update_model_nseg_using_lambda(cell, segs_per_lambda=self.parameters.segs_per_lambda)
