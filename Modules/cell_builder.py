@@ -219,6 +219,7 @@ class CellBuilder:
 		if self.parameters.merge_synapses:
 				self.logger.log("Merging synapses.")
 				reductor.merge_synapses(cell)
+		self.logger.log(f"Total number of segments: {sum([sec.nseg for sec in cell.all])}")
 
 		# set v_init for all compartments
 		h.v_init = self.parameters.h_v_init
@@ -271,6 +272,8 @@ class CellBuilder:
 
 		# self.logger.log("Building soma synapses.") # merged into build_inh_synapses
 		# self.build_soma_synapses(cell = cell)
+
+		self.logger.log(f"Total number of synapses: {len(cell.get_synapses(['all']))}")
 
 		# Assign spike trains
 		self.logger.log("Assigning excitatory spike trains.")
