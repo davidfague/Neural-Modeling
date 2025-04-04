@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 # generic function for plotting variable over morphology
-def plot(seg_data, data_to_plot, ax, elevation=20, azimuth=-100, radius_scale=1.0, title='', clim_max=30, return_cbar = False):
+def plot(seg_data, data_to_plot, ax, elevation=20, azimuth=-100, radius_scale=1.0, title='', clim_max=30, return_cbar = False, clims = None):
     """
     Plots a 3D morphology of segments colored based on a given variable.
 
@@ -19,6 +19,9 @@ def plot(seg_data, data_to_plot, ax, elevation=20, azimuth=-100, radius_scale=1.
     """
     custom_vmin = 0
     custom_vmax = clim_max
+    if clims:
+        custom_vmin = clims[0]
+        custom_vmax = clims[1]
     norm = plt.Normalize(vmin=custom_vmin, vmax=custom_vmax)
 
     # If data_to_plot is a list, convert it to a dictionary
