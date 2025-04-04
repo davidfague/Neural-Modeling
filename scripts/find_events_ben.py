@@ -285,13 +285,13 @@ def compute_nmda_df(nmda, v, segs, sim_directory, ben):
     else: segs_nmda_df.to_csv(os.path.join(sim_directory, 'nmda.csv'))
 
 def compute_dfs(sim_directory, ben):
-    if not os.path.exists(os.path.join(sim_directory, 'na.csv')) or not os.path.exists(os.path.join(full_path_sim, 'ca.csv')) or not os.path.exists(os.path.join(full_path_sim, 'nmda.csv')):
+    if not os.path.exists(os.path.join(sim_directory, 'na.csv')) or not os.path.exists(os.path.join(sim_directory, 'ca.csv')) or not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
         na, hva, lva, ih, nmda, v, spkinds, segs = load_data(sim_directory, ben)
     if not os.path.exists(os.path.join(sim_directory, 'na.csv')):
         compute_na_df(na, segs, spkinds, sim_directory, ben)
-    if not os.path.exists(os.path.join(full_path_sim, 'ca.csv')):
+    if not os.path.exists(os.path.join(sim_directory, 'ca.csv')):
         compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben)
-    if not os.path.exists(os.path.join(full_path_sim, 'nmda.csv')):
+    if not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
         compute_nmda_df(nmda, v, segs, sim_directory, ben)
 
 if __name__ ==  "__main__":
@@ -305,7 +305,10 @@ if __name__ ==  "__main__":
         for sim_directory in os.listdir(simulations_directory):
             full_path_sim = os.path.join(simulations_directory, sim_directory)
             print(f"sim_directory: {sim_directory}")
-            compute_dfs(full_path_sim, ben)
+            if os.path.exists(os.path.join(full_path_sim, 'parameters.pickle')):
+                compute_dfs(full_path_sim, ben)
+            else:
+                print(f" skipping directory because no parameters (likely an analysis folder instead of simulation): {full_path_sim}")
     else:
         raise RuntimeError
     

@@ -117,6 +117,9 @@ def _analyze_Na():
     gnaTa = analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t")
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
     v = analysis.DataReader.read_data(sim_directory, "v")
+    # ica = analysis.DataReader.read_data(sim_directory, "ica")
+    ica = analysis.DataReader.read_data(sim_directory, "ica_Ca_HVA") + analysis.DataReader.read_data(sim_directory, "ica_Ca_LVAst") 
+    
     
     Na_spikes = []
     for i in range(len(gnaTa)):
@@ -130,7 +133,6 @@ def _analyze_Na():
     for section in ["apic", "dend"]:
         seg_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
         indexes = seg_data[seg_data["section"] == section].index
-        ica = analysis.DataReader.read_data(sim_directory, "ica")
         for elec_dist in ["soma", "nexus"]:
             try:
                 _map_stas_to_quantiles_and_plot(
@@ -213,7 +215,8 @@ def _analyze_Ca():
     uppery = 1500
 
     v = analysis.DataReader.read_data(sim_directory, "v")
-    ica = analysis.DataReader.read_data(sim_directory, "ica")
+    # ica = analysis.DataReader.read_data(sim_directory, "ica")
+    ica = analysis.DataReader.read_data(sim_directory, "ica_Ca_HVA") + analysis.DataReader.read_data(sim_directory, "ica_Ca_LVAst") 
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
 
     for section in ["apic", "dend"]:
@@ -253,7 +256,8 @@ def _analyze_NMDA():
         inmda = analysis.DataReader.read_data(sim_directory, "inmda")
     else:
         inmda = analysis.DataReader.read_data(sim_directory, "i_NMDA")
-    ica = analysis.DataReader.read_data(sim_directory, "ica")
+    # ica = analysis.DataReader.read_data(sim_directory, "ica")
+    ica = analysis.DataReader.read_data(sim_directory, "ica_Ca_HVA") + analysis.DataReader.read_data(sim_directory, "ica_Ca_LVAst") 
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
 
     for section in ["apic", "dend"]:
@@ -324,7 +328,8 @@ def _analyze_NMDA():
 def _analyze_spike_relationships(sim_directory, spike_type, wrt_spike_type, section, elec_dist):
     v = analysis.DataReader.read_data(sim_directory, "v")
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
-    ica = analysis.DataReader.read_data(sim_directory, "ica")
+    # ica = analysis.DataReader.read_data(sim_directory, "ica")
+    ica = analysis.DataReader.read_data(sim_directory, "ica_Ca_HVA") + analysis.DataReader.read_data(sim_directory, "ica_Ca_LVAst") 
     if parameters.exc_syn_mod == 'pyr2pyr': # two types with different variable name
         inmda = analysis.DataReader.read_data(sim_directory, "inmda")
     else:
@@ -388,7 +393,8 @@ def _analyze_spike_relationships(sim_directory, spike_type, wrt_spike_type, sect
             section=section,
             elec_dist_from=elec_dist,
             # title=f"{sim_directory.split('/')[-2].split('_')[1]} model {section} {spike_type} spike rate around {wrt_spike_type} spiketimes",
-            title=f"{sim_directory.split('/')[-1]} model {section} {spike_type} spike rate around {wrt_spike_type} spiketimes",
+            # title=f"{sim_directory.split('/')[-1]} model {section} {spike_type} spike rate around {wrt_spike_type} spiketimes",
+            title = f"{section} {spike_type} spike rate w.r.t. {wrt_spike_type} spiketimes",
             xlabel_spike_type=wrt_spike_type,
             cbar_spike_type=spike_type,
             indexes=indexes
@@ -413,6 +419,8 @@ def analyze_all_spike_relationships(sim_directory):
                         continue  # skip this iteration because dend sections should not have Ca spikes
                     if spike_type == "soma_spikes":
                         continue  # special case for soma spikes; skipping for now
+                    # if ((spike_type == "Na") or (wrt_spike_type == "Na")):
+                    #     continue
                     _analyze_spike_relationships(sim_directory, spike_type, wrt_spike_type, section, elec_dist)
 
 
@@ -438,17 +446,23 @@ if __name__ == "__main__":
         #print(soma_spikes)
         logger.log(f"Soma firing rate: {round(soma_spikes.shape[1] * 1000 / parameters.h_tstop, 2)} Hz")
 
-        try:
-            logger.log("Analyzing all spike relationships.")
-            analyze_all_spike_relationships(sim_directory)
-        except Exception:
-            print(traceback.format_exc())
+        if os.path.exists(os.path.join(sim_directory, 'parameters.pickle')):
+            try:
+                logger.log("Analyzing all spike relationships.")
+                analyze_all_spike_relationships(sim_directory)
+            except Exception:
+                print(traceback.format_exc())
+        else:
+            print(f"Skipping {sim_directory}. No parameters.pickle found.")
 
     elif "-f" in sys.argv:
         simulations_dir = sys.argv[sys.argv.index("-f") + 1]
 
         for sim_folder in os.listdir(simulations_dir):
             sim_directory = os.path.join(simulations_dir, sim_folder)
+            if not os.path.exists(os.path.join(sim_directory, 'parameters.pickle')):
+                print(f"Skipping {sim_directory}. No parameters.pickle found.")
+                continue
             print(f"Analyzing {sim_directory}")
 
             # Save figures or just show them
@@ -464,11 +478,14 @@ if __name__ == "__main__":
             #print(soma_spikes)
             logger.log(f"Soma firing rate: {round(soma_spikes.shape[1] * 1000 / parameters.h_tstop, 2)} Hz")
 
-            try:
-                logger.log("Analyzing all spike relationships.")
-                analyze_all_spike_relationships(sim_directory)
-            except Exception:
-                print(traceback.format_exc())
+            if os.path.exists(os.path.join(sim_directory, 'parameters.pickle')):
+                try:
+                    logger.log(f"Analyzing all spike relationships for {sim_directory}.")
+                    analyze_all_spike_relationships(sim_directory)
+                except Exception:
+                    print(traceback.format_exc())
+            else:
+                print(f"Skipping {sim_directory}. No parameters.pickle found.")
             
     else:
         raise RuntimeError
