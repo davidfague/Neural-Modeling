@@ -68,7 +68,8 @@ class SkeletonCell(Enum):
 		"morph": None,
 		"template": None,
 		"pickle": None,
-		"directory": "../Allen/Cell_477127614"
+		"directory": "../Allen/Cell_477127614",
+		"modfiles": "../Allen/Cell_477127614/modfiles"
 	}
 
 def norm_dist(gmax_mean, gmax_std, size, clip): # inh

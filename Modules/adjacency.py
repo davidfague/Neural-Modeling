@@ -7,7 +7,7 @@ if column j has no 1's then seg j has no parents.
 
 import numpy as np
 
-def find_branching_seg_with_most_branching_descendants_in_subset_y(adjacency_matrix, segment_indices, segment_y_coordinates, min_y=500):
+def find_branching_seg_with_most_branching_descendants_in_subset_y(adjacency_matrix, segment_indices, segment_y_coordinates, min_y=350): # min_y = 500 for Hay et al. 2011 model
     branching_segments = [i for i in segment_indices if sum(adjacency_matrix[i]) > 1 and segment_y_coordinates[i] >= min_y]
     
     max_branching_descendants = -1
