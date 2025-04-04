@@ -65,32 +65,66 @@ select_parameters_to_vary = {
          'sim_name_suffix': 'DepthDistalInh',
          'always_include_suffix': True
     },
-    'inh_syn_properties': {
-         'values': [ # copy default and override the nested value:
-             { **default_inh_syn_properties, 'tuft': { **default_inh_syn_properties['tuft'],
-                      'syn_density': 0.22*1.5*0.75 } },
-         ],
-         'sim_name_suffix': 'InhTuftDensity',
-         'nested_key': 'tuft.syn_density', # give the key to extract the value for simulation naming purposes
-         'always_include_suffix': True
-    },
-    'exc_syn_properties': {
-         'values': [ # copy default and override the nested value:
-             { **default_exc_syn_properties, 'tuft': { **default_exc_syn_properties['tuft'],
-                      'syn_density': 2.16*0.4*0.25 } },
-         ],
-         'sim_name_suffix': 'ExcTuftDensity',
-         'nested_key': 'tuft.syn_density', # give the key to extract the value for simulation naming purposes
-         'always_include_suffix': False
-    },
-    'exc_scalar_basal': {
-        'values': [1],
-        'sim_name_suffix': 'BasalExcScale'
-    },
-    'exc_scalar_apical': {
-        'values': [1],
-        'sim_name_suffix': 'ApicalExcScale'
-    },
+    # for L5
+    # 'inh_syn_properties': {
+    #      'values': [ # copy default and override the nested value:
+    #         { **default_inh_syn_properties, 
+    #             'tuft': { **default_inh_syn_properties['tuft'], 'syn_density': 0.22*1.5},
+    #             'oblique': { **default_inh_syn_properties['oblique'],'syn_density': 0.22*2},
+    #             'nexus': { **default_inh_syn_properties['nexus'],'syn_density': 0.22*1.75},
+    #             'trunk': { **default_inh_syn_properties['trunk'],'syn_density': 0.22*0.25/0.25*0.26},
+    #             'distal_basal': { **default_inh_syn_properties['distal_basal'],'syn_density': 0.22*1},
+    #             'perisomatic': { **default_inh_syn_properties['perisomatic'],'syn_density': 0.22*0.75},
+    #         },
+    #      ],
+    #      'sim_name_suffix': 'InhTuftDensity',
+    #      'nested_keys': ['tuft.syn_density', 'oblique.syn_density', 'nexus.syn_density', 'trunk.syn_density', 'distal_basal.syn_density', 'perisomatic.syn_density'], # give the key to extract the value for simulation naming purposes
+    #      'always_include_suffix': True
+    # },
+    # 'exc_syn_properties': {
+    #      'values': [ # copy default and override the nested value:
+    #         { **default_exc_syn_properties, 
+    #             # detailed 1.5% rhyth
+    #             # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 },
+    #             # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
+    #             # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
+    #             # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
+    #             # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601}
+
+    #             # # reduced 1.5% rhyth
+    #             # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 }, # 60% decrease for detailed
+    #             # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
+    #             # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
+    #             # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
+    #             # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5} # half for reduced
+
+    #             # # decreased mean fr stds. # Complex
+    #             # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 }, # 60% decrease for detailed
+    #             # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
+    #             # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
+    #             # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
+    #             # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5}
+
+    #                             # # decreased mean fr stds. # reduced
+    #             'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 }, # 60% decrease for detailed
+    #             # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
+    #             'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
+    #             'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
+    #             'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5*0.95} # 0.9x for reduced
+    #         },
+    #      ],
+    #      'sim_name_suffix': 'ExcTuftDensity',
+    #      'nested_keys': ['tuft.syn_density', 'oblique.syn_density', 'nexus.syn_density', 'trunk.syn_density', 'distal_basal.syn_density'], # give the key to extract the value for simulation naming purposes
+    #      'always_include_suffix': True
+    # },
+    # 'exc_scalar_basal': {
+    #     'values': [1],
+    #     'sim_name_suffix': 'BasalExcScale'
+    # },
+    # 'exc_scalar_apical': {
+    #     'values': [1],
+    #     'sim_name_suffix': 'ApicalExcScale'
+    # },
     # 'exc_gmax_clip': {
     #     'values': [(0,3), (0,5)],
     #     'sim_name_suffix': 'ExcClip'
@@ -112,6 +146,32 @@ select_parameters_to_vary = {
     #     'sim_name_suffix':
     #         'InhGmax',
     # },
+
+    ########### FOR L23
+        'inh_syn_properties': {
+         'values': [ # copy default and override the nested value:
+            { **default_inh_syn_properties, 
+                'apic': { **default_inh_syn_properties['apic'], 'syn_density': 0.22*1},
+                'dend': { **default_inh_syn_properties['dend'],'syn_density': 0.22*1},
+                'perisomatic': { **default_inh_syn_properties['perisomatic'],'syn_density': 0.22*1},
+            },
+         ],
+         'sim_name_suffix': 'InhDens',
+         'nested_keys': ['apic.syn_density', 'dend.syn_density', 'perisomatic.syn_density'], # give the key to extract the value for simulation naming purposes
+         'always_include_suffix': True
+    },
+    'exc_syn_properties': {
+         'values': [ # copy default and override the nested value:
+            { **default_exc_syn_properties, 
+                'apic': { **default_exc_syn_properties['apic'], 'syn_density': 2.16*2}, # 60% decrease for detailed
+                'dend': { **default_exc_syn_properties['dend'],'syn_density':2.16*2} # 0.9x for reduced
+            },
+         ],
+         'sim_name_suffix': 'ExcDens',
+         'nested_keys': ['apic.syn_density', 'dend.syn_density'], # give the key to extract the value for simulation naming purposes
+         'always_include_suffix': True
+    },
+
 }
 
 #######################################
@@ -126,8 +186,8 @@ sim_type_params_all = {
         'record_ecp': False,
         'record_all_channels': True,
         'record_all_synapses': True,
-        'record_spike_trains': False,
-        'record_synapse_distributions': False 
+        'record_spike_trains': True,
+        'record_synapse_distributions': True 
     },
     'fi_ci': {  # FR/I - ramp current injection
         'h_tstop': 5000,
@@ -243,12 +303,15 @@ def get_parameter_combinations(param_dict):
             # Only add suffix if more than one value is provided or forced.
             if len(param_dict[key]['values']) > 1 or param_dict[key].get('always_include_suffix', False):
                 # If value is a dict and a nested key is provided, extract that nested value.
-                if isinstance(value, dict) and 'nested_key' in param_dict[key]:
-                    nested_keys = param_dict[key]['nested_key'].split('.')
-                    nested_value = value
-                    for nk in nested_keys:
-                        nested_value = nested_value[nk]
-                    formatted = format_value(nested_value)
+                if isinstance(value, dict) and 'nested_keys' in param_dict[key]:
+                    suffix_values = []
+                    for nested_key in param_dict[key]['nested_keys']:
+                        keys_list = nested_key.split('.')
+                        nested_value = value
+                        for nk in keys_list:
+                            nested_value = nested_value[nk]
+                        suffix_values.append(format_value(nested_value))
+                    formatted = '_'.join(suffix_values)
                 else:
                     formatted = format_value(value)
                 suffix_parts.append(f"{param_dict[key]['sim_name_suffix']}{formatted}")
@@ -280,12 +343,15 @@ def get_index_matched_parameter_combinations(param_dict):
             value = values[i] if len(values) > 1 else values[0]
             combo[key] = value
             if len(values) > 1 or param_dict[key].get('always_include_suffix', False):
-                if isinstance(value, dict) and 'nested_key' in param_dict[key]:
-                    nested_keys = param_dict[key]['nested_key'].split('.')
-                    nested_value = value
-                    for nk in nested_keys:
-                        nested_value = nested_value[nk]
-                    formatted = format_value(nested_value)
+                if isinstance(value, dict) and 'nested_keys' in param_dict[key]:
+                    suffix_values = []
+                    for nested_key in param_dict[key]['nested_keys']:
+                        keys_list = nested_key.split('.')
+                        nested_value = value
+                        for nk in keys_list:
+                            nested_value = nested_value[nk]
+                        suffix_values.append(format_value(nested_value))
+                    formatted = '_'.join(suffix_values)
                 else:
                     formatted = format_value(value)
                 suffix_parts.append(f"{param_dict[key]['sim_name_suffix']}{formatted}")
