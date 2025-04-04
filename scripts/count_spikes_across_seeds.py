@@ -15,81 +15,138 @@ sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../Modules"))
 from Modules import analysis
 
-DUR_TO_USE = 10 # seconds of simulation
+# DUR_TO_USE = 10 # seconds of simulation
 
-def count_events_per_micron_per_second(sim_path):
-    segs_na_df, segs_nmda_df, segs_ca_df = get_dfs_from_path(sim_path)
+# def count_events_per_micron_per_second(sim_path):
+#     segs_na_df, segs_nmda_df, segs_ca_df = get_dfs_from_path(sim_path)
 
-    # Initialize an empty list to collect rows before converting them into a DataFrame
-    rows = []
+#     # Initialize an empty list to collect rows before converting them into a DataFrame
+#     rows = []
 
-    # Define the spike types and their corresponding DataFrames and output column names
-    spike_types = {
-        'num_nmda_spikes': ('Total_NMDA_Spikes_per_micron', segs_nmda_df),
-        'num_na_spikes': ('Total_NA_Spikes_per_micron', segs_na_df),
-        'num_ca_spikes': ('Total_CA_Spikes_per_micron', segs_ca_df)
-    }
+#     # Define the spike types and their corresponding DataFrames and output column names
+#     spike_types = {
+#         'num_nmda_spikes': ('Total_NMDA_Spikes_per_micron', segs_nmda_df),
+#         'num_na_spikes': ('Total_NA_Spikes_per_micron', segs_na_df),
+#         'num_ca_spikes': ('Total_CA_Spikes_per_micron', segs_ca_df)
+#     }
 
-    # Calculate the spikes per second per micron for each segment type
-    for seg_type in ['apic', 'dend']:
-        row = {'Segment_Type': seg_type}
-        for spike_field, (column_name, df) in spike_types.items():
-            # # Select only the segments of the current type
-            # sub_df = df[df.Type == seg_type]
-            # # Sum the number of spikes and segment lengths
-            # total_spikes = sub_df[spike_field].sum()
-            # total_length = sub_df['L'].sum()
-            # # Avoid division by zero: if total_length is zero, set rate to zero
-            # if total_length > 0:
-            #     spikes_per_micron = round(total_spikes / (DUR_TO_USE * total_length), 8)
-            # else:
-            #     spikes_per_micron = 0
-                        # Filter for segments of the current type and ensure segment length is not zero
-            # row[column_name] = spikes_per_micron
+#     # Calculate the spikes per second per micron for each segment type
+#     for seg_type in ['apic', 'dend']:
+#         row = {'Segment_Type': seg_type}
+#         for spike_field, (column_name, df) in spike_types.items():
+#             # # Select only the segments of the current type
+#             # sub_df = df[df.Type == seg_type]
+#             # # Sum the number of spikes and segment lengths
+#             # total_spikes = sub_df[spike_field].sum()
+#             # total_length = sub_df['L'].sum()
+#             # # Avoid division by zero: if total_length is zero, set rate to zero
+#             # if total_length > 0:
+#             #     spikes_per_micron = round(total_spikes / (DUR_TO_USE * total_length), 8)
+#             # else:
+#             #     spikes_per_micron = 0
+#                         # Filter for segments of the current type and ensure segment length is not zero
+#             # row[column_name] = spikes_per_micron
 
-            sub_df = df[(df.Type == seg_type) & (df['L'] != 0)]
+#             sub_df = df[(df.Type == seg_type) & (df['L'] != 0)]
             
-            # Calculate the spike density for each segment individually, then sum them up.
-            # Each segment's density is (spike count) / (DUR_TO_USE * segment length)
-            if not sub_df.empty:
-                density_sum = (sub_df[spike_field] / (DUR_TO_USE * sub_df['L'])).sum()
-                row[column_name] = density_sum
-            else:
-                row[column_name] = 0
-        rows.append(row)
+#             # Calculate the spike density for each segment individually, then sum them up.
+#             # Each segment's density is (spike count) / (DUR_TO_USE * segment length)
+#             if not sub_df.empty:
+#                 density_sum = (sub_df[spike_field] / (DUR_TO_USE * sub_df['L'])).sum()
+#                 row[column_name] = density_sum
+#             else:
+#                 row[column_name] = 0
+#         rows.append(row)
 
-    # Convert the list of rows into a DataFrame
-    spike_density_table = pd.DataFrame(rows)
-    return spike_density_table
+#     # Convert the list of rows into a DataFrame
+#     spike_density_table = pd.DataFrame(rows)
+#     return spike_density_table
 
 
-def count_events_per_second(sim_path):
+# def count_events_per_second(sim_path):
+#     segs_na_df, segs_nmda_df, segs_ca_df = get_dfs_from_path(sim_path)
+
+#     # Initialize an empty list to collect rows before converting them into a DataFrame
+#     rows = []
+
+#     # Define the spike types and their corresponding DataFrames and columns
+#     spike_types = {
+#         'num_nmda_spikes': ('Total_NMDA_Spikes', segs_nmda_df),
+#         'num_na_spikes': ('Total_NA_Spikes', segs_na_df),
+#         'num_ca_spikes': ('Total_CA_Spikes', segs_ca_df)
+#     }
+#     print(f"segs_na_df: {segs_na_df}")
+
+#     # Calculate the total number of spikes for each segment type and spike type
+#     for seg_type in ['apic', 'dend']:
+#         row = {'Segment_Type': seg_type}
+#         for spike_field, (column_name, df) in spike_types.items():
+#             total_spikes = df[df.Type == seg_type][spike_field].sum()
+#             row[column_name] = round(total_spikes / DUR_TO_USE, 1)
+#         rows.append(row)
+
+#     # Convert the list of rows into a DataFrame
+#     spike_table = pd.DataFrame(rows)
+
+#     # Display the table
+#     return spike_table
+
+def count_events(sim_path):
+    # Get the DataFrames for NA, NMDA, and CA spikes
     segs_na_df, segs_nmda_df, segs_ca_df = get_dfs_from_path(sim_path)
 
-    # Initialize an empty list to collect rows before converting them into a DataFrame
-    rows = []
-
-    # Define the spike types and their corresponding DataFrames and columns
+    dur_to_use = analysis.DataReader.load_parameters(sim_path).h_tstop / 1000
+    
+    # Define the spike types with the corresponding DataFrames and desired column names
+    # for both per micron and per second calculations.
     spike_types = {
-        'num_nmda_spikes': ('Total_NMDA_Spikes', segs_nmda_df),
-        'num_na_spikes': ('Total_NA_Spikes', segs_na_df),
-        'num_ca_spikes': ('Total_CA_Spikes', segs_ca_df)
+        'num_nmda_spikes': {
+            'per_micron': 'Total_NMDA_Spikes_per_micron',
+            'per_second': 'Total_NMDA_Spikes',
+            'df': segs_nmda_df
+        },
+        'num_na_spikes': {
+            'per_micron': 'Total_NA_Spikes_per_micron',
+            'per_second': 'Total_NA_Spikes',
+            'df': segs_na_df
+        },
+        'num_ca_spikes': {
+            'per_micron': 'Total_CA_Spikes_per_micron',
+            'per_second': 'Total_CA_Spikes',
+            'df': segs_ca_df
+        }
     }
-    print(f"segs_na_df: {segs_na_df}")
-
-    # Calculate the total number of spikes for each segment type and spike type
+    
+    # List to hold each row (one per segment type)
+    rows = []
+    
+    # Loop over each segment type: 'apic' and 'dend'
     for seg_type in ['apic', 'dend']:
         row = {'Segment_Type': seg_type}
-        for spike_field, (column_name, df) in spike_types.items():
+        
+        for spike_field, params in spike_types.items():
+            df = params['df']
+            
+            # Calculate the per micron per second value:
+            #   Filter for segments of the current type and with non-zero length.
+            sub_df = df[(df.Type == seg_type) & (df['L'] != 0)]
+            if not sub_df.empty:
+                # For each segment, density = spike count / (DUR_TO_USE * segment length)
+                density_sum = (sub_df[spike_field] / (dur_to_use * sub_df['L'])).sum()
+            else:
+                density_sum = 0
+            row[params['per_micron']] = density_sum
+            
+            # Calculate the total spikes per second:
             total_spikes = df[df.Type == seg_type][spike_field].sum()
-            row[column_name] = round(total_spikes / DUR_TO_USE, 1)
+            row[params['per_second']] = total_spikes / dur_to_use
+        
         rows.append(row)
+    
+    # Convert the collected rows into a DataFrame and return it.
+    combined_table = pd.DataFrame(rows)
+    return combined_table
 
-    # Convert the list of rows into a DataFrame
-    spike_table = pd.DataFrame(rows)
-
-    # Display the table
-    return spike_table
 
 def read_segs(sim_directory):
         segs = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
@@ -249,10 +306,10 @@ def aggregate_simulation_data(simulations_directory):
     
     for sim_directory in os.listdir(simulations_directory):
         sim_path = os.path.join(simulations_directory, sim_directory)
-        if not os.path.isdir(sim_path):
+        if not os.path.isdir(sim_path) or (sim_directory in ["Soma FR Results"]):
             continue  # Skip non-directory files
             
-        spike_table = count_events_per_second(sim_path)
+        spike_table = count_events(sim_path)
         spike_table['simulation_directory'] = sim_directory  # Add directory name to the table
         combined_table.append(spike_table)
     
