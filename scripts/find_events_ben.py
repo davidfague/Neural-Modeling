@@ -107,9 +107,16 @@ def load_data(sim_directory, ben):
         na = analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t").T
         spks = analysis.DataReader.read_data(sim_directory, "soma_spikes")
         v = analysis.DataReader.read_data(sim_directory, "v").T
-        hva = analysis.DataReader.read_data(sim_directory, "ica_Ca_HVA").T
-        lva = analysis.DataReader.read_data(sim_directory, "ica_Ca_LVAst").T
+        try:
+            hva = analysis.DataReader.read_data(sim_directory, "ica_Ca_HVA").T
+            lva = analysis.DataReader.read_data(sim_directory, "ica_Ca_LVAst").T
+        except Exception as e:
+            print(f"Error loading HVA/LVA data: {e}")
+            Warning("Falling back onto ica. setting HVA = ica and LVA=zeros (easy fix since their sum will be used later anyway.)")
+            hva = analysis.DataReader.read_data(sim_directory, "ica").T
+            lva = np.zeros(hva.shape)
         ih = analysis.DataReader.read_data(sim_directory, "ihcn_Ih").T
+        print(F"{np.shape(hva)} {np.shape(lva)} {np.shape(ih)}")
         parameters = analysis.DataReader.load_parameters(sim_directory)
         if parameters.exc_syn_mod == 'pyr2pyr': # two types with different variable name
             nmda = analysis.DataReader.read_data(sim_directory, "inmda").T
@@ -287,12 +294,29 @@ def compute_nmda_df(nmda, v, segs, sim_directory, ben):
 def compute_dfs(sim_directory, ben):
     if not os.path.exists(os.path.join(sim_directory, 'na.csv')) or not os.path.exists(os.path.join(sim_directory, 'ca.csv')) or not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
         na, hva, lva, ih, nmda, v, spkinds, segs = load_data(sim_directory, ben)
+    else:
+        print(f"DataFrames already exist in {sim_directory}. Skipping computation.")
+        return # skip rest of the function
+
     if not os.path.exists(os.path.join(sim_directory, 'na.csv')):
         compute_na_df(na, segs, spkinds, sim_directory, ben)
+    else:
+        print(f"na.csv already exists in {sim_directory}. Skipping computation.")
+
     if not os.path.exists(os.path.join(sim_directory, 'ca.csv')):
-        compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben)
+        try:
+            compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben)
+        except Exception as e:
+            print(f"Error computing CA DataFrame (Likely due to no segments meeting the coordinates criteria  if this is L2/3 instead of L5): {e}")
+    else:
+        print(f"ca.csv already exists in {sim_directory}. Skipping computation.")
+
     if not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
         compute_nmda_df(nmda, v, segs, sim_directory, ben)
+    else:
+        print(f"nmda.csv already exists in {sim_directory}. Skipping computation.")
+    
+    print(f"DataFrames computed and saved to {sim_directory}")
 
 if __name__ ==  "__main__":
     ben = False
