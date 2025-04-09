@@ -1,0 +1,6 @@
+,Synapse Type,Location Type,initW_mean,initW_std,PSC Mean,PSC Std,PSC_mean_error,PSC_std_error,n_tests
+0,inhPerisomatic,perisomatic,8.017,0.0,196.264,217.93,12.036,-159.23,208
+1,exc,distal_basal,0.396,0.0,30.65,22.207,-0.05,7.693,334
+2,exc,distal_apic,0.419,0.0,30.505,23.855,0.095,6.045,738
+3,inhDendritic,distal_basal,6.614,0.0,25.0,10.112,1.5,-8.512,334
+4,inhDendritic,distal_apic,1.868,0.0,26.393,11.468,0.107,-9.868,738

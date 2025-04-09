@@ -111,3 +111,4 @@ def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.
     ax.set_ylabel('Z')
     ax.set_zlabel('Y')
     plt.show()
+    return fig, ax
