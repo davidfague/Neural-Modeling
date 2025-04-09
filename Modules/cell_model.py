@@ -406,7 +406,7 @@ class CellModel:
 			if isinstance(syn_params, (tuple, list)):  # select a syn_param dictionary from the options
 				# Excitatory
 				if 'AMPA' in syn_mod or 'pyr2pyr' in syn_mod:
-					syn_params = np.random.choice(syn_params, p=(0.9, 0.1))
+					syn_params = self.random_state.choice(syn_params, p=(0.9, 0.1))
 				# Inhibitory
 				elif 'GABA' in syn_mod or 'int2pyr' in syn_mod:
 					# Second option is for > 100 um from soma, else first option
