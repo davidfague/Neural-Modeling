@@ -71,6 +71,10 @@ def _compute_sta_for_each_train_in_a_list(list_of_trains, spikes, win_length=60)
         sta = (sta - np.mean(cont_train)) / (np.mean(cont_train) + 1e-15) * 100 # percent change from mean
         stas.append(sta)
 
+    stas = [arr.reshape(1, -1) if arr.ndim == 1 else arr
+        for arr in stas
+    ]
+
     stas = np.concatenate(stas)
     return stas
 
