@@ -406,7 +406,7 @@ class CellModel:
 			if isinstance(syn_params, (tuple, list)):  # select a syn_param dictionary from the options
 				# Excitatory
 				if 'AMPA' in syn_mod or 'pyr2pyr' in syn_mod:
-					syn_params = self.random_state.choice(syn_params, p=(0.9, 0.1))
+					syn_params = self.random_state.choice(syn_params, p=(0.9, 0.1)) # choose between CS2CP and CP2CP if it is AMPA. pyr2pyr will not be a tuple or list.
 				# Inhibitory
 				elif 'GABA' in syn_mod or 'int2pyr' in syn_mod:
 					# Second option is for > 100 um from soma, else first option
@@ -666,7 +666,7 @@ class CellModel:
 			all_segments = []
 			for root_section in self.get_root_sections("trunk"):
 				all_segments.extend(gather_segments_recursively(root_section, stop_segments))
-			all_segments = [seg for seg in all_segments if ((h.distance(self.soma[0](0.5), seg) < 400) and (seg.sec in self.apic))]
+			all_segments = [seg for seg in all_segments if ((h.distance(self.soma[0](0.5), seg) < 400) and (seg.sec in self.apic) and (h.distance(self.soma[0](0.5), seg) > 50))]
 			return all_segments
 		elif sec_type_to_get == 'soma':
 			return [seg for seg in self.soma[0]]
@@ -679,12 +679,14 @@ class CellModel:
 		elif sec_type_to_get == 'perisomatic':
 			return [seg for sec in self.all for seg in sec if ((h.distance(self.soma[0](0.5), seg) <= 50) and ((sec not in self.axon) and (sec not in self.soma)))]
 
-		# General case: Gather all segments for the specified section type
+		# General case: Gather all segments for the specified section type (tuft and oblique)
 		all_segments = []
 		for root_section in self.get_root_sections(sec_type_to_get):
 			all_segments.extend(gather_segments_recursively(root_section))
+			# since this is not perisomatic, use >50 microns away from soma
+			all_segments = [seg for seg in all_segments if h.distance(self.soma[0](0.5), seg) > 50]
 		
-		if sec_type_to_get == 'tuft': # subset the segments that have been gathered for tuft to not include nexus
+		if sec_type_to_get == 'tuft': # subset the segments that have been gathered for tuft to not include nexus (extra filtering for tuft)
 			all_segments = [seg for seg in all_segments if (h.distance(self.soma[0](0.5), seg) > 800)]
 		
 		if all_segments == []:
@@ -693,7 +695,7 @@ class CellModel:
 		return all_segments
 	
 	def get_actual_sec_types(self, sec_type_to_get):
-		'''converts 'basal' to 'dend', 'trunk', 'oblique', 'tuft' to 'apic' (the 'actual' names that are the conventional attributes of cell_model and templates.)'''
+		'''converts 'basal' to 'dend'; 'trunk', 'oblique', 'tuft' to 'apic' (the 'actual' names that are the conventional attributes of cell_model and templates.)'''
 		return 'dend' if sec_type_to_get in ['dend','basal'] else 'apic' if sec_type_to_get in ['apic','trunk','oblique','tuft'] else NotImplementedError(f"{sec_type_to_get}")
 	
 	# @MARK deprecate--possibly only used for counting total number of terminal branches (get_basals, get_tufts_obliques, get_nbranch)
