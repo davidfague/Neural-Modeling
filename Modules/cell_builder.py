@@ -461,6 +461,9 @@ class CellBuilder:
   
 	def assign_soma_spike_trains(self, cell, random_state, exc_spike_trains) -> None: #@MARK CHECK: merging with assign_inhibitory_spike_trains
 
+		cell.random_state = np.random.RandomState(self.parameters.precell_spikes_seeds['soma_inh'])
+		np.random.seed(self.parameters.precell_spikes_seeds['soma_inh'])
+
 		# Proximal inh mean_fr distribution
 		mean_fr, std_fr = self.parameters.inh_prox_mean_fr, self.parameters.inh_prox_std_fr
 		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
@@ -490,6 +493,9 @@ class CellBuilder:
 
 
 	def assign_inhibitory_spike_trains(self, cell, random_state, exc_spike_trains) -> None:
+
+		cell.random_state = np.random.RandomState(self.parameters.precell_spikes_seeds['inh'])
+		np.random.seed(self.parameters.precell_spikes_seeds['inh'])
 
 		# Proximal inh mean_fr distribution
 		mean_fr, std_fr = self.parameters.inh_prox_mean_fr, self.parameters.inh_prox_std_fr
@@ -534,6 +540,9 @@ class CellBuilder:
 					syn.set_spike_train_from_pc()
 
 	def assign_excitatory_spike_trains(self, cell, random_state) -> None:
+
+		cell.random_state = np.random.RandomState(self.parameters.precell_spikes_seeds['exc'])
+		np.random.seed(self.parameters.precell_spikes_seeds['exc'])
 
 		exc_spike_trains = []
 		exc_mean_frs = []
@@ -677,6 +686,8 @@ class CellBuilder:
 	def build_inh_synapses(self, cell):
 		for sec_type in self.parameters.inh_syn_properties.keys():
 			syn_props = self.parameters.inh_syn_properties[sec_type]
+			cell.random_state = np.random.RandomState(self.parameters.inh_syn_properties[sec_type]['seed']['synapses'])
+			np.random.seed(self.parameters.inh_syn_properties[sec_type]['seed']['synapses'])
 			self.build_synapses_with_specs(
 				cell=cell,
 				sec_type_to_get=sec_type,
@@ -714,6 +725,8 @@ class CellBuilder:
 		"""
 		for sec_type in self.parameters.exc_syn_properties.keys():
 			syn_props = self.parameters.exc_syn_properties[sec_type]
+			cell.random_state = np.random.RandomState(self.parameters.exc_syn_properties[sec_type]['seed']['synapses'])
+			np.random.seed(self.parameters.exc_syn_properties[sec_type]['seed']['synapses'])
 			self.build_synapses_with_specs(
 				cell=cell,
 				sec_type_to_get=sec_type,

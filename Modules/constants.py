@@ -105,77 +105,100 @@ class SimulationParameters:
 	# })
 
 	# with decreased mean fr std
-	# exc_syn_properties: dict = field(default_factory=lambda: { 
-	# 	'trunk': {'syn_density': 2.16*0.25, 'syn_number': 26112/8, 
-	# 		'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}
-	# 		},
-	# 	'oblique': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
-	# 		'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}
-	# 		},
-	# 	'tuft': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
-	# 		'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,2), 'scalar': 1}
-	# 		},
-	# 	'nexus':{'syn_density': 2.16*0.05, 'syn_number': 26112/8,
-	# 		'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}
-	# 		},
-	# 	'distal_basal': {'syn_density': 2.16*1.05, 'syn_number': 26112,
-	# 		'gmax_params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1}
-	# 		},
-	# })
+	exc_syn_properties: dict = field(default_factory=lambda: { 
+		'tuft': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
+			'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,2), 'scalar': 1},
+			'seed': {'synapses': 3333333}
+			},
+		'nexus':{'syn_density': 2.16*0.05, 'syn_number': 26112/8,
+			'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
+			'seed': {'synapses': 444444444}
+			},
+		'trunk': {'syn_density': 2.16*0.25, 'syn_number': 26112/8, 
+			'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
+			'seed': {'synapses': 111111}
+			},
+		'oblique': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
+			'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
+			'seed': {'synapses': 222222}
+			},
+		'distal_basal': {'syn_density': 2.16*1.05, 'syn_number': 26112,
+			'gmax_params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1},
+			'seed': {'synapses': 555555555}
+			},
+	})
 	# NOTE: [trunk, oblique, tuft] fields can be replaced with 'distal_apic' if desired
 	# NOTE: gmax is clipped to (0,10*mean); no scalar implemented.
+	inh_syn_properties: dict = field(default_factory=lambda: {
+		'tuft': {'syn_density': 0.22*1.5, 'syn_number': 3066,
+			'gmax_params': {'mean': 1.87*8/8*2*4, 'std': 0.08474},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
+			'P_release_params': {'mean': 0.3, 'std': 0.08},
+			'seed': {'synapses': 11111111}
+			},
+		'nexus': {'syn_density': 0.22*1.5, 'syn_number': 3066,
+			'gmax_params': {'mean': 1.87*10/10, 'std': 0.08474},#0.08474*0.2*0.66*0.1},
+			'P_release_params': {'mean': 0.3, 'std': 0.08},
+			'seed': {'synapses': 22222222}
+			},
+		'trunk': {'syn_density': 0.22, 'syn_number': 3066,
+			'gmax_params': {'mean': 1.87/2, 'std': 0.08474},#*0.2*0.66*0.1},
+			'P_release_params': {'mean': 0.3, 'std': 0.08},
+			'seed': {'synapses': 88888888}
+			},
+		'oblique': {'syn_density': 0.22, 'syn_number': 3066,
+			'gmax_params': {'mean': 1.87*4/4, 'std': 0.08474},#*0.2*0.66*0.1},
+			'P_release_params': {'mean': 0.3, 'std': 0.08},
+			'seed': {'synapses': 99999999}
+			},
+		'distal_basal': {'syn_density': 0.22, 'syn_number': 3066,
+			'gmax_params': {'mean': 1.87, 'std': 0.08474},#0.08474*0.916*0.5*.16},
+			'P_release_params': {'mean': 0.72, 'std': 0.1},
+			'seed': {'synapses': 111333311}
+			},
+		'perisomatic': {'syn_density': 0.22*1.3/1.3, 'syn_number': 3066,
+			'gmax_params': {'mean': 4.6, 'std':  0.175*.5},
+			'P_release_params': {'mean': 0.88, 'std': 0.05},
+			'seed': {'synapses': 777777777}
+			},
+	})
+
+
+	# ## for L2/3
+	# exc_syn_properties: dict = field(default_factory=lambda: { 
+	# 	'apic': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
+	# 		'gmax_params': {'mean': 0.42*0.4, 'std': 0.9675*0.1, 'clip': (0,2), 'scalar': 1},
+	# 		'seed': {'synapses': 111111}#, 'spike_trains': 2}
+	# 		},
+	# 	'dend': {'syn_density': 2.16*1.05, 'syn_number': 26112,
+	# 		'gmax_params': {'mean': 0.396*0.4, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1},
+	# 		'seed': {'synapses': 333333}#, 'spike_trains': 4}
+	# 		},
+	# })
 	# inh_syn_properties: dict = field(default_factory=lambda: {
 	# 	'perisomatic': {'syn_density': 0.22*1.3/1.3, 'syn_number': 3066,
 	# 		'gmax_params': {'mean': 4.6, 'std':  0.175*.5},
-	# 		'P_release_params': {'mean': 0.88, 'std': 0.05}
+	# 		'P_release_params': {'mean': 0.88, 'std': 0.05},
+	# 		'seed': {'synapses': 555555}#, 'spike_trains': 6}
 	# 		},
-	# 	'trunk': {'syn_density': 0.22, 'syn_number': 3066,
-	# 		'gmax_params': {'mean': 1.87/2, 'std': 0.08474},#*0.2*0.66*0.1},
-	# 		'P_release_params': {'mean': 0.3, 'std': 0.08}
-	# 		},
-	# 	'oblique': {'syn_density': 0.22, 'syn_number': 3066,
-	# 		'gmax_params': {'mean': 1.87*4/4, 'std': 0.08474},#*0.2*0.66*0.1},
-	# 		'P_release_params': {'mean': 0.3, 'std': 0.08}
-	# 		},
-	# 	'tuft': {'syn_density': 0.22*1.5, 'syn_number': 3066,
-	# 		'gmax_params': {'mean': 1.87*8/8*2*4, 'std': 0.08474},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
-	# 		'P_release_params': {'mean': 0.3, 'std': 0.08}
-	# 		},
-	# 	'nexus': {'syn_density': 0.22*1.5, 'syn_number': 3066,
-	# 		'gmax_params': {'mean': 1.87*10/10, 'std': 0.08474},#0.08474*0.2*0.66*0.1},
-	# 		'P_release_params': {'mean': 0.3, 'std': 0.08}
-	# 		},
-	# 	'distal_basal': {'syn_density': 0.22, 'syn_number': 3066,
+	# 	'dend': {'syn_density': 0.22, 'syn_number': 3066,
 	# 		'gmax_params': {'mean': 1.87, 'std': 0.08474},#0.08474*0.916*0.5*.16},
-	# 		'P_release_params': {'mean': 0.72, 'std': 0.1}
-	# 		}
+	# 		'P_release_params': {'mean': 0.72, 'std': 0.1},
+	# 		'seed': {'synapses': 777777}#, 'spike_trains': 8}
+	# 		},
+	# 	'apic': {'syn_density': 0.22*1.5, 'syn_number': 3066,
+	# 		'gmax_params': {'mean': 1.87*8/8*2*4, 'std': 0.08474},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
+	# 		'P_release_params': {'mean': 0.3, 'std': 0.08},
+	# 		'seed': {'synapses': 999999}#, 'spike_trains': 10}
+	# 		},
 	# })
 
+	# spike train seeding
+	precell_spikes_seeds: dict = field(default_factory=lambda: {
+		'exc': 5555555,
+		'inh': 7777777,
+		'soma_inh': 8888888,
+	})
 
-	## for L2/3
-	exc_syn_properties: dict = field(default_factory=lambda: { 
-		'apic': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
-			'gmax_params': {'mean': 0.42*0.4, 'std': 0.9675*0.1, 'clip': (0,2), 'scalar': 1}
-			},
-		'dend': {'syn_density': 2.16*1.05, 'syn_number': 26112,
-			'gmax_params': {'mean': 0.396*0.4, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1}
-			},
-	})
-	inh_syn_properties: dict = field(default_factory=lambda: {
-		'perisomatic': {'syn_density': 0.22*1.3/1.3, 'syn_number': 3066,
-			'gmax_params': {'mean': 4.6, 'std':  0.175*.5},
-			'P_release_params': {'mean': 0.88, 'std': 0.05}
-			},
-		'dend': {'syn_density': 0.22, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87, 'std': 0.08474},#0.08474*0.916*0.5*.16},
-			'P_release_params': {'mean': 0.72, 'std': 0.1}
-			},
-		'apic': {'syn_density': 0.22*1.5, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87*8/8*2*4, 'std': 0.08474},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
-			'P_release_params': {'mean': 0.3, 'std': 0.08}
-			},
-	})
-	
 	# Synapse Release probability distributions
 	exc_P_release_mean: float = 0.53 # can move to syn_properties
 	exc_P_release_std: float = 0.22
