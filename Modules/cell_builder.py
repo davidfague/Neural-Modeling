@@ -177,7 +177,7 @@ class CellBuilder:
   
 	# Build synapses & reduce cell
 		if self.parameters.synapse_mapping:
-			self.build_synapses(cell, random_state)
+			exc_spike_trains, exc_mean_frs = self.build_synapses(cell, random_state)
 			if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
 				cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
 							reduce_basals = self.parameters.reduce_basals,
@@ -191,7 +191,7 @@ class CellBuilder:
 							reduce_obliques = self.parameters.reduce_obliques,
 							reduce_apic=self.parameters.reduce_apic,
 							cell = cell)
-					self.build_synapses(cell, random_state)
+					exc_spike_trains, exc_mean_frs = self.build_synapses(cell, random_state)
 			else:
 				self.build_synapses(cell, random_state)
     
@@ -220,6 +220,8 @@ class CellBuilder:
 				self.logger.log("Merging synapses.")
 				reductor.merge_synapses(cell)
 		self.logger.log(f"Total number of segments: {sum([sec.nseg for sec in cell.all])}")
+
+		self.check_and_save_generated_synapses(cell, exc_spike_trains, exc_mean_frs)
 
 		# set v_init for all compartments
 		h.v_init = self.parameters.h_v_init
@@ -304,160 +306,10 @@ class CellBuilder:
 
 		self.logger.log(f"Built synapse types: {np.unique([syn.name for syn in cell.synapses])}")
 
-		# Check for synapses missing netcons
-		names_no_spike_train = [syn.name for syn in cell.synapses if len(syn.netcons) == 0]
-		if names_no_spike_train:
-			self.logger.log(
-				f"Spike trains not assigned to synapses: "
-				f"{ {name: names_no_spike_train.count(name) for name in set(names_no_spike_train)} }\n"
-				f"Unique names: {np.unique(names_no_spike_train)}"
-			)
-		else:
-			self.logger.log("All spike trains assigned.")
-
-		# Check for synapses missing a presynaptic cell
-		names_no_presyn = [syn.name for syn in cell.synapses if syn.pc is None]
-		if names_no_presyn:
-			self.logger.log(
-				f"Synapses without presynaptic cell found: "
-				f"{ {name: names_no_presyn.count(name) for name in set(names_no_presyn)} }\n"
-				f"Unique names: {np.unique(names_no_presyn)}"
-			)
-		else:
-			self.logger.log("All synapses have a presynaptic cell.")
-
-		if names_no_spike_train:
-			segments_no_spike_train = [syn.h_syn.get_segment() for syn in cell.synapses if len(syn.netcons) == 0]
-			self.logger.log(
-				f"Segments of synapses without spike trains: "
-				f"{ {name: segments_no_spike_train.count(name) for name in set(segments_no_spike_train)} }\n"
-				f"Unique names: {np.unique(segments_no_spike_train)}"
-			)
-
-  
-		# record spike trains #@MARK need to update this to gather the names of the synapses for each spike train.
-		if self.parameters.record_spike_trains:
-			spike_train_data = {
-				'exc_spike_trains': exc_spike_trains,
-				'soma_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses(['inh_perisomatic'])],
-				'inh_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses([self.parameters.inh_syn_properties.keys()])]
-			}
-			for dataset_name, data in spike_train_data.items():
-				file_path = os.path.join(self.parameters.path, f'{dataset_name}.h5')
-				with h5py.File(file_path, 'w') as h5f:
-					for i, sequence in enumerate(data):
-						h5f.create_dataset(f'spike_train_{i}', data=sequence)
-
-		# Record synapse distributions
-		if self.parameters.record_synapse_distributions:
-			all_segments = cell.get_segments_without_data(['all'])
-			# soma_synapses = cell.get_synapses(['soma_inh'])
-			# if len(soma_synapses) == 0:
-			# 	print("No soma synapses found. Feel free to delete.")
-			# inh_synapses = cell.get_synapses(['inh', 'inh_distal_basal', 'inh_distal_apic'])
-			inh_synapses = cell.get_synapses([f'inh_{sec_type}' for sec_type in self.parameters.inh_syn_properties.keys()])
-			# exc_synapses = cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"], all_with_prefix=True)
-			# exc_synapses = cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])
-			exc_synapses = cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])
-			synapse_data = {
-				'synapse_type': (
-					# [syn.name for syn in soma_synapses] +
-					[syn.name for syn in inh_synapses] +
-					[syn.name for syn in exc_synapses]
-					# ['soma_inh'] * len(soma_synapses) +
-					# ['inh'] * len(inh_synapses) +
-					# ['exc'] * len(exc_synapses)
-				),
-				'mean_firing_rate': (
-					# [syn.pc.mean_fr for syn in soma_synapses] +
-					[syn.pc.mean_fr for syn in inh_synapses] +
-					[syn.pc.mean_fr for syn in exc_synapses]
-				),
-				'weight': (
-					# [syn.gmax_val for syn in soma_synapses] +
-					[syn.gmax_val for syn in inh_synapses] +
-					[syn.gmax_val for syn in exc_synapses]
-				),
-				'seg_id': (
-					# [all_segments.index(syn.h_syn.get_segment()) for syn in soma_synapses] +
-					[all_segments.index(syn.h_syn.get_segment()) for syn in inh_synapses] +
-					[all_segments.index(syn.h_syn.get_segment()) for syn in exc_synapses]
-				),
-				'pc_name': (
-					# [syn.pc.name for syn in soma_synapses] +
-					[syn.pc.name for syn in inh_synapses] +
-					[syn.pc.name for syn in exc_synapses]
-				)
-			}
-
-			# # Check which elements are of object dtype since that is giving error.
-			# for key, values in synapse_data.items():
-			# 	values_array = np.array(values)
-			# 	if values_array.dtype == np.object:
-			# 		print(f"Key '{key}' has object dtype: {values_array.dtype}")
-			# 		print(f"Unique values: {np.unique(values_array)}")
-			# 		for idx,value in enumerate(values_array):
-			# 			synapse_type = synapse_data['synapse_type'][idx]
-			# 			print(f"{synapse_type} Value type: {type(value)}, value: {value}")
-			# 	else:
-			# 		print(f"Key '{key}' has dtype: {values_array.dtype}")
-
-			# Save synapse data to file
-			synapse_file_path = os.path.join(self.parameters.path, 'synapse_data.h5')
-			with h5py.File(synapse_file_path, 'w') as h5f:
-				for key, values in synapse_data.items():
-					h5f.create_dataset(key, data=values)
-
-
-		#@CHECKING resulting mean firing rate distribution
-		self.logger.log(f"exc_mean_frs result distribution {np.mean(exc_mean_frs):.2f}, {np.std(exc_mean_frs):.2f}")
-
-		#@CHECKING PCs
-		# Extract synaptic cells
-		# exc_pcs = [syn.pc for syn in cell.get_synapses(['exc_distal_basal', 'exc_oblique', 'exc_trunk', 'exc_tuft'])]
-		# inh_pcs = [syn.pc for syn in cell.get_synapses(['inh_distal_basal', 'inh_distal_apic']) if syn.h_syn.get_segment() in cell.get_segments_without_data(['dend', 'apic'])]
-		# soma_pcs = [syn.pc for syn in cell.get_synapses(['inh_perisomatic']) if syn.h_syn.get_segment() in cell.get_segments_of_type('perisomatic')]
-		exc_pcs = [syn.pc for syn in cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])]
-		inh_pcs = [syn.pc for syn in cell.get_synapses([f"inh_{sec_type}" for sec_type in self.parameters.inh_syn_properties.keys() if sec_type != 'perisomatic']) if (syn.h_syn.get_segment() in cell.get_segments_without_data(['dend', 'apic']))]
-		soma_pcs = [syn.pc for syn in cell.get_synapses(['inh_perisomatic']) if syn.h_syn.get_segment() in cell.get_segments_of_type('perisomatic')]
-
-		# Extract unique pcs based on names
-		exc_pcs_dict = {pc.name: pc for pc in exc_pcs}
-		inh_pcs_dict = {pc.name: pc for pc in inh_pcs}
-		soma_pcs_dict = {pc.name: pc for pc in soma_pcs}
-
-		exc_pcs_uni = list(exc_pcs_dict.values())
-		inh_pcs_uni = list(inh_pcs_dict.values())
-		soma_pcs_uni = list(soma_pcs_dict.values())
-
-		# Get counts
-		exc_pc_count = len(exc_pcs_uni)
-		inh_pc_count = len(inh_pcs_uni)
-		soma_pc_count = len(soma_pcs_uni)
-
-		# Calculate synapses per unique pc
-		exc_synapses_per_pc = [exc_pcs.count(pc) for pc in exc_pcs_uni]
-		inh_synapses_per_pc = [inh_pcs.count(pc) for pc in inh_pcs_uni]
-		soma_synapses_per_pc = [soma_pcs.count(pc) for pc in soma_pcs_uni]
-
-		# Print results
-		self.logger.log(f"number of EXC pcs: {exc_pc_count} mean/std number of synapses per pc: {np.mean(exc_synapses_per_pc):.2f}, {np.std(exc_synapses_per_pc):.2f}")
-		self.logger.log(f"number of INH pcs: {inh_pc_count} mean/std number of synapses per pc: {np.mean(inh_synapses_per_pc):.2f}, {np.std(inh_synapses_per_pc):.2f}")
-		self.logger.log(f"number of SOMA pcs: {soma_pc_count} mean/std number of synapses per pc: {np.mean(soma_synapses_per_pc):.2f}, {np.std(soma_synapses_per_pc):.2f}")
-
-		# calculate the mean fr distribution
-		exc_mean_frs = [pc.mean_fr for pc in exc_pcs_uni]
-		inh_mean_frs = [pc.mean_fr for pc in inh_pcs_uni]
-		soma_mean_frs = [pc.mean_fr for pc in soma_pcs_uni]
-
-		# Print results
-		self.logger.log(f"EXC mean fr distribution: {np.mean(exc_mean_frs):.2f}, {np.std(exc_mean_frs):.2f}")
-		self.logger.log(f"INH mean fr distribution: {np.mean(inh_mean_frs):.2f}, {np.std(inh_mean_frs):.2f}")
-		self.logger.log(f"SOMA mean fr distribution: {np.mean(soma_mean_frs):.2f}, {np.std(soma_mean_frs):.2f}")
-
-		# # change nseg back
+		# # change nseg back if it was increased for clustering
 		# for i, sec in enumerate(cell.all):
 		# 	sec.nseg = all_nseg[i]
+		return exc_spike_trains, exc_mean_frs
   
 	def assign_soma_spike_trains(self, cell, random_state, exc_spike_trains) -> None: #@MARK CHECK: merging with assign_inhibitory_spike_trains
 
@@ -474,7 +326,7 @@ class CellBuilder:
 		n_func_gr = self.parameters.soma_n_fun_gr,
 		n_pc_per_fg = self.parameters.soma_n_pc_per_fg,
 		synapse_names = ["inh_perisomatic"],
-		seg_names = ["soma"]
+		seg_names = [sec_type for sec_type in ['perisomatic', 'soma', 'somatic'] if sec_type in self.parameters.inh_syn_properties.keys()]
 		) #5,20
 		firing_rates = PoissonTrainGenerator.generate_lambdas_by_delaying(self.parameters.h_tstop, exc_spike_trains)
 		for fg in soma_fgs: # one fr profile per fg
@@ -508,13 +360,12 @@ class CellBuilder:
 		distal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
 
 		soma_coords = cell.get_segments(["soma"])[1][0].coords[["pc_0", "pc_1", "pc_2"]].to_numpy()
-  
 		inh_fgs = PCBuilder.assign_presynaptic_cells(
 			cell = cell,
 			n_func_gr = self.parameters.inh_n_FuncGroups,
 			n_pc_per_fg = self.parameters.inh_n_PreCells_per_FuncGroup,
 			synapse_names = [f"inh_{sec_type}" for sec_type in self.parameters.inh_syn_properties.keys()],#["inh_perisomatic", "inh_distal_basal", "inh_distal_apic"],
-			seg_names = ["dend", "apic"]
+			seg_names = [sec_type for sec_type in self.parameters.inh_syn_properties.keys() if sec_type not in ['perisomatic', 'soma','somatic']]#["dend", "apic"] #were causing problems
 		)
 		for fg in inh_fgs: # one fr profile per fg
 			firing_rates = PoissonTrainGenerator.generate_lambdas_by_delaying(self.parameters.h_tstop, exc_spike_trains)
@@ -562,7 +413,7 @@ class CellBuilder:
 			n_func_gr = self.parameters.exc_n_FuncGroups,
 			n_pc_per_fg = self.parameters.exc_n_PreCells_per_FuncGroup,
 			synapse_names = [f'exc_{sec_type}' for sec_type in self.parameters.exc_syn_properties.keys()],#["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique", "exc_distal_basal", "exc_distal_apic"], # probably only need last 2. can check build_exc_synapses.
-			seg_names = ["all"]
+			seg_names = [sec_type for sec_type in self.parameters.exc_syn_properties.keys()]
 		)
 		for fg in exc_fgs: # one fr profile per fg
 			firing_rates = PoissonTrainGenerator.generate_lambdas_from_pink_noise(
@@ -896,6 +747,159 @@ class CellBuilder:
 		
 					section_row[f"mechs.{mech}.{param}"] = value
   
+	def check_and_save_generated_synapses(self, cell, exc_spike_trains, exc_mean_frs) -> None:
+		# Check for synapses missing netcons
+		names_no_spike_train = [syn.name for syn in cell.synapses if len(syn.netcons) == 0]
+		if names_no_spike_train:
+			self.logger.log(
+				f"Spike trains not assigned to synapses: "
+				f"{ {name: names_no_spike_train.count(name) for name in set(names_no_spike_train)} }\n"
+				f"Unique names: {np.unique(names_no_spike_train)}"
+			)
+		else:
+			self.logger.log("All spike trains assigned.")
+
+		# Check for synapses missing a presynaptic cell
+		names_no_presyn = [syn.name for syn in cell.synapses if syn.pc is None]
+		if names_no_presyn:
+			self.logger.log(
+				f"Synapses without presynaptic cell found: "
+				f"{ {name: names_no_presyn.count(name) for name in set(names_no_presyn)} }\n"
+				f"Unique names: {np.unique(names_no_presyn)}"
+			)
+		else:
+			self.logger.log("All synapses have a presynaptic cell.")
+
+		if names_no_spike_train:
+			segments_no_spike_train = [syn.h_syn.get_segment() for syn in cell.synapses if len(syn.netcons) == 0]
+			self.logger.log(
+				f"Segments of synapses without spike trains: "
+				f"{ {name: segments_no_spike_train.count(name) for name in set(segments_no_spike_train)} }\n"
+				f"Unique names: {np.unique(segments_no_spike_train)}"
+			)
+
+
+		# record spike trains #@MARK need to update this to gather the names of the synapses for each spike train.
+		if self.parameters.record_spike_trains:
+			spike_train_data = {
+				'exc_spike_trains': exc_spike_trains,
+				'soma_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses(['inh_perisomatic'])],
+				'inh_spike_trains': [syn.pc.spike_train for syn in cell.get_synapses([self.parameters.inh_syn_properties.keys()])]
+			}
+			for dataset_name, data in spike_train_data.items():
+				file_path = os.path.join(self.parameters.path, f'{dataset_name}.h5')
+				with h5py.File(file_path, 'w') as h5f:
+					for i, sequence in enumerate(data):
+						h5f.create_dataset(f'spike_train_{i}', data=sequence)
+
+		# Record synapse distributions
+		if self.parameters.record_synapse_distributions:
+			all_segments = cell.get_segments_without_data(['all'])
+			print(f"length of all segments in builder when savinh synapses: {len(all_segments)}")
+			# soma_synapses = cell.get_synapses(['soma_inh'])
+			# if len(soma_synapses) == 0:
+			# 	print("No soma synapses found. Feel free to delete.")
+			# inh_synapses = cell.get_synapses(['inh', 'inh_distal_basal', 'inh_distal_apic'])
+			inh_synapses = cell.get_synapses([f'inh_{sec_type}' for sec_type in self.parameters.inh_syn_properties.keys()])
+			# exc_synapses = cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"], all_with_prefix=True)
+			# exc_synapses = cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])
+			exc_synapses = cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])
+			synapse_data = {
+				'synapse_type': (
+					# [syn.name for syn in soma_synapses] +
+					[syn.name for syn in inh_synapses] +
+					[syn.name for syn in exc_synapses]
+					# ['soma_inh'] * len(soma_synapses) +
+					# ['inh'] * len(inh_synapses) +
+					# ['exc'] * len(exc_synapses)
+				),
+				'mean_firing_rate': (
+					# [syn.pc.mean_fr for syn in soma_synapses] +
+					[syn.pc.mean_fr for syn in inh_synapses] +
+					[syn.pc.mean_fr for syn in exc_synapses]
+				),
+				'weight': (
+					# [syn.gmax_val for syn in soma_synapses] +
+					[syn.gmax_val for syn in inh_synapses] +
+					[syn.gmax_val for syn in exc_synapses]
+				),
+				'seg_id': (
+					# [all_segments.index(syn.h_syn.get_segment()) for syn in soma_synapses] +
+					[all_segments.index(syn.h_syn.get_segment()) for syn in inh_synapses] +
+					[all_segments.index(syn.h_syn.get_segment()) for syn in exc_synapses]
+				),
+				'pc_name': (
+					# [syn.pc.name for syn in soma_synapses] +
+					[syn.pc.name for syn in inh_synapses] +
+					[syn.pc.name for syn in exc_synapses]
+				)
+			}
+
+			# # Check which elements are of object dtype since that is giving error.
+			# for key, values in synapse_data.items():
+			# 	values_array = np.array(values)
+			# 	if values_array.dtype == np.object:
+			# 		print(f"Key '{key}' has object dtype: {values_array.dtype}")
+			# 		print(f"Unique values: {np.unique(values_array)}")
+			# 		for idx,value in enumerate(values_array):
+			# 			synapse_type = synapse_data['synapse_type'][idx]
+			# 			print(f"{synapse_type} Value type: {type(value)}, value: {value}")
+			# 	else:
+			# 		print(f"Key '{key}' has dtype: {values_array.dtype}")
+
+			# Save synapse data to file
+			synapse_file_path = os.path.join(self.parameters.path, 'synapse_data.h5')
+			with h5py.File(synapse_file_path, 'w') as h5f:
+				for key, values in synapse_data.items():
+					h5f.create_dataset(key, data=values)
+
+
+		#@CHECKING resulting mean firing rate distribution
+		self.logger.log(f"exc_mean_frs result distribution {np.mean(exc_mean_frs):.2f}, {np.std(exc_mean_frs):.2f}")
+
+		#@CHECKING PCs
+		# Extract synaptic cells
+		# exc_pcs = [syn.pc for syn in cell.get_synapses(['exc_distal_basal', 'exc_oblique', 'exc_trunk', 'exc_tuft'])]
+		# inh_pcs = [syn.pc for syn in cell.get_synapses(['inh_distal_basal', 'inh_distal_apic']) if syn.h_syn.get_segment() in cell.get_segments_without_data(['dend', 'apic'])]
+		# soma_pcs = [syn.pc for syn in cell.get_synapses(['inh_perisomatic']) if syn.h_syn.get_segment() in cell.get_segments_of_type('perisomatic')]
+		exc_pcs = [syn.pc for syn in cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])]
+		inh_pcs = [syn.pc for syn in cell.get_synapses([f"inh_{sec_type}" for sec_type in self.parameters.inh_syn_properties.keys() if sec_type != 'perisomatic']) if (syn.h_syn.get_segment() in cell.get_segments_without_data(['dend', 'apic']))]
+		soma_pcs = [syn.pc for syn in cell.get_synapses(['inh_perisomatic']) if syn.h_syn.get_segment() in cell.get_segments_of_type('perisomatic')]
+
+		# Extract unique pcs based on names
+		exc_pcs_dict = {pc.name: pc for pc in exc_pcs}
+		inh_pcs_dict = {pc.name: pc for pc in inh_pcs}
+		soma_pcs_dict = {pc.name: pc for pc in soma_pcs}
+
+		exc_pcs_uni = list(exc_pcs_dict.values())
+		inh_pcs_uni = list(inh_pcs_dict.values())
+		soma_pcs_uni = list(soma_pcs_dict.values())
+
+		# Get counts
+		exc_pc_count = len(exc_pcs_uni)
+		inh_pc_count = len(inh_pcs_uni)
+		soma_pc_count = len(soma_pcs_uni)
+
+		# Calculate synapses per unique pc
+		exc_synapses_per_pc = [exc_pcs.count(pc) for pc in exc_pcs_uni]
+		inh_synapses_per_pc = [inh_pcs.count(pc) for pc in inh_pcs_uni]
+		soma_synapses_per_pc = [soma_pcs.count(pc) for pc in soma_pcs_uni]
+
+		# Print results
+		self.logger.log(f"number of EXC pcs: {exc_pc_count} mean/std number of synapses per pc: {np.mean(exc_synapses_per_pc):.2f}, {np.std(exc_synapses_per_pc):.2f}")
+		self.logger.log(f"number of INH pcs: {inh_pc_count} mean/std number of synapses per pc: {np.mean(inh_synapses_per_pc):.2f}, {np.std(inh_synapses_per_pc):.2f}")
+		self.logger.log(f"number of SOMA pcs: {soma_pc_count} mean/std number of synapses per pc: {np.mean(soma_synapses_per_pc):.2f}, {np.std(soma_synapses_per_pc):.2f}")
+
+		# calculate the mean fr distribution
+		exc_mean_frs = [pc.mean_fr for pc in exc_pcs_uni]
+		inh_mean_frs = [pc.mean_fr for pc in inh_pcs_uni]
+		soma_mean_frs = [pc.mean_fr for pc in soma_pcs_uni]
+
+		# Print results
+		self.logger.log(f"EXC mean fr distribution: {np.mean(exc_mean_frs):.2f}, {np.std(exc_mean_frs):.2f}")
+		self.logger.log(f"INH mean fr distribution: {np.mean(inh_mean_frs):.2f}, {np.std(inh_mean_frs):.2f}")
+		self.logger.log(f"SOMA mean fr distribution: {np.mean(soma_mean_frs):.2f}, {np.std(soma_mean_frs):.2f}")
+
 	# @DEPRACATING neuron_reduce/cable_expander
 	# def perform_reduction(self, reductor, cell, random_state):
 	# 	if self.parameters.reduce_cell:
