@@ -264,16 +264,12 @@ class CellBuilder:
 		# 	all_nseg.append(nseg)
 		# 	sec.nseg = 1+2*int(sec.L/10)
   
-		# print(f"soma segments:{cell.get_segments_without_data(['soma'])}")
 		# craete synapse objects
 		self.logger.log("Building excitatory synapses.")
 		self.build_exc_synapses(cell = cell)
 
 		self.logger.log("Building inhibitory synapses.")
 		self.build_inh_synapses(cell = cell)
-
-		# self.logger.log("Building soma synapses.") # merged into build_inh_synapses
-		# self.build_soma_synapses(cell = cell)
 
 		self.logger.log(f"Total number of synapses: {len(cell.get_synapses(['all']))}")
 
@@ -282,13 +278,10 @@ class CellBuilder:
 		self.assign_excitatory_spike_trains(cell = cell, random_state = random_state)
   
 		# calc exc for delayed inhibition
-		# exc_spike_trains = [syn.pc.spike_train for syn in cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])]
 		exc_spike_trains = [syn.pc.spike_train for syn in cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])]
 		self.logger.log(f"{len(exc_spike_trains)} exc spikes trains")
 
-		# exc_mean_frs = [syn.pc.mean_fr for syn in cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])]
 		exc_mean_frs = [syn.pc.mean_fr for syn in cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])]
-		# print(f"exc_mean_frs: {exc_mean_frs}")
 
 		self.logger.log("Assigning soma spike trains.")
 		self.assign_soma_spike_trains(cell = cell, random_state = random_state, exc_spike_trains=exc_spike_trains)
@@ -380,7 +373,6 @@ class CellBuilder:
 					rhyth_mod_freq_to_use = self.parameters.rhyth_frequency_inh_distal
 				firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(firing_rates, desired_mean=mean_fr, logger=self.logger)#, divide_1000=True)
 				firing_rates = PoissonTrainGenerator.rhythmic_modulation(firing_rates, rhyth_mod_freq_to_use, rhyth_mod_depth_to_use, self.parameters.h_dt)
-				# print(f"firing_rates: {firing_rates}")
 				spike_train = PoissonTrainGenerator.generate_spike_train(
 				lambdas = firing_rates, 
 				random_state = random_state)
@@ -428,7 +420,6 @@ class CellBuilder:
 				spike_train = PoissonTrainGenerator.generate_spike_train(
 				lambdas = firing_rates, 
 				random_state = random_state)
-				# print(spike_train.spike_times)
 				pc.set_spike_train(spike_train.mean_fr, spike_train.spike_times)
 
 		for syn in cell.get_synapses([f'exc_{sec_type}' for sec_type in self.parameters.exc_syn_properties.keys()]):#["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique", "exc_distal_basal", "exc_distal_apic"]):
@@ -519,7 +510,6 @@ class CellBuilder:
 				total_length = sum([seg.sec.L for seg in cell.get_segments(['all'])])
 			nsyn = int(syn_number * sum(segment_probs) / total_length) if total_length > 0 else ValueError("Total length is zero.")
 			self.logger.log(f"total synapses for {name}: {nsyn}")
-			# print(f"syn_number: {syn_number} \n segment_probs: {segment_probs} \n total_length: {total_length}")
 
 		# Add synapses to the cell
 		cell.add_synapses_over_segments(
@@ -795,7 +785,7 @@ class CellBuilder:
 		# Record synapse distributions
 		if self.parameters.record_synapse_distributions:
 			all_segments = cell.get_segments_without_data(['all'])
-			print(f"length of all segments in builder when savinh synapses: {len(all_segments)}")
+			# print(f"length of all segments in builder when saving synapses: {len(all_segments)}")
 			# soma_synapses = cell.get_synapses(['soma_inh'])
 			# if len(soma_synapses) == 0:
 			# 	print("No soma synapses found. Feel free to delete.")
