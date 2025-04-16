@@ -288,6 +288,34 @@ class CellModel:
 					)
 					segments.append(seg)
 					datas.append(data)
+		
+		# in the case the user is using section types: 'distal_basal' 'perisomatic' 'trunk' 'oblique' 'tuft' etc. that are not standard in hoc, we need to get the segments from the sections that are not in the standard list.
+		section_names_remaining = [section_name for section_name in section_names if not hasattr(self, section_name)] # if the cell model does not have this section name as a standard list (such as apic, dend, soma, axon) then use other function.
+		if section_names_remaining:
+			for section_name in section_names_remaining:
+				segments_for_sec_type = self.get_segments_of_type(section_name)
+				for segment in segments_for_sec_type:
+					#calculate the index in the section since we are not using the section list
+					index_in_section = np.nan
+					sec = segment.sec
+					for i,seg in enumerate(segment.sec):
+						if seg == segment:
+							index_in_section = i
+							break
+					if index_in_section is np.nan:
+						raise ValueError(f"segment {segment} not found in section {sec.name()}")
+					data = SegmentData(
+						L = self.calc_seg_L(segment),
+						membrane_surface_area = self.calc_seg_SA(segment),
+						coords = self.get_coords_of_segments_in_section(sec).iloc[index_in_section, :].to_frame(1).T,
+						section = sec.name(),
+						index_in_section = index_in_section,
+						seg_half_seg_RA = 0.01 * segment.sec.Ra * (sec.L / 2 / segment.sec.nseg) / (np.pi * (segment.diam / 2) ** 2),
+            			seg = str(segment),
+            			pseg = str(sec.parentseg()) if index_in_section==0 else str(sec((index_in_section-0.5)/segment.sec.nseg)) # x = middle of previous segment
+					)
+					segments.append(segment)
+					datas.append(data)
 
 		if segments == []:
 			raise ValueError(f"segments is empty. {section_names} is probably invalid.")
@@ -454,17 +482,12 @@ class CellModel:
 	def find_nexus_seg(self): # TODO: implement for reducing apic to single cable (in this case nexus is not a branching point and will need to use the seg_to_seg mapping)
 		all_seg_list, seg_data = self.get_segments(['all'])
 		adjacency_matrix = self.compute_directed_adjacency_matrix()
-		#print(f"seg_data[379].coords['p1_1']: {seg_data[379].coords['p1_1']}")
 		y_coords = []
 		for i, seg in enumerate(all_seg_list):
 			y_coord = seg_data[i].coords["p1_1"].iloc[0] if not seg_data[i].coords["p1_1"].empty else None
 			y_coords.append(y_coord)
-		#print(f"y_coords: {y_coords}")
-		#print(f"all_seg_list: {all_seg_list}")
 		apical_segment_indices = [i for i, seg in enumerate(all_seg_list) if 'apic' in str(seg)]
-		#print(f"apical_segment_indices: {apical_segment_indices}")
 		nexus_index_in_all_list, _ = find_branching_seg_with_most_branching_descendants_in_subset_y(adjacency_matrix, apical_segment_indices, y_coords)
-		#print(f"The found apical nexus segment is: {all_seg_list[nexus_index_in_all_list]}")
 		return nexus_index_in_all_list
  
 	def get_tuft_root_sections(self):
@@ -666,8 +689,7 @@ class CellModel:
 			all_segments = []
 			for root_section in self.get_root_sections("trunk"):
 				all_segments.extend(gather_segments_recursively(root_section, stop_segments))
-			all_segments = [seg for seg in all_segments if ((h.distance(self.soma[0](0.5), seg) < 400) and (seg.sec in self.apic) and (h.distance(self.soma[0](0.5), seg) > 50))]
-			return all_segments
+			return [seg for seg in all_segments if ((h.distance(self.soma[0](0.5), seg) < 400) and (seg.sec in self.apic) and (h.distance(self.soma[0](0.5), seg) > 50))]
 		elif sec_type_to_get == 'soma':
 			return [seg for seg in self.soma[0]]
 		elif sec_type_to_get == 'distal_apic':
