@@ -254,7 +254,7 @@ class CellBuilder:
 	def build_synapses(self, cell, random_state):
 		if (self.parameters.all_synapses_off):
 			self.logger.log("Not building synapses.")
-			return None
+			return None, None
 
 		# # increase nseg for clustering segments for clustering synapses Not needed with template that gives very high segment resolution.
 		# # increase segment resolution makes more even cluster bounds
@@ -310,7 +310,7 @@ class CellBuilder:
 		np.random.seed(self.parameters.precell_spikes_seeds['soma_inh'])
 
 		# Proximal inh mean_fr distribution
-		mean_fr, std_fr = self.parameters.inh_prox_mean_fr, self.parameters.inh_prox_std_fr
+		mean_fr, std_fr = self.parameters.inh_proximal_mean_fr, self.parameters.inh_proximal_std_fr
 		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
 		proximal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
 
@@ -343,7 +343,7 @@ class CellBuilder:
 		np.random.seed(self.parameters.precell_spikes_seeds['inh'])
 
 		# Proximal inh mean_fr distribution
-		mean_fr, std_fr = self.parameters.inh_prox_mean_fr, self.parameters.inh_prox_std_fr
+		mean_fr, std_fr = self.parameters.inh_proximal_mean_fr, self.parameters.inh_proximal_std_fr
 		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
 		proximal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
 
@@ -361,7 +361,7 @@ class CellBuilder:
 			seg_names = [sec_type for sec_type in self.parameters.inh_syn_properties.keys() if sec_type not in ['perisomatic', 'soma','somatic']]#["dend", "apic"] #were causing problems
 		)
 		for fg in inh_fgs: # one fr profile per fg
-			firing_rates = PoissonTrainGenerator.generate_lambdas_by_delaying(self.parameters.h_tstop, exc_spike_trains)
+			fg_firing_rates = PoissonTrainGenerator.generate_lambdas_by_delaying(self.parameters.h_tstop, exc_spike_trains)
 			for pc in fg.presynaptic_cells: # one spike train per pc
 				if np.linalg.norm(soma_coords - pc.cluster_center) < 100:
 					mean_fr = proximal_inh_dist(size = 1)
@@ -371,10 +371,10 @@ class CellBuilder:
 					mean_fr = distal_inh_dist(size = 1)
 					rhyth_mod_depth_to_use = self.parameters.rhyth_depth_inh_distal
 					rhyth_mod_freq_to_use = self.parameters.rhyth_frequency_inh_distal
-				firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(firing_rates, desired_mean=mean_fr, logger=self.logger)#, divide_1000=True)
-				firing_rates = PoissonTrainGenerator.rhythmic_modulation(firing_rates, rhyth_mod_freq_to_use, rhyth_mod_depth_to_use, self.parameters.h_dt)
+				pc_firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(fg_firing_rates, desired_mean=mean_fr, logger=self.logger)#, divide_1000=True)
+				pc_firing_rates = PoissonTrainGenerator.rhythmic_modulation(pc_firing_rates, rhyth_mod_freq_to_use, rhyth_mod_depth_to_use, self.parameters.h_dt)
 				spike_train = PoissonTrainGenerator.generate_spike_train(
-				lambdas = firing_rates, 
+				lambdas = pc_firing_rates, 
 				random_state = random_state)
 				pc.set_spike_train(spike_train.mean_fr, spike_train.spike_times)
 
@@ -408,7 +408,7 @@ class CellBuilder:
 			seg_names = [sec_type for sec_type in self.parameters.exc_syn_properties.keys()]
 		)
 		for fg in exc_fgs: # one fr profile per fg
-			firing_rates = PoissonTrainGenerator.generate_lambdas_from_pink_noise(
+			fg_firing_rates = PoissonTrainGenerator.generate_lambdas_from_pink_noise(
 					num = self.parameters.h_tstop,
 					random_state = random_state)
 			for pc in fg.presynaptic_cells: # one spike train per pc
@@ -416,9 +416,9 @@ class CellBuilder:
 					lambda_mean_fr = 0 + self.parameters.excFR_increase
 				else:
 					lambda_mean_fr = (mean_fr_dist(size = 1) + self.parameters.excFR_increase)
-				firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(lambdas=firing_rates, desired_mean=lambda_mean_fr, logger=self.logger)
+				pc_firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(lambdas=fg_firing_rates, desired_mean=lambda_mean_fr, logger=self.logger)
 				spike_train = PoissonTrainGenerator.generate_spike_train(
-				lambdas = firing_rates, 
+				lambdas = pc_firing_rates, 
 				random_state = random_state)
 				pc.set_spike_train(spike_train.mean_fr, spike_train.spike_times)
 
@@ -541,7 +541,7 @@ class CellBuilder:
 					'params': {
 						'gmax_mean': syn_props['gmax_params']['mean'],
 						'gmax_std': syn_props['gmax_params']['std'],
-						'clip': (0, 10*syn_props['gmax_params']['mean']) # clip between 0 and 10 times the mean
+						'clip': (0, 5)#0*syn_props['gmax_params']['mean']) # clip between 0 and 10 times the mean
 					}
 				},
 				P_release_params={
@@ -738,6 +738,9 @@ class CellBuilder:
 					section_row[f"mechs.{mech}.{param}"] = value
   
 	def check_and_save_generated_synapses(self, cell, exc_spike_trains, exc_mean_frs) -> None:
+		if self.parameters.all_synapses_off:
+			self.logger.log("Not checking synapses.")
+			return None
 		# Check for synapses missing netcons
 		names_no_spike_train = [syn.name for syn in cell.synapses if len(syn.netcons) == 0]
 		if names_no_spike_train:
