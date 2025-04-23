@@ -107,6 +107,9 @@ PN2PN_syn_params = { # for pyr2pyr.mod
     "f": 1
 }
 
+_SKIP_KEYS  = {'delay', 'con_pattern', 'initW'}
+_W_BOUND_KEYS = {'Wmax', 'Wmin'}
+
 
 class Synapse:
 
@@ -146,26 +149,62 @@ class Synapse:
         nc = h.NetCon(self.pc.vecstim, self.h_syn, 1, 0, 1)
         self.netcons.append(nc)
 
+    def set_spike_train(self, spike_train): #@V-Marco TODO: this method works without PC. Is that OK?
+        vec = h.Vector(spike_train)
+        stim = h.VecStim()
+        stim.play(vec)
+        self.vecstim = stim
+        nc = h.NetCon(self.vecstim, self.h_syn, 1, 0, 1)
+        self.netcons.append(nc)
+
     def set_random_generator(self, r: h.Random) -> None:				 
         if self.syn_mod in ['pyr2pyr', 'int2pyr']:
             r.uniform(0, 1)
             self.h_syn.setRandObjRef(r)
             self.random_generator = r
 
-    def set_syn_params(self, syn_params) -> None:
-        self.syn_params = syn_params
+    # def set_syn_params(self, syn_params) -> None:
+    #     self.syn_params = syn_params
+    #     for key, value in syn_params.items():
+    #         if key in ['delay', 'con_pattern', 'initW']: # these variables are parameters that do not get set to the h_syn: "delay' is not a defined hoc variable name.""
+    #             continue # initW from the syn params is not used.
+    #         elif key in ['Wmax', 'Wmin']: # bound the plastic weight around its original value
+    #             if self.gmax_var == 'initW':
+    #                 setattr(self.h_syn, key, value * self.gmax_val)
+    #             else:
+    #                 raise(f"gmax_var must be 'initw' for syn_param {key}")
+    #         elif callable(value): # set syn params
+    #             setattr(self.h_syn, key, value(size = 1))
+    #         else:
+    #             setattr(self.h_syn, key, value)
+
+    def set_syn_params(self, syn_params) -> None: # faster?
+        # cache everything in locals
+        h_syn      = self.h_syn
+        gmax_var   = self.gmax_var
+        gmax_val   = self.gmax_val
+        skip       = _SKIP_KEYS
+        bound_keys = _W_BOUND_KEYS
+
+        # simple dispatch for Wmax/Wmin
+        def _bound_set(key, val):
+            if gmax_var != 'initW':
+                raise ValueError(f"gmax_var must be 'initW' to apply '{key}'")
+            setattr(h_syn, key, val * gmax_val)
+
         for key, value in syn_params.items():
-            if key in ['delay', 'con_pattern', 'initW']: # these variables are parameters that do not get set to the h_syn: "delay' is not a defined hoc variable name.""
-                continue # initW from the syn params is not used.
-            elif key in ['Wmax', 'Wmin']: # bound the plastic weight around its original value
-                if self.gmax_var == 'initW':
-                    setattr(self.h_syn, key, value * self.gmax_val)
-                else:
-                    raise(f"gmax_var must be 'initw' for syn_param {key}")
-            elif callable(value): # set syn params
-                setattr(self.h_syn, key, value(size = 1))
+            if key in skip:
+                continue
+
+            if key in bound_keys:
+                _bound_set(key, value)
+
+            elif callable(value):
+                # avoid re‑looking up setattr each time
+                h_syn.__setattr__(key, value(size=1))
+
             else:
-                setattr(self.h_syn, key, value)
+                h_syn.__setattr__(key, value)
 
     def set_gmax_val(self, gmax: float) -> None:
         self.gmax_val = gmax
