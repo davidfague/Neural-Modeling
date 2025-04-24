@@ -1,6 +1,7 @@
 from cell_builder import SkeletonCell, CellBuilder
 from constants import SimulationParameters
 from logger import Logger
+from cell_model import CellModel
 
 from neuron import h
 
@@ -29,7 +30,7 @@ class Simulation:
         if not os.path.exists(self.path):
             os.mkdir(self.path)
 
-    def run_single_simulation(self, parameters: SimulationParameters):
+    def run_single_simulation(self, parameters: SimulationParameters, cell: CellModel=None):
 
         single_sim_path = os.path.join(self.path, parameters.sim_name)
         if not os.path.exists(single_sim_path):
@@ -39,8 +40,9 @@ class Simulation:
         self.logger.set_path(single_sim_path)
 
         # Build the cell
-        cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
-        cell, _ = cell_builder.build_cell()
+        if not cell:
+            cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
+            cell, _ = cell_builder.build_cell()
         
         adj_matrix = cell.compute_directed_adjacency_matrix()
         np.savetxt(os.path.join(parameters.path, "adj_matrix.txt"), adj_matrix.astype(int))
