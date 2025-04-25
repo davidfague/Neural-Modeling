@@ -151,7 +151,10 @@ class Synapse:
         self.netcons.append(nc)
 
     def set_spike_train(self, spike_train): #@V-Marco TODO: this method works without PC. Is that OK?
-        vec = h.Vector(spike_train)
+        spike_train = np.array(spike_train)
+        # self.spike_train = spike_train
+        vec = h.Vector(spike_train) # errors here
+        # self.vec = vec # maybe vec isn't normally stored?
         stim = h.VecStim()
         stim.play(vec)
         self.vecstim = stim

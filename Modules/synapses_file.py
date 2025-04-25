@@ -250,10 +250,10 @@ class PreSimSynapseGenerator:
 
         logger = Logger(self.sim_dir) # create per‑sim logger (write info into "sims_dir/sim_dir/log.txt")
 
-        logger.log(f"Building cell to generate segments.csv")
+        logger.log(f"Building cell")
         cell_builder = CellBuilder(getattr(SkeletonCell, self.parameters.skeleton_cell_type), self.parameters, logger)
         cell, _ = cell_builder.build_cell()
-        logger.log(f"Cell built successfully.")
+        logger.log(f"Cell finished building.")
 
         neuron_r = cell.neuron_r
         param_map = syn_param_map
@@ -272,22 +272,22 @@ class PreSimSynapseGenerator:
             )
             for row in synapses.itertuples(index=False)
         ]
-        logger.log("syn_list success")
+        logger.log("Synapse object list finished building")
 
         # 3. Now set all the spike trains in another pass
         for syn, train, i in zip(syn_list, synapses["spike_train"], range(len(syn_list))):
-            logger.log(f"setting spike train for synapse {i}")
+            # logger.log(f"Setting spike train for synapse {i}")
             # train_to_do = np.asarray(parse_array(train))
             # print(f"tran_to_do: {train_to_do}")
             # print(f"type(tran_to_do): {type(train_to_do)}")
             syn.set_spike_train(train, logger=logger)
-            logger.log(f"success setting spike train for synapse {i}")
+            # logger.log(f"Success setting spike train for synapse {i}")
             # logger.log(f"check syn attributes after. netcons: {syn.netcons}. vec: {syn.vec}. stim: {syn.stim}. vecstim: {syn.vecstim}")
 
         # 4. Finally attach them in one go
-        logger.log("Attaching synapses to cell object")
+        logger.log("Storing synapses list in CellModel object")
         cell.synapses.extend(syn_list)
-        logger.log("Finish attaching synapses to cell object")
+        logger.log("Finish synapses list in CellModel object")
         return cell
 
 
