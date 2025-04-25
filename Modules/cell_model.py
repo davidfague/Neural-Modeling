@@ -689,13 +689,15 @@ class CellModel:
 			all_segments = []
 			for root_section in self.get_root_sections("trunk"):
 				all_segments.extend(gather_segments_recursively(root_section, stop_segments))
-			return [seg for seg in all_segments if ((h.distance(self.soma[0](0.5), seg) < 400) and (seg.sec in self.apic) and (h.distance(self.soma[0](0.5), seg) > 50))]
+
+			# return [seg for seg in all_segments if ((h.distance(self.soma[0](0.5), seg) < 400) and (seg.sec in self.apic) and (h.distance(self.soma[0](0.5), seg) > 50))]
+			return[seg for seg in all_segments if ((seg.sec in self.apic) and (h.distance(self.soma[0](0.5), seg) > 50))]
 		elif sec_type_to_get == 'soma':
 			return [seg for seg in self.soma[0]]
 		elif sec_type_to_get == 'distal_apic':
 			return [seg for sec in self.apic for seg in sec if (h.distance(self.soma[0](0.5), seg) > 50)]
 		elif sec_type_to_get == 'nexus':
-			return [seg for sec in self.apic for seg in sec if ((h.distance(self.soma[0](0.5), seg) > 400) and (h.distance(self.soma[0](0.5), seg) < 800))]
+			return [seg for sec in self.apic for seg in sec if ((h.distance(self.soma[0](0.5), seg) > 400) and (h.distance(self.soma[0](0.5), seg) < 800) and (seg.sec.y3d(0) > 400))] # @MARK check if this is correct
 		elif sec_type_to_get == 'distal_basal':
 			return [seg for sec in self.dend for seg in sec if (h.distance(self.soma[0](0.5), seg) > 50)]
 		elif sec_type_to_get == 'perisomatic':
