@@ -41,6 +41,20 @@ class PCBuilder:
         seg_coords = [c.coords[["pc_0", "pc_1", "pc_2"]] for c in seg_data]
         seg_coords = pd.concat(seg_coords).to_numpy()
 
+        seg_coord_duplicates = np.unique(seg_coords, axis=0, return_index=True)[1]
+        # print(f"seg_coord_duplicates in presynaptic module: {seg_coord_duplicates}")
+        # print(f"length seg_coords: {len(seg_coords)}")
+        # print(f"length segments: {len(segments)}")
+        if len(seg_coord_duplicates) != len(seg_coords):
+            # print(f"Warning: Duplicate segment coordinates found in presynaptic module for {seg_names}. {len(seg_coords) - len(seg_coord_duplicates)} duplicates removed.")
+            seg_coords = seg_coords[seg_coord_duplicates]
+            # print(f"type(seg_coords): {type(seg_coords)}")
+            # print(f"type segments: {type(segments)}")
+            # print(f"type seg_coord_duplicates: {type(seg_coord_duplicates)}")
+            segments = np.array(segments) # convert to numpy array for indexing
+            segments = segments[seg_coord_duplicates]
+            segments = list(segments)
+
         # Ensure we do not request more functional groups than there are segments
         n_clusters = min(n_func_gr, len(seg_coords))
         labels, _ = PCBuilder._cluster_segments(seg_coords=seg_coords, n_clusters=n_clusters)
