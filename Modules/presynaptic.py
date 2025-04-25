@@ -145,7 +145,7 @@ class PCBuilder:
 
     @staticmethod
     def _map_synapses_to_pc(cell: CellModel, segments: list, synapse_names: list, functional_group: FunctionalGroup):
-        for name in synapse_names:
+        # for name in synapse_names:
             synapses = cell.get_synapses(synapse_names)
             for synapse in synapses:
                 if synapse.pc is not None: # pc already assigned
