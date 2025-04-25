@@ -11,6 +11,7 @@ class Logger:
             self.path = None
         else:
             self.path = os.path.join(path, "log.txt")
+            self.runtime_path = os.path.join(path, "runtimes.csv")
         
     def set_path(self, path: str):
         self.path = os.path.join(path, "log.txt")
