@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import numpy as np
+import warnings
 
 # generic function for plotting variable over morphology
 def plot(seg_data, data_to_plot, ax, elevation=20, azimuth=-100, radius_scale=1.0, title='', clim_max=30, return_cbar = False, clims = None):
@@ -87,7 +89,7 @@ def plot_special_segments(seg_data, special_indices, special_colors, title_suffi
     plt.ylim(y_min, y_max)
     plt.show()
 
-def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.0, deleted_indices=[]):
+def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.0, deleted_indices=[], show=True):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -110,5 +112,16 @@ def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.
     ax.set_xlabel('X')
     ax.set_ylabel('Z')
     ax.set_zlabel('Y')
-    plt.show()
+    if show:
+        plt.show()
     return fig, ax
+
+def plot_morphology_with_highlighted_sec_type(sec_type, seg_data):
+    if (sec_type not in np.unique(seg_data['sec_type_precise'])) and  (sec_type not in ['unlabeled', 'overlapping']):
+        print(f"{sec_type} not found in seg_data. Instead, seg_data has sec_types: {np.unique(seg_data['sec_type_precise'])}")
+    if sec_type == 'unlabeled': # segments without a seg_id.
+        fig, ax = plot_reduced_morphology(seg_data,deleted_indices=seg_data[seg_data['sec_type_precise'].isna()]['seg_id'].tolist()) #TODO: change deleted_indices to highlighted_indices for clarity.
+    else:
+        fig, ax = plot_reduced_morphology(seg_data,deleted_indices=seg_data[seg_data['sec_type_precise'] == sec_type]['seg_id'].tolist()) #TODO: also change plot_reduced_morphology to plot_morphology for clarity
+    return fig, ax
+    
