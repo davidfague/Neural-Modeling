@@ -205,7 +205,7 @@ class SimulationParameters:
 			'synapse_type': 'exc'
 			},
 		'distal_basal': {'syn_density': 2.16*1.05, 'syn_number': 26112,
-			'gmax_params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1},
+			# 'gmax_params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1},
 			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
@@ -217,7 +217,7 @@ class SimulationParameters:
 	# NOTE: gmax is clipped to (0,10*mean); no scalar implemented.
 	inh_syn_properties: dict = field(default_factory=lambda: {
 		'tuft': {'syn_density': 0.22*1.5, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87*8/8*2*4, 'std': 0.08474},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
+			# 'gmax_params': {'mean': 1.87*8/8*2*4, 'std': 0.08474},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
 			'initial_weight_distribution': {'params': {'mean': 1.87*8/8*2*4, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
@@ -225,7 +225,7 @@ class SimulationParameters:
 			'synapse_type': 'inh'
 			},
 		'nexus': {'syn_density': 0.22*1.5, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87*10/10, 'std': 0.08474},#0.08474*0.2*0.66*0.1},
+			# 'gmax_params': {'mean': 1.87*10/10, 'std': 0.08474},#0.08474*0.2*0.66*0.1},
 			'initial_weight_distribution': {'params': {'mean': 1.87*10/10, 'std': 0.08474, 'clip': [0,5]}},#0.08474*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
@@ -233,7 +233,7 @@ class SimulationParameters:
 			'synapse_type': 'inh'
 			},
 		'trunk': {'syn_density': 0.22, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87/2, 'std': 0.08474},#*0.2*0.66*0.1},
+			# 'gmax_params': {'mean': 1.87/2, 'std': 0.08474},#*0.2*0.66*0.1},
 			'initial_weight_distribution': {'params': {'mean': 1.87/2, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
@@ -241,7 +241,7 @@ class SimulationParameters:
 			'synapse_type': 'inh'
 			},
 		'oblique': {'syn_density': 0.22, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87*4/4, 'std': 0.08474},#*0.2*0.66*0.1},
+			# 'gmax_params': {'mean': 1.87*4/4, 'std': 0.08474},#*0.2*0.66*0.1},
 			'initial_weight_distribution': {'params': {'mean': 1.87*4/4, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
@@ -249,16 +249,16 @@ class SimulationParameters:
 			'synapse_type': 'inh'
 			},
 		'distal_basal': {'syn_density': 0.22, 'syn_number': 3066,
-			'gmax_params': {'mean': 1.87, 'std': 0.08474},#0.08474*0.916*0.5*.16},
+			# 'gmax_params': {'mean': 1.87, 'std': 0.08474},#0.08474*0.916*0.5*.16},
 			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#0.08474*0.916*0.5*.16},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.72, 'std': 0.1}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 111333311},
 			'synapse_type': 'inh'
 			},
-		'perisomatic': {'syn_density': 0.22*1.3/1.3, 'syn_number': 3066,
-			'gmax_params': {'mean': 4.6, 'std':  0.175*.5},
-			'initial_weight_distribution': {'params': {'mean': 4.6, 'std':  0.175*.5, 'clip': [0,5]}},
+		'perisomatic': {'syn_density': 0.22, 'syn_number': 3066,
+			# 'gmax_params': {'mean': 4.6, 'std':  0.175*.5},
+			'initial_weight_distribution': {'params': {'mean': 4.6/4, 'std':  0.175*.5, 'clip': [0,5]}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.88, 'std': 0.05}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 777777777},

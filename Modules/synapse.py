@@ -1,4 +1,5 @@
 from neuron import h
+import numpy as np
 
 Exp2Syn_syn_params = {
     'e': 0., 

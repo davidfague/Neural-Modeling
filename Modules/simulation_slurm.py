@@ -12,6 +12,77 @@ import pandas as pd
 import numpy as np
 import time
 
+from collections.abc import Callable, Iterable
+from typing import Mapping, Union
+
+class Simulator:
+
+    def __init__(self, sim_set_title: str, sim_titles: list, parameter_sets: list):
+        if len(sim_titles) != len(parameter_sets):
+            ValueError("sim_titles and parameter_sets must be lists with equal lengths. These lists will be considered corresponding.")
+        
+        # make an overarching simulations directory for this set where individual simulations will be stored.
+        self.sims_dir = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')}-{sim_set_title}"
+        os.makedirs(self.sims_dir, exist_ok=True)
+
+        self.sim_set_title = sim_set_title # {sims_dir}
+        self.sim_titles = sim_titles # sims_dir/{sim_dir}
+        self.parameter_sets = parameter_sets
+
+    def compile_modfiles(self):
+        NotImplementedError("Compile the modfiles manually.")
+
+    def create_simulation_folders(self):
+        # create simulation folders within {sims_dir} and save parameters in the individual simulation folders
+        for parameters, sim_title in zip(self.parameter_sets, self.sim_titles):
+            # create simulation folder
+            sim_dir = os.path.join(self.sims_dir, sim_title)
+            os.makedirs(sim_dir, exist_ok=True)
+
+            with open(os.path.join(sim_dir, "parameters.pickle"), 'wb') as file:
+                pickle.dump(parameters, file)
+
+            # load modfiles
+            try:
+                h.load_file('stdrun.hoc')
+                # h.nrn_load_dll('./x86_64/.libs/libnrnmech.so' # IF IN SCRIPTS FOLDER
+                load_modfiles = h.nrn_load_dll('../scripts/x86_64/.libs/libnrnmech.so') # IF IN SIMULATIONS FOLDER
+                if load_modfiles != 1:
+                    raise Exception("Error loading mod files")
+                else:
+                    print("Mod files loaded successfully")
+            except:
+                # Already loaded
+                pass 
+
+    def run_on_all_sims( #TODO: Use MPI to process these in parallel. Evenly Distribute sims to workers instead of using 1 per rank. add to class?
+        self,
+        sims_dir: str,
+        process_fns: Union[Callable[[str, Mapping, object], None],
+                        Iterable[Callable[[str, Mapping, object], None]]]
+    ) -> None:
+        """process_fns can be a single function or a list of functions. 
+        Each function should take the simulation directory, parameters, and logger as arguments."""
+        # normalize to a list
+        if callable(process_fns):
+            fns = [process_fns]
+        else:
+            fns = list(process_fns)
+
+        for entry in os.listdir(sims_dir):
+            sim_dir = os.path.join(sims_dir, entry)
+            if not os.path.isdir(sim_dir):
+                continue
+
+            # load parameters
+            with open(os.path.join(sim_dir, "parameters.pickle"), "rb") as f:
+                parameters = pickle.load(f)
+
+            logger = Logger(sim_dir) # create per‑sim logger (write info into "sims_dir/sim_dir/log.txt")
+
+            for fn in fns :# run each processing function
+                fn(sim_dir=sim_dir, parameters=parameters, logger=logger)
+
 class Simulation:
 
     def __init__(self, cell_type: SkeletonCell, title = None):
