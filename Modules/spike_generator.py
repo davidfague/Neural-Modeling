@@ -156,7 +156,8 @@ class PoissonTrainGenerator:
 		# print(np.sum(lambdas < 0),lambdas)
 		# if divide_1000:
 		# 	desired_mean = desired_mean / 1000 # shift
-		lambdas = lambdas + (desired_mean - np.mean(lambdas))
+		# lambdas = lambdas + (desired_mean - np.mean(lambdas)) # assuming that lambdas have desired std but not mean.
+		lambdas = lambdas * desired_mean # assuming that lambdas have desired std/mean but not mean.
 
 		# print(np.sum(lambdas < 0),lambdas)
   
