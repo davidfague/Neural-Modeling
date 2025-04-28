@@ -57,7 +57,7 @@ def plot(seg_data, data_to_plot, ax, elevation=20, azimuth=-100, radius_scale=1.
         return cbar
     # cbar.set_label('Your Variable Label')
 
-def plot_special_segments(seg_data, special_indices, special_colors, title_suffix=""):
+def plot_special_segments(seg_data, special_indices, special_colors, title_suffix=""): # used in notebooks/plot_reduction_morph and notebooks/build_load_synapses TODO: combine with plot_segments.
     if hasattr(seg_data, 'Coord X'):
         x_coord_name = 'Coord X'
         y_coord_name = 'Coord Y'
@@ -88,6 +88,28 @@ def plot_special_segments(seg_data, special_indices, special_colors, title_suffi
     plt.xlim(x_min, x_max)
     plt.ylim(y_min, y_max)
     plt.show()
+
+def plot_segments(seg_data, special_indices, special_colors, title_suffix="", save_file = None, show=False): # from notebooks/plot_voltages.ipynb TODO: combine with plot_special_segments.
+    # Calculate the axis limits
+    all_coords_x = seg_data['Coord X'].tolist()
+    all_coords_y = seg_data['Coord Y'].tolist()
+    x_min, x_max = min(all_coords_x), max(all_coords_x)
+    y_min, y_max = min(all_coords_y), max(all_coords_y)
+
+    for i, segs in enumerate([seg_data]):
+        plt.figure()
+        plt.scatter(segs['Coord X'], segs['Coord Y'], s=0.1)
+        for j, ind in enumerate(special_indices):
+            plt.plot(segs.loc[segs.segmentID.isin([ind]), 'Coord X'], 
+                     segs.loc[segs.segmentID.isin([ind]), 'Coord Y'], special_colors[j])
+        
+        plt.title(f"Segments {title_suffix}" if i == 0 else f"Segments {title_suffix}")
+        plt.xlim(x_min, x_max)
+        plt.ylim(y_min, y_max)
+        if save_file:
+            plt.savefig(f"{save_file}.png", format='png', bbox_inches="tight", dpi=300)
+        if show:
+            plt.show()
 
 def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.0, deleted_indices=[], show=True):
     fig = plt.figure()
