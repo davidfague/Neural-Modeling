@@ -260,12 +260,12 @@ conn_type_settings = {
 # define all of your tuner “recipes” in a single dict
 tuner_configs = {
     True: {
-        'tunerForEXC': {
+        'exc': {
             'connection': 'PN2PN',
             'current_name': 'i',
             'sliders_to_use': ['initW', 'gbar_nmda', 'gbar_ampa'],
         },
-        'tunerForInhPerisomatic': {
+        'inhPerisomatic': {
             'connection': 'PV2PN',
             'current_name': 'igaba',
             'sliders_to_use': [
@@ -274,7 +274,7 @@ tuner_configs = {
                 'tauD2','d2','tauF','f'
             ],
         },
-        'tunerForInhDendritic': {
+        'inhDendritic': {
             'connection': 'SOM2PN',
             'current_name': 'igaba',
             'sliders_to_use': [
