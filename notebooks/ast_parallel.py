@@ -9,7 +9,7 @@ focusing on location-dependent PSC tuning.
 
 import time
 import numpy as np
-from scipy.optimize import differential_evolution
+from scipy.optimize import minimize
 import os
 import multiprocessing as mp
 import sys
@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.abspath(os.path.join(current_dir, '..'))
 modules_dir = os.path.join(root_dir, 'Modules')
-modfiles_dir = os.path.join(root_dir, 'modfiles')
+modfiles_dir = '/users/drfrbc/Neural-Modeling/notebooks/bmtool/examples/synapses/modfiles'
 sys.path.append(modules_dir)
 
 # Setup bmtool
@@ -64,6 +64,12 @@ except ImportError as e:
 TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION = 100
 USE_HAY_CELL = True
 
+# Globals for worker processes
+GLOBAL_tuner_configs = None
+GLOBAL_distributions_to_test = None
+GLOBAL_conn_type_settings = None
+GLOBAL_template_arg = None
+
 def setup_cell_and_mechanisms():
     """Initialize the cell model and load NEURON mechanisms."""
     # Load NEURON mechanisms first
@@ -76,18 +82,16 @@ def setup_cell_and_mechanisms():
         os.chdir(current_dir)
     
     neuron.load_mechanisms(modfiles_dir)
-    
-    # Let load_hay_cell handle template loading
+    # Now load the cell/template
     if USE_HAY_CELL:
         template_arg = load_hay_cell(conn_type_settings)
     else:
         template_arg = None
-    
     return template_arg
 
 def get_sec_ids_from_type(section_type):
     """Get section IDs based on section type."""
-    cell = h.L5PCtemplate("../../../../cells/templates/cell1.asc")
+    cell = h.L5PCtemplate("/users/drfrbc/Neural-Modeling/cells/templates/cell1.asc")
 
     if section_type == 'distal_apic':
         sec_ids_to_use = [idx for idx, sec in enumerate(cell.all) 
@@ -146,33 +150,30 @@ def change_synapse_weight(synapse_tuner_obj, distributions_to_test, synapse_type
     synapse_tuner_obj.syn.initW = new_weight
     return new_weight
 
-def simulate_PSC(synapse_type, tuner_configs, location_type, distributions_to_test, use_norm_dist):
-    """Run a single PSC simulation and return results."""
+def simulate_PSC(synapse_type, location_type, use_norm_dist):
+    """Simulate PSC for a given synapse type and location."""
+    global GLOBAL_tuner_configs, GLOBAL_distributions_to_test, GLOBAL_template_arg
     synapse_tuner_obj = InitializeSysnapseTuner(
-        template_arg=template_arg, 
-        **tuner_configs[True][synapse_type]
+        template_arg=GLOBAL_template_arg, 
+        **GLOBAL_tuner_configs[True][synapse_type]
     )
-    
     all_segments, possible_segments, seg_probs = get_segments(
         synapse_tuner_obj, 
         location_type
     )
-    
     weight = change_synapse_weight(
         synapse_tuner_obj,
-        distributions_to_test,
+        GLOBAL_distributions_to_test,
         'exc' if 'exc' in synapse_type.lower() else 'inh',
         location_type,
         use_norm_dist
     )
-    
     loc = move_synapse_to_new_location(
         synapse_tuner_obj, 
         possible_segments, 
         seg_probs, 
         all_segments
     )
-    
     PSC_mag = max(abs(synapse_tuner_obj.SingleEvent(plot_and_print=False)))
     return PSC_mag, weight, loc
 
@@ -181,31 +182,31 @@ def run_parallel_simulations(synapse_type, location_type, total_samples=100, use
     cpu_cores = mp.cpu_count()
     simulation_batch_size = min(total_samples, cpu_cores - 1)
     number_of_batches = int(np.ceil(total_samples / simulation_batch_size))
-    
     PSC_mags = []
     weights = []
     locs = []
-    
+    # Use a local tuner to get segment count
+    synapse_tuner_obj = InitializeSysnapseTuner(template_arg=template_arg, **tuner_configs[True][synapse_type])
+    all_segments = [seg for sec in synapse_tuner_obj.cell.all for seg in sec]
+    total_segments = len(all_segments)
+    PSCs_by_segment = {seg_idx: [] for seg_idx in range(total_segments)}
     start_time = time.time()
-    
-    with mp.Pool(processes=simulation_batch_size) as pool:
-        for _ in tqdm(range(number_of_batches), desc="Running simulation batches"):
+    with mp.Pool(processes=simulation_batch_size, initializer=worker_init) as pool:
+        for batch_idx in tqdm(range(number_of_batches), desc="Running simulation batches"):
             batch_args = [
-                (synapse_type, tuner_configs, location_type, distributions_to_test, use_norm_dist)
+                (synapse_type, location_type, use_norm_dist)
                 for _ in range(simulation_batch_size)
             ]
-            
             results = pool.starmap(simulate_PSC, batch_args)
-            
             for PSC_mag, weight, loc in results:
                 PSC_mags.append(PSC_mag)
                 weights.append(weight)
                 locs.append(loc)
-    
+                PSCs_by_segment[loc].append(PSC_mag)
+            print(f"Batch {batch_idx+1}/{number_of_batches}: mean PSC={np.mean(PSC_mags):.3f}, std PSC={np.std(PSC_mags):.3f}")
     elapsed_time = time.time() - start_time
     print(f"Total simulation time: {elapsed_time:.2f} seconds")
-    
-    return np.array(PSC_mags), np.array(weights), np.array(locs)
+    return np.array(PSC_mags), np.array(weights), np.array(locs), PSCs_by_segment
 
 def objective_function(params, synapse_type, location_type, target_metric):
     """Objective function for optimization."""
@@ -217,27 +218,30 @@ def objective_function(params, synapse_type, location_type, target_metric):
     PSC_mags, weights, _ = run_parallel_simulations(
         synapse_type=synapse_type,
         location_type=location_type,
-        total_samples=50,  # Reduced for optimization
+        total_samples=50,
         use_norm_dist=True
     )
     
-    # Calculate error
     mean_PSC = np.mean(PSC_mags)
-    error = abs(mean_PSC - target_metric)
+    std_PSC = np.std(PSC_mags)
+    
+    # Use both mean and std in the error
+    error = (mean_PSC - target_metric['mean'])**2 + (std_PSC - target_metric['std'])**2
     
     return error
 
 def optimize_synapse_parameters(synapse_type, location_type, target_metric, bounds):
-    """Optimize synapse parameters using differential evolution."""
-    result = differential_evolution(
+    """Optimize synapse parameters using scipy.optimize.minimize."""
+    # Initial guess: midpoint of bounds
+    x0 = [np.mean([b[0], b[1]]) for b in bounds]
+    result = minimize(
         objective_function,
-        bounds=bounds,
+        x0=x0,
         args=(synapse_type, location_type, target_metric),
-        workers=-1,  # Use all available cores
-        updating='deferred',
-        disp=True
+        method='L-BFGS-B',
+        bounds=bounds,
+        options={'maxiter': 50, 'disp': True}
     )
-    
     return result
 
 def plot_results(weights, PSC_mags, synapse_type, location_type):
@@ -250,6 +254,39 @@ def plot_results(weights, PSC_mags, synapse_type, location_type):
     plt.grid(True)
     plt.show()
 
+def plot_validation_results(weights, PSC_mags, synapse_type, location_type, target_metric, save_dir):
+    import matplotlib.pyplot as plt
+    os.makedirs(save_dir, exist_ok=True)
+    plt.figure(figsize=(10, 6))
+    plt.hist(PSC_mags, bins=30, alpha=0.7, label='Simulated PSCs')
+    plt.axvline(target_metric['mean'], color='r', linestyle='--', label='Target Mean')
+    plt.axvline(np.mean(PSC_mags), color='g', linestyle='-', label='Simulated Mean')
+    plt.axvline(target_metric['mean'] + target_metric['std'], color='r', linestyle=':', label='Target ±Std')
+    plt.axvline(target_metric['mean'] - target_metric['std'], color='r', linestyle=':')
+    plt.axvline(np.mean(PSC_mags) + np.std(PSC_mags), color='g', linestyle=':', label='Simulated ±Std')
+    plt.axvline(np.mean(PSC_mags) - np.std(PSC_mags), color='g', linestyle=':')
+    plt.xlabel('PSC Magnitude')
+    plt.ylabel('Count')
+    plt.title(f'PSC Distribution for {synapse_type} in {location_type}')
+    plt.legend()
+    plot_path = os.path.join(save_dir, f'PSC_hist_{synapse_type}_{location_type}.png')
+    plt.savefig(plot_path)
+    plt.close()
+    print(f"Saved validation plot to {plot_path}")
+
+def worker_init():
+    global GLOBAL_tuner_configs, GLOBAL_distributions_to_test, GLOBAL_conn_type_settings, GLOBAL_template_arg
+    import neuron
+    # modfiles_dir = '/users/drfrbc/Neural-Modeling/notebooks/bmtool/examples/synapses/modfiles'
+    # neuron.load_mechanisms(modfiles_dir)
+    from general_settings_for_AST import (
+        tuner_configs, distributions_to_test, conn_type_settings, load_hay_cell
+    )
+    GLOBAL_tuner_configs = tuner_configs
+    GLOBAL_distributions_to_test = distributions_to_test
+    GLOBAL_conn_type_settings = conn_type_settings
+    GLOBAL_template_arg = load_hay_cell(conn_type_settings)
+
 if __name__ == '__main__':
     # Initialize cell and mechanisms
     template_arg = setup_cell_and_mechanisms()
@@ -259,7 +296,7 @@ if __name__ == '__main__':
     location_type = 'distal_basal'
     
     print(f"Running parallel simulations for {synapse_type} synapses in {location_type}...")
-    PSC_mags, weights, locs = run_parallel_simulations(
+    PSC_mags, weights, locs, PSCs_by_segment = run_parallel_simulations(
         synapse_type=synapse_type,
         location_type=location_type,
         total_samples=100
@@ -269,13 +306,33 @@ if __name__ == '__main__':
     plot_results(weights, PSC_mags, synapse_type, location_type)
     
     # Example optimization
-    target_metric = 0.5  # Example target PSC magnitude
+    target_metric = {'mean': 0.5, 'std': 0.1}  # Example target PSC magnitude
     bounds = [(0.1, 1.0), (0.01, 0.5)]  # Mean and std bounds
     
     print(f"\nOptimizing parameters for {synapse_type} synapses in {location_type}...")
     result = optimize_synapse_parameters(synapse_type, location_type, target_metric, bounds)
-    
     print(f"\nOptimization results:")
     print(f"Optimal mean: {result.x[0]:.4f}")
     print(f"Optimal std: {result.x[1]:.4f}")
-    print(f"Final error: {result.fun:.4f}") 
+    print(f"Final error: {result.fun:.4f}")
+
+    # Post-optimization validation
+    print("\nRunning post-optimization validation...")
+    # Set optimized parameters
+    distributions_to_test[synapse_type][location_type]['mean'] = result.x[0]
+    distributions_to_test[synapse_type][location_type]['std'] = result.x[1]
+    # Rerun simulations
+    PSC_mags_val, weights_val, locs_val, _ = run_parallel_simulations(
+        synapse_type=synapse_type,
+        location_type=location_type,
+        total_samples=100
+    )
+    # Print summary
+    print(f"Validation: Simulated mean PSC = {np.mean(PSC_mags_val):.4f}, std = {np.std(PSC_mags_val):.4f}")
+    print(f"Target: mean = {target_metric['mean']:.4f}, std = {target_metric['std']:.4f}")
+    # Plot and save
+    plot_validation_results(weights_val, PSC_mags_val, synapse_type, location_type, target_metric, save_dir='AA_results') 
+    from general_settings_for_AST import save_simulation_results, save_summary_stats, save_pscs_by_segment
+    save_simulation_results(weights, PSC_mags, locs, 'AA_results/simulation_results.csv')
+    save_summary_stats(np.mean(PSC_mags), np.std(PSC_mags), target_metric, 'AA_results/summary.txt')
+    save_pscs_by_segment(PSCs_by_segment, 'AA_results/pscs_by_segment.pkl')

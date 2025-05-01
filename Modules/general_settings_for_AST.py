@@ -1,36 +1,46 @@
 from neuron import h
+import os
+import pandas as pd
+import pickle
+
+modfiles_dir = '/users/drfrbc/Neural-Modeling/notebooks/bmtool/examples/synapses/modfiles'
+
 def load_hay_cell(conn_type_settings):
-    for cell_type,items in conn_type_settings.items():
+    # Hardcoded absolute paths for robustness
+    l5pc_biophys_hoc = '/users/drfrbc/Neural-Modeling/cells/templates/L5PCbiophys3.hoc'
+    l5pc_template_hoc = '/users/drfrbc/Neural-Modeling/cells/templates/L5PCtemplateMediumRes.hoc'
+    cell_asc = '/users/drfrbc/Neural-Modeling/cells/templates/cell1.asc'
+    stdrun_hoc = 'stdrun.hoc'  # Should be in NEURON's path
+    import3d_hoc = 'import3d.hoc'  # Should be in NEURON's path
+
+    # Load mechanisms FIRST!
+    # import neuron
+    # neuron.load_mechanisms(modfiles_dir)
+
+    # Set post_cell and sec_id for all cell types
+    for cell_type, items in conn_type_settings.items():
         conn_type_settings[cell_type]['spec_settings']['post_cell'] = 'L5PCtemplate'
-        conn_type_settings[cell_type]['spec_settings']['sec_id'] = 0 # 0 will be soma; 1 would be a basal dendrite
+        conn_type_settings[cell_type]['spec_settings']['sec_id'] = 0
 
+    def try_load(file):
+        print(f"Attempting to load: {file}")
+        try:
+            h.load_file(file)
+            print(f"Loaded: {file}")
+        except Exception as e:
+            print(f"Error loading {file}: {e}")
 
-    # hoc_files_to_load = ['stdrun.hoc', "../../../Neural-Modeling/cells/templates/L5PCbiophys3.hoc", 'import3d.hoc', "../../../Neural-Modeling/cells/templates/L5PCtemplate.hoc"]
+    try_load(stdrun_hoc)
+    try_load(l5pc_biophys_hoc)
+    try_load(import3d_hoc)
+    try_load(l5pc_template_hoc)
 
-    # needed for h.load_file("import3d.hoc")
-    h.load_file('stdrun.hoc')
-
-    # load procedure L5PCbiophys() for distributing biophys in h.L5PCtemplate()
-    # h.load_file("../../../Neural-Modeling/cells/templates/L5PCbiophys3.hoc") # cannot be loaded without loading mechanisms first
-    h.load_file("../../../../cells/templates/L5PCbiophys3.hoc")
-
-		# # load needed procedure for importing 3d coordinates
-    h.load_file("import3d.hoc")
-
-		# # # Load h.L5PCtemplate()
-    # h.load_file("../../../Neural-Modeling/cells/templates/L5PCtemplateMediumRes.hoc") # load template that gets biophys and establishes sectioning
-    h.load_file("../../../../cells/templates/L5PCtemplateMediumRes.hoc") 
-    # called 'MediumRes' because semgentation is reverted back to original
-
-    # path to 3d coords file that will be passed to "cell = h.L5PCtemplate(template_arg)" in SynapseTuner.set_up_cell(self)
-    # template_arg = "../../../Neural-Modeling/cells/templates/cell1.asc" # contains 3d coordinates
-    template_arg = "../../../../cells/templates/cell1.asc" # contains 3d coordinates
-    return template_arg
+    return cell_asc
 
 from bmtool.synapses import SynapseTuner
 def InitializeSysnapseTuner(connection, template_arg, current_name='i', other_vars_to_record=[], sliders_to_use=['initW']):
-  mechanisms_dir = 'modfiles'
-  templates_file = 'templates.hoc'
+  mechanisms_dir = '/users/drfrbc/Neural-Modeling/notebooks/bmtool/examples/synapses/modfiles'
+  templates_file = '/users/drfrbc/Neural-Modeling/notebooks/bmtool/examples/synapses/templates.hoc'
 
   tuner = SynapseTuner(mechanisms_dir=mechanisms_dir, # where x86_64 is located
                       templates_dir=templates_file, # where the neuron templates are located
@@ -257,7 +267,7 @@ conn_type_settings = {
 
 }
 
-# define all of your tuner “recipes” in a single dict
+# define all of your tuner "recipes" in a single dict
 tuner_configs = {
     True: {
         'exc': {
@@ -389,3 +399,25 @@ distributions_to_test = {
         }
     }
 }
+
+def save_simulation_results(weights, PSC_mags, locs, filename):
+    df = pd.DataFrame({
+        'weight': weights,
+        'PSC_mag': PSC_mags,
+        'segment_idx': locs
+    })
+    df.to_csv(filename, index=False)
+    print(f"Saved simulation results to {filename}")
+
+def save_summary_stats(mean_psc, std_psc, target_metric, filename):
+    with open(filename, 'w') as f:
+        f.write(f"Simulated mean PSC: {mean_psc:.4f}\n")
+        f.write(f"Simulated std PSC: {std_psc:.4f}\n")
+        f.write(f"Target mean: {target_metric['mean']:.4f}\n")
+        f.write(f"Target std: {target_metric['std']:.4f}\n")
+    print(f"Saved summary statistics to {filename}")
+
+def save_pscs_by_segment(PSCs_by_segment, filename):
+    with open(filename, 'wb') as f:
+        pickle.dump(PSCs_by_segment, f)
+    print(f"Saved PSCs by segment to {filename}")
