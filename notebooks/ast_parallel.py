@@ -77,18 +77,7 @@ def setup_cell_and_mechanisms():
     
     neuron.load_mechanisms(modfiles_dir)
     
-    # Load required NEURON libraries
-    h.load_file("stdlib.hoc")
-    h.load_file("import3d.hoc")
-    h.load_file("nrngui.hoc")
-    
-    # Load template file
-    template_path = os.path.join(root_dir, 'cells', 'templates', 'L5PCtemplateMediumRes.hoc')
-    if not os.path.exists(template_path):
-        print(f"Error: Template file not found at {template_path}")
-        sys.exit(1)
-    h.load_file(template_path)
-    
+    # Let load_hay_cell handle template loading
     if USE_HAY_CELL:
         template_arg = load_hay_cell(conn_type_settings)
     else:
