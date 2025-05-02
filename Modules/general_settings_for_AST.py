@@ -364,12 +364,12 @@ def log_norm_dist(gmax_mean, gmax_std, size, clip, gmax_scalar): # exc
   # print(np.clip(val, clip[0], clip[1]))
   # print(float(np.clip(val, clip[0], clip[1])))
   s = np.clip(val, clip[0], clip[1])
-  s = gmax_scalar * float(np.clip(val, clip[0], clip[1]))
+  s = gmax_scalar * float(np.clip(val, clip[0], clip[1])) + 1e-15
   return s
 
 def norm_dist(gmax_mean, gmax_std, size, clip): # inh
   val = np.random.normal(gmax_mean, gmax_std, size)[0]
-  s = np.clip(val, clip[0], clip[1])
+  s = np.clip(val, clip[0], clip[1]) + 1e-15
   return s
 
 distributions_to_test = {
