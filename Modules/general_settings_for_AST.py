@@ -13,10 +13,6 @@ def load_hay_cell(conn_type_settings):
     stdrun_hoc = 'stdrun.hoc'  # Should be in NEURON's path
     import3d_hoc = 'import3d.hoc'  # Should be in NEURON's path
 
-    # Load mechanisms FIRST!
-    # import neuron
-    # neuron.load_mechanisms(modfiles_dir)
-
     # Set post_cell and sec_id for all cell types
     for cell_type, items in conn_type_settings.items():
         conn_type_settings[cell_type]['spec_settings']['post_cell'] = 'L5PCtemplate'
@@ -26,14 +22,21 @@ def load_hay_cell(conn_type_settings):
         print(f"Attempting to load: {file}")
         try:
             h.load_file(file)
-            print(f"Loaded: {file}")
+            print(f"Successfully loaded: {file}")
         except Exception as e:
             print(f"Error loading {file}: {e}")
+            raise  # Re-raise the exception to handle it in the calling function
 
-    try_load(stdrun_hoc)
-    try_load(l5pc_biophys_hoc)
-    try_load(import3d_hoc)
-    try_load(l5pc_template_hoc)
+    # Load files in correct order
+    try:
+        try_load(stdrun_hoc)
+        try_load(import3d_hoc)  # Load import3d before biophys
+        try_load(l5pc_biophys_hoc)
+        try_load(l5pc_template_hoc)
+        print("All HOC files loaded successfully")
+    except Exception as e:
+        print(f"Failed to load HOC files: {e}")
+        raise
 
     return cell_asc
 
