@@ -17,6 +17,7 @@ import neuron
 from neuron import h
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 # Add necessary paths
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -52,7 +53,10 @@ try:
         distributions_to_test,
         log_norm_dist,
         norm_dist,
-        load_hay_cell
+        load_hay_cell,
+        save_simulation_results,
+        save_summary_stats,
+        save_pscs_by_segment
     )
 except ImportError as e:
     print(f"Error importing general_settings_for_AST: {e}")
@@ -61,7 +65,7 @@ except ImportError as e:
     sys.exit(1)
 
 # Global settings
-TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION = 100
+TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION = 3000
 USE_HAY_CELL = True
 
 # Globals for worker processes
@@ -69,21 +73,24 @@ GLOBAL_tuner_configs = None
 GLOBAL_distributions_to_test = None
 GLOBAL_conn_type_settings = None
 GLOBAL_template_arg = None
+GLOBAL_optimization_histories = None
 
 def setup_cell_and_mechanisms():
     """Initialize the cell model and load NEURON mechanisms."""
-    # Load NEURON mechanisms first
-    if os.path.isdir(os.path.join(modfiles_dir, 'x86_64')):
-        os.system(f"rm -rf {os.path.join(modfiles_dir, 'x86_64')}")
-    
+    # First check if mechanisms need to be compiled
     if not os.path.isdir(os.path.join(modfiles_dir, 'x86_64')):
+        print("Compiling NEURON mechanisms...")
         os.chdir(modfiles_dir)
         os.system("nrnivmodl > /dev/null 2>&1")
         os.chdir(current_dir)
     
+    # Load mechanisms first
+    print("Loading NEURON mechanisms...")
     neuron.load_mechanisms(modfiles_dir)
+    
     # Now load the cell/template
     if USE_HAY_CELL:
+        print("Loading Hay cell template...")
         template_arg = load_hay_cell(conn_type_settings)
     else:
         template_arg = None
@@ -145,7 +152,7 @@ def change_synapse_weight(synapse_tuner_obj, distributions_to_test, synapse_type
             exc_std,
             1,
             exc_clip,
-            distributions_to_test[synapse_type][location_type]['exc_scalar']
+            distributions_to_test[synapse_type][location_type].get('exc_scalar', 1.0)  # Default to 1.0 if not present
         )
     synapse_tuner_obj.syn.initW = new_weight
     return new_weight
@@ -161,10 +168,14 @@ def simulate_PSC(synapse_type, location_type, use_norm_dist):
         synapse_tuner_obj, 
         location_type
     )
+    
+    # Determine if we should use normal distribution based on synapse type
+    use_norm_dist = 'inh' in synapse_type.lower()
+    
     weight = change_synapse_weight(
         synapse_tuner_obj,
         GLOBAL_distributions_to_test,
-        'exc' if 'exc' in synapse_type.lower() else 'inh',
+        synapse_type,
         location_type,
         use_norm_dist
     )
@@ -177,10 +188,11 @@ def simulate_PSC(synapse_type, location_type, use_norm_dist):
     PSC_mag = max(abs(synapse_tuner_obj.SingleEvent(plot_and_print=False)))
     return PSC_mag, weight, loc
 
-def run_parallel_simulations(synapse_type, location_type, total_samples=100, use_norm_dist=False):
+def run_parallel_simulations(synapse_type, location_type, total_samples=100):
     """Run parallel simulations and collect results."""
+    use_norm_dist = 'inh' in synapse_type.lower()
     cpu_cores = mp.cpu_count()
-    simulation_batch_size = min(total_samples, cpu_cores - 1)
+    simulation_batch_size = min(total_samples, cpu_cores)
     number_of_batches = int(np.ceil(total_samples / simulation_batch_size))
     PSC_mags = []
     weights = []
@@ -215,11 +227,10 @@ def objective_function(params, synapse_type, location_type, target_metric):
     distributions_to_test[synapse_type][location_type]['std'] = params[1]
     
     # Run simulations
-    PSC_mags, weights, _ = run_parallel_simulations(
+    PSC_mags, weights, locs, PSCs_by_segment = run_parallel_simulations(
         synapse_type=synapse_type,
         location_type=location_type,
-        total_samples=50,
-        use_norm_dist=True
+        total_samples=TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION
     )
     
     mean_PSC = np.mean(PSC_mags)
@@ -227,6 +238,14 @@ def objective_function(params, synapse_type, location_type, target_metric):
     
     # Use both mean and std in the error
     error = (mean_PSC - target_metric['mean'])**2 + (std_PSC - target_metric['std'])**2
+    
+    # Store results in optimization history
+    optimization_histories[(synapse_type, location_type)].append({
+        'params': params,
+        'PSC_mags': PSC_mags,
+        'weights': weights,
+        'error': error
+    })
     
     return error
 
@@ -240,7 +259,7 @@ def optimize_synapse_parameters(synapse_type, location_type, target_metric, boun
         args=(synapse_type, location_type, target_metric),
         method='L-BFGS-B',
         bounds=bounds,
-        options={'maxiter': 50, 'disp': True}
+        options={'maxiter': 10, 'disp': True}
     )
     return result
 
@@ -275,10 +294,8 @@ def plot_validation_results(weights, PSC_mags, synapse_type, location_type, targ
     print(f"Saved validation plot to {plot_path}")
 
 def worker_init():
-    global GLOBAL_tuner_configs, GLOBAL_distributions_to_test, GLOBAL_conn_type_settings, GLOBAL_template_arg
+    global GLOBAL_tuner_configs, GLOBAL_distributions_to_test, GLOBAL_conn_type_settings, GLOBAL_template_arg, GLOBAL_optimization_histories
     import neuron
-    # modfiles_dir = '/users/drfrbc/Neural-Modeling/notebooks/bmtool/examples/synapses/modfiles'
-    # neuron.load_mechanisms(modfiles_dir)
     from general_settings_for_AST import (
         tuner_configs, distributions_to_test, conn_type_settings, load_hay_cell
     )
@@ -286,53 +303,190 @@ def worker_init():
     GLOBAL_distributions_to_test = distributions_to_test
     GLOBAL_conn_type_settings = conn_type_settings
     GLOBAL_template_arg = load_hay_cell(conn_type_settings)
+    GLOBAL_optimization_histories = {}
+
+def plot_optimization_history(history, synapse_type, location_type, save_dir):
+    """Plot the optimization history showing parameter evolution and PSC distributions."""
+    os.makedirs(save_dir, exist_ok=True)
+    
+    # Plot parameter evolution
+    plt.figure(figsize=(12, 5))
+    plt.subplot(1, 2, 1)
+    means = [h['params'][0] for h in history]
+    stds = [h['params'][1] for h in history]
+    plt.plot(means, label='Mean')
+    plt.plot(stds, label='Std')
+    plt.xlabel('Iteration')
+    plt.ylabel('Parameter Value')
+    plt.title(f'Parameter Evolution for {synapse_type} in {location_type}')
+    plt.legend()
+    
+    # Plot PSC distributions
+    plt.subplot(1, 2, 2)
+    for i, h in enumerate(history):
+        PSC_mags = h['PSC_mags']
+        plt.hist(PSC_mags, bins=30, alpha=0.3, label=f'Iter {i}')
+    plt.xlabel('PSC Magnitude')
+    plt.ylabel('Count')
+    plt.title(f'PSC Distribution Evolution')
+    plt.legend()
+    
+    plot_path = os.path.join(save_dir, f'optimization_history_{synapse_type}_{location_type}.png')
+    plt.savefig(plot_path)
+    plt.close()
+    print(f"Saved optimization history plot to {plot_path}")
 
 if __name__ == '__main__':
     # Initialize cell and mechanisms
     template_arg = setup_cell_and_mechanisms()
     
-    # Example usage
-    synapse_type = 'exc'
-    location_type = 'distal_basal'
+    # Create results directory with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    results_dir = f'AA_PSC_tuning_results_{timestamp}'
+    os.makedirs(results_dir, exist_ok=True)
     
-    print(f"Running parallel simulations for {synapse_type} synapses in {location_type}...")
-    PSC_mags, weights, locs, PSCs_by_segment = run_parallel_simulations(
-        synapse_type=synapse_type,
-        location_type=location_type,
-        total_samples=100
-    )
+    # Initialize results storage
+    all_results = []
+    optimization_histories = {}
     
-    # Plot results
-    plot_results(weights, PSC_mags, synapse_type, location_type)
+    # Create documentation file
+    with open(os.path.join(results_dir, 'simulation_parameters.txt'), 'w') as f:
+        f.write("=== Simulation Parameters ===\n")
+        f.write(f"Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Total CPU Cores Available: {mp.cpu_count()}\n")
+        f.write(f"Total Samples per Weight Distribution: {TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION}\n")
+        f.write(f"Optimization Method: L-BFGS-B\n")
+        f.write(f"Maximum Optimization Iterations: 10\n")
+        f.write("\n=== Target Metrics ===\n")
+        for syn_type, metrics in target_metrics.items():
+            f.write(f"\n{syn_type}:\n")
+            f.write(f"  Target Mean PSC: {metrics['magnitude']['mean']} pA\n")
+            f.write(f"  Target Std PSC: {metrics['magnitude']['std']} pA\n")
+        f.write("\n=== Location Types ===\n")
+        for syn_type, loc_types in location_types_by_synapse_type.items():
+            f.write(f"\n{syn_type}: {', '.join(loc_types)}\n")
     
-    # Example optimization
-    target_metric = {'mean': 0.5, 'std': 0.1}  # Example target PSC magnitude
-    bounds = [(0.1, 1.0), (0.01, 0.5)]  # Mean and std bounds
+    # Track total execution time
+    total_start_time = time.time()
     
-    print(f"\nOptimizing parameters for {synapse_type} synapses in {location_type}...")
-    result = optimize_synapse_parameters(synapse_type, location_type, target_metric, bounds)
-    print(f"\nOptimization results:")
-    print(f"Optimal mean: {result.x[0]:.4f}")
-    print(f"Optimal std: {result.x[1]:.4f}")
-    print(f"Final error: {result.fun:.4f}")
-
-    # Post-optimization validation
-    print("\nRunning post-optimization validation...")
-    # Set optimized parameters
-    distributions_to_test[synapse_type][location_type]['mean'] = result.x[0]
-    distributions_to_test[synapse_type][location_type]['std'] = result.x[1]
-    # Rerun simulations
-    PSC_mags_val, weights_val, locs_val, _ = run_parallel_simulations(
-        synapse_type=synapse_type,
-        location_type=location_type,
-        total_samples=100
-    )
-    # Print summary
-    print(f"Validation: Simulated mean PSC = {np.mean(PSC_mags_val):.4f}, std = {np.std(PSC_mags_val):.4f}")
-    print(f"Target: mean = {target_metric['mean']:.4f}, std = {target_metric['std']:.4f}")
-    # Plot and save
-    plot_validation_results(weights_val, PSC_mags_val, synapse_type, location_type, target_metric, save_dir='AA_results') 
-    from general_settings_for_AST import save_simulation_results, save_summary_stats, save_pscs_by_segment
-    save_simulation_results(weights, PSC_mags, locs, 'AA_results/simulation_results.csv')
-    save_summary_stats(np.mean(PSC_mags), np.std(PSC_mags), target_metric, 'AA_results/summary.txt')
-    save_pscs_by_segment(PSCs_by_segment, 'AA_results/pscs_by_segment.pkl')
+    # Iterate over all synapse types and their location types
+    for synapse_type, location_types in location_types_by_synapse_type.items():
+        for location_type in location_types:
+            print(f"\nProcessing {synapse_type} synapses in {location_type}...")
+            
+            # Track time for this synapse/location combination
+            start_time = time.time()
+            
+            # Get target metrics
+            target_metric = target_metrics[synapse_type]['magnitude']
+            
+            # Set appropriate bounds based on synapse type
+            if 'exc' in synapse_type:
+                bounds = [(0.1, 1.0), (0.01, 0.5)]  # Mean and std bounds for excitatory
+            else:
+                bounds = [(0.5, 2.0), (0.01, 0.5)]  # Mean and std bounds for inhibitory
+            
+            # Initialize optimization history
+            optimization_histories[(synapse_type, location_type)] = []
+            
+            # Run initial simulation
+            print(f"Running initial simulations...")
+            PSC_mags, weights, locs, PSCs_by_segment = run_parallel_simulations(
+                synapse_type=synapse_type,
+                location_type=location_type,
+                total_samples=TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION
+            )
+            
+            # Store initial results
+            optimization_histories[(synapse_type, location_type)].append({
+                'params': [distributions_to_test[synapse_type][location_type]['mean'],
+                          distributions_to_test[synapse_type][location_type]['std']],
+                'PSC_mags': PSC_mags,
+                'weights': weights,
+                'error': (np.mean(PSC_mags) - target_metric['mean'])**2 + 
+                        (np.std(PSC_mags) - target_metric['std'])**2
+            })
+            
+            # Optimize parameters
+            print(f"Optimizing parameters...")
+            result = optimize_synapse_parameters(synapse_type, location_type, target_metric, bounds)
+            
+            # Store optimized parameters
+            distributions_to_test[synapse_type][location_type]['mean'] = result.x[0]
+            distributions_to_test[synapse_type][location_type]['std'] = result.x[1]
+            
+            # Run validation simulations
+            print(f"Running validation simulations...")
+            PSC_mags_val, weights_val, locs_val, _ = run_parallel_simulations(
+                synapse_type=synapse_type,
+                location_type=location_type,
+                total_samples=TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION
+            )
+            
+            # Store final results
+            optimization_histories[(synapse_type, location_type)].append({
+                'params': result.x,
+                'PSC_mags': PSC_mags_val,
+                'weights': weights_val,
+                'error': result.fun
+            })
+            
+            # Calculate execution time for this combination
+            elapsed_time = time.time() - start_time
+            
+            # Save results
+            save_dir = os.path.join(results_dir, f"{synapse_type}_{location_type}")
+            os.makedirs(save_dir, exist_ok=True)
+            
+            # Plot and save results
+            plot_validation_results(weights_val, PSC_mags_val, synapse_type, location_type, 
+                                  target_metric, save_dir)
+            plot_optimization_history(optimization_histories[(synapse_type, location_type)],
+                                    synapse_type, location_type, save_dir)
+            
+            # Save data
+            save_simulation_results(weights_val, PSC_mags_val, locs_val, 
+                                  os.path.join(save_dir, 'simulation_results.csv'))
+            save_summary_stats(np.mean(PSC_mags_val), np.std(PSC_mags_val), target_metric,
+                             os.path.join(save_dir, 'summary.txt'))
+            save_pscs_by_segment(PSCs_by_segment, 
+                               os.path.join(save_dir, 'pscs_by_segment.pkl'))
+            
+            # Store results for final summary
+            all_results.append({
+                "Synapse Type": synapse_type,
+                "Location Type": location_type,
+                "initW_mean": round(result.x[0], 3),
+                "initW_std": round(result.x[1], 3),
+                "PSC Mean": round(np.mean(PSC_mags_val), 3),
+                "PSC Std": round(np.std(PSC_mags_val), 3),
+                "PSC_mean_error": round(target_metric['mean'] - np.mean(PSC_mags_val), 3),
+                "PSC_std_error": round(target_metric['std'] - np.std(PSC_mags_val), 3),
+                "Final Error": round(result.fun, 3),
+                "Execution Time (s)": round(elapsed_time, 1),
+                "Optimization Iterations": result.nit,
+                "Optimization Success": result.success
+            })
+    
+    # Calculate total execution time
+    total_elapsed_time = time.time() - total_start_time
+    
+    # Save final summary
+    import pandas as pd
+    results_df = pd.DataFrame(all_results)
+    results_df.to_csv(os.path.join(results_dir, 'final_summary.csv'))
+    
+    # Update documentation with execution times
+    with open(os.path.join(results_dir, 'simulation_parameters.txt'), 'a') as f:
+        f.write("\n=== Execution Summary ===\n")
+        f.write(f"Total Execution Time: {total_elapsed_time:.1f} seconds\n")
+        f.write(f"Average Time per Synapse/Location: {total_elapsed_time/len(all_results):.1f} seconds\n")
+        f.write("\n=== Individual Execution Times ===\n")
+        for result in all_results:
+            f.write(f"\n{result['Synapse Type']} - {result['Location Type']}:\n")
+            f.write(f"  Execution Time: {result['Execution Time (s)']} seconds\n")
+            f.write(f"  Optimization Iterations: {result['Optimization Iterations']}\n")
+            f.write(f"  Optimization Success: {result['Optimization Success']}\n")
+    
+    print("\nFinal summary saved to", os.path.join(results_dir, 'final_summary.csv'))
+    print(f"Total execution time: {total_elapsed_time:.1f} seconds")
