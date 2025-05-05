@@ -158,35 +158,39 @@ def change_synapse_weight(synapse_tuner_obj, distributions_to_test, synapse_type
     return new_weight
 
 def simulate_PSC(synapse_type, location_type, use_norm_dist):
-    """Simulate PSC for a given synapse type and location."""
-    global GLOBAL_tuner_configs, GLOBAL_distributions_to_test, GLOBAL_template_arg
-    synapse_tuner_obj = InitializeSysnapseTuner(
-        template_arg=GLOBAL_template_arg, 
-        **GLOBAL_tuner_configs[True][synapse_type]
-    )
-    all_segments, possible_segments, seg_probs = get_segments(
-        synapse_tuner_obj, 
-        location_type
-    )
-    
-    # Determine if we should use normal distribution based on synapse type
-    use_norm_dist = 'inh' in synapse_type.lower()
-    
-    weight = change_synapse_weight(
-        synapse_tuner_obj,
-        GLOBAL_distributions_to_test,
-        synapse_type,
-        location_type,
-        use_norm_dist
-    )
-    loc = move_synapse_to_new_location(
-        synapse_tuner_obj, 
-        possible_segments, 
-        seg_probs, 
-        all_segments
-    )
-    PSC_mag = max(abs(synapse_tuner_obj.SingleEvent(plot_and_print=False)))
-    return PSC_mag, weight, loc
+    """Simulate PSC for a given synapse type and location with error handling."""
+    try:
+        global GLOBAL_tuner_configs, GLOBAL_distributions_to_test, GLOBAL_template_arg
+        synapse_tuner_obj = InitializeSysnapseTuner(
+            template_arg=GLOBAL_template_arg, 
+            **GLOBAL_tuner_configs[True][synapse_type]
+        )
+        all_segments, possible_segments, seg_probs = get_segments(
+            synapse_tuner_obj, 
+            location_type
+        )
+        
+        # Determine if we should use normal distribution based on synapse type
+        use_norm_dist = 'inh' in synapse_type.lower()
+        
+        weight = change_synapse_weight(
+            synapse_tuner_obj,
+            GLOBAL_distributions_to_test,
+            synapse_type,
+            location_type,
+            use_norm_dist
+        )
+        loc = move_synapse_to_new_location(
+            synapse_tuner_obj, 
+            possible_segments, 
+            seg_probs, 
+            all_segments
+        )
+        PSC_mag = max(abs(synapse_tuner_obj.SingleEvent(plot_and_print=False)))
+        return PSC_mag, weight, loc
+    except Exception as e:
+        print(f"Error in simulate_PSC: {str(e)}")
+        return None, None, None
 
 def run_parallel_simulations(synapse_type, location_type, total_samples=100):
     """Run parallel simulations and collect results."""
@@ -197,25 +201,46 @@ def run_parallel_simulations(synapse_type, location_type, total_samples=100):
     PSC_mags = []
     weights = []
     locs = []
+    
     # Use a local tuner to get segment count
     synapse_tuner_obj = InitializeSysnapseTuner(template_arg=template_arg, **tuner_configs[True][synapse_type])
     all_segments = [seg for sec in synapse_tuner_obj.cell.all for seg in sec]
     total_segments = len(all_segments)
     PSCs_by_segment = {seg_idx: [] for seg_idx in range(total_segments)}
+    
     start_time = time.time()
-    with mp.Pool(processes=simulation_batch_size, initializer=worker_init) as pool:
-        for batch_idx in tqdm(range(number_of_batches), desc="Running simulation batches"):
-            batch_args = [
-                (synapse_type, location_type, use_norm_dist)
-                for _ in range(simulation_batch_size)
-            ]
-            results = pool.starmap(simulate_PSC, batch_args)
-            for PSC_mag, weight, loc in results:
-                PSC_mags.append(PSC_mag)
-                weights.append(weight)
-                locs.append(loc)
-                PSCs_by_segment[loc].append(PSC_mag)
-            print(f"Batch {batch_idx+1}/{number_of_batches}: mean PSC={np.mean(PSC_mags):.3f}, std PSC={np.std(PSC_mags):.3f}")
+    
+    try:
+        # Create pool with maxtasksperchild to prevent memory leaks
+        with mp.Pool(processes=simulation_batch_size, 
+                    initializer=worker_init,
+                    maxtasksperchild=10) as pool:
+            for batch_idx in tqdm(range(number_of_batches), desc="Running simulation batches"):
+                batch_args = [
+                    (synapse_type, location_type, use_norm_dist)
+                    for _ in range(simulation_batch_size)
+                ]
+                try:
+                    results = pool.starmap(simulate_PSC, batch_args)
+                    for PSC_mag, weight, loc in results:
+                        if PSC_mag is not None:  # Check for valid results
+                            PSC_mags.append(PSC_mag)
+                            weights.append(weight)
+                            locs.append(loc)
+                            PSCs_by_segment[loc].append(PSC_mag)
+                    print(f"Batch {batch_idx+1}/{number_of_batches}: mean PSC={np.mean(PSC_mags):.3f}, std PSC={np.std(PSC_mags):.3f}")
+                except Exception as e:
+                    print(f"Error in batch {batch_idx+1}: {str(e)}")
+                    continue
+    except Exception as e:
+        print(f"Error in parallel processing: {str(e)}")
+        raise
+    finally:
+        # Ensure pool is properly closed
+        if 'pool' in locals():
+            pool.close()
+            pool.join()
+    
     elapsed_time = time.time() - start_time
     print(f"Total simulation time: {elapsed_time:.2f} seconds")
     return np.array(PSC_mags), np.array(weights), np.array(locs), PSCs_by_segment
@@ -294,16 +319,22 @@ def plot_validation_results(weights, PSC_mags, synapse_type, location_type, targ
     print(f"Saved validation plot to {plot_path}")
 
 def worker_init():
+    """Initialize worker process with proper error handling."""
     global GLOBAL_tuner_configs, GLOBAL_distributions_to_test, GLOBAL_conn_type_settings, GLOBAL_template_arg, GLOBAL_optimization_histories
-    import neuron
-    from general_settings_for_AST import (
-        tuner_configs, distributions_to_test, conn_type_settings, load_hay_cell
-    )
-    GLOBAL_tuner_configs = tuner_configs
-    GLOBAL_distributions_to_test = distributions_to_test
-    GLOBAL_conn_type_settings = conn_type_settings
-    GLOBAL_template_arg = load_hay_cell(conn_type_settings)
-    GLOBAL_optimization_histories = {}
+    
+    try:
+        import neuron
+        from general_settings_for_AST import (
+            tuner_configs, distributions_to_test, conn_type_settings, load_hay_cell
+        )
+        GLOBAL_tuner_configs = tuner_configs
+        GLOBAL_distributions_to_test = distributions_to_test
+        GLOBAL_conn_type_settings = conn_type_settings
+        GLOBAL_template_arg = load_hay_cell(conn_type_settings)
+        GLOBAL_optimization_histories = {}
+    except Exception as e:
+        print(f"Error in worker initialization: {str(e)}")
+        raise
 
 def plot_optimization_history(history, synapse_type, location_type, save_dir):
     """Plot the optimization history showing parameter evolution and PSC distributions."""
