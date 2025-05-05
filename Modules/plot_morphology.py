@@ -89,25 +89,36 @@ def plot_special_segments(seg_data, special_indices, special_colors, title_suffi
     plt.ylim(y_min, y_max)
     plt.show()
 
-def plot_segments(seg_data, special_indices, special_colors, title_suffix="", save_file = None, show=False): # from notebooks/plot_voltages.ipynb TODO: combine with plot_special_segments.
+def plot_segments(seg_data, special_indices, special_colors, title_suffix="", save_file=None, show=False, ax=None, elevation=0, azimuth=-100, radius_scale=1.0): # from notebooks/plot_voltages.ipynb TODO: combine with plot_special_segments.
     # Calculate the axis limits
-    all_coords_x = seg_data['Coord X'].tolist()
-    all_coords_y = seg_data['Coord Y'].tolist()
+    if hasattr(seg_data, 'Coord X'):
+        x_coord_name = 'Coord X'
+        y_coord_name = 'Coord Y'
+    elif hasattr(seg_data, 'pc_0'):
+        x_coord_name = 'pc_0'
+        y_coord_name = 'pc_1'
+    else:
+        NotImplementedError('seg_data does not have a valid x_coord_name')
+
+    all_coords_x = seg_data[x_coord_name].tolist()
+    all_coords_y = seg_data[y_coord_name].tolist()
     x_min, x_max = min(all_coords_x), max(all_coords_x)
     y_min, y_max = min(all_coords_y), max(all_coords_y)
 
     for i, segs in enumerate([seg_data]):
-        plt.figure()
-        plt.scatter(segs['Coord X'], segs['Coord Y'], s=0.1)
+        if ax is None:
+            fig = plt.figure()
+            ax = fig.gca()
+        ax.scatter(segs[x_coord_name], segs[y_coord_name], s=0.1)
         for j, ind in enumerate(special_indices):
-            plt.plot(segs.loc[segs.segmentID.isin([ind]), 'Coord X'], 
-                     segs.loc[segs.segmentID.isin([ind]), 'Coord Y'], special_colors[j])
+            ax.plot(segs.loc[segs.segmentID.isin([ind]), x_coord_name], 
+                   segs.loc[segs.segmentID.isin([ind]), y_coord_name], special_colors[j])
         
-        plt.title(f"Segments {title_suffix}" if i == 0 else f"Segments {title_suffix}")
-        plt.xlim(x_min, x_max)
-        plt.ylim(y_min, y_max)
+        ax.set_title(f"Segments {title_suffix}" if i == 0 else f"Segments {title_suffix}")
+        ax.set_xlim(x_min, x_max)
+        ax.set_ylim(y_min, y_max)
         if save_file:
-            plt.savefig(f"{save_file}.png", format='png', bbox_inches="tight", dpi=300)
+            ax.figure.savefig(f"{save_file}.png", format='png', bbox_inches="tight", dpi=300)
         if show:
             plt.show()
 
@@ -146,4 +157,84 @@ def plot_morphology_with_highlighted_sec_type(sec_type, seg_data):
     else:
         fig, ax = plot_reduced_morphology(seg_data,deleted_indices=seg_data[seg_data['sec_type_precise'] == sec_type]['seg_id'].tolist()) #TODO: also change plot_reduced_morphology to plot_morphology for clarity
     return fig, ax
+
+def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, elevation=20, azimuth=-100, radius_scale=1.0, title=''):
+    """
+    Visualize the clustering configuration including functional groups and presynaptic cells.
+    
+    Parameters:
+    -----------
+    seg_data : pd.DataFrame
+        DataFrame containing segment data
+    clustering_config : dict
+        Dictionary containing clustering configuration (from parameters)
+    synapse_coords : np.ndarray, optional
+        Array of synapse coordinates to plot
+    ax : matplotlib.axes.Axes, optional
+        Axes to plot on
+    elevation : float, optional
+        Elevation angle for 3D view
+    azimuth : float, optional
+        Azimuth angle for 3D view
+    radius_scale : float, optional
+        Scale factor for segment radii
+    title : str, optional
+        Title for the plot
+    """
+    if ax is None:
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection='3d')
+    
+    # Plot the cell morphology in 3D
+    plot(seg_data, {i: 0 for i in seg_data.index}, ax, elevation=elevation, azimuth=azimuth, radius_scale=radius_scale)
+    
+    # Plot synapses if provided
+    if synapse_coords is not None:
+        ax.scatter(
+            synapse_coords[:, 0],  # X
+            synapse_coords[:, 2],  # Z (should be Y in plot)
+            synapse_coords[:, 1],  # Y (should be Z in plot)
+            c='gray', alpha=0.3, s=5, label='Synapses'
+        )
+    
+    # Plot functional groups and presynaptic cells
+    for sec_type, sec_config in clustering_config.items():
+        for fg_idx, fg in enumerate(sec_config.get('functional_groups', [])):
+            # Plot functional group center and radius
+            fg_center = np.array(fg['center'])
+            fg_radius = fg['radius']
+            
+            # Create a sphere for the functional group
+            u = np.linspace(0, 2 * np.pi, 100)
+            v = np.linspace(0, np.pi, 100)
+            x = fg_center[0] + fg_radius * np.outer(np.cos(u), np.sin(v))
+            y = fg_center[1] + fg_radius * np.outer(np.sin(u), np.sin(v))
+            z = fg_center[2] + fg_radius * np.outer(np.ones(np.size(u)), np.cos(v))
+            
+            ax.plot_surface(x, y, z, color='blue', alpha=0.1, label=f'FG {fg_idx}' if fg_idx == 0 else None)
+            ax.scatter(fg_center[0], fg_center[1], fg_center[2], color='blue', s=50, 
+                      label=f'FG Center {fg_idx}' if fg_idx == 0 else None)
+            
+            # Plot presynaptic cells
+            for pc_idx, pc in enumerate(fg.get('presynaptic_cells', [])):
+                pc_center = np.array(pc['center']) + fg_center
+                pc_radius = pc['radius']
+                
+                # Create a sphere for the presynaptic cell
+                x = pc_center[0] + pc_radius * np.outer(np.cos(u), np.sin(v))
+                y = pc_center[1] + pc_radius * np.outer(np.sin(u), np.sin(v))
+                z = pc_center[2] + pc_radius * np.outer(np.ones(np.size(u)), np.cos(v))
+                
+                ax.plot_surface(x, y, z, color='red', alpha=0.1, 
+                              label=f'PC {pc_idx}' if pc_idx == 0 and fg_idx == 0 else None)
+                ax.scatter(pc_center[0], pc_center[1], pc_center[2], color='red', s=30,
+                          label=f'PC Center {pc_idx}' if pc_idx == 0 and fg_idx == 0 else None)
+    
+    ax.set_xlabel('X (um)')
+    ax.set_ylabel('Y (um)')
+    ax.set_zlabel('Z (um)')
+    ax.set_title(title)
+    ax.legend()
+    
+    return ax
     

@@ -266,7 +266,6 @@ class SimulationParameters:
 			},
 	})
 
-
 	# ## for L2/3
 	# exc_syn_properties: dict = field(default_factory=lambda: { 
 	# 	'apic': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
@@ -476,6 +475,79 @@ class SimulationParameters:
 	tuft_AC_stats: list = field(default_factory=lambda: [
      (0.03897, 0.05233), (0.05814, 0.05911)
      ])
+
+	# Clustering parameters
+	exc_clustering: dict = field(default_factory=lambda: {
+		'tuft': {
+			'functional_groups': [
+				{
+					'center': (0, 900, 0),  # 3D coordinates
+					'radius': 100.0,  # microns
+					'presynaptic_cells': [
+						{
+							'center': (0, 900, 25),  # relative to functional group center
+							'radius': 10.0,  # microns
+							'name': 'PC1',
+							'max_synapses': 10  # maximum number of synapses per PC
+						},
+						{
+							'center': (0, 900, -25),
+							'radius': 10.0,
+							'name': 'PC2',
+							'max_synapses': 10
+						}
+					]
+				},
+				{
+					'center': (0, 0, 0),
+					'radius': 50.0,
+					'presynaptic_cells': [
+						{
+							'center': (0, 0, 0),
+							'radius': 10.0,
+							'name': 'PC3',
+							'max_synapses': 10
+						}
+					]
+				}
+			]
+		},
+		'trunk': {
+			'functional_groups': [
+				{
+					'center': (0, 0, 0),
+					'radius': 30.0,
+					'presynaptic_cells': [
+						{
+							'center': (0, 0, 0),
+							'radius': 10.0,
+							'name': 'PC4',
+							'max_synapses': 10
+						}
+					]
+				}
+			]
+		}
+	})
+
+	inh_clustering: dict = field(default_factory=lambda: {
+		'perisomatic': {
+			'functional_groups': [
+				{
+					'center': (0, 0, 0),
+					'radius': 30.0,
+					'presynaptic_cells': [
+						{
+							'center': (0, 0, 0),
+							'radius': 5.0,
+							'name': 'PC1',
+							'max_synapses': 10
+						}
+					]
+				}
+			]
+		}
+	})
 
 	def __post_init__(self):
 		# syn params choices

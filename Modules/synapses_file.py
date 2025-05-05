@@ -208,28 +208,145 @@ class PreSimSynapseGenerator:
 
         synapses['spike_train'] = np.empty(len(synapses), dtype=object)  # gives dtype=object
         synapses['pc_mean_firing_rate'] = np.nan            # dtype float, which is fine
+        synapses['functional_group'] = np.nan               # track which functional group each synapse belongs to
+        synapses['presynaptic_cell'] = np.nan               # track which presynaptic cell each synapse belongs to
 
+        # First, generate background firing rate profile for all synapses
+        background_firing_rate_timecourse = np.ones(self.parameters.h_tstop)
+
+        # Process both excitatory and inhibitory synapses
         for synapse_type in ['exc', 'inh']:
-            for cluster_sec_type in getattr(self.parameters, f"{synapse_type}_syn_properties").keys():#['tuft']: # or ['trunk', 'distal_basal', 'distal_apic', 'nexus', 'oblique']: or getattr(parameters, f"{synapse_type}_syn_properties").keys():
-                mean_firing_rate_distribution = getattr(self.parameters, f"{synapse_type}_syn_properties")[cluster_sec_type]['mean_firing_rate_distribution']
+            # Get the appropriate random state for this synapse type
+            random_state = np.random.RandomState(getattr(self.parameters, f"{synapse_type}_syn_properties")[list(getattr(self.parameters, f"{synapse_type}_syn_properties").keys())[0]]['seed']['synapses'])
+            np.random.seed(getattr(self.parameters, f"{synapse_type}_syn_properties")[list(getattr(self.parameters, f"{synapse_type}_syn_properties").keys())[0]]['seed']['synapses'])
 
-                # firing_rate_distribution = firing_rate_distribution['params']['mean'] if firing_rate_distribution['function'] is None else firing_rate_distribution['function']
+            for cluster_sec_type in getattr(self.parameters, f"{synapse_type}_syn_properties").keys():
+                # Get the mean firing rate distribution for this synapse type and section type
+                mean_firing_rate_distribution = getattr(self.parameters, f"{synapse_type}_syn_properties")[cluster_sec_type]['mean_firing_rate_distribution']
                 mean_firing_rate_distribution = partial(mean_firing_rate_distribution['function'], **mean_firing_rate_distribution['params'], size=1)
 
-                # default to background firing rate
-                fg_firing_rate_timecourse = np.ones(self.parameters.h_tstop) # background has no 'functional group' modulation
+                # Get synapses of this type and section
                 synapses_this_sec_and_syn_type = (
                     synapses['name'].str.contains(synapse_type, na=False) 
                     & synapses['name'].str.contains(cluster_sec_type, na=False)
                 )
-                for idx, synapse_row in synapses[synapses_this_sec_and_syn_type].iterrows():
-                    pc_mean_firing_rate = mean_firing_rate_distribution(size=1)
+                
+                # Get coordinates for these synapses
+                coords_this_type = synapse_coords[synapses_this_sec_and_syn_type]
+                
+                # Get clustering configuration for this synapse type and section
+                clustering_config = getattr(self.parameters, f"{synapse_type}_clustering", {}).get(cluster_sec_type, {})
+                
+                # Initialize functional group and presynaptic cell labels (-1 for background)
+                functional_group_labels = -np.ones(len(coords_this_type))
+                presynaptic_cell_labels = -np.ones(len(coords_this_type))
+                
+                # Process each functional group
+                for fg_idx, fg in enumerate(clustering_config.get('functional_groups', [])):
+                    fg_center = np.array(fg['center'])
+                    fg_radius = fg['radius']
+                    
+                    # Calculate distances from functional group center
+                    distances_to_fg = np.sqrt(np.sum((coords_this_type - fg_center)**2, axis=1))
+                    
+                    # Get synapses within this functional group
+                    fg_mask = distances_to_fg <= fg_radius
+                    functional_group_labels[fg_mask] = fg_idx
+                    
+                    # Process each presynaptic cell in this functional group
+                    for pc_idx, pc in enumerate(fg.get('presynaptic_cells', [])):
+                        pc_center = np.array(pc['center']) + fg_center  # PC center is relative to FG center
+                        pc_radius = pc['radius']
+                        
+                        # Calculate distances from presynaptic cell center
+                        distances_to_pc = np.sqrt(np.sum((coords_this_type - pc_center)**2, axis=1))
+                        
+                        # Get synapses within this presynaptic cell
+                        pc_mask = (distances_to_pc <= pc_radius) & fg_mask
+                        presynaptic_cell_labels[pc_mask] = pc_idx
+                
+                # Assign functional groups and presynaptic cells to synapses
+                synapses.loc[synapses_this_sec_and_syn_type, 'functional_group'] = functional_group_labels
+                synapses.loc[synapses_this_sec_and_syn_type, 'presynaptic_cell'] = presynaptic_cell_labels
+                
+                # For each functional group (including noise points labeled as -1)
+                unique_fgs = np.unique(functional_group_labels)
+                for fg_id in unique_fgs:
+                    # Get synapses in this functional group
+                    fg_mask = (functional_group_labels == fg_id)
+                    
+                    if fg_id == -1:  # Background synapses
+                        # Generate independent spike trains for background synapses
+                        background_synapses = synapses[synapses_this_sec_and_syn_type][fg_mask]
+                        for idx in background_synapses.index:
+                            pc_mean_firing_rate = mean_firing_rate_distribution(size=1)
+                            pc_firing_rate_timecourse = PoissonTrainGenerator.shift_mean_of_lambdas(
+                                lambdas=background_firing_rate_timecourse, 
+                                desired_mean=pc_mean_firing_rate
+                            )
+                            spike_train = PoissonTrainGenerator.generate_spike_train(
+                                lambdas=pc_firing_rate_timecourse, 
+                                random_state=random_state
+                            )
+                            
+                            synapses.at[idx, 'spike_train'] = np.array(spike_train.spike_times)
+                            synapses.at[idx, 'pc_mean_firing_rate'] = pc_mean_firing_rate
+                    else:
+                        # Generate a modulatory trace for this functional group
+                        fg_firing_rate_profile = PoissonTrainGenerator.generate_lambdas_from_pink_noise(
+                            num=self.parameters.h_tstop,
+                            random_state=random_state
+                        )
+                        fg_firing_rate_profile = fg_firing_rate_profile / np.mean(fg_firing_rate_profile)  # Normalize around 1
+                        
+                        # For each presynaptic cell in this functional group
+                        unique_pcs = np.unique(presynaptic_cell_labels[fg_mask])
+                        for pc_id in unique_pcs:
+                            if pc_id == -1:  # These are synapses in the FG but not in any PC - treat as background
+                                # Get these synapses
+                                unassigned_synapses = synapses[synapses_this_sec_and_syn_type][(functional_group_labels == fg_id) & (presynaptic_cell_labels == -1)]
+                                # Generate independent spike trains for them
+                                for idx in unassigned_synapses.index:
+                                    pc_mean_firing_rate = mean_firing_rate_distribution(size=1)
+                                    pc_firing_rate_timecourse = PoissonTrainGenerator.shift_mean_of_lambdas(
+                                        lambdas=background_firing_rate_timecourse, 
+                                        desired_mean=pc_mean_firing_rate
+                                    )
+                                    spike_train = PoissonTrainGenerator.generate_spike_train(
+                                        lambdas=pc_firing_rate_timecourse, 
+                                        random_state=random_state
+                                    )
+                                    
+                                    synapses.at[idx, 'spike_train'] = np.array(spike_train.spike_times)
+                                    synapses.at[idx, 'pc_mean_firing_rate'] = pc_mean_firing_rate
+                                continue
+                                
+                            # Get synapses in this presynaptic cell
+                            pc_mask = (presynaptic_cell_labels == pc_id) & fg_mask
+                            
+                            # Sample a mean firing rate for this presynaptic cell
+                            pc_mean_fr = mean_firing_rate_distribution(size=1)
+                            
+                            # Generate a base spike train for this presynaptic cell
+                            base_firing_rate_timecourse = PoissonTrainGenerator.shift_mean_of_lambdas(
+                                lambdas=fg_firing_rate_profile,
+                                desired_mean=pc_mean_fr
+                            )
+                            base_spike_train = PoissonTrainGenerator.generate_spike_train(
+                                lambdas=base_firing_rate_timecourse,
+                                random_state=random_state
+                            )
+                            
+                            # Assign the same spike train to all synapses in this presynaptic cell
+                            cluster_synapses = synapses[synapses_this_sec_and_syn_type][pc_mask]
+                            for idx in cluster_synapses.index:
+                                synapses.at[idx, 'spike_train'] = np.array(base_spike_train.spike_times)
+                                synapses.at[idx, 'pc_mean_firing_rate'] = pc_mean_fr
 
-                    pc_firing_rate_timecourse = PoissonTrainGenerator.shift_mean_of_lambdas(lambdas=fg_firing_rate_timecourse, desired_mean=pc_mean_firing_rate)
-                    spike_train = PoissonTrainGenerator.generate_spike_train(lambdas=pc_firing_rate_timecourse, random_state=random_state)
-
-                    synapses.at[idx, 'spike_train'] = np.array(spike_train.spike_times)
-                    synapses.at[idx, 'pc_mean_firing_rate'] = pc_mean_firing_rate
+        # Check for any unprocessed synapses
+        remaining_mask = synapses['spike_train'].isna()
+        if remaining_mask.any():
+            raise ValueError(f"Some synapses were not processed in the above loops: {synapses[remaining_mask]['name'].unique()}. Check your provided synapse names and parameters: {getattr(self.parameters, f'{synapse_type}_syn_properties')}")
 
         synapses.to_csv(os.path.join(self.sim_dir, "synapses.csv"), index=False)
 
@@ -280,7 +397,7 @@ class PreSimSynapseGenerator:
             # train_to_do = np.asarray(parse_array(train))
             # print(f"tran_to_do: {train_to_do}")
             # print(f"type(tran_to_do): {type(train_to_do)}")
-            syn.set_spike_train(train, logger=logger)
+            syn.set_spike_train(train)#, logger=logger)
             # logger.log(f"Success setting spike train for synapse {i}")
             # logger.log(f"check syn attributes after. netcons: {syn.netcons}. vec: {syn.vec}. stim: {syn.stim}. vecstim: {syn.vecstim}")
 
@@ -336,9 +453,9 @@ class PreSimSynapseGenerator:
 
 # ## deal with overlapping clusters
 # from collections import defaultdict
-# # turn each cluster’s indices into a mutable set
+# # turn each cluster's indices into a mutable set
 # cluster_sets = [set(idxs) for idxs in cluster_indices_by_cluster]
-# # build a map from each synapse‐index to the list of clusters it appears in
+# # build a map from each synapse-index to the list of clusters it appears in
 # idx_to_clusters = defaultdict(list)
 # for cid, idxs in enumerate(cluster_sets):
 #     for idx in idxs:
