@@ -18,12 +18,14 @@ from neuron import h
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from datetime import datetime
+import pickle
+import csv
 
 # Add necessary paths
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.abspath(os.path.join(current_dir, '..'))
 modules_dir = os.path.join(root_dir, 'Modules')
-modfiles_dir = '/users/drfrbc/Neural-Modeling/notebooks/bmtool/examples/synapses/modfiles'
+MODFILES_DIR = '/users/drfrbc/Neural-Modeling/notebooks/bmtool/examples/synapses/modfiles'  # <-- Edit here if needed
 sys.path.append(modules_dir)
 
 # Setup bmtool
@@ -39,7 +41,7 @@ print(f"Current directory: {current_dir}")
 print(f"Root directory: {root_dir}")
 print(f"Modules directory: {modules_dir}")
 print(f"Bmtool directory: {bmtool_dir}")
-print(f"Modfiles directory: {modfiles_dir}")
+print(f"Modfiles directory: {MODFILES_DIR}")
 print(f"Current sys.path: {sys.path}")
 
 try:
@@ -75,6 +77,12 @@ GLOBAL_conn_type_settings = None
 GLOBAL_template_arg = None
 GLOBAL_optimization_histories = None
 
+# --- Parameterized Paths ---
+CELL_TEMPLATE_PATH = "/users/drfrbc/Neural-Modeling/cells/templates/cell1.asc"  # <-- Edit here if needed
+
+# Replace all direct uses of these paths in the code
+modfiles_dir = MODFILES_DIR
+
 def setup_cell_and_mechanisms():
     """Initialize the cell model and load NEURON mechanisms."""
     # First check if mechanisms need to be compiled
@@ -98,7 +106,7 @@ def setup_cell_and_mechanisms():
 
 def get_sec_ids_from_type(section_type):
     """Get section IDs based on section type."""
-    cell = h.L5PCtemplate("/users/drfrbc/Neural-Modeling/cells/templates/cell1.asc")
+    cell = h.L5PCtemplate(CELL_TEMPLATE_PATH)
 
     if section_type == 'distal_apic':
         sec_ids_to_use = [idx for idx, sec in enumerate(cell.all) 
@@ -229,6 +237,10 @@ def run_parallel_simulations(synapse_type, location_type, total_samples=100):
                             locs.append(loc)
                             PSCs_by_segment[loc].append(PSC_mag)
                     print(f"Batch {batch_idx+1}/{number_of_batches}: mean PSC={np.mean(PSC_mags):.3f}, std PSC={np.std(PSC_mags):.3f}")
+                    log(f"Batch {batch_idx+1}: Params: mean={distributions_to_test[synapse_type][location_type]['mean']}, std={distributions_to_test[synapse_type][location_type]['std']}, PSC count: {len(PSC_mags)}")
+                    failed = sum(1 for PSC_mag, _, _ in results if PSC_mag is None)
+                    if failed > 0:
+                        log(f"Batch {batch_idx+1}: {failed} simulations failed.")
                 except Exception as e:
                     print(f"Error in batch {batch_idx+1}: {str(e)}")
                     continue
@@ -272,6 +284,8 @@ def objective_function(params, synapse_type, location_type, target_metric):
         'error': error
     })
     
+    log(f"Objective: Params={params}, Error={error}")
+    
     return error
 
 def optimize_synapse_parameters(synapse_type, location_type, target_metric, bounds):
@@ -286,6 +300,7 @@ def optimize_synapse_parameters(synapse_type, location_type, target_metric, boun
         bounds=bounds,
         options={'maxiter': 10, 'disp': True}
     )
+    log(f"Optimization result: {result}")
     return result
 
 def plot_results(weights, PSC_mags, synapse_type, location_type):
@@ -366,6 +381,33 @@ def plot_optimization_history(history, synapse_type, location_type, save_dir):
     plt.savefig(plot_path)
     plt.close()
     print(f"Saved optimization history plot to {plot_path}")
+
+# --- Save Intermediate Results ---
+def save_intermediate(results_dir, optimization_histories, all_results):
+    # Save optimization histories
+    with open(os.path.join(results_dir, 'optimization_histories.pkl'), 'wb') as f:
+        pickle.dump(optimization_histories, f)
+    # Save all_results as CSV
+    import pandas as pd
+    results_df = pd.DataFrame(all_results)
+    results_df.to_csv(os.path.join(results_dir, 'all_results_intermediate.csv'), index=False)
+    log("Intermediate results saved.")
+
+# --- Logging Utility ---
+def log(msg):
+    print(f"[LOG {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
+
+def log_timing(results_dir, synapse_type, location_type, elapsed_time, total=False):
+    timing_file = os.path.join(results_dir, 'timing_summary.csv')
+    write_header = not os.path.exists(timing_file)
+    with open(timing_file, 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        if write_header:
+            writer.writerow(['Synapse Type', 'Location Type', 'Execution Time (s)'])
+        if total:
+            writer.writerow(['Total', 'All', f'{elapsed_time:.1f}'])
+        else:
+            writer.writerow([synapse_type, location_type, f'{elapsed_time:.1f}'])
 
 if __name__ == '__main__':
     # Initialize cell and mechanisms
@@ -498,6 +540,11 @@ if __name__ == '__main__':
                 "Optimization Iterations": result.nit,
                 "Optimization Success": result.success
             })
+            
+            # Save intermediate results
+            save_intermediate(results_dir, optimization_histories, all_results)
+            
+            log_timing(results_dir, synapse_type, location_type, elapsed_time)
     
     # Calculate total execution time
     total_elapsed_time = time.time() - total_start_time
@@ -521,3 +568,5 @@ if __name__ == '__main__':
     
     print("\nFinal summary saved to", os.path.join(results_dir, 'final_summary.csv'))
     print(f"Total execution time: {total_elapsed_time:.1f} seconds")
+    
+    log_timing(results_dir, 'Total', 'All', total_elapsed_time, total=True)
