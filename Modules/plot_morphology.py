@@ -204,6 +204,13 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
             fg_center = np.array(fg['center'])
             fg_radius = fg['radius']
             
+            # Check if there are any synapses within this functional group
+            if synapse_coords is not None:
+                distances_to_fg = np.sqrt(np.sum((synapse_coords - fg_center)**2, axis=1))
+                synapses_in_fg = np.sum(distances_to_fg <= fg_radius)
+                if synapses_in_fg == 0:
+                    warnings.warn(f"No synapses found in functional group {fg_idx} of section type {sec_type}")
+            
             # Create a sphere for the functional group
             u = np.linspace(0, 2 * np.pi, 100)
             v = np.linspace(0, np.pi, 100)
@@ -219,6 +226,13 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
             for pc_idx, pc in enumerate(fg.get('presynaptic_cells', [])):
                 pc_center = np.array(pc['center']) + fg_center
                 pc_radius = pc['radius']
+                
+                # Check if there are any synapses within this presynaptic cell
+                if synapse_coords is not None:
+                    distances_to_pc = np.sqrt(np.sum((synapse_coords - pc_center)**2, axis=1))
+                    synapses_in_pc = np.sum(distances_to_pc <= pc_radius)
+                    if synapses_in_pc == 0:
+                        warnings.warn(f"No synapses found in presynaptic cell {pc_idx} of functional group {fg_idx} in section type {sec_type}")
                 
                 # Create a sphere for the presynaptic cell
                 x = pc_center[0] + pc_radius * np.outer(np.cos(u), np.sin(v))
