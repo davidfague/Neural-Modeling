@@ -413,9 +413,9 @@ if __name__ == '__main__':
             
             # Set appropriate bounds based on synapse type
             if 'exc' in synapse_type:
-                bounds = [(0.1, 1.0), (0.01, 0.5)]  # Mean and std bounds for excitatory
+                bounds = [(0.001, 5), (0.001, 5)]  # Mean and std bounds for excitatory
             else:
-                bounds = [(0.5, 2.0), (0.01, 0.5)]  # Mean and std bounds for inhibitory
+                bounds = [(0.001, 5), (0.001, 5)]  # Mean and std bounds for inhibitory
             
             # Initialize optimization history
             optimization_histories[(synapse_type, location_type)] = []
