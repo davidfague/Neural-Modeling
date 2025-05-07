@@ -13,6 +13,7 @@ from Modules.cell_model import CellModel
 from Modules.cell_builder import CellBuilder, SkeletonCell
 from Modules.logger import Logger
 import numpy as np
+from neuron import h
 
 # define a class for generating synapses abstractly
 class PreSimSynapseGenerator:
@@ -34,6 +35,19 @@ class PreSimSynapseGenerator:
 
         if self.parameters.segment_measurement_for_probabilities not in ['length', 'surface_area']:
             raise ValueError(f"Measurement for probabilities must be 'length' or 'surface_area'. Not {self.parameters.segment_measurement_for_probabilities}.")
+        
+        # load modfiles
+        try:
+            h.load_file('stdrun.hoc')
+            # h.nrn_load_dll('./x86_64/.libs/libnrnmech.so' # IF IN SCRIPTS FOLDER
+            load_modfiles = h.nrn_load_dll('../scripts/x86_64/.libs/libnrnmech.so') # IF IN SIMULATIONS FOLDER
+            if load_modfiles != 1:
+                raise Exception("Error loading mod files")
+            else:
+                print("Mod files loaded successfully")
+        except:
+            # Already loaded
+            pass 
 
     def generate_synapse_locations(self):
         for syn_properties_set, use_density, syn_mod, syn_params_choices in zip([self.parameters.exc_syn_properties, self.parameters.inh_syn_properties],
