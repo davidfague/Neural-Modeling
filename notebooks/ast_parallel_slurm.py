@@ -86,12 +86,12 @@ GLOBAL_optimization_histories = None
 # SLURM configuration
 SLURM_CONFIG = {
     'partition': 'standard',  # Default partition
-    'time': '01:00:00',      # Default time limit
-    'nodes': 1,              # Default number of nodes
-    'ntasks_per_node': 1,    # Default tasks per node
-    'cpus_per_task': 1,      # Default CPUs per task
-    'mem': '4G',             # Default memory per node
-    'use_slurm': False       # Whether to use SLURM (set to True to enable)
+    'time': '24:00:00',      # Default time limit
+    'nodes': 8,              # All 8 nodes
+    'ntasks_per_node': None, # Will be set based on node CPU cores
+    'cpus_per_task': 1,      # Single CPU per task for better distribution
+    'mem': None,             # Will be set based on node memory
+    'use_slurm': True        # Enable SLURM for distributed computing
 }
 
 # --- Parameterized Paths ---
@@ -126,19 +126,47 @@ def save_intermediate(results_dir, optimization_histories, all_results):
     log("Intermediate results saved.")
 
 def get_slurm_node_list():
-    """Get list of nodes allocated by SLURM."""
-    if 'SLURM_JOB_NODELIST' not in os.environ:
-        return [socket.gethostname()]
+    """Get list of nodes allocated by SLURM or direct SSH."""
+    # First try SLURM
+    if 'SLURM_JOB_NODELIST' in os.environ:
+        node_list = os.environ['SLURM_JOB_NODELIST']
+        try:
+            # Use scontrol to expand the node list
+            cmd = ['scontrol', 'show', 'hostnames', node_list]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            return result.stdout.strip().split('\n')
+        except Exception as e:
+            print(f"Error getting SLURM node list: {e}")
     
-    node_list = os.environ['SLURM_JOB_NODELIST']
+    # If SLURM fails or isn't available, try direct SSH approach
     try:
-        # Use scontrol to expand the node list
-        cmd = ['scontrol', 'show', 'hostnames', node_list]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        return result.stdout.strip().split('\n')
+        # For CloudLab, we know we have 8 nodes
+        nodes = [f'node{i}' for i in range(SLURM_CONFIG['nodes'])]
+        
+        # Verify SSH access to each node
+        accessible_nodes = []
+        for node in nodes:
+            try:
+                # Try a simple command to verify SSH access
+                result = subprocess.run(['ssh', node, 'hostname'], 
+                                     capture_output=True, 
+                                     timeout=5)
+                if result.returncode == 0:
+                    accessible_nodes.append(node)
+            except subprocess.TimeoutExpired:
+                print(f"Timeout connecting to {node}")
+            except Exception as e:
+                print(f"Error connecting to {node}: {e}")
+        
+        if accessible_nodes:
+            print(f"Using direct SSH access to nodes: {accessible_nodes}")
+            return accessible_nodes
     except Exception as e:
-        print(f"Error getting SLURM node list: {e}")
-        return [socket.gethostname()]
+        print(f"Error in direct SSH approach: {e}")
+    
+    # If all else fails, return local host
+    print("Falling back to local execution")
+    return [socket.gethostname()]
 
 def create_slurm_script(synapse_type, location_type, total_samples, results_dir):
     """Create a SLURM script for distributed simulation."""
@@ -294,87 +322,272 @@ def simulate_PSC(synapse_type, location_type, use_norm_dist):
     PSC_mag = max(abs(synapse_tuner_obj.SingleEvent(plot_and_print=False)))
     return PSC_mag, weight, loc
 
+class ResourceMonitor:
+    """Monitor and log resource utilization during execution."""
+    def __init__(self, results_dir):
+        self.results_dir = results_dir
+        self.start_time = time.time()
+        self.resource_log = os.path.join(results_dir, 'resource_utilization.csv')
+        self.performance_log = os.path.join(results_dir, 'performance_metrics.csv')
+        self.initialize_logs()
+        
+    def initialize_logs(self):
+        """Initialize log files with headers."""
+        # Resource utilization log
+        with open(self.resource_log, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Timestamp', 'Node', 'CPU_Usage_Percent', 'Memory_Usage_GB', 
+                           'Memory_Available_GB', 'Tasks_Running', 'Simulations_Completed'])
+        
+        # Performance metrics log
+        with open(self.performance_log, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Timestamp', 'Synapse_Type', 'Location_Type', 
+                           'Simulations_Completed', 'Total_Simulations', 
+                           'Average_Time_Per_Simulation', 'Estimated_Time_Remaining'])
+    
+    def log_resource_usage(self, node, simulations_completed):
+        """Log current resource usage for a node."""
+        try:
+            # Get CPU usage
+            cpu_info = subprocess.run(['ssh', node, 'top', '-bn1'], capture_output=True, text=True)
+            cpu_usage = float(cpu_info.stdout.split('\n')[2].split()[1])
+            
+            # Get memory usage
+            mem_info = subprocess.run(['ssh', node, 'free', '-g'], capture_output=True, text=True)
+            mem_lines = mem_info.stdout.split('\n')
+            total_mem = int(mem_lines[1].split()[1])
+            used_mem = int(mem_lines[1].split()[2])
+            available_mem = int(mem_lines[1].split()[6])
+            
+            # Get running tasks
+            task_info = subprocess.run(['ssh', node, 'ps', 'aux'], capture_output=True, text=True)
+            tasks_running = len([line for line in task_info.stdout.split('\n') 
+                               if 'python' in line and 'ast_parallel_slurm.py' in line])
+            
+            # Log the data
+            with open(self.resource_log, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    node,
+                    cpu_usage,
+                    used_mem,
+                    available_mem,
+                    tasks_running,
+                    simulations_completed
+                ])
+        except Exception as e:
+            log(f"Error logging resource usage for {node}: {e}")
+    
+    def log_performance_metrics(self, synapse_type, location_type, 
+                              completed, total, avg_time):
+        """Log performance metrics for the current batch."""
+        try:
+            elapsed_time = time.time() - self.start_time
+            estimated_remaining = (total - completed) * avg_time if completed > 0 else 0
+            
+            with open(self.performance_log, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    synapse_type,
+                    location_type,
+                    completed,
+                    total,
+                    avg_time,
+                    estimated_remaining
+                ])
+        except Exception as e:
+            log(f"Error logging performance metrics: {e}")
+    
+    def generate_summary_report(self):
+        """Generate a summary report of resource utilization and performance."""
+        try:
+            import pandas as pd
+            import matplotlib.pyplot as plt
+            
+            # Read the logs
+            resource_df = pd.read_csv(self.resource_log)
+            performance_df = pd.read_csv(self.performance_log)
+            
+            # Create summary directory
+            summary_dir = os.path.join(self.results_dir, 'summary_reports')
+            os.makedirs(summary_dir, exist_ok=True)
+            
+            # Generate resource utilization plots
+            plt.figure(figsize=(15, 10))
+            
+            # CPU Usage
+            plt.subplot(2, 2, 1)
+            for node in resource_df['Node'].unique():
+                node_data = resource_df[resource_df['Node'] == node]
+                plt.plot(node_data['Timestamp'], node_data['CPU_Usage_Percent'], 
+                        label=node)
+            plt.title('CPU Usage Over Time')
+            plt.xlabel('Time')
+            plt.ylabel('CPU Usage (%)')
+            plt.legend()
+            
+            # Memory Usage
+            plt.subplot(2, 2, 2)
+            for node in resource_df['Node'].unique():
+                node_data = resource_df[resource_df['Node'] == node]
+                plt.plot(node_data['Timestamp'], node_data['Memory_Usage_GB'], 
+                        label=node)
+            plt.title('Memory Usage Over Time')
+            plt.xlabel('Time')
+            plt.ylabel('Memory Usage (GB)')
+            plt.legend()
+            
+            # Simulations Progress
+            plt.subplot(2, 2, 3)
+            for syn_type in performance_df['Synapse_Type'].unique():
+                syn_data = performance_df[performance_df['Synapse_Type'] == syn_type]
+                plt.plot(syn_data['Timestamp'], 
+                        syn_data['Simulations_Completed'] / syn_data['Total_Simulations'] * 100,
+                        label=syn_type)
+            plt.title('Simulation Progress')
+            plt.xlabel('Time')
+            plt.ylabel('Progress (%)')
+            plt.legend()
+            
+            # Average Time per Simulation
+            plt.subplot(2, 2, 4)
+            for syn_type in performance_df['Synapse_Type'].unique():
+                syn_data = performance_df[performance_df['Synapse_Type'] == syn_type]
+                plt.plot(syn_data['Timestamp'], syn_data['Average_Time_Per_Simulation'],
+                        label=syn_type)
+            plt.title('Average Time per Simulation')
+            plt.xlabel('Time')
+            plt.ylabel('Time (seconds)')
+            plt.legend()
+            
+            plt.tight_layout()
+            plt.savefig(os.path.join(summary_dir, 'resource_utilization.png'))
+            plt.close()
+            
+            # Generate text summary
+            with open(os.path.join(summary_dir, 'execution_summary.txt'), 'w') as f:
+                f.write("=== Execution Summary ===\n\n")
+                
+                # Overall statistics
+                f.write("Overall Statistics:\n")
+                f.write(f"Total Execution Time: {time.time() - self.start_time:.2f} seconds\n")
+                f.write(f"Total Simulations Completed: {performance_df['Simulations_Completed'].max()}\n")
+                f.write(f"Average Time per Simulation: {performance_df['Average_Time_Per_Simulation'].mean():.2f} seconds\n\n")
+                
+                # Resource utilization statistics
+                f.write("Resource Utilization Statistics:\n")
+                f.write(f"Average CPU Usage: {resource_df['CPU_Usage_Percent'].mean():.2f}%\n")
+                f.write(f"Peak CPU Usage: {resource_df['CPU_Usage_Percent'].max():.2f}%\n")
+                f.write(f"Average Memory Usage: {resource_df['Memory_Usage_GB'].mean():.2f} GB\n")
+                f.write(f"Peak Memory Usage: {resource_df['Memory_Usage_GB'].max():.2f} GB\n\n")
+                
+                # Per synapse type statistics
+                f.write("Per Synapse Type Statistics:\n")
+                for syn_type in performance_df['Synapse_Type'].unique():
+                    syn_data = performance_df[performance_df['Synapse_Type'] == syn_type]
+                    f.write(f"\n{syn_type}:\n")
+                    f.write(f"  Total Simulations: {syn_data['Total_Simulations'].iloc[0]}\n")
+                    f.write(f"  Average Time per Simulation: {syn_data['Average_Time_Per_Simulation'].mean():.2f} seconds\n")
+                    f.write(f"  Total Execution Time: {syn_data['Estimated_Time_Remaining'].iloc[-1]:.2f} seconds\n")
+            
+            log(f"Summary report generated in {summary_dir}")
+            
+        except Exception as e:
+            log(f"Error generating summary report: {e}")
+
 def run_parallel_simulations(synapse_type, location_type, total_samples=100):
     """Run parallel simulations and collect results."""
     use_norm_dist = 'inh' in synapse_type.lower()
     
-    if SLURM_CONFIG['use_slurm']:
-        # Get list of available nodes
-        nodes = get_slurm_node_list()
-        print(f"Using SLURM nodes: {nodes}")
+    # Initialize resource monitor
+    monitor = ResourceMonitor(results_dir)
+    
+    # Get list of available nodes
+    nodes = get_slurm_node_list()
+    print(f"Using nodes: {nodes}")
+    
+    # Calculate samples per node
+    samples_per_node = total_samples // len(nodes)
+    remaining_samples = total_samples % len(nodes)
+    
+    # Submit jobs to each node
+    job_ids = []
+    for i, node in enumerate(nodes):
+        node_samples = samples_per_node + (1 if i < remaining_samples else 0)
         
-        # Calculate samples per node
-        samples_per_node = total_samples // len(nodes)
-        remaining_samples = total_samples % len(nodes)
-        
-        # Submit jobs to each node
-        job_ids = []
-        for i, node in enumerate(nodes):
-            node_samples = samples_per_node + (1 if i < remaining_samples else 0)
+        if SLURM_CONFIG['use_slurm']:
+            # Use SLURM submission
             script = create_slurm_script(synapse_type, location_type, node_samples, results_dir)
             job_id = submit_slurm_job(script, f"ast_{synapse_type}_{location_type}_{node}")
             job_ids.append(job_id)
-        
-        # Wait for jobs to complete
-        for job_id in job_ids:
-            subprocess.run(['squeue', '-j', job_id], check=True)
-        
-        # Collect results from all nodes
-        PSC_mags = []
-        weights = []
-        locs = []
-        PSCs_by_segment = {}
-        
-        for node in nodes:
+            print(f"Submitted SLURM job {job_id} to {node} for {node_samples} samples")
+        else:
+            # Use direct SSH execution
+            try:
+                # Create a temporary script for the node
+                script_content = f"""#!/bin/bash
+cd {os.getcwd()}
+python {os.path.abspath(__file__)} \\
+    --synapse_type {synapse_type} \\
+    --location_type {location_type} \\
+    --total_samples {node_samples} \\
+    --results_dir {results_dir} \\
+    --node_name {node}
+"""
+                script_path = os.path.join(results_dir, f"node_script_{node}.sh")
+                with open(script_path, 'w') as f:
+                    f.write(script_content)
+                os.chmod(script_path, 0o755)
+                
+                # Execute the script on the remote node
+                cmd = ['ssh', node, f'bash {script_path}']
+                process = subprocess.Popen(cmd)
+                job_ids.append(process)
+                print(f"Started direct execution on {node} for {node_samples} samples")
+            except Exception as e:
+                print(f"Error starting execution on {node}: {e}")
+    
+    # Monitor jobs and collect results
+    PSC_mags = []
+    weights = []
+    locs = []
+    PSCs_by_segment = {}
+    completed_simulations = 0
+    
+    while completed_simulations < total_samples:
+        for i, node in enumerate(nodes):
+            # Log resource usage
+            monitor.log_resource_usage(node, completed_simulations)
+            
+            # Check for completed jobs
             node_results = os.path.join(results_dir, f"results_{synapse_type}_{location_type}_{node}.json")
-            with open(node_results, 'r') as f:
-                node_data = json.load(f)
-                PSC_mags.extend(node_data['PSC_mags'])
-                weights.extend(node_data['weights'])
-                locs.extend(node_data['locs'])
-                for seg, pscs in node_data['PSCs_by_segment'].items():
-                    if seg not in PSCs_by_segment:
-                        PSCs_by_segment[seg] = []
-                    PSCs_by_segment[seg].extend(pscs)
+            if os.path.exists(node_results):
+                with open(node_results, 'r') as f:
+                    node_data = json.load(f)
+                    PSC_mags.extend(node_data['PSC_mags'])
+                    weights.extend(node_data['weights'])
+                    locs.extend(node_data['locs'])
+                    for seg, pscs in node_data['PSCs_by_segment'].items():
+                        if seg not in PSCs_by_segment:
+                            PSCs_by_segment[seg] = []
+                        PSCs_by_segment[seg].extend(pscs)
+                    completed_simulations += len(node_data['PSC_mags'])
+            
+            # Log performance metrics
+            avg_time = (time.time() - monitor.start_time) / completed_simulations if completed_simulations > 0 else 0
+            monitor.log_performance_metrics(synapse_type, location_type, 
+                                         completed_simulations, total_samples, avg_time)
         
-        return np.array(PSC_mags), np.array(weights), np.array(locs), PSCs_by_segment
-    else:
-        # Original local parallel processing code
-        cpu_cores = mp.cpu_count()
-        simulation_batch_size = min(total_samples, cpu_cores)
-        number_of_batches = int(np.ceil(total_samples / simulation_batch_size))
-        PSC_mags = []
-        weights = []
-        locs = []
-        
-        # Use a local tuner to get segment count
-        synapse_tuner_obj = InitializeSysnapseTuner(template_arg=template_arg, **tuner_configs[True][synapse_type])
-        all_segments = [seg for sec in synapse_tuner_obj.cell.all for seg in sec]
-        total_segments = len(all_segments)
-        PSCs_by_segment = {seg_idx: [] for seg_idx in range(total_segments)}
-        
-        start_time = time.time()
-        with mp.Pool(processes=simulation_batch_size, initializer=worker_init) as pool:
-            for batch_idx in tqdm(range(number_of_batches), desc="Running simulation batches"):
-                batch_args = [
-                    (synapse_type, location_type, use_norm_dist)
-                    for _ in range(simulation_batch_size)
-                ]
-                results = pool.starmap(simulate_PSC, batch_args)
-                for PSC_mag, weight, loc in results:
-                    PSC_mags.append(PSC_mag)
-                    weights.append(weight)
-                    locs.append(loc)
-                    PSCs_by_segment[loc].append(PSC_mag)
-                print(f"Batch {batch_idx+1}/{number_of_batches}: mean PSC={np.mean(PSC_mags):.3f}, std PSC={np.std(PSC_mags):.3f}")
-                log(f"Batch {batch_idx+1}: Params: mean={distributions_to_test[synapse_type][location_type]['mean']}, std={distributions_to_test[synapse_type][location_type]['std']}, PSC count: {len(PSC_mags)}")
-                failed = sum(1 for PSC_mag, _, _ in results if PSC_mag is None)
-                if failed > 0:
-                    log(f"Batch {batch_idx+1}: {failed} simulations failed.")
-        
-        elapsed_time = time.time() - start_time
-        print(f"Total simulation time: {elapsed_time:.2f} seconds")
-        return np.array(PSC_mags), np.array(weights), np.array(locs), PSCs_by_segment
+        print(f"Progress: {completed_simulations}/{total_samples} simulations completed")
+        time.sleep(10)  # Check every 10 seconds
+    
+    # Generate final summary report
+    monitor.generate_summary_report()
+    
+    return np.array(PSC_mags), np.array(weights), np.array(locs), PSCs_by_segment
 
 def objective_function(params, synapse_type, location_type, target_metric):
     """Objective function for optimization."""
@@ -494,6 +707,150 @@ def plot_optimization_history(history, synapse_type, location_type, save_dir):
     plt.close()
     print(f"Saved optimization history plot to {plot_path}")
 
+def get_node_info():
+    """Gather information about the current node and its resources."""
+    node_info = {
+        'hostname': socket.gethostname(),
+        'cpu_count': mp.cpu_count(),
+        'memory': None,
+        'slurm_info': {}
+    }
+    
+    # Try to get memory information
+    try:
+        import psutil
+        node_info['memory'] = {
+            'total': psutil.virtual_memory().total,
+            'available': psutil.virtual_memory().available
+        }
+    except ImportError:
+        node_info['memory'] = "psutil not available"
+    
+    # Get SLURM information if available
+    slurm_vars = [
+        'SLURM_JOB_ID', 'SLURM_NODEID', 'SLURM_CPUS_ON_NODE',
+        'SLURM_MEM_PER_NODE', 'SLURM_NODELIST'
+    ]
+    for var in slurm_vars:
+        if var in os.environ:
+            node_info['slurm_info'][var] = os.environ[var]
+    
+    return node_info
+
+def save_node_info(results_dir):
+    """Save information about all nodes to a text file."""
+    nodes = get_slurm_node_list()
+    node_info_file = os.path.join(results_dir, 'node_info.txt')
+    
+    with open(node_info_file, 'w') as f:
+        f.write("=== Node Information ===\n")
+        f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Total Nodes: {len(nodes)}\n\n")
+        
+        for node in nodes:
+            f.write(f"\nNode: {node}\n")
+            f.write("-" * 50 + "\n")
+            
+            # Get node info
+            node_info = get_node_info()
+            
+            # Write basic info
+            f.write(f"Hostname: {node_info['hostname']}\n")
+            f.write(f"CPU Count: {node_info['cpu_count']}\n")
+            
+            # Write memory info
+            if isinstance(node_info['memory'], dict):
+                f.write(f"Total Memory: {node_info['memory']['total'] / (1024**3):.2f} GB\n")
+                f.write(f"Available Memory: {node_info['memory']['available'] / (1024**3):.2f} GB\n")
+            else:
+                f.write(f"Memory Info: {node_info['memory']}\n")
+            
+            # Write SLURM info
+            if node_info['slurm_info']:
+                f.write("\nSLURM Information:\n")
+                for key, value in node_info['slurm_info'].items():
+                    f.write(f"{key}: {value}\n")
+            
+            f.write("\n")
+
+def get_available_partitions():
+    """Get list of available SLURM partitions."""
+    try:
+        result = subprocess.run(['sinfo', '-o', '%P'], capture_output=True, text=True)
+        partitions = [p.strip() for p in result.stdout.split('\n') if p.strip()]
+        return partitions
+    except Exception as e:
+        log(f"Error getting partitions: {e}")
+        return ['standard']  # Default to standard if can't get partitions
+
+def get_node_specs():
+    """Get specifications of allocated nodes."""
+    try:
+        # Get node list
+        nodes = get_slurm_node_list()
+        node_specs = {}
+        
+        for node in nodes:
+            # Get CPU info
+            cpu_info = subprocess.run(['ssh', node, 'nproc'], capture_output=True, text=True)
+            cpu_count = int(cpu_info.stdout.strip())
+            
+            # Get memory info
+            mem_info = subprocess.run(['ssh', node, 'free', '-g'], capture_output=True, text=True)
+            total_mem = int(mem_info.stdout.split('\n')[1].split()[1])
+            
+            node_specs[node] = {
+                'cpus': cpu_count,
+                'memory_gb': total_mem
+            }
+        
+        return node_specs
+    except Exception as e:
+        log(f"Error getting node specs: {e}")
+        return None
+
+def update_slurm_config():
+    """Update SLURM configuration based on available resources."""
+    # Get available partitions
+    partitions = get_available_partitions()
+    if partitions:
+        SLURM_CONFIG['partition'] = partitions[0]  # Use first available partition
+        log(f"Using partition: {SLURM_CONFIG['partition']}")
+    
+    # Get node specifications
+    node_specs = get_node_specs()
+    if node_specs:
+        # Use minimum values across all nodes to ensure compatibility
+        min_cpus = min(spec['cpus'] for spec in node_specs.values())
+        min_memory = min(spec['memory_gb'] for spec in node_specs.values())
+        
+        # Set tasks per node to use all available CPUs
+        SLURM_CONFIG['ntasks_per_node'] = min_cpus
+        SLURM_CONFIG['mem'] = f"{min_memory}G"
+        
+        log(f"Node specifications:")
+        for node, specs in node_specs.items():
+            log(f"  {node}: {specs['cpus']} CPUs, {specs['memory_gb']}GB memory")
+        log(f"Using minimum values: {min_cpus} CPUs, {min_memory}GB memory per node")
+    else:
+        # Default values if can't get node specs
+        SLURM_CONFIG['ntasks_per_node'] = 16  # Common default
+        SLURM_CONFIG['mem'] = '32G'  # Common default
+        log("Using default values for node specifications")
+
+def validate_slurm_config():
+    """Validate and print SLURM configuration."""
+    log("Validating SLURM configuration...")
+    log(f"Partition: {SLURM_CONFIG['partition']}")
+    log(f"Total nodes: {SLURM_CONFIG['nodes']}")
+    log(f"Tasks per node: {SLURM_CONFIG['ntasks_per_node']}")
+    log(f"CPUs per task: {SLURM_CONFIG['cpus_per_task']}")
+    log(f"Total CPUs: {SLURM_CONFIG['nodes'] * SLURM_CONFIG['ntasks_per_node'] * SLURM_CONFIG['cpus_per_task']}")
+    log(f"Memory per node: {SLURM_CONFIG['mem']}")
+    log(f"Total memory: {SLURM_CONFIG['nodes'] * int(SLURM_CONFIG['mem'].replace('G', ''))}G")
+    log(f"Time limit: {SLURM_CONFIG['time']}")
+    log(f"Using SLURM: {SLURM_CONFIG['use_slurm']}")
+
 if __name__ == '__main__':
     import argparse
     
@@ -513,6 +870,12 @@ if __name__ == '__main__':
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     results_dir = args.results_dir or f'AA_PSC_tuning_results_{timestamp}'
     os.makedirs(results_dir, exist_ok=True)
+    
+    # Update and validate SLURM configuration
+    if SLURM_CONFIG['use_slurm']:
+        update_slurm_config()
+        validate_slurm_config()
+    save_node_info(results_dir)
     
     if args.slurm_node:
         # This is running on a SLURM node, process specific synapse/location
