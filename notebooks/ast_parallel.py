@@ -67,7 +67,7 @@ except ImportError as e:
     sys.exit(1)
 
 # Global settings
-TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION = 3000
+TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION = 5000
 USE_HAY_CELL = True
 
 # Globals for worker processes
@@ -273,35 +273,71 @@ def objective_function(params, synapse_type, location_type, target_metric):
     mean_PSC = np.mean(PSC_mags)
     std_PSC = np.std(PSC_mags)
     
-    # Use both mean and std in the error
-    error = (mean_PSC - target_metric['mean'])**2 + (std_PSC - target_metric['std'])**2
+    # Calculate errors with more weight on standard deviation
+    mean_error = (mean_PSC - target_metric['mean'])**2
+    std_error = 2.0 * (std_PSC - target_metric['std'])**2  # Double weight on std error
+    
+    # Add penalty for excessive variance
+    variance_penalty = 0.0
+    if std_PSC > 1.5 * target_metric['std']:  # If std is 50% higher than target
+        variance_penalty = 10.0 * (std_PSC - 1.5 * target_metric['std'])**2
+    
+    total_error = mean_error + std_error + variance_penalty
     
     # Store results in optimization history
     optimization_histories[(synapse_type, location_type)].append({
         'params': params,
         'PSC_mags': PSC_mags,
         'weights': weights,
-        'error': error
+        'error': total_error,
+        'mean_error': mean_error,
+        'std_error': std_error,
+        'variance_penalty': variance_penalty
     })
     
-    log(f"Objective: Params={params}, Error={error}")
+    log(f"Objective: Params={params}, Mean Error={mean_error:.3f}, Std Error={std_error:.3f}, Penalty={variance_penalty:.3f}, Total={total_error:.3f}")
     
-    return error
+    return total_error
 
 def optimize_synapse_parameters(synapse_type, location_type, target_metric, bounds):
     """Optimize synapse parameters using scipy.optimize.minimize."""
     # Initial guess: midpoint of bounds
     x0 = [np.mean([b[0], b[1]]) for b in bounds]
-    result = minimize(
-        objective_function,
-        x0=x0,
-        args=(synapse_type, location_type, target_metric),
-        method='L-BFGS-B',
-        bounds=bounds,
-        options={'maxiter': 10, 'disp': True}
-    )
-    log(f"Optimization result: {result}")
-    return result
+    
+    # Try multiple initial points to avoid local minima
+    best_result = None
+    best_error = float('inf')
+    
+    # Try different initial points
+    initial_points = [
+        x0,  # Midpoint
+        [bounds[0][0], bounds[1][0]],  # Lower bounds
+        [bounds[0][1], bounds[1][1]],  # Upper bounds
+        [bounds[0][0], bounds[1][1]],  # Lower mean, upper std
+        [bounds[0][1], bounds[1][0]]   # Upper mean, lower std
+    ]
+    
+    for init_point in initial_points:
+        result = minimize(
+            objective_function,
+            x0=init_point,
+            args=(synapse_type, location_type, target_metric),
+            method='L-BFGS-B',
+            bounds=bounds,
+            options={
+                'maxiter': 20,  # Increased from 10
+                'disp': True,
+                'ftol': 1e-4,   # Tighter function tolerance
+                'gtol': 1e-4    # Tighter gradient tolerance
+            }
+        )
+        
+        if result.fun < best_error:
+            best_error = result.fun
+            best_result = result
+    
+    log(f"Optimization result: {best_result}")
+    return best_result
 
 def plot_results(weights, PSC_mags, synapse_type, location_type):
     """Plot the results of the simulation."""
