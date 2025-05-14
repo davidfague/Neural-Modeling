@@ -144,20 +144,30 @@ def move_synapse_to_new_location(synapse_tuner_obj, possible_segments, seg_probs
 def change_synapse_weight(synapse_tuner_obj, distributions_to_test, synapse_type, 
                          location_type, use_norm_dist=False):
     """Change synapse weight based on distribution parameters."""
+    mean = distributions_to_test[synapse_type][location_type]['mean']
+    std = distributions_to_test[synapse_type][location_type]['std']
     if use_norm_dist:
         new_weight = norm_dist(
-            distributions_to_test[synapse_type][location_type]['mean'],
-            distributions_to_test[synapse_type][location_type]['std'],
+            mean,
+            std,
             1,
-            (0, 10*distributions_to_test[synapse_type][location_type]['mean'])
+            (0, 10*mean)
         )
     else:
-        exc_mean = (np.log(0.45) - 0.5 * np.log((0.35/0.45)**2+1))
-        exc_std = np.sqrt(np.log((0.35/0.45)**2 + 1))
+        # Convert mean and std to log-space parameters for log-normal
+        # mean and std are in linear space
+        # log-normal: mu = log(mean^2 / sqrt(std^2 + mean^2)), sigma = sqrt(log(1 + (std^2 / mean^2)))
+        if mean <= 0 or std <= 0:
+            # Avoid invalid log or sqrt
+            mu = 0
+            sigma = 0.01
+        else:
+            mu = np.log(mean**2 / np.sqrt(std**2 + mean**2))
+            sigma = np.sqrt(np.log(1 + (std**2 / mean**2)))
         exc_clip = (1e-15, 5)
         new_weight = log_norm_dist(
-            exc_mean,
-            exc_std,
+            mu,
+            sigma,
             1,
             exc_clip,
             distributions_to_test[synapse_type][location_type].get('exc_scalar', 1.0)  # Default to 1.0 if not present
