@@ -322,15 +322,15 @@ tuner_configs = {
 }
 
 target_metrics = { # automatically selects based on tuner_type (need to be updated to match in vivo)
-    'exc': {
-            'induction': -0.44, #somewhere around -0.425-0.45@20Hz#-0.6@50Hz, # from -0.75
-            'ppr': 0.8333, # from 0.8
-            'recovery': 0.0,
-            'magnitude':{ #pA
-                      'mean': 30.6,
-                      'std': 29.9
-                              }
-    },
+    # 'exc': {
+    #         'induction': -0.44, #somewhere around -0.425-0.45@20Hz#-0.6@50Hz, # from -0.75
+    #         'ppr': 0.8333, # from 0.8
+    #         'recovery': 0.0,
+    #         'magnitude':{ #pA
+    #                   'mean': 30.6,
+    #                   'std': 29.9
+    #                           }
+    # },
     'inhPerisomatic': {
             'induction': -0.55, #somewhere between -0.5 and -0.575 @20Hz. somewhere between -0.5 and -0.575 #-0.7 @50Hz, # from -0.75
             'ppr': 0.8666,# from 0.8
@@ -340,21 +340,21 @@ target_metrics = { # automatically selects based on tuner_type (need to be updat
                       'std': 58.7
                               }
     },
-    'inhDendritic': {
-            'induction': -0.275,# somewhere between -0.3 and -0.2 @20Hz. #-0.4 @50Hz, # from -0.75
-            'ppr': 0.9, # from 0.8
-            'recovery': 0.0,
-            'magnitude':{ #pA
-                      'mean': 26.5,
-                      'std': 1.6
-                              }
-    }
+    # 'inhDendritic': {
+    #         'induction': -0.275,# somewhere between -0.3 and -0.2 @20Hz. #-0.4 @50Hz, # from -0.75
+    #         'ppr': 0.9, # from 0.8
+    #         'recovery': 0.0,
+    #         'magnitude':{ #pA
+    #                   'mean': 26.5,
+    #                   'std': 1.6
+    #                           }
+    # }
 }
 
 location_types_by_synapse_type = {
     'inhPerisomatic': ['perisomatic'],
-    'exc': ['distal_basal', 'distal_apic'],
-    'inhDendritic': ['distal_basal', 'distal_apic']
+    # 'exc': ['distal_basal', 'distal_apic'],
+    # 'inhDendritic': ['distal_basal', 'distal_apic']
 }
 
 import numpy as np
@@ -379,28 +379,28 @@ distributions_to_test = {
           'std': 0.0#0.373*1.25*0.75*0.5*0.5*0.33*0.33*0.25*0.25*0.25*0.25*0.25#0.3730754,
         }
     },
-    'inhDendritic': {
-        'distal_basal': {
-          'mean':1.4035*2.2*1.36*1.25*1.2*1.05,#1.4035*1.4,# 1.40353*1.5,
-          'std': 0.0#0.08474*0.916*0.5*.16*0.25*0.2*0.1*0.1 #0.0847416/8
-        },
-        'distal_apic': {
-          'mean':1.40353*1.25*1.065,#1.4035*10,# 1.40353*1.5
-          'std': 0.0#0.08474*0.2*0.66*0.1*0.25*0.1*0.1*0.1#0.08474*4#0.0847416/8
-        }
-    },
-    'exc': {
-        'distal_basal': {
-          'mean': 0.44*0.9*1,#0.45,
-          'std': 0.0,#0.43*0.9*1.38*1.3*1.5*1.5*1.2*1.33*1.2*1.33,#0.35,
-          'exc_scalar': 1#1.6
-        },
-        'distal_apic': {
-          'mean': 0.44*1.003*0.95,#0.45,
-          'std': 0.0,#0.43*1.2*1.25*1.5*1.5*1.2*1.2*1.33,#0.35,
-          'exc_scalar': 1#1.05
-        }
-    }
+    # 'inhDendritic': {
+    #     'distal_basal': {
+    #       'mean':1.4035*2.2*1.36*1.25*1.2*1.05,#1.4035*1.4,# 1.40353*1.5,
+    #       'std': 0.0#0.08474*0.916*0.5*.16*0.25*0.2*0.1*0.1 #0.0847416/8
+    #     },
+    #     'distal_apic': {
+    #       'mean':1.40353*1.25*1.065,#1.4035*10,# 1.40353*1.5
+    #       'std': 0.0#0.08474*0.2*0.66*0.1*0.25*0.1*0.1*0.1#0.08474*4#0.0847416/8
+    #     }
+    # },
+    # 'exc': {
+    #     'distal_basal': {
+    #       'mean': 0.44*0.9*1,#0.45,
+    #       'std': 0.0,#0.43*0.9*1.38*1.3*1.5*1.5*1.2*1.33*1.2*1.33,#0.35,
+    #       'exc_scalar': 1#1.6
+    #     },
+    #     'distal_apic': {
+    #       'mean': 0.44*1.003*0.95,#0.45,
+    #       'std': 0.0,#0.43*1.2*1.25*1.5*1.5*1.2*1.2*1.33,#0.35,
+    #       'exc_scalar': 1#1.05
+    #     }
+    # }
 }
 
 def save_simulation_results(weights, PSC_mags, locs, filename):
@@ -424,3 +424,28 @@ def save_pscs_by_segment(PSCs_by_segment, filename):
     with open(filename, 'wb') as f:
         pickle.dump(PSCs_by_segment, f)
     print(f"Saved PSCs by segment to {filename}")
+
+# --- Centralized Parameter Bounds ---
+parameter_bounds = {
+    'exc': [(0.01, 10), (0.01, 10)],
+    'inhPerisomatic': [(1, 20), (1, 20)],
+    'default': [(0.01, 10), (0.01, 10)]
+}
+
+# --- Weight Distribution Type Mapping ---
+distribution_type = {
+    'exc': 'lognormal',
+    'inhPerisomatic': 'normal',
+    # Add more as needed
+}
+
+# --- Optimization Hyperparameters ---
+optimization_hyperparams = {
+    'max_iter': 10,
+    'ftol': 1e-4,
+    'gtol': 1e-4,
+    'method': 'L-BFGS-B'
+}
+
+# --- Total Samples Per Weight Distribution ---
+TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION = 1000

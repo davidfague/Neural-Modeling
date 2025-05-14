@@ -58,7 +58,11 @@ try:
         load_hay_cell,
         save_simulation_results,
         save_summary_stats,
-        save_pscs_by_segment
+        save_pscs_by_segment,
+        parameter_bounds,
+        distribution_type,
+        optimization_hyperparams,
+        TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION
     )
 except ImportError as e:
     print(f"Error importing general_settings_for_AST: {e}")
@@ -67,7 +71,6 @@ except ImportError as e:
     sys.exit(1)
 
 # Global settings
-TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION = 1000
 USE_HAY_CELL = True
 
 # Globals for worker processes
@@ -142,10 +145,14 @@ def move_synapse_to_new_location(synapse_tuner_obj, possible_segments, seg_probs
     return segment_index
 
 def change_synapse_weight(synapse_tuner_obj, distributions_to_test, synapse_type, 
-                         location_type, use_norm_dist=False):
+                         location_type, use_norm_dist=None):
     """Change synapse weight based on distribution parameters."""
     mean = distributions_to_test[synapse_type][location_type]['mean']
     std = distributions_to_test[synapse_type][location_type]['std']
+    # Use distribution_type mapping if use_norm_dist is not explicitly set
+    if use_norm_dist is None:
+        dist_type = distribution_type.get(synapse_type, 'lognormal')
+        use_norm_dist = (dist_type == 'normal')
     if use_norm_dist:
         new_weight = norm_dist(
             mean,
@@ -155,10 +162,7 @@ def change_synapse_weight(synapse_tuner_obj, distributions_to_test, synapse_type
         )
     else:
         # Convert mean and std to log-space parameters for log-normal
-        # mean and std are in linear space
-        # log-normal: mu = log(mean^2 / sqrt(std^2 + mean^2)), sigma = sqrt(log(1 + (std^2 / mean^2)))
         if mean <= 0 or std <= 0:
-            # Avoid invalid log or sqrt
             mu = 0
             sigma = 0.01
         else:
@@ -170,7 +174,7 @@ def change_synapse_weight(synapse_tuner_obj, distributions_to_test, synapse_type
             sigma,
             1,
             exc_clip,
-            distributions_to_test[synapse_type][location_type].get('exc_scalar', 1.0)  # Default to 1.0 if not present
+            distributions_to_test[synapse_type][location_type].get('exc_scalar', 1.0)
         )
     synapse_tuner_obj.syn.initW = new_weight
     return new_weight
@@ -353,13 +357,13 @@ def optimize_synapse_parameters(synapse_type, location_type, target_metric, boun
             objective_function,
             x0=init_point,
             args=(synapse_type, location_type, target_metric),
-            method='L-BFGS-B',
+            method=optimization_hyperparams['method'],
             bounds=bounds,
             options={
-                'maxiter': 10,  # Increased from 10
+                'maxiter': optimization_hyperparams['max_iter'],
                 'disp': True,
-                'ftol': 1e-4,   # Tighter function tolerance
-                'gtol': 1e-4    # Tighter gradient tolerance
+                'ftol': optimization_hyperparams['ftol'],
+                'gtol': optimization_hyperparams['gtol']
             }
         )
         
@@ -513,8 +517,8 @@ if __name__ == '__main__':
         f.write(f"Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"Total CPU Cores Available: {mp.cpu_count()}\n")
         f.write(f"Total Samples per Weight Distribution: {TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION}\n")
-        f.write(f"Optimization Method: L-BFGS-B\n")
-        f.write(f"Maximum Optimization Iterations: 10\n")
+        f.write(f"Optimization Method: {optimization_hyperparams['method']}\n")
+        f.write(f"Maximum Optimization Iterations: {optimization_hyperparams['max_iter']}\n")
         f.write("\n=== Target Metrics ===\n")
         for syn_type, metrics in target_metrics.items():
             f.write(f"\n{syn_type}:\n")
@@ -539,12 +543,7 @@ if __name__ == '__main__':
             target_metric = target_metrics[synapse_type]['magnitude']
             
             # Set appropriate bounds based on synapse type
-            if 'exc' in synapse_type.lower():
-                bounds = [(0.01, 10), (0.01, 10)]  # Mean and std bounds for excitatory
-            elif 'perisomatic' in location_type.lower():
-                bounds = [(1, 20), (1, 20)]  # Mean and std bounds for perisomatic
-            else:
-                bounds = [(0.01, 10), (0.01, 10)]  # Mean and std bounds for inhibitory
+            bounds = parameter_bounds.get(synapse_type, parameter_bounds.get('default'))
             
             # Initialize optimization history
             optimization_histories[(synapse_type, location_type)] = []
