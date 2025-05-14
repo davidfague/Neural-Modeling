@@ -534,10 +534,12 @@ if __name__ == '__main__':
             target_metric = target_metrics[synapse_type]['magnitude']
             
             # Set appropriate bounds based on synapse type
-            if 'exc' in synapse_type:
-                bounds = [(0.01, 5), (0.01, 5)]  # Mean and std bounds for excitatory
+            if 'exc' in synapse_type.lower():
+                bounds = [(0.01, 10), (0.01, 10)]  # Mean and std bounds for excitatory
+            elif 'perisomatic' in location_type.lower():
+                bounds = [(1, 20), (1, 20)]  # Mean and std bounds for perisomatic
             else:
-                bounds = [(0.01, 5), (0.01, 5)]  # Mean and std bounds for inhibitory
+                bounds = [(0.01, 10), (0.01, 10)]  # Mean and std bounds for inhibitory
             
             # Initialize optimization history
             optimization_histories[(synapse_type, location_type)] = []
