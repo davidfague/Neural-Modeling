@@ -296,14 +296,18 @@ def objective_function(params, synapse_type, location_type, target_metric):
     std_PSC = np.std(PSC_mags)
     
     # Calculate errors with more weight on standard deviation
-    mean_error = (mean_PSC - target_metric['mean'])**2
-    std_error = 2.0 * (std_PSC - target_metric['std'])**2  # Double weight on std error
-    
-    # Add penalty for excessive variance
+    mean_error = ((mean_PSC - target_metric['mean']) / target_metric['mean'])**2
+    std_error = ((std_PSC - target_metric['std']) / target_metric['std'])**2
+
+    # Strong penalty if mean is below target
+    if mean_PSC < target_metric['mean']:
+        mean_error += 2.0 * ((mean_PSC - target_metric['mean']) / target_metric['mean'])**2
+
+    # Penalty for excessive std
     variance_penalty = 0.0
-    if std_PSC > 1.5 * target_metric['std']:  # If std is 50% higher than target
-        variance_penalty = 10.0 * (std_PSC - 1.5 * target_metric['std'])**2
-    
+    if std_PSC > 1.5 * target_metric['std']:
+        variance_penalty = 5.0 * ((std_PSC - 1.5 * target_metric['std']) / target_metric['std'])**2
+
     total_error = mean_error + std_error + variance_penalty
     
     # Store results in optimization history
@@ -319,6 +323,7 @@ def objective_function(params, synapse_type, location_type, target_metric):
     })
     
     log(f"Objective: Params={params}, Mean Error={mean_error:.3f}, Std Error={std_error:.3f}, Penalty={variance_penalty:.3f}, Total={total_error:.3f}")
+    log(f"Params: mean={params[0]:.3f}, std={params[1]:.3f} | Sim mean={mean_PSC:.2f}, Sim std={std_PSC:.2f} | Target mean={target_metric['mean']}, Target std={target_metric['std']}")
     
     return total_error
 
@@ -600,7 +605,27 @@ if __name__ == '__main__':
                                   target_metric, save_dir)
             plot_optimization_history(optimization_histories[(synapse_type, location_type)],
                                     synapse_type, location_type, save_dir)
-            
+
+            # --- Save optimization history to CSV ---
+            import csv
+            opt_hist_csv_path = os.path.join(save_dir, 'optimization_history.csv')
+            with open(opt_hist_csv_path, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(['iteration', 'mean', 'std', 'error', 'mean_error', 'std_error', 'variance_penalty', 'timestamp'])
+                for i, h in enumerate(optimization_histories[(synapse_type, location_type)]):
+                    params = h.get('params', [None, None])
+                    writer.writerow([
+                        i,
+                        params[0],
+                        params[1],
+                        h.get('error', ''),
+                        h.get('mean_error', ''),
+                        h.get('std_error', ''),
+                        h.get('variance_penalty', ''),
+                        h.get('timestamp', '')
+                    ])
+            print(f"Saved optimization history CSV to {opt_hist_csv_path}")
+
             # Save data
             save_simulation_results(weights_val, PSC_mags_val, locs_val, 
                                   os.path.join(save_dir, 'simulation_results.csv'))
