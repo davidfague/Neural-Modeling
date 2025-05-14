@@ -67,7 +67,7 @@ except ImportError as e:
     sys.exit(1)
 
 # Global settings
-TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION = 5000
+TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION = 1000
 USE_HAY_CELL = True
 
 # Globals for worker processes
@@ -217,6 +217,7 @@ def run_parallel_simulations(synapse_type, location_type, total_samples=100):
     PSCs_by_segment = {seg_idx: [] for seg_idx in range(total_segments)}
     
     start_time = time.time()
+    batch_times = []
     
     try:
         # Create pool with maxtasksperchild to prevent memory leaks
@@ -224,6 +225,7 @@ def run_parallel_simulations(synapse_type, location_type, total_samples=100):
                     initializer=worker_init,
                     maxtasksperchild=10) as pool:
             for batch_idx in tqdm(range(number_of_batches), desc="Running simulation batches"):
+                batch_start_time = time.time()
                 batch_args = [
                     (synapse_type, location_type, use_norm_dist)
                     for _ in range(simulation_batch_size)
@@ -236,7 +238,13 @@ def run_parallel_simulations(synapse_type, location_type, total_samples=100):
                             weights.append(weight)
                             locs.append(loc)
                             PSCs_by_segment[loc].append(PSC_mag)
+                    
+                    batch_time = time.time() - batch_start_time
+                    batch_times.append(batch_time)
+                    avg_time_per_sim = batch_time / simulation_batch_size
+                    
                     print(f"Batch {batch_idx+1}/{number_of_batches}: mean PSC={np.mean(PSC_mags):.3f}, std PSC={np.std(PSC_mags):.3f}")
+                    print(f"Batch {batch_idx+1} time: {batch_time:.2f}s, Avg time per sim: {avg_time_per_sim:.2f}s")
                     log(f"Batch {batch_idx+1}: Params: mean={distributions_to_test[synapse_type][location_type]['mean']}, std={distributions_to_test[synapse_type][location_type]['std']}, PSC count: {len(PSC_mags)}")
                     failed = sum(1 for PSC_mag, _, _ in results if PSC_mag is None)
                     if failed > 0:
@@ -254,7 +262,11 @@ def run_parallel_simulations(synapse_type, location_type, total_samples=100):
             pool.join()
     
     elapsed_time = time.time() - start_time
+    avg_batch_time = np.mean(batch_times) if batch_times else 0
     print(f"Total simulation time: {elapsed_time:.2f} seconds")
+    print(f"Average batch time: {avg_batch_time:.2f} seconds")
+    print(f"Average time per simulation: {elapsed_time/total_samples:.2f} seconds")
+    
     return np.array(PSC_mags), np.array(weights), np.array(locs), PSCs_by_segment
 
 def objective_function(params, synapse_type, location_type, target_metric):
@@ -292,7 +304,8 @@ def objective_function(params, synapse_type, location_type, target_metric):
         'error': total_error,
         'mean_error': mean_error,
         'std_error': std_error,
-        'variance_penalty': variance_penalty
+        'variance_penalty': variance_penalty,
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     })
     
     log(f"Objective: Params={params}, Mean Error={mean_error:.3f}, Std Error={std_error:.3f}, Penalty={variance_penalty:.3f}, Total={total_error:.3f}")
@@ -317,7 +330,10 @@ def optimize_synapse_parameters(synapse_type, location_type, target_metric, boun
         [bounds[0][1], bounds[1][0]]   # Upper mean, lower std
     ]
     
+    iteration_times = []
+    
     for init_point in initial_points:
+        iter_start_time = time.time()
         result = minimize(
             objective_function,
             x0=init_point,
@@ -325,18 +341,23 @@ def optimize_synapse_parameters(synapse_type, location_type, target_metric, boun
             method='L-BFGS-B',
             bounds=bounds,
             options={
-                'maxiter': 20,  # Increased from 10
+                'maxiter': 10,  # Increased from 10
                 'disp': True,
                 'ftol': 1e-4,   # Tighter function tolerance
                 'gtol': 1e-4    # Tighter gradient tolerance
             }
         )
         
+        iter_time = time.time() - iter_start_time
+        iteration_times.append(iter_time)
+        
         if result.fun < best_error:
             best_error = result.fun
             best_result = result
     
+    avg_iter_time = np.mean(iteration_times) if iteration_times else 0
     log(f"Optimization result: {best_result}")
+    log(f"Average iteration time: {avg_iter_time:.2f} seconds")
     return best_result
 
 def plot_results(weights, PSC_mags, synapse_type, location_type):
@@ -433,17 +454,30 @@ def save_intermediate(results_dir, optimization_histories, all_results):
 def log(msg):
     print(f"[LOG {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
 
-def log_timing(results_dir, synapse_type, location_type, elapsed_time, total=False):
+def log_timing(results_dir, synapse_type, location_type, elapsed_time, total=False, iteration_info=None):
     timing_file = os.path.join(results_dir, 'timing_summary.csv')
     write_header = not os.path.exists(timing_file)
     with open(timing_file, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile)
         if write_header:
-            writer.writerow(['Synapse Type', 'Location Type', 'Execution Time (s)'])
+            writer.writerow(['Timestamp', 'Synapse Type', 'Location Type', 'Execution Time (s)', 
+                           'Iteration Number', 'Simulations Per Iteration', 'Avg Time Per Simulation (s)',
+                           'Optimization Success', 'Final Error'])
         if total:
-            writer.writerow(['Total', 'All', f'{elapsed_time:.1f}'])
+            writer.writerow([datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Total', 'All', 
+                           f'{elapsed_time:.1f}', '', '', '', '', ''])
         else:
-            writer.writerow([synapse_type, location_type, f'{elapsed_time:.1f}'])
+            writer.writerow([
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                synapse_type, 
+                location_type, 
+                f'{elapsed_time:.1f}',
+                iteration_info.get('iteration', ''),
+                iteration_info.get('simulations', ''),
+                iteration_info.get('avg_time_per_sim', ''),
+                iteration_info.get('success', ''),
+                iteration_info.get('final_error', '')
+            ])
 
 if __name__ == '__main__':
     # Initialize cell and mechanisms
@@ -491,9 +525,9 @@ if __name__ == '__main__':
             
             # Set appropriate bounds based on synapse type
             if 'exc' in synapse_type:
-                bounds = [(0.001, 5), (0.001, 5)]  # Mean and std bounds for excitatory
+                bounds = [(0.01, 5), (0.01, 5)]  # Mean and std bounds for excitatory
             else:
-                bounds = [(0.001, 5), (0.001, 5)]  # Mean and std bounds for inhibitory
+                bounds = [(0.01, 5), (0.01, 5)]  # Mean and std bounds for inhibitory
             
             # Initialize optimization history
             optimization_histories[(synapse_type, location_type)] = []
@@ -513,7 +547,8 @@ if __name__ == '__main__':
                 'PSC_mags': PSC_mags,
                 'weights': weights,
                 'error': (np.mean(PSC_mags) - target_metric['mean'])**2 + 
-                        (np.std(PSC_mags) - target_metric['std'])**2
+                        (np.std(PSC_mags) - target_metric['std'])**2,
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             })
             
             # Optimize parameters
@@ -537,7 +572,8 @@ if __name__ == '__main__':
                 'params': result.x,
                 'PSC_mags': PSC_mags_val,
                 'weights': weights_val,
-                'error': result.fun
+                'error': result.fun,
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             })
             
             # Calculate execution time for this combination
@@ -574,13 +610,22 @@ if __name__ == '__main__':
                 "Final Error": round(result.fun, 3),
                 "Execution Time (s)": round(elapsed_time, 1),
                 "Optimization Iterations": result.nit,
-                "Optimization Success": result.success
+                "Optimization Success": result.success,
+                "Avg Time Per Simulation (s)": round(elapsed_time/TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION, 3)
             })
             
             # Save intermediate results
             save_intermediate(results_dir, optimization_histories, all_results)
             
-            log_timing(results_dir, synapse_type, location_type, elapsed_time)
+            # Log timing with detailed iteration info
+            iteration_info = {
+                'iteration': result.nit,
+                'simulations': TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION,
+                'avg_time_per_sim': round(elapsed_time/TOTAL_SAMPLES_PER_WEIGHT_DISTRIBUTION, 3),
+                'success': result.success,
+                'final_error': round(result.fun, 3)
+            }
+            log_timing(results_dir, synapse_type, location_type, elapsed_time, iteration_info=iteration_info)
     
     # Calculate total execution time
     total_elapsed_time = time.time() - total_start_time
@@ -601,6 +646,7 @@ if __name__ == '__main__':
             f.write(f"  Execution Time: {result['Execution Time (s)']} seconds\n")
             f.write(f"  Optimization Iterations: {result['Optimization Iterations']}\n")
             f.write(f"  Optimization Success: {result['Optimization Success']}\n")
+            f.write(f"  Average Time per Simulation: {result['Avg Time Per Simulation (s)']} seconds\n")
     
     print("\nFinal summary saved to", os.path.join(results_dir, 'final_summary.csv'))
     print(f"Total execution time: {total_elapsed_time:.1f} seconds")
