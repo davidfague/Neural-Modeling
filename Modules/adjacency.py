@@ -6,6 +6,7 @@ if column j has no 1's then seg j has no parents.
 '''
 
 import numpy as np
+import pandas as pd
 
 def find_branching_seg_with_most_branching_descendants_in_subset_y(adjacency_matrix, segment_indices, segment_y_coordinates, min_y=500): # min_y = 500 for Hay et al. 2011 model
     branching_segments = [i for i in segment_indices if sum(adjacency_matrix[i]) > 1 and segment_y_coordinates[i] >= min_y]
@@ -199,3 +200,72 @@ def get_children_indices(parent_idx, adjacency_matrix):
     children_indices = list(np.where(adjacency_matrix[parent_idx, :] == 1)[0])
 
     return children_indices
+
+def get_all_ascendant_seg_indices(adjacency_matrix, start_segments, ascendants=None): # used for tracing the path back from a terminal segment to the soma
+    """
+    Get all ascendant (parent, grandparent, etc.) segment indices for the given segment indices.
+
+    Args:
+        adjacency_matrix (numpy.ndarray): Directed adjacency matrix
+        start_segments (list): List of segment indices to find all ascendants for
+        ascendants (dict, optional): Dictionary to store found ascendants. Defaults to None.
+
+    Returns:
+        dict: Dictionary mapping each input segment index to its set of all ascendant indices
+    """
+    if ascendants is None:
+        ascendants = {seg: set() for seg in start_segments}
+    
+    # Ensure the adjacency matrix is treated as a NumPy array
+    adjacency_matrix = np.asarray(adjacency_matrix)
+    
+    for seg_idx in start_segments:
+        # Look through each row (parent) in the adjacency matrix
+        for parent_idx in range(adjacency_matrix.shape[0]):
+            # If this parent connects to our segment, it's an ascendant
+            if adjacency_matrix[parent_idx, seg_idx] == 1:
+                # Initialize the set for parent_idx if it doesn't exist
+                if parent_idx not in ascendants:
+                    ascendants[parent_idx] = set()
+                
+                if parent_idx not in ascendants[seg_idx]:
+                    ascendants[seg_idx].add(parent_idx)
+                    # Recursively find ascendants of this parent
+                    get_all_ascendant_seg_indices(adjacency_matrix, [parent_idx], ascendants)
+                    # Add all ascendants of the parent to the current segment's ascendants
+                    ascendants[seg_idx].update(ascendants[parent_idx])
+    
+    return ascendants
+
+def get_all_ascendant_seg_indices_of_type(adjacency_matrix, start_segments, seg_data, sec_type_to_get): # used for tracing the path back from a terminal segment to the start of this section type (identifying a branch or path to root)
+    """
+    Get all ascendant segment indices filtered by section type.
+
+    Args:
+        adjacency_matrix (numpy.ndarray): Directed adjacency matrix
+        start_segments (list): List of segment indices to find all ascendants for
+        seg_data (pandas.DataFrame): DataFrame containing segment data including 'sec_type_precise'
+        sec_type_to_get (str): Section type to filter ascendants by
+
+    Returns:
+        dict: Dictionary mapping each input segment index to its set of ascendant indices of the specified type
+    """
+    # First get all ascendants
+    all_ascendants = get_all_ascendant_seg_indices(adjacency_matrix, start_segments)
+    
+    # Filter ascendants by section type
+    filtered_ascendants = {}
+    for seg_idx in start_segments:
+        ascendants = all_ascendants[seg_idx]
+        ascendant_types = seg_data.loc[list(ascendants), 'sec_type_precise']
+        # Print warnings for non-matching types
+        # for asc in ascendants:
+            # if ascendant_types[asc] != sec_type_to_get:
+            #     print(f"WARNING: {ascendant_types[asc]} is not {sec_type_to_get}")
+        # Filter to only keep ascendants of the specified type
+        filtered_ascendants[seg_idx] = {
+            asc for asc in ascendants 
+            if ascendant_types[asc] == sec_type_to_get
+        }
+        
+    return filtered_ascendants
