@@ -202,8 +202,8 @@ class CellBuilder:
 		replace_end_time = time.time()
 		total_replace_time = replace_end_time - replace_start_time
 		replace_file_path = os.path.join(self.parameters.path, "replace_runtime.txt")
-		with open(replace_file_path, "w") as replace_file:
-			replace_file.write(f"{total_replace_time:.3f} seconds")
+		# with open(replace_file_path, "w") as replace_file: # TODO: save to sim_dir
+		# 	replace_file.write(f"{total_replace_time:.3f} seconds")
 		self.logger.log_runtime("cell_builder", "replace_dend_with_CI", total_replace_time)
 		
 		# merge synapses/optimize nseg by lambda
@@ -246,8 +246,8 @@ class CellBuilder:
 		self.logger.log_runtime("cell_builder", "build_cell", run_time)
     	# Record the  runtime to a file
 		runtime_file_path = os.path.join(self.parameters.path, "builder_runtime.txt")
-		with open(runtime_file_path, "w") as runtime_file:
-				runtime_file.write(f"{run_time} seconds")
+		# with open(runtime_file_path, "w") as runtime_file: #TODO: save to sim_dir
+		# 		runtime_file.write(f"{run_time} seconds")
         
 		return cell, skeleton_cell
 
