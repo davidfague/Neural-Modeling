@@ -23,7 +23,7 @@ def generate_segments_csv(sim_dir, parameters, logger): #@TODO: add this to some
     logger.log("Saving adjacency matrix")
     if parameters.save_adj_matrix:
         adj_matrix = cell.compute_directed_adjacency_matrix()
-        np.savetxt(os.path.join(parameters.path, "adj_matrix.txt"), adj_matrix)
+        np.savetxt(os.path.join(sim_dir, "adj_matrix.txt"), adj_matrix.astype(int))
     logger.log("Finished saving adjacency matrix")
 
     logger.log("Getting segments data")
