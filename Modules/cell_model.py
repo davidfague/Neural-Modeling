@@ -879,7 +879,7 @@ class CellModel:
 			self.recorders.append(rec_list)
 	
 	def write_recorder_data(self, path: str, step: int) -> None:
-		os.mkdir(path)
+		os.makedirs(path, exist_ok=True)# os.mkdir(path)
 
 		for recorder in self.recorders:
 			if type(recorder) == SpikeRecorder:

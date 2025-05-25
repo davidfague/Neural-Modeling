@@ -85,7 +85,7 @@ class Simulator:
 
 class Simulation:
 
-    def __init__(self, cell_type: SkeletonCell, title = None):
+    def __init__(self, cell_type: SkeletonCell, title = None, create_dir = True):
         self.cell_type = cell_type
         if title:
           self.title = title
@@ -98,7 +98,7 @@ class Simulation:
         self.pool = []
 
         # Create the simulations parent folder
-        if not os.path.exists(self.path):
+        if create_dir and not os.path.exists(self.path):
             os.mkdir(self.path)
 
     def run_single_simulation(self, parameters: SimulationParameters, cell: CellModel=None):
@@ -164,7 +164,8 @@ class Simulation:
         seg_coords = pd.concat(seg_coords)
 
         seg_data = pd.concat((seg_sections.reset_index(drop = True), seg_coords.reset_index(drop = True)), axis = 1)
-        seg_data.to_csv(os.path.join(parameters.path, "segment_data.csv"))
+        if not os.path.exists(os.path.join(parameters.path, "segment_data.csv")): # don't overwrite if it already exists. This is because we are writing it using Modules.segments_file import generate_segments_csv now.
+            seg_data.to_csv(os.path.join(parameters.path, "segment_data.csv"))
 
         # Compute electrotonic distances from soma
         elec_distances_soma = cell.compute_electrotonic_distance(from_segment = cell.soma[0](0.5))
@@ -211,7 +212,7 @@ class Simulation:
     			#for sec in cell.all: sec.insert('extracellular') # may not be needed
             cell.add_segment_recorders(var_name = "i_membrane_")
     		
-        if (not parameters.all_synapses_off) and (parameters.record_all_synapses):
+        if (parameters.record_all_synapses): # and (not parameters.all_synapses_off)
             for var_name in parameters.synaptic_currents_to_record:#["i_AMPA", "i_NMDA"], "igaba", "inmda"]: # additional for pyr2pyr and int2pyr synapses.
                 cell.add_synapse_recorders(var_name = var_name)
         if parameters.record_soma_spikes:

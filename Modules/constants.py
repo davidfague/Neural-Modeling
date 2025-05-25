@@ -213,8 +213,8 @@ class SimulationParameters:
 			'synapse_type': 'exc'
 			},
 	})
-	# NOTE: [trunk, oblique, tuft] fields can be replaced with 'distal_apic' if desired
-	# NOTE: gmax is clipped to (0,10*mean); no scalar implemented.
+	# NOTE: [trunk, oblique, tuft] fields can be replaced with ['distal_apic'] if desired (Not recommended without checking CellModel.get_segments_of_type, etc first.)
+	# NOTE: gmax WAS clipped to (0,10*mean); no scalar implemented.
 	inh_syn_properties: dict = field(default_factory=lambda: {
 		'tuft': {'syn_density': 0.22*1.5, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 1.87*8/8*2*4, 'std': 0.08474},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
@@ -256,7 +256,7 @@ class SimulationParameters:
 			'seed': {'synapses': 111333311},
 			'synapse_type': 'inh'
 			},
-		'perisomatic': {'syn_density': 0.22, 'syn_number': 3066,
+		'perisomatic': {'syn_density': 0.22*1.125, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 4.6, 'std':  0.175*.5},
 			'initial_weight_distribution': {'params': {'mean': 4.6/4, 'std':  0.175*.5, 'clip': [0,5]}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.88, 'std': 0.05}},
@@ -401,7 +401,7 @@ class SimulationParameters:
 	skip: int = 300
 
 	# Log, plot and save
-	save_adj_matrix: bool = False
+	save_adj_matrix: bool = True
 	save_every_ms: int = 1000
 	record_every_time_steps: int = 1 # 10 converts from dt=0.1 ms to saved_dt=1 ms # 1 keeps at 0.1 ms
 	path: str = ''
@@ -481,35 +481,35 @@ class SimulationParameters:
 		'tuft': {
 			'functional_groups': [
 				{
-					'center': (0, 900, 0),  # 3D coordinates
-					'radius': 100.0,  # microns
+					'center': (0, 900, 500),  # 3D coordinates
+					'radius': 500.0,  # microns
 					'presynaptic_cells': [
 						{
-							'center': (0, 900, 25),  # relative to functional group center
-							'radius': 10.0,  # microns
+							'center': (0, 900, 500),  # relative to functional group center
+							'radius': 200.0,  # microns
 							'name': 'PC1',
-							'max_synapses': 10  # maximum number of synapses per PC
+							'max_synapses': 5000  # maximum number of synapses per PC
 						},
-						{
-							'center': (0, 900, -25),
-							'radius': 10.0,
-							'name': 'PC2',
-							'max_synapses': 10
-						}
+						# {
+						# 	'center': (0, 900, -25),
+						# 	'radius': 10.0,
+						# 	'name': 'PC2',
+						# 	'max_synapses': 10
+						# }
 					]
 				},
-				{
-					'center': (0, 0, 0),
-					'radius': 50.0,
-					'presynaptic_cells': [
-						{
-							'center': (0, 0, 0),
-							'radius': 10.0,
-							'name': 'PC3',
-							'max_synapses': 10
-						}
-					]
-				}
+				# {
+				# 	'center': (0, 0, 0),
+				# 	'radius': 50.0,
+				# 	'presynaptic_cells': [
+				# 		{
+				# 			'center': (0, 0, 0),
+				# 			'radius': 10.0,
+				# 			'name': 'PC3',
+				# 			'max_synapses': 10
+				# 		}
+				# 	]
+				# }
 			]
 		},
 		'trunk': {
