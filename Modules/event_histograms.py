@@ -166,6 +166,7 @@ def plot_na_prop_scatter(sim_directory, na_df):
     h = sns.jointplot(data=na_df[~pd.isnull(na_df.duration_low)], x="duration", y="peak_value",color='red')
     h.set_axis_labels('duration (ms)', 'peak value (mS/cm^2)', fontsize=16)
     h.ax_marg_y.set_ylim(0, 0.02)
+    plt.title('Na')
     plt.savefig(f'{sim_directory}/spike_properties/na_prop_scatter.svg')
 
 def plot_na_prop_heatmap(sim_directory, na_df):
@@ -245,6 +246,7 @@ def plot_na_spk_locations(sim_directory, na_df, segs, dur_to_use, soma_id_to_use
 
     #ax2.ax.set_title('log(elec_distance)',rotation=270)
     plt.box(False)
+    plt.title('Na')
     plt.savefig(f'{sim_directory}/spike_properties/na_spk_locations.svg')
     return segs_na_df
 
@@ -254,6 +256,7 @@ def plot_nmda_prop_scatter(sim_directory, nmda_df):
                                 (nmda_df.duration<250)&
                                 (nmda_df.duration>26)], x="duration", y="mag",alpha=0.02, color='blue')
     h.set_axis_labels('duration (ms)', 'magnitude (nA ms)', fontsize=16)
+    plt.title('NMDA')
     plt.savefig(f'{sim_directory}/spike_properties/nmda_prop_scatter.svg')
 
 def plot_nmda_prop_heatmap(sim_directory, nmda_df):
@@ -322,6 +325,7 @@ def plot_nmda_spk_locations(sim_directory, nmda_df, segs, dur_to_use, soma_id_to
     sm.set_array([])  # Dummy array for the mappable
     cbar = plt.colorbar(sm, ax=ax)
     plt.box(False)
+    plt.title('NMDA')
     plt.savefig(f'{sim_directory}/spike_properties/nmda_spk_locations.svg')
     return segs_nmda_df
 
@@ -359,6 +363,7 @@ def plot_ca_prop_heatmap(sim_directory, ca_df):
 def plot_ca_prop_scatter(sim_directory, ca_df):
     h = sns.jointplot(data=ca_df, x="duration", y="mag",alpha=0.1, color='black')
     h.set_axis_labels('duration (ms)', 'magnitude (nA ms)', fontsize=16)
+    plt.title('Ca')
     plt.savefig(f'{sim_directory}/spike_properties/ca_prop_scatter.svg')
 
 def plot_ca_spk_locations(sim_directory, ca_df, segs, dur_to_use, ben):
@@ -412,6 +417,7 @@ def plot_ca_spk_locations(sim_directory, ca_df, segs, dur_to_use, ben):
 
     #ax2.ax.set_title('log(elec_distance)',rotation=270)
     plt.box(False)
+    plt.title('Ca')
     plt.savefig(f'{sim_directory}/spike_properties/ca_spk_locations.svg')
     return segs_ca_df
 
