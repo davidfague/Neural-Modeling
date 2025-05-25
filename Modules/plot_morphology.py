@@ -122,7 +122,7 @@ def plot_segments(seg_data, special_indices, special_colors, title_suffix="", sa
         if show:
             plt.show()
 
-def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.0, deleted_indices=[], show=True):
+def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.0, deleted_indices=[], show=True): #TODO: rename to plot_morphology_with_highlighted_indices?
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -192,8 +192,8 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
     if synapse_coords is not None:
         ax.scatter(
             synapse_coords[:, 0],  # X
-            synapse_coords[:, 2],  # Z (should be Y in plot)
-            synapse_coords[:, 1],  # Y (should be Z in plot)
+            synapse_coords[:, 2],  # Y # altered to match plot()
+            synapse_coords[:, 1],  # Z
             c='gray', alpha=0.3, s=5, label='Synapses'
         )
     
@@ -215,11 +215,11 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
             u = np.linspace(0, 2 * np.pi, 100)
             v = np.linspace(0, np.pi, 100)
             x = fg_center[0] + fg_radius * np.outer(np.cos(u), np.sin(v))
-            y = fg_center[1] + fg_radius * np.outer(np.sin(u), np.sin(v))
-            z = fg_center[2] + fg_radius * np.outer(np.ones(np.size(u)), np.cos(v))
+            y = fg_center[2] + fg_radius * np.outer(np.sin(u), np.sin(v))
+            z = fg_center[1] + fg_radius * np.outer(np.ones(np.size(u)), np.cos(v))
             
             ax.plot_surface(x, y, z, color='blue', alpha=0.1, label=f'FG {fg_idx}' if fg_idx == 0 else None)
-            ax.scatter(fg_center[0], fg_center[1], fg_center[2], color='blue', s=50, 
+            ax.scatter(fg_center[0], fg_center[2], fg_center[1], color='blue', s=50, 
                       label=f'FG Center {fg_idx}' if fg_idx == 0 else None)
             
             # Plot presynaptic cells
@@ -236,12 +236,12 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
                 
                 # Create a sphere for the presynaptic cell
                 x = pc_center[0] + pc_radius * np.outer(np.cos(u), np.sin(v))
-                y = pc_center[1] + pc_radius * np.outer(np.sin(u), np.sin(v))
-                z = pc_center[2] + pc_radius * np.outer(np.ones(np.size(u)), np.cos(v))
+                y = pc_center[2] + pc_radius * np.outer(np.sin(u), np.sin(v))
+                z = pc_center[1] + pc_radius * np.outer(np.ones(np.size(u)), np.cos(v))
                 
                 ax.plot_surface(x, y, z, color='red', alpha=0.1, 
                               label=f'PC {pc_idx}' if pc_idx == 0 and fg_idx == 0 else None)
-                ax.scatter(pc_center[0], pc_center[1], pc_center[2], color='red', s=30,
+                ax.scatter(pc_center[0], pc_center[2], pc_center[1], color='red', s=30,
                           label=f'PC Center {pc_idx}' if pc_idx == 0 and fg_idx == 0 else None)
     
     ax.set_xlabel('X (um)')
@@ -251,4 +251,191 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
     ax.legend()
     
     return ax
+
+def plot_morphology_with_highlighted_sec_types(sec_types, seg_data, colors=None, figsize=(12, 10), dpi=600, save_path=None):
+    """
+    Plot morphology with multiple section types highlighted in different colors.
+    
+    Parameters:
+    -----------
+    sec_types : list
+        List of section types to highlight. Can include 'unlabeled' and 'overlapping'.
+        If 'distal_apical' is included, it will automatically include 'tuft', 'oblique', 'trunk', and 'nexus'.
+    seg_data : pd.DataFrame
+        DataFrame containing segment data with 'sec_type_precise' and 'seg_id' columns
+    colors : list, optional
+        List of colors to use for highlighting. If None, will use default colors.
+    figsize : tuple, optional
+        Figure size in inches (width, height). Default is (12, 10).
+    dpi : int, optional
+        Dots per inch for the figure. Default is 600.
+    save_path : str, optional
+        If provided, the figure will be saved to this path with the specified DPI.
+        
+    Returns:
+    --------
+    tuple
+        (fig, ax) matplotlib figure and axes objects
+    """
+    if colors is None:
+        colors = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'magenta', 'yellow']
+    
+    if len(sec_types) > len(colors):
+        warnings.warn(f"More section types than colors provided. Some section types will share colors.")
+    
+    # Create figure and axes with specified size
+    fig = plt.figure(figsize=figsize, dpi=dpi)
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Plot all segments in black first
+    for i, seg in seg_data.iterrows():
+        x_points = [seg['p0_0'], seg['pc_0'], seg['p1_0']]
+        y_points = [seg['p0_1'], seg['pc_1'], seg['p1_1']]
+        z_points = [seg['p0_2'], seg['pc_2'], seg['p1_2']]
+        radius = seg['r']
+        ax.plot(x_points, z_points, y_points, linewidth=radius, color='black')
+    
+    # Track which section types we've already plotted to avoid duplicate legend entries
+    plotted_types = set()
+    
+    # Highlight specified section types
+    for idx, sec_type in enumerate(sec_types):
+        color = colors[idx % len(colors)]
+        
+        # Handle distal_apical special case
+        if sec_type == 'distal_apical':
+            apical_types = ['tuft', 'oblique', 'trunk', 'nexus']
+            # Only add the label once for distal_apical
+            label_added = False
+            for apical_type in apical_types:
+                highlighted_indices = seg_data[seg_data['sec_type_precise'] == apical_type]['seg_id'].tolist()
+                if highlighted_indices:
+                    for i, seg in seg_data[seg_data['seg_id'].isin(highlighted_indices)].iterrows():
+                        x_points = [seg['p0_0'], seg['pc_0'], seg['p1_0']]
+                        y_points = [seg['p0_1'], seg['pc_1'], seg['p1_1']]
+                        z_points = [seg['p0_2'], seg['pc_2'], seg['p1_2']]
+                        radius = seg['r'] * 2
+                        ax.plot(x_points, z_points, y_points, linewidth=radius, color=color, 
+                              label='distal_apical' if not label_added else None)
+                    if not label_added:
+                        label_added = True
+        else:
+            if sec_type == 'unlabeled':
+                highlighted_indices = seg_data[seg_data['sec_type_precise'].isna()]['seg_id'].tolist()
+            else:
+                highlighted_indices = seg_data[seg_data['sec_type_precise'] == sec_type]['seg_id'].tolist()
+                
+            if not highlighted_indices:
+                warnings.warn(f"No segments found for section type: {sec_type}")
+                continue
+                
+            # Plot highlighted segments
+            for i, seg in seg_data[seg_data['seg_id'].isin(highlighted_indices)].iterrows():
+                x_points = [seg['p0_0'], seg['pc_0'], seg['p1_0']]
+                y_points = [seg['p0_1'], seg['pc_1'], seg['p1_1']]
+                z_points = [seg['p0_2'], seg['pc_2'], seg['p1_2']]
+                radius = seg['r'] * 2
+                ax.plot(x_points, z_points, y_points, linewidth=radius, color=color, 
+                       label=sec_type if sec_type not in plotted_types else None)
+            plotted_types.add(sec_type)
+    
+    ax.view_init(elev=0, azim=-100)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Z')
+    ax.set_zlabel('Y')
+    
+    # Set equal aspect ratio for all axes
+    ax.set_box_aspect([1, 2, 1])
+    
+    # Remove duplicate labels from legend and position it inside the plot in top right
+    handles, labels = ax.get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    ax.legend(by_label.values(), by_label.keys(), 
+             loc='upper right',           # Position in top right
+             bbox_to_anchor=(0.80, 0.70), # Slightly inset from the corner
+             framealpha=0.8)             # Make the legend background slightly transparent
+    
+    # Adjust layout to minimize whitespace
+    plt.tight_layout(pad=0.001)  # Reduce padding around the plot
+    
+    # Save figure if save_path is provided
+    if save_path:
+        fig.savefig(save_path, dpi=dpi, bbox_inches='tight', pad_inches=0.05)  # Reduce padding when saving
+    
+    return fig, ax
+
+def plot_morphology_with_y_range(seg_data, y_min=685, y_max=885, figsize=(12, 10), dpi=600, save_path=None):
+    """
+    Plot morphology with segments highlighted within a specific y-range.
+    
+    Parameters:
+    -----------
+    seg_data : pd.DataFrame
+        DataFrame containing segment data with coordinates
+    y_min : float, optional
+        Minimum y-coordinate for highlighting. Default is 685.
+    y_max : float, optional
+        Maximum y-coordinate for highlighting. Default is 885.
+    figsize : tuple, optional
+        Figure size in inches (width, height). Default is (12, 10).
+    dpi : int, optional
+        Dots per inch for the figure. Default is 600.
+    save_path : str, optional
+        If provided, the figure will be saved to this path with the specified DPI.
+        
+    Returns:
+    --------
+    tuple
+        (fig, ax) matplotlib figure and axes objects
+    """
+    # Create figure and axes with specified size
+    fig = plt.figure(figsize=figsize, dpi=dpi)
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Plot all segments in black first
+    for i, seg in seg_data.iterrows():
+        x_points = [seg['p0_0'], seg['pc_0'], seg['p1_0']]
+        y_points = [seg['p0_1'], seg['pc_1'], seg['p1_1']]
+        z_points = [seg['p0_2'], seg['pc_2'], seg['p1_2']]
+        radius = seg['r']
+        ax.plot(x_points, z_points, y_points, linewidth=radius, color='black')
+    
+    # Highlight segments within y-range
+    highlighted_segments = seg_data[
+        ((seg_data['p0_1'] >= y_min) & (seg_data['p0_1'] <= y_max)) |
+        ((seg_data['pc_1'] >= y_min) & (seg_data['pc_1'] <= y_max)) |
+        ((seg_data['p1_1'] >= y_min) & (seg_data['p1_1'] <= y_max))
+    ]
+    
+    # Plot highlighted segments in red
+    for i, seg in highlighted_segments.iterrows():
+        x_points = [seg['p0_0'], seg['pc_0'], seg['p1_0']]
+        y_points = [seg['p0_1'], seg['pc_1'], seg['p1_1']]
+        z_points = [seg['p0_2'], seg['pc_2'], seg['p1_2']]
+        radius = seg['r'] * 2  # Make highlighted segments thicker
+        ax.plot(x_points, z_points, y_points, linewidth=radius, color='red', 
+               label='Y-range segments' if i == highlighted_segments.index[0] else None)
+    
+    ax.view_init(elev=0, azim=-100)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Z')
+    ax.set_zlabel('Y')
+    
+    # Set equal aspect ratio for all axes
+    ax.set_box_aspect([1, 2, 1])
+    
+    # Add legend
+    if not highlighted_segments.empty:
+        ax.legend(loc='upper right',
+                 bbox_to_anchor=(0.80, 0.70),
+                 framealpha=0.8)
+    
+    # Adjust layout to minimize whitespace
+    plt.tight_layout(pad=0.001)
+    
+    # Save figure if save_path is provided
+    if save_path:
+        fig.savefig(save_path, dpi=dpi, bbox_inches='tight', pad_inches=0.05)
+    
+    return fig, ax
     
