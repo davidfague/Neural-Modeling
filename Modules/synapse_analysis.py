@@ -16,6 +16,16 @@ class SynapseAnalyzer:
             lambda s: np.fromstring(s.strip("[]"), sep=" ")
         )
         
+    def add_segment_data(self):
+        segments = pd.read_csv(os.path.join(self.sim_dir, "segment_data.csv"))
+        synapses_with_seg_info = self.synapses.merge(
+        segments, 
+        on='seg_id', 
+        how='left',               # carry along all synapses even if a seg_id is missing
+        suffixes=('','_seg')      # e.g. if both have a 'length' column
+        )
+        self.synapses = synapses_with_seg_info
+        
     def plot_spike_raster(self, 
                          time_window: Tuple[float, float] = None,
                          synapse_types: List[str] = None,
@@ -183,6 +193,16 @@ class SynapseAnalyzer:
             figsize: Figure size as (width, height)
             save_path: Optional path to save the figure
         """
+        if hasattr(self.synapses, 'pc_0'):
+            x_coord_name = 'pc_0'
+            y_coord_name = 'pc_1'
+            z_coord_name = 'pc_2'
+        elif hasattr(self.synapses, 'Coord X'):
+            x_coord_name = 'Coord X'
+            y_coord_name = 'Coord Y'
+            z_coord_name = 'Coord Z'
+        else:
+            raise ValueError(f"No coordinate columns found in synapses.csv: {self.synapses.columns}")
         # Filter synapses
         mask = pd.Series(True, index=self.synapses.index)
         if synapse_type:
@@ -199,9 +219,9 @@ class SynapseAnalyzer:
         # Plot each functional group with a different color
         for fg in filtered_synapses['functional_group'].unique():
             fg_synapses = filtered_synapses[filtered_synapses['functional_group'] == fg]
-            ax.scatter(fg_synapses['pc_0'], 
-                      fg_synapses['pc_1'], 
-                      fg_synapses['pc_2'],
+            ax.scatter(fg_synapses[x_coord_name], 
+                      fg_synapses[y_coord_name], 
+                      fg_synapses[z_coord_name],
                       label=f'FG {fg}')
         
         ax.set_xlabel('X')
