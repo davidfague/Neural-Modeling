@@ -1,4 +1,4 @@
-N_workers = 1
+N_workers =1
 import sys
 
 # Add paths for module imports
@@ -41,10 +41,11 @@ ci_replacements_to_use = ['None']
 # ci_replacements_to_use = ['None', 'Basals', '1Basal', 'Tufts', '1Tuft', 'Basals&Tufts']
 
 # Seeds: provide lists of seeds. Use [None] if not applicable.
-numpy_random_states = [5000, 4444444, 999999999, 77777, 33333333, 
-                       12346456, 98654721, 54367, 213904, 465982, 
-                       20184657, 3333, 901, 43656, 888888, 
-                       12435, 678534, 99835, 7865134, 9812763]
+numpy_random_states = [5000] 
+                    #    4444444, 999999999, 77777, 33333333, 
+                    #    12346456, 98654721, 54367, 213904, 465982, 
+                    #    20184657, 3333, 901, 43656, 888888, 
+                    #    12435, 678534, 99835, 7865134, 9812763]
 neuron_random_states = [None]
 
 default_inh_syn_properties = HayParameters('').inh_syn_properties  # get a copy of the default
@@ -66,57 +67,57 @@ select_parameters_to_vary = {
          'always_include_suffix': True
     },
     # for L5
-    # 'inh_syn_properties': {
-    #      'values': [ # copy default and override the nested value:
-    #         { **default_inh_syn_properties, 
-    #             'tuft': { **default_inh_syn_properties['tuft'], 'syn_density': 0.22*1.5},
-    #             'oblique': { **default_inh_syn_properties['oblique'],'syn_density': 0.22*2},
-    #             'nexus': { **default_inh_syn_properties['nexus'],'syn_density': 0.22*1.75},
-    #             'trunk': { **default_inh_syn_properties['trunk'],'syn_density': 0.22*0.25/0.25*0.26},
-    #             'distal_basal': { **default_inh_syn_properties['distal_basal'],'syn_density': 0.22*1},
-    #             'perisomatic': { **default_inh_syn_properties['perisomatic'],'syn_density': 0.22*0.75},
-    #         },
-    #      ],
-    #      'sim_name_suffix': 'InhTuftDensity',
-    #      'nested_keys': ['tuft.syn_density', 'oblique.syn_density', 'nexus.syn_density', 'trunk.syn_density', 'distal_basal.syn_density', 'perisomatic.syn_density'], # give the key to extract the value for simulation naming purposes
-    #      'always_include_suffix': True
-    # },
-    # 'exc_syn_properties': {
-    #      'values': [ # copy default and override the nested value:
-    #         { **default_exc_syn_properties, 
-    #             # detailed 1.5% rhyth
-    #             # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 },
-    #             # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
-    #             # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
-    #             # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
-    #             # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601}
+    'inh_syn_properties': {
+         'values': [ # copy default and override the nested value:
+            { **default_inh_syn_properties, 
+                'tuft': { **default_inh_syn_properties['tuft'], 'syn_density': 0.22*1.5*1.5/1.5/1.5}, # *0.5 to test seeding
+                'nexus': { **default_inh_syn_properties['nexus'],'syn_density': 0.22*1.75},
+                'trunk': { **default_inh_syn_properties['trunk'],'syn_density': 0.22*0.25/0.25*0.26},
+                'oblique': { **default_inh_syn_properties['oblique'],'syn_density': 0.22*2},
+                'distal_basal': { **default_inh_syn_properties['distal_basal'],'syn_density': 0.22*1},
+                'perisomatic': { **default_inh_syn_properties['perisomatic'],'syn_density': 0.22*0.75*0.5},
+            },
+         ],
+         'sim_name_suffix': 'InhTuftDensity',
+         'nested_keys': ['tuft.syn_density', 'oblique.syn_density', 'nexus.syn_density', 'trunk.syn_density', 'distal_basal.syn_density', 'perisomatic.syn_density'], # give the key to extract the value for simulation naming purposes
+         'always_include_suffix': True
+    },
+    'exc_syn_properties': {
+         'values': [ # copy default and override the nested value:
+            { **default_exc_syn_properties, 
+                # detailed 1.5% rhyth
+                # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 },
+                # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
+                # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
+                # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
+                # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601}
 
-    #             # # reduced 1.5% rhyth
-    #             # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 }, # 60% decrease for detailed
-    #             # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
-    #             # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
-    #             # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
-    #             # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5} # half for reduced
+                # # reduced 1.5% rhyth
+                # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 }, # 60% decrease for detailed
+                # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
+                # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
+                # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
+                # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5} # half for reduced
 
-    #             # # decreased mean fr stds. # Complex
-    #             # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 }, # 60% decrease for detailed
-    #             # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
-    #             # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
-    #             # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
-    #             # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5}
+                # # decreased mean fr stds. # Complex
+                'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 /0.5/0.45}, # 60% decrease for detailed
+                'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 /0.05},
+                'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 /0.25},
+                'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5/0.5/0.3},
+                'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5/0.5/0.601}
 
-    #                             # # decreased mean fr stds. # reduced
-    #             'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 }, # 60% decrease for detailed
-    #             # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
-    #             'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
-    #             'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
-    #             'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5*0.95} # 0.9x for reduced
-    #         },
-    #      ],
-    #      'sim_name_suffix': 'ExcTuftDensity',
-    #      'nested_keys': ['tuft.syn_density', 'oblique.syn_density', 'nexus.syn_density', 'trunk.syn_density', 'distal_basal.syn_density'], # give the key to extract the value for simulation naming purposes
-    #      'always_include_suffix': True
-    # },
+                                # # decreased mean fr stds. # reduced
+                # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 }, # 60% decrease for detailed
+                # # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
+                # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
+                # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
+                # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5*0.95} # 0.9x for reduced
+            },
+         ],
+         'sim_name_suffix': 'ExcTuftDensity',
+         'nested_keys': ['tuft.syn_density', 'oblique.syn_density', 'nexus.syn_density', 'trunk.syn_density', 'distal_basal.syn_density'], # give the key to extract the value for simulation naming purposes
+         'always_include_suffix': True
+    },
     # 'exc_scalar_basal': {
     #     'values': [1],
     #     'sim_name_suffix': 'BasalExcScale'
@@ -147,30 +148,30 @@ select_parameters_to_vary = {
     #         'InhGmax',
     # },
 
-    ########### FOR L23
-        'inh_syn_properties': {
-         'values': [ # copy default and override the nested value:
-            { **default_inh_syn_properties, 
-                'apic': { **default_inh_syn_properties['apic'], 'syn_density': 0.22*1},
-                'dend': { **default_inh_syn_properties['dend'],'syn_density': 0.22*1},
-                'perisomatic': { **default_inh_syn_properties['perisomatic'],'syn_density': 0.22*1},
-            },
-         ],
-         'sim_name_suffix': 'InhDens',
-         'nested_keys': ['apic.syn_density', 'dend.syn_density', 'perisomatic.syn_density'], # give the key to extract the value for simulation naming purposes
-         'always_include_suffix': True
-    },
-    'exc_syn_properties': {
-         'values': [ # copy default and override the nested value:
-            { **default_exc_syn_properties, 
-                'apic': { **default_exc_syn_properties['apic'], 'syn_density': 2.16*2}, # 60% decrease for detailed
-                'dend': { **default_exc_syn_properties['dend'],'syn_density':2.16*2} # 0.9x for reduced
-            },
-         ],
-         'sim_name_suffix': 'ExcDens',
-         'nested_keys': ['apic.syn_density', 'dend.syn_density'], # give the key to extract the value for simulation naming purposes
-         'always_include_suffix': True
-    },
+    # ########### FOR L23
+    #     'inh_syn_properties': {
+    #      'values': [ # copy default and override the nested value:
+    #         { **default_inh_syn_properties, 
+    #             'apic': { **default_inh_syn_properties['apic'], 'syn_density': 0.22*1},
+    #             'dend': { **default_inh_syn_properties['dend'],'syn_density': 0.22*1},
+    #             'perisomatic': { **default_inh_syn_properties['perisomatic'],'syn_density': 0.22*1},
+    #         },
+    #      ],
+    #      'sim_name_suffix': 'InhDens',
+    #      'nested_keys': ['apic.syn_density', 'dend.syn_density', 'perisomatic.syn_density'], # give the key to extract the value for simulation naming purposes
+    #      'always_include_suffix': True
+    # },
+    # 'exc_syn_properties': {
+    #      'values': [ # copy default and override the nested value:
+    #         { **default_exc_syn_properties, 
+    #             'apic': { **default_exc_syn_properties['apic'], 'syn_density': 2.16*0.75}, # 60% decrease for detailed
+    #             'dend': { **default_exc_syn_properties['dend'],'syn_density':2.16*1} # 0.9x for reduced
+    #         },
+    #      ],
+    #      'sim_name_suffix': 'ExcDens',
+    #      'nested_keys': ['apic.syn_density', 'dend.syn_density'], # give the key to extract the value for simulation naming purposes
+    #      'always_include_suffix': True
+    # },
 
 }
 
@@ -181,13 +182,13 @@ select_parameters_to_vary = {
 # Simulation type parameters
 sim_type_params_all = {
     'sta': {  # in vivo simulation with recording currents/conductances
-        'h_tstop': 10000,
+        'h_tstop': 5000,
         'merge_synapses': False,
         'record_ecp': False,
         'record_all_channels': True,
         'record_all_synapses': True,
-        'record_spike_trains': True,
-        'record_synapse_distributions': True 
+        # 'record_spike_trains': True,
+        # 'record_synapse_distributions': True 
     },
     'fi_ci': {  # FR/I - ramp current injection
         'h_tstop': 5000,
@@ -214,14 +215,14 @@ sim_type_params_all = {
         'record_spike_trains': True,
         'record_synapse_distributions': True
     },
-    'tuning': {  # in vivo simulation (not fully implemented)
+    'tuning': {  # in vivo simulation
         'h_tstop': 5000,
         'merge_synapses': False,
         'record_ecp': False,
         'record_all_channels': False,
-        'record_all_synapses': False,
-        'record_spike_trains': False,
-        'record_synapse_distributions': False
+        'record_all_synapses': True,
+        'record_spike_trains': True,
+        'record_synapse_distributions': True
     },
 }
 # Select the simulation type parameters for the chosen simulation type.
