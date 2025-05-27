@@ -332,8 +332,8 @@ def _analyze_NMDA():
 def _analyze_spike_relationships(sim_directory, spike_type, wrt_spike_type, section, elec_dist):
     v = analysis.DataReader.read_data(sim_directory, "v")
     soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
-    # ica = analysis.DataReader.read_data(sim_directory, "ica")
-    ica = analysis.DataReader.read_data(sim_directory, "ica_Ca_HVA") + analysis.DataReader.read_data(sim_directory, "ica_Ca_LVAst") 
+    ica = analysis.DataReader.read_data(sim_directory, "ica")
+
     if parameters.exc_syn_mod == 'pyr2pyr': # two types with different variable name
         inmda = analysis.DataReader.read_data(sim_directory, "inmda")
     else:
