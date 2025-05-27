@@ -184,3 +184,7 @@ notebooks/UsefulMarkdowns.ipynb
 scripts/params/
 
 scripts/Tuning Notes.txt
+
+# ignore simulations folder (output of simulations)
+simulations/*
+!simulations/.gitkeep
