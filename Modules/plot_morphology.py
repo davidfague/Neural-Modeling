@@ -224,7 +224,7 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
             
             # Plot presynaptic cells
             for pc_idx, pc in enumerate(fg.get('presynaptic_cells', [])):
-                pc_center = np.array(pc['center']) + fg_center
+                pc_center = np.array(pc['center']) #+ fg_center
                 pc_radius = pc['radius']
                 
                 # Check if there are any synapses within this presynaptic cell
