@@ -9,7 +9,7 @@
 #SBATCH --time=12:00:00  # Set a reasonable max runtime
 
 # Set the simulation title here
-SIM_TITLE="checking_syn_density_tuning"
+SIM_TITLE="L5_Testing_Seeding_inc_tuft_inh_dens"
 
 # Pass SIM_TITLE as a command-line argument to the Python script
 mpiexec python slurm_sim.py "$SIM_TITLE"

@@ -100,10 +100,11 @@ def load_data(sim_directory, ben):
     #'2024-07-24-15-59-37-STA/Complex_Np5'
     #'2024-07-12-12-17-52-STA/Complex_Np5'
         # os.chdir("../scripts/")
-        base_path = os.path.abspath("../scripts/")
+        base_path = os.path.curdir#'/home/drfrbc/Neural-Modeling/simulations'#os.path.curdir#os.path.abspath("../scripts/")
         sys.path.append(base_path)
         sys.path.append(os.path.join(base_path, "Modules/"))
         sim_directory = os.path.join(base_path, sim_directory)
+        # print(f"sim_directory in find_events_ben.py: {sim_directory}")
         na = analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t").T
         spks = analysis.DataReader.read_data(sim_directory, "soma_spikes")
         v = analysis.DataReader.read_data(sim_directory, "v").T
@@ -218,8 +219,10 @@ def compute_na_df(na, segs, spkinds, sim_directory, ben):
 
 def compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben):
     ca_df = pd.DataFrame(columns=['segmentID','ca_lower_bound'])
+    print(f"segs: {segs}")
     segIDs = segs[(segs.Type=='apic')&(segs['Coord Y']>400)&(segs['Coord Y']<1000)]['segmentID']
     ca_df_list = []  # Initialize a list to store individual DataFrames
+    # print(f"segIDs: {segIDs}")
 
     for p in segIDs:
         trace = (hva[:,p] + #['report']['biophysical']['data'][:,p] + 
@@ -249,6 +252,7 @@ def compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben):
                                             'ca_upper_bound': [np.nan],
                                             'mag': [np.nan]}))
 
+    # print(f"ca_df_list: {ca_df_list}")
     # Concatenate all DataFrames in the list into a single DataFrame
     ca_df = pd.concat(ca_df_list, ignore_index=True)        
 

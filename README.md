@@ -15,4 +15,3 @@ notebooks/AA_post_sim.ipynb is used to analyze simulated data.
 Guidelines for tuning synaptic design for realistic dendritic spikes: https://mailmissouri-my.sharepoint.com/:w:/r/personal/nairs_umsystem_edu/Documents/MigratedBoxFiles/nairs/AAWork%20in%20progress/PAPERS%20in%20progress/AA-SingleCell%20and%20WM%20Projects/Reduced%20Order%20Modeling%20Project/Manuscript%20-%20EquivalentModel/2025%20IEEE%20MWSCAS/Tuning-DetailedCellModel.docx?d=wf09133c47cf045f68b43e41dae8c6776&csf=1&web=1&e=wDmRo4
 
 How to download and run an AllenDB Cell: https://mailmissouri-my.sharepoint.com/:w:/r/personal/drfrbc_umsystem_edu/Documents/How%20To%20-%20Allen%20Cell%20in%20Single-Cell%20Pipeline.docx?d=w88c46ac81e2548648dc84744a9ba5c11&csf=1&web=1&e=E4Hjef
-

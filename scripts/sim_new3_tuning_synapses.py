@@ -16,10 +16,10 @@ import math
 synapse_keys = ['None']  # Options: 'None', 'NoMapping', 'MappingMerging', etc.
 use_SA_probs = False
 syn_numbers_to_use = 'Full'  # Options: '1000', 'Full', etc.
-common_attributes_to_use = 'tuning_synapses' # Options: 'sta', 'FI', 'FI_ExcFR', 'tuning_synapses', 'checking_synapse_distributions'
+common_attributes_to_use = 'sta' # Options: 'sta', 'FI', 'FI_ExcFR', 'tuning_synapses', 'checking_synapse_distributions'
 morphology_keys = ['Complex']  # Options: 'Complex', 'Branches', 'Trees' (can do multiple)
 replace_w_CI_keys = ['None']  # Options: 'None', 'Tufts', 'Basals&Tufts', etc. (can do multiple)
-numpy_random_states = [1000, 10000000]  # Add more seeds if needed (can do multiple)
+numpy_random_states = [1000, 100000, 500000, 10000000]  # Add more seeds if needed (can do multiple)
 neuron_random_states = None
 sim_title = 'BenSynapses_testing_depth_of_mod'#'BenSynapses_final_detailed_syn_dist_analysis'
 
@@ -33,7 +33,7 @@ syn_numbers = {
 # Define the template for common attributes
 common_attributes_dict = { # simulation options
     'sta': { # in vivo simulation with recording currents/conductances
-        'h_tstop': 30000,
+        'h_tstop': 10000,
         'merge_synapses': False,
         'record_ecp': False,
         'record_all_channels': True,
@@ -137,7 +137,7 @@ soma_gmax_range = [0.0025]
 mean = (np.log(0.45) - 0.5 * np.log((0.35 / 0.45) ** 2 + 1))
 exc_gmax_mean_range = [mean]  # Example excitatory gmax mean range
 
-all_depth_of_mod_range = [0, 0.1, 0.25, 0.5, 0.75, 1]
+all_depth_of_mod_range = [0.75, 1]#[0, 0.05, 0.1, 0.25, 0.5, 0.75, 1]
 
 # Generate varying attributes by combining morphology, replace_w_CI, and synapse attributes
 varying_attributes = []
@@ -222,10 +222,10 @@ if __name__ == "__main__":
     # Combine common attributes with synaptic gmax parameters
     common_attributes_dict = {**common_attributes_dict[common_attributes_to_use]}
     # Main execution code to generate simulations
-    all_parameters = generate_simulations(neuron_random_states, numpy_random_states, varying_attributes, common_attributes_dict, inh_gmax_range_apic, inh_gmax_range_dend, soma_gmax_range)
+    all_parameters = generate_simulations(neuron_random_states, numpy_random_states, varying_attributes, common_attributes_dict, inh_gmax_range_apic, inh_gmax_range_dend, soma_gmax_range, all_depth_of_mod_range)
 
     # Define your batch size
-    batch_size = 64
+    batch_size = 2 # 64
 
     # Check how many batches you will need
     if len(all_parameters) > (batch_size - 1):
