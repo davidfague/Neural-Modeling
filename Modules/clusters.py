@@ -11,7 +11,7 @@ exc_clustering = { # TODO: will not be used on only tuft. Need to update combine
 # Create functional groups from branch statistics
 for branch_id, stats in combined_branch_statistics.items():
     center = stats['center_coords']
-    radius = stats['total_length'] / 2  # Use half the branch length as radius
+    radius = stats['total_length'] / 10  # Use half the branch length as radius
     
     # Create a functional group for each branch
     functional_group = {
@@ -20,7 +20,7 @@ for branch_id, stats in combined_branch_statistics.items():
         'presynaptic_cells': [
             {
                 'center': center,  # Use the same center as the functional group
-                'radius': radius / 2,  # Half the functional group radius
+                'radius': radius / 20,  # Half the functional group radius
                 'name': f'PC_{branch_id}',
                 'max_synapses': 10
             }
