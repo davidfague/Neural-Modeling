@@ -1,6 +1,6 @@
 # force these to remain untouched
 # core Colab packages (exactly these versions!)
-numpy==2.0.2
+numpy==1.23.5
 pandas==2.2.2
 scipy==1.15.3
 matplotlib==3.10.0
