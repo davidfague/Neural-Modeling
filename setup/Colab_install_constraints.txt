@@ -10,5 +10,7 @@ scikit-learn==1.6.1
 seaborn==0.13.2
 tqdm==4.67.1
 
-# force a modern AllenSDK that doesn’t drag in old statsmodels/tables
 allensdk==2.16.2
+netpyne==1.0.7
+NEURON==8.2.7
+neuron_reduce==0.0.7
