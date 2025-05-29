@@ -1,8 +1,14 @@
 # force these to remain untouched
+# core Colab packages (exactly these versions!)
 numpy==2.0.2
 pandas==2.2.2
 scipy==1.15.3
 matplotlib==3.10.0
+psutil==5.9.5
+h5py==3.13.0
+scikit-learn==1.6.1
+seaborn==0.13.2
+tqdm==4.67.1
 
-# force the modern AllenSDK (which no longer pins statsmodels→0.9.0)
+# force a modern AllenSDK that doesn’t drag in old statsmodels/tables
 allensdk==2.16.2
