@@ -5,6 +5,11 @@ from typing import List, Dict, Tuple, Optional
 import seaborn as sns
 from scipy import stats
 import os
+from matplotlib.collections import LineCollection
+import colorsys
+from matplotlib.patches import Patch
+import pickle
+from Modules.plot_morphology import plot_clusters
 
 class SynapseAnalyzer:
     def __init__(self, sim_dir: str):
@@ -27,46 +32,150 @@ class SynapseAnalyzer:
         self.synapses = synapses_with_seg_info
         
     def plot_spike_raster(self, 
-                         time_window: Tuple[float, float] = None,
-                         synapse_types: List[str] = None,
-                         functional_groups: List[int] = None,
-                         figsize: Tuple[int, int] = (12, 8),
-                         save_path: Optional[str] = None) -> None:
+                          synapses: Optional[pd.DataFrame] = None,
+                          time_window: Optional[Tuple[float, float]] = None,
+                          synapse_types: Optional[List[str]] = None,
+                          functional_groups: Optional[List[int]] = None,
+                          figsize: Tuple[int, int] = (12, 8),
+                          save_path: Optional[str] = None):
         """
-        Generate a spike raster plot for the synapses.
+        Generate a spike raster plot for the synapses (optionally user-provided).
+        """
+        # Use user-provided synapses or default to self.synapses
+        synapses_to_plot = synapses if synapses is not None else self.synapses
         
-        Args:
-            time_window: Tuple of (start_time, end_time) to plot
-            synapse_types: List of synapse types to include (e.g. ['exc', 'inh'])
-            functional_groups: List of functional group IDs to include
-            figsize: Figure size as (width, height)
-            save_path: Optional path to save the figure
-        """
-        # Filter synapses based on criteria
-        mask = pd.Series(True, index=self.synapses.index)
-        if synapse_types:
-            mask &= self.synapses['name'].str.contains('|'.join(synapse_types))
+        mask = pd.Series(True, index=synapses_to_plot.index)
+        if synapse_types is not None:
+            mask &= synapses_to_plot['name'].str.contains('|'.join(synapse_types))
         if functional_groups is not None:
-            mask &= self.synapses['functional_group'].isin(functional_groups)
-        
-        filtered_synapses = self.synapses[mask]
-        
-        # Create figure
+            mask &= synapses_to_plot['functional_group'].isin(functional_groups)
+        filtered_synapses = synapses_to_plot[mask]
+
         plt.figure(figsize=figsize)
-        
-        # Plot each synapse's spikes
-        for idx, row in filtered_synapses.iterrows():
+        for plot_idx, (idx, row) in enumerate(filtered_synapses.iterrows()):
             spikes = row['spike_train']
             if time_window:
                 spikes = spikes[(spikes >= time_window[0]) & (spikes <= time_window[1])]
-            plt.plot(spikes, [idx] * len(spikes), 'k.', markersize=1)
-        
+            plt.plot(spikes, [plot_idx] * len(spikes), 'k.', markersize=1)
         plt.xlabel('Time (ms)')
-        plt.ylabel('Synapse Index')
+        plt.ylabel('Synapse')
         plt.title('Spike Raster Plot')
-        
+        plt.ylim(-1, len(filtered_synapses))
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.show()
+
+    def get_shaded_color(base_rgb, pc_idx, n_pcs):
+        """Return a lighter or darker shade for pc_idx out of n_pcs based on the base_rgb."""
+        # Convert to HLS, vary lightness
+        h, l, s = colorsys.rgb_to_hls(*base_rgb)
+        # Lightness scale between 0.4 and 0.8
+        l_new = 0.4 + 0.4 * (pc_idx / max(n_pcs-1, 1))
+        return colorsys.hls_to_rgb(h, l_new, s)
+
+    def plot_spike_raster_fgpc_legend(
+        synapses, 
+        time_window=None, 
+        figsize=(12, 8), 
+        save_path=None,
+        yticklabel_stride=30,
+        show_y_labels=True,
+        legend_loc='upper right'
+    ):
+        synapses_sorted = synapses.sort_values(['functional_group', 'presynaptic_cell'])
+        synapses_sorted = synapses_sorted.reset_index(drop=True)
+
+        # Get unique FGs and assign a base color per FG using tab20
+        unique_fgs = synapses_sorted['functional_group'].unique()
+        cmap = plt.cm.get_cmap('tab20', len(unique_fgs))
+        fg_base_colors = {fg: cmap(i)[:3] for i, fg in enumerate(unique_fgs)}
+
+        # Find all PC indices per FG for consistent shading
+        fg_to_pcs = {
+            fg: sorted(synapses_sorted[synapses_sorted['functional_group']==fg]['presynaptic_cell'].unique())
+            for fg in unique_fgs
+        }
+        fg_pc_color = {}
+        for fg, pcs in fg_to_pcs.items():
+            n_pcs = len(pcs)
+            for i, pc in enumerate(pcs):
+                fg_pc_color[(fg, pc)] = get_shaded_color(fg_base_colors[fg], i, n_pcs)
+
+        segments = []
+        colors = []
+        legend_labels = {}
+        yticklabels = []
+        yticks = []
+
+        for idx, row in synapses_sorted.iterrows():
+            # Robust spike train parsing
+            spikes = row['spike_train']
+            if isinstance(spikes, str):
+                spikes = np.fromstring(spikes.replace('[', '').replace(']', ''), sep=' ')
+            elif isinstance(spikes, (float, int)) or spikes is None or (isinstance(spikes, np.ndarray) and spikes.ndim == 0):
+                continue
+            else:
+                spikes = np.array(spikes).flatten()
+            if spikes.size == 0:
+                continue
+            if time_window is not None:
+                spikes = spikes[(spikes >= time_window[0]) & (spikes <= time_window[1])]
+            segs = [((spk, idx + 0.5), (spk, idx + 1.5)) for spk in spikes]
+            segments.extend(segs)
+            fg, pc = row['functional_group'], row['presynaptic_cell']
+            color = fg_pc_color.get((fg, pc), (0,0,0))
+            colors.extend([color]*len(segs))
+            key = f'FG{int(fg)}_PC{int(pc)}'
+            # Only keep first seen row for legend
+            if key not in legend_labels:
+                legend_labels[key] = color
+            if show_y_labels and (idx % yticklabel_stride) == 0:
+                yticklabels.append(key)
+                yticks.append(idx + 1)
+
+        fig, ax = plt.subplots(figsize=figsize)
+        if segments:
+            lc = LineCollection(segments, colors=colors, linewidths=0.7)
+            ax.add_collection(lc)
+
+        # X limits
+        if time_window is not None:
+            ax.set_xlim(time_window)
+        else:
+            try:
+                all_spikes = np.hstack([
+                    np.fromstring(row['spike_train'].replace('[','').replace(']',''), sep=' ') if isinstance(row['spike_train'], str)
+                    else np.array(row['spike_train']).flatten()
+                    for _, row in synapses_sorted.iterrows()
+                    if not isinstance(row['spike_train'], (float, int)) and row['spike_train'] is not None
+                ])
+                ax.set_xlim(np.nanmin(all_spikes), np.nanmax(all_spikes))
+            except:
+                ax.set_xlim(0, 1000)
+
+        ax.set_ylim(0.5, len(synapses_sorted) + 0.5)
+        ax.set_ylabel("Synapse (FG/PC grouped)")
+        ax.set_xlabel("Time (ms or sample)")
+
+        if show_y_labels:
+            ax.set_yticks(yticks)
+            ax.set_yticklabels(yticklabels, fontsize=6)
+        else:
+            ax.set_yticks([])
+            ax.set_yticklabels([])
+
+        ax.set_title("Spike Raster Plot (FG color, PC shade, legend)")
+
+        # Legend
+        patches = [Patch(color=color, label=label) for label, color in legend_labels.items()]
+        # Optionally, only show legend for first N FG/PC combos
+        if len(patches) > 25:
+            patches = patches[:25]
+        ax.legend(handles=patches, loc=legend_loc, title='FG_PC', fontsize=7, title_fontsize=8, frameon=True)
+
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300)
         plt.show()
         
     def analyze_cluster_statistics(self, 
@@ -307,3 +416,95 @@ class SynapseAnalyzer:
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
         plt.show() 
+
+        
+    def plot_all_synapse_clusters(self,
+        synapse_coord_cols=('pc_0', 'pc_1', 'pc_2'),
+        plot_both_together=True,
+        plot_each_type_separately=True,
+        show=True
+    ):
+        """
+        Plot synapse clusters (exc & inh) for a simulation directory.
+
+        Args:
+            sim_dir (str): Directory containing simulation files.
+            synapses (pd.DataFrame): DataFrame of synapses, must have 'seg_id' and coordinate columns.
+            synapse_coord_cols (tuple): Columns in synapses_with_seg_info to use as xyz.
+            plot_both_together (bool): If True, plot both exc and inh clusters in one figure.
+            plot_each_type_separately (bool): If True, plot each section type as a separate figure.
+            show (bool): Whether to display the plots.
+        """
+        # Load parameters and segment data
+        with open(os.path.join(self.sim_dir, "parameters.pickle"), 'rb') as file:
+            parameters = pickle.load(file)
+        seg_data = pd.read_csv(os.path.join(self.sim_dir, "segment_data.csv"))
+
+        # Join synapses with segment info
+        synapses_with_seg_info = self.synapses.merge(
+            seg_data,
+            on='seg_id',
+            how='left',
+            suffixes=('', '_seg')
+        )
+        synapse_coords = synapses_with_seg_info[list(synapse_coord_cols)].values
+
+        # Plot both excitatory and inhibitory clusters together
+        if plot_both_together:
+            fig = plt.figure(figsize=(20, 10))
+            # Excitatory clusters
+            ax1 = fig.add_subplot(121, projection='3d')
+            plot_clusters(
+                seg_data=seg_data,
+                clustering_config=parameters.exc_clustering,
+                synapse_coords=synapse_coords,
+                ax=ax1,
+                elevation=20,
+                azimuth=-100,
+                title='Excitatory Clusters'
+            )
+            # Inhibitory clusters
+            ax2 = fig.add_subplot(122, projection='3d')
+            plot_clusters(
+                seg_data=seg_data,
+                clustering_config=parameters.inh_clustering,
+                synapse_coords=synapse_coords,
+                ax=ax2,
+                elevation=20,
+                azimuth=-100,
+                title='Inhibitory Clusters'
+            )
+            plt.tight_layout()
+            if show: plt.show()
+
+        # Plot each excitatory section type
+        if plot_each_type_separately:
+            for sec_type in parameters.exc_clustering.keys():
+                fig = plt.figure(figsize=(10, 10))
+                ax = fig.add_subplot(111, projection='3d')
+                plot_clusters(
+                    seg_data=seg_data,
+                    clustering_config={sec_type: parameters.exc_clustering[sec_type]},
+                    synapse_coords=synapse_coords,
+                    ax=ax,
+                    elevation=20,
+                    azimuth=-100,
+                    title=f'Excitatory Clusters - {sec_type}'
+                )
+                plt.tight_layout()
+                if show: plt.show()
+            # Plot each inhibitory section type
+            for sec_type in parameters.inh_clustering.keys():
+                fig = plt.figure(figsize=(10, 10))
+                ax = fig.add_subplot(111, projection='3d')
+                plot_clusters(
+                    seg_data=seg_data,
+                    clustering_config={sec_type: parameters.inh_clustering[sec_type]},
+                    synapse_coords=synapse_coords,
+                    ax=ax,
+                    elevation=20,
+                    azimuth=-100,
+                    title=f'Inhibitory Clusters - {sec_type}'
+                )
+                plt.tight_layout()
+                if show: plt.show()
