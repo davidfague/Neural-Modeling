@@ -72,58 +72,6 @@ class SkeletonCell(Enum):
 		"modfiles": "../Allen/Cell_477127614/modfiles"
 	}
 
-def norm_dist(gmax_mean, gmax_std, size, clip): # inh
-  val = np.random.normal(gmax_mean, gmax_std, size)
-  s = float(np.clip(val, clip[0], clip[1]))
-  return s
-
-
-def log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip):
-	val = np.random.lognormal(gmax_mean, gmax_std, size)
-	s = gmax_scalar * float(np.clip(val, clip[0], clip[1]))
-	return s
-
-def precompute_bin_means(gmax_mean, gmax_std, gmax_scalar, clip, large_sample_size=10000): # should make this work for any function so we can use for norm_dist, too.
-    # Generate a large number of log-normal distributed values
-    val = np.random.lognormal(gmax_mean, gmax_std, large_sample_size)
-    s = gmax_scalar * np.clip(val, clip[0], clip[1])
-
-    # Determine bins and compute the mean for each bin
-    num_bins = 10
-    bin_edges = np.percentile(s, np.linspace(0, 100, num_bins + 1))
-    bin_means = [(bin_edges[i] + bin_edges[i+1]) / 2 for i in range(num_bins)]
-
-    return bin_means
-
-def binned_log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip, bin_means):
-    # Generate log-normal distributed values
-    val = np.random.lognormal(gmax_mean, gmax_std, size)
-    # Clip the values
-    s = gmax_scalar * np.clip(val, clip[0], clip[1])
-    # Assign each value to the nearest bin mean
-    binned_values = np.zeros_like(s)
-    for i in range(size):
-        # Find the bin the value belongs to
-        bin_index = np.digitize(s[i], bin_means) - 1
-        # Assign the value to the bin mean
-        binned_values[i] = bin_means[bin_index]
-    return binned_values
-
-# Firing rate distribution
-def exp_levy_dist(alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1):
-	return np.exp(st.levy_stable.rvs(alpha = alpha, beta = beta, loc = loc, scale = scale, size = size)) + 1e-15
-
-def gamma_dist(mean, size = 1):
-	shape = 5
-	scale = mean / shape
-	return np.random.gamma(shape, scale, size) + 1e-15
-
-# Release probability distribution
-def P_release_dist(P_mean, P_std, size):
-	val = np.random.normal(P_mean, P_std, size)
-	s = float(np.clip(val, 0, 1))
-	return s
-
 class CellBuilder:
 
 	templates_folder = "../cells/templates"
@@ -160,40 +108,15 @@ class CellBuilder:
 		elif self.cell_type == SkeletonCell.Allen:
 			skeleton_cell = self.build_Allen_cell()
 
-		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger)
+		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger)    
 
-		# @DEPRACATING debugging
-		# for model_part in ['all','soma','dend','apic','axon']:
-		# 		print(f"{model_part}: {getattr(cell, model_part)}")
-   
-        
-    # ----
-    	# Build synapses @deprecating, neuron_reduce/cable_expander reduction
-		# if not self.parameters.all_synapses_off:
-		# 		self.build_synapses(cell, random_state)
-		# if self.parameters.reduce_cell_NRCE: # @deprecating, neuron_reduce/cable_expander reduction
-		# 		reductor = Reductor(logger = self.logger)
-		# 		cell = self.perform_reduction(reductor = reductor, cell = cell, random_state = random_state)
-  
-	# Build synapses & reduce cell
-		if self.parameters.synapse_mapping:
-			exc_spike_trains, exc_mean_frs = self.build_synapses(cell, random_state)
-			if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
-				cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
-							reduce_basals = self.parameters.reduce_basals,
-							reduce_obliques = self.parameters.reduce_obliques, 
-							reduce_apic=self.parameters.reduce_apic,
-							cell = cell)
-		else:
-			if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
-					cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
-							reduce_basals = self.parameters.reduce_basals,
-							reduce_obliques = self.parameters.reduce_obliques,
-							reduce_apic=self.parameters.reduce_apic,
-							cell = cell)
-					exc_spike_trains, exc_mean_frs = self.build_synapses(cell, random_state)
-			else:
-				self.build_synapses(cell, random_state)
+		if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
+			cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 
+						reduce_basals = self.parameters.reduce_basals,
+						reduce_obliques = self.parameters.reduce_obliques, 
+						reduce_apic = self.parameters.reduce_apic,
+						cell = cell)
+
     
 		# replace dendrite with current injection
 		replace_start_time = time.time()
@@ -201,27 +124,28 @@ class CellBuilder:
 			cell = replace_dend_with_CI(cell, self.parameters)
 		replace_end_time = time.time()
 		total_replace_time = replace_end_time - replace_start_time
-		replace_file_path = os.path.join(self.parameters.path, "replace_runtime.txt")
-		# with open(replace_file_path, "w") as replace_file: # TODO: save to sim_dir
-		# 	replace_file.write(f"{total_replace_time:.3f} seconds")
 		self.logger.log_runtime("cell_builder", "replace_dend_with_CI", total_replace_time)
 		
 		# merge synapses/optimize nseg by lambda
 		reductor = Reductor(logger = self.logger)
-		if self.parameters.set_nseg_by_length:
+		if self.parameters.optimize_nseg_by_lambda and self.parameters.set_nseg_by_length:
+			raise ValueError("Cannot set nseg by length and optimize nseg by lambda at the same time. Please choose one of these options in the parameters.")
+		elif self.parameters.set_nseg_by_length:
 			self.logger.log("Setting nseg by length.")
 			for sec in cell.all:
 				if sec not in cell.soma:
-					sec.nseg = 1+int(sec.L/self.parameters.microns_per_segment)
-		if self.parameters.optimize_nseg_by_lambda:
+					sec.nseg = max(1, int(math.ceil(sec.L / self.parameters.microns_per_segment)))
+		elif self.parameters.optimize_nseg_by_lambda:
 				self.logger.log("Updating nseg using lambda.")
 				reductor.update_model_nseg_using_lambda(cell, segs_per_lambda=self.parameters.segs_per_lambda)
+		self.logger.log(f"Total number of segments: {sum([sec.nseg for sec in cell.all])}")
+
 		if self.parameters.merge_synapses:
 				self.logger.log("Merging synapses.")
 				reductor.merge_synapses(cell)
-		self.logger.log(f"Total number of segments: {sum([sec.nseg for sec in cell.all])}")
+		self.logger.log(f"Total number of synapses after merging: {len(cell.get_synapses(['all']))}")
 
-		self.check_and_save_generated_synapses(cell, exc_spike_trains, exc_mean_frs)
+		# self.check_and_save_generated_synapses(cell, exc_spike_trains, exc_mean_frs) # will be using synapses.csv
 
 		# set v_init for all compartments
 		h.v_init = self.parameters.h_v_init
@@ -237,363 +161,14 @@ class CellBuilder:
 				dur = self.parameters.h_i_duration, 
 				delay = self.parameters.h_i_delay,
         target = self.parameters.CI_target)
-        
 
     	# report runtime
 		end_time = time.time()
 		run_time = end_time - start_time
 		self.logger.log(f"Finish building in {run_time}")
 		self.logger.log_runtime("cell_builder", "build_cell", run_time)
-    	# Record the  runtime to a file
-		runtime_file_path = os.path.join(self.parameters.path, "builder_runtime.txt")
-		# with open(runtime_file_path, "w") as runtime_file: #TODO: save to sim_dir
-		# 		runtime_file.write(f"{run_time} seconds")
         
 		return cell, skeleton_cell
-
-	def build_synapses(self, cell, random_state):
-		if (self.parameters.all_synapses_off):
-			self.logger.log("Not building synapses.")
-			return None, None
-
-		# # increase nseg for clustering segments for clustering synapses Not needed with template that gives very high segment resolution.
-		# # increase segment resolution makes more even cluster bounds
-		# all_nseg = []
-		# for sec in cell.all:
-		# 	nseg = sec.nseg
-		# 	all_nseg.append(nseg)
-		# 	sec.nseg = 1+2*int(sec.L/10)
-  
-		# craete synapse objects
-		self.logger.log("Building excitatory synapses.")
-		self.build_exc_synapses(cell = cell)
-
-		self.logger.log("Building inhibitory synapses.")
-		self.build_inh_synapses(cell = cell)
-
-		self.logger.log(f"Total number of synapses: {len(cell.get_synapses(['all']))}")
-
-		# Assign spike trains
-		self.logger.log("Assigning excitatory spike trains.")
-		self.assign_excitatory_spike_trains(cell = cell, random_state = random_state)
-  
-		# calc exc for delayed inhibition
-		exc_spike_trains = [syn.pc.spike_train for syn in cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])]
-		self.logger.log(f"{len(exc_spike_trains)} exc spikes trains")
-
-		exc_mean_frs = [syn.pc.mean_fr for syn in cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])]
-
-		self.logger.log("Assigning soma spike trains.")
-		self.assign_soma_spike_trains(cell = cell, random_state = random_state, exc_spike_trains=exc_spike_trains)
-
-		self.logger.log("Assigning inhibitory spike trains.")
-		self.assign_inhibitory_spike_trains(cell = cell, random_state = random_state, exc_spike_trains=exc_spike_trains)
-
-		self.logger.log(f"Total number of synapses: {len(cell.synapses)}")
-
-		# synapses_without_spike_train = [syn for syn in cell.synapses if len(syn.netcons) == 0]
-		# if len(synapses_without_spike_train) > 0:
-		# 	raise ValueError(f"spike trains not assigned to synapses: {np.unique([syn.name for syn in synapses_without_spike_train])}")
-		# else:
-		# 	self.logger.log("All spike trains assigned.")
-
-		self.logger.log(f"Built synapse types: {np.unique([syn.name for syn in cell.synapses])}")
-
-		# # change nseg back if it was increased for clustering
-		# for i, sec in enumerate(cell.all):
-		# 	sec.nseg = all_nseg[i]
-		return exc_spike_trains, exc_mean_frs
-  
-	def assign_soma_spike_trains(self, cell, random_state, exc_spike_trains) -> None: #@MARK CHECK: merging with assign_inhibitory_spike_trains
-
-		cell.random_state = np.random.RandomState(self.parameters.precell_spikes_seeds['soma_inh'])
-		np.random.seed(self.parameters.precell_spikes_seeds['soma_inh'])
-
-		# Proximal inh mean_fr distribution
-		mean_fr, std_fr = self.parameters.inh_proximal_mean_fr, self.parameters.inh_proximal_std_fr
-		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
-		proximal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
-
-		soma_fgs = PCBuilder.assign_presynaptic_cells(
-		cell = cell,
-		n_func_gr = self.parameters.soma_n_fun_gr,
-		n_pc_per_fg = self.parameters.soma_n_pc_per_fg,
-		synapse_names = ["inh_perisomatic"],
-		seg_names = [sec_type for sec_type in ['perisomatic', 'soma', 'somatic'] if sec_type in self.parameters.inh_syn_properties.keys()]
-		) #5,20
-		firing_rates = PoissonTrainGenerator.generate_lambdas_by_delaying(self.parameters.h_tstop, exc_spike_trains)
-		for fg in soma_fgs: # one fr profile per fg
-			# In this case the firing rate profile is the average exc spike train delayed. All functional groups would have the same, unless we subset by nearby exc spike train only
-			for pc in fg.presynaptic_cells: # one spike train per pc
-				mean_fr = proximal_inh_dist(size = 1)
-				pc_firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(firing_rates, desired_mean=mean_fr, logger=self.logger)#, divide_1000=True)
-				pc_firing_rates = PoissonTrainGenerator.rhythmic_modulation(pc_firing_rates, self.parameters.rhyth_frequency_inh_perisomatic, self.parameters.rhyth_depth_inh_perisomatic, self.parameters.h_dt)
-				spike_train = PoissonTrainGenerator.generate_spike_train(
-				lambdas = pc_firing_rates, 
-				random_state = random_state)
-				pc.set_spike_train(spike_train.mean_fr, spike_train.spike_times)
-		for syn in cell.get_synapses(["inh_perisomatic"]):
-			if syn.h_syn.get_segment() in cell.get_segments_without_data(["soma"]):
-				syn.set_spike_train_from_pc()
-
-
-	def assign_inhibitory_spike_trains(self, cell, random_state, exc_spike_trains) -> None:
-
-		cell.random_state = np.random.RandomState(self.parameters.precell_spikes_seeds['inh'])
-		np.random.seed(self.parameters.precell_spikes_seeds['inh'])
-
-		# Proximal inh mean_fr distribution
-		mean_fr, std_fr = self.parameters.inh_proximal_mean_fr, self.parameters.inh_proximal_std_fr
-		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
-		proximal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
-
-		# Distal inh mean_fr distribution
-		mean_fr, std_fr = self.parameters.inh_distal_mean_fr, self.parameters.inh_distal_std_fr
-		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
-		distal_inh_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
-
-		soma_coords = cell.get_segments(["soma"])[1][0].coords[["pc_0", "pc_1", "pc_2"]].to_numpy()
-		inh_fgs = PCBuilder.assign_presynaptic_cells(
-			cell = cell,
-			n_func_gr = self.parameters.inh_n_FuncGroups,
-			n_pc_per_fg = self.parameters.inh_n_PreCells_per_FuncGroup,
-			synapse_names = [f"inh_{sec_type}" for sec_type in self.parameters.inh_syn_properties.keys()],#["inh_perisomatic", "inh_distal_basal", "inh_distal_apic"],
-			seg_names = [sec_type for sec_type in self.parameters.inh_syn_properties.keys() if sec_type not in ['perisomatic', 'soma','somatic']]#["dend", "apic"] #were causing problems
-		)
-		for fg in inh_fgs: # one fr profile per fg
-			fg_firing_rates = PoissonTrainGenerator.generate_lambdas_by_delaying(self.parameters.h_tstop, exc_spike_trains)
-			for pc in fg.presynaptic_cells: # one spike train per pc
-				if np.linalg.norm(soma_coords - pc.cluster_center) < 100:
-					mean_fr = proximal_inh_dist(size = 1)
-					rhyth_mod_depth_to_use = self.parameters.rhyth_depth_inh_perisomatic
-					rhyth_mod_freq_to_use = self.parameters.rhyth_frequency_inh_perisomatic
-				else:
-					mean_fr = distal_inh_dist(size = 1)
-					rhyth_mod_depth_to_use = self.parameters.rhyth_depth_inh_distal
-					rhyth_mod_freq_to_use = self.parameters.rhyth_frequency_inh_distal
-				pc_firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(fg_firing_rates, desired_mean=mean_fr, logger=self.logger)#, divide_1000=True)
-				pc_firing_rates = PoissonTrainGenerator.rhythmic_modulation(pc_firing_rates, rhyth_mod_freq_to_use, rhyth_mod_depth_to_use, self.parameters.h_dt)
-				spike_train = PoissonTrainGenerator.generate_spike_train(
-				lambdas = pc_firing_rates, 
-				random_state = random_state)
-				pc.set_spike_train(spike_train.mean_fr, spike_train.spike_times)
-
-		for syn in cell.get_synapses([f"inh_{sec_type}" for sec_type in self.parameters.inh_syn_properties.keys()]):
-				if syn.h_syn.get_segment() in cell.get_segments_without_data(["dend", "apic"]):
-					syn.set_spike_train_from_pc()
-
-	def assign_excitatory_spike_trains(self, cell, random_state) -> None:
-
-		cell.random_state = np.random.RandomState(self.parameters.precell_spikes_seeds['exc'])
-		np.random.seed(self.parameters.precell_spikes_seeds['exc'])
-
-		exc_spike_trains = []
-		exc_mean_frs = []
-
-		# Distribution of mean firing rates
-		# mean_fr_dist = partial(gamma_dist, mean = self.parameters.exc_mean_fr, size = 1)
-		mean_fr, std_fr = self.parameters.exc_mean_fr, self.parameters.exc_std_fr
-		a, b = (0 - mean_fr) / std_fr, (100 - mean_fr) / std_fr
-		if self.parameters.use_levy_dist_for_exc:
-			mean_fr_dist = partial(st.levy_stable.rvs, alpha=1.37, beta=-1.00, loc=0.92, scale=0.44, size=1)
-		else:
-			mean_fr_dist = partial(st.truncnorm.rvs, a = a, b = b, loc = mean_fr, scale = std_fr)
-
-		# if self.parameters.clustering: # note one segment belongs to one precell
-		exc_fgs = PCBuilder.assign_presynaptic_cells(
-			cell = cell,
-			n_func_gr = self.parameters.exc_n_FuncGroups,
-			n_pc_per_fg = self.parameters.exc_n_PreCells_per_FuncGroup,
-			synapse_names = [f'exc_{sec_type}' for sec_type in self.parameters.exc_syn_properties.keys()],#["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique", "exc_distal_basal", "exc_distal_apic"], # probably only need last 2. can check build_exc_synapses.
-			seg_names = [sec_type for sec_type in self.parameters.exc_syn_properties.keys()]
-		)
-		for fg in exc_fgs: # one fr profile per fg
-			fg_firing_rates = PoissonTrainGenerator.generate_lambdas_from_pink_noise(
-					num = self.parameters.h_tstop,
-					random_state = random_state)
-			for pc in fg.presynaptic_cells: # one spike train per pc
-				if self.parameters.exc_constant_fr:
-					lambda_mean_fr = 0 + self.parameters.excFR_increase
-				else:
-					lambda_mean_fr = (mean_fr_dist(size = 1) + self.parameters.excFR_increase)
-				pc_firing_rates = PoissonTrainGenerator.shift_mean_of_lambdas(lambdas=fg_firing_rates, desired_mean=lambda_mean_fr, logger=self.logger)
-				spike_train = PoissonTrainGenerator.generate_spike_train(
-				lambdas = pc_firing_rates, 
-				random_state = random_state)
-				pc.set_spike_train(spike_train.mean_fr, spike_train.spike_times)
-
-		for syn in cell.get_synapses([f'exc_{sec_type}' for sec_type in self.parameters.exc_syn_properties.keys()]):#["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique", "exc_distal_basal", "exc_distal_apic"]):
-				exc_spike_trains.append(spike_train.spike_times)
-				exc_mean_frs.append(spike_train.mean_fr)
-				syn.set_spike_train_from_pc()
-    
-		return exc_spike_trains, exc_mean_frs
-
-	def build_synapses_with_specs(self, 
-					cell, 
-					sec_type_to_get: Union[str, List[str]], 
-					synapse_type: str, 
-					use_density: bool,
-					synaptic_density: float = None,
-					syn_number: int = None,
-					gmax_dist_params: dict = None,
-					P_release_params: dict = None,
-					name: str = None,
-					exclude_within: float = None) -> None:
-		"""
-		Builds synapses of a given type on specified segments.
-
-		Parameters:
-			cell: The cell object on which synapses will be built.
-			sec_type_to_get: The segment type(s) to retrieve ('dend', 'apic', etc.). Can be a string or list of strings.
-			synapse_type: Type of synapse ('inh', 'exc', etc.).
-			use_density: Whether to distribute synapses based on density or a fixed count.
-			synaptic_density: Density of synapses per unit length (required if use_density is True).
-			syn_number: Total number of synapses to distribute (required if use_density is False).
-			gmax_dist_params: Parameters for gmax distribution (mean, std, etc.).
-			P_release_params: Parameters for release probability distribution (mean, std, etc.).
-			name: Name for the synapse type (e.g., 'soma', 'inh', 'exc').
-			exclude_within: Distance from soma to exclude segments (optional).
-		"""
-		if gmax_dist_params is None or P_release_params is None:
-			raise ValueError("Both gmax_dist_params and P_release_params must be provided.")
-
-		# Create gmax and P_release distributions
-		if gmax_dist_params['dist_func'] is not None:
-			gmax_dist = partial(
-				gmax_dist_params['dist_func'],
-				**gmax_dist_params['params'],
-				size=1
-			)
-		else:
-			gmax_dist = gmax_dist_params['params']['gmax_mean']
-
-		P_dist = partial(
-			P_release_params['dist_func'],
-			**P_release_params['params'],
-			size=1
-		)
-
-		# Get segments of the specified type(s)
-		if isinstance(sec_type_to_get, str):
-			sec_type_to_get = [sec_type_to_get]
-
-		segments = []
-		segment_probs = []
-
-		for sec_type in sec_type_to_get: # gather the segments we want to distribute synapses over
-			segs = cell.get_segments_of_type(sec_type)
-			segments.extend(segs)
-			if self.parameters.use_SA_probs:
-				segment_probs.extend([np.pi * seg.diam * (seg.sec.L / seg.sec.nseg) for seg in segs])
-			else:
-				segment_probs.extend([seg.sec.L / seg.sec.nseg for seg in segs])
-
-		# optionally exclude segments close to the soma (for exc) (get_segments_of_type(sec_type) is probably already doing this. Would need to check.)
-		if exclude_within is not None:
-			to_remove = [
-				i for i, seg in enumerate(segments)
-				if self.h.distance(seg, cell.soma[0](0.5)) < exclude_within
-			]
-			segments = [seg for i, seg in enumerate(segments) if i not in to_remove]
-			segment_probs = [prob for i, prob in enumerate(segment_probs) if i not in to_remove]
-
-		# Calculate synapse count or density
-		if use_density:
-			nsyn = synaptic_density
-		else:
-			# calculate the PROPORTIONAL number of synapses to use if a whole-cell number is provided
-			# gather the total length or surface area of the segments in case we want to distribute synapses proportionally
-			if self.use_SA_probs: # probably better to calculate this only once
-				total_length = sum([seg.membrane_surface_area for seg in cell.get_segments(['all'])])
-			else:
-				total_length = sum([seg.sec.L for seg in cell.get_segments(['all'])])
-			nsyn = int(syn_number * sum(segment_probs) / total_length) if total_length > 0 else ValueError("Total length is zero.")
-			self.logger.log(f"total synapses for {name}: {nsyn}")
-
-		# Add synapses to the cell
-		cell.add_synapses_over_segments(
-			segments=segments,
-			nsyn=nsyn,
-			syn_mod=self.parameters.inh_syn_mod if 'inh' in name else self.parameters.exc_syn_mod if 'exc' in name else NotImplementedError(f"'inh' or 'exc' should be in 'name'"),
-			syn_params=self.parameters.inh_syn_params if 'inh' in name else self.parameters.exc_syn_params if 'exc' in name else NotImplementedError(f"'inh' or 'exc' should be in 'name'"),
-			gmax=gmax_dist,
-			name=name or synapse_type,
-			density=use_density,
-			seg_probs=segment_probs,
-			release_p=P_dist
-		)
-		
-	def build_inh_synapses(self, cell):
-		for sec_type in self.parameters.inh_syn_properties.keys():
-			syn_props = self.parameters.inh_syn_properties[sec_type]
-			cell.random_state = np.random.RandomState(self.parameters.inh_syn_properties[sec_type]['seed']['synapses'])
-			np.random.seed(self.parameters.inh_syn_properties[sec_type]['seed']['synapses'])
-			self.build_synapses_with_specs(
-				cell=cell,
-				sec_type_to_get=sec_type,
-				synapse_type='inh',
-				use_density=self.parameters.inh_use_density,
-				synaptic_density=syn_props['syn_density'] if self.parameters.inh_use_density else None,
-				syn_number=syn_props['syn_number'] if not self.parameters.inh_use_density else None,
-				gmax_dist_params={
-					'dist_func': norm_dist,
-					'params': {
-						'gmax_mean': syn_props['gmax_params']['mean'],
-						'gmax_std': syn_props['gmax_params']['std'],
-						'clip': (0, 5)#0*syn_props['gmax_params']['mean']) # clip between 0 and 10 times the mean
-					}
-				},
-				P_release_params={
-					'dist_func': P_release_dist,
-					'params': {
-						'P_mean': syn_props['P_release_params']['mean'],
-						'P_std': syn_props['P_release_params']['std']
-					}
-				},
-				name=f"inh_{sec_type}"
-			)
-
-	def build_exc_synapses(self, cell, exclude_within: float = None):#, sec_type_to_get: Union[str, List[str]], gmax_dist_params: dict, exclude_within: float = None):
-		"""
-		Builds excitatory synapses for specified segment types.
-
-		Parameters:
-			cell: The cell object on which synapses will be built.
-			sec_type_to_get: The segment type(s) to retrieve (e.g., 'apic', 'dend'). Can be a string or list of strings.
-			gmax_dist_params: Parameters for gmax distribution (mean, std, etc.).
-			exclude_within: Distance from soma to exclude segments (optional).
-		"""
-		for sec_type in self.parameters.exc_syn_properties.keys():
-			syn_props = self.parameters.exc_syn_properties[sec_type]
-			cell.random_state = np.random.RandomState(self.parameters.exc_syn_properties[sec_type]['seed']['synapses'])
-			np.random.seed(self.parameters.exc_syn_properties[sec_type]['seed']['synapses'])
-			self.build_synapses_with_specs(
-				cell=cell,
-				sec_type_to_get=sec_type,
-				synapse_type='exc',
-				use_density=self.parameters.exc_use_density,
-				synaptic_density=syn_props['syn_density'] if self.parameters.exc_use_density else None,
-				syn_number=syn_props['syn_number'] if not self.parameters.exc_use_density else None,
-				gmax_dist_params={
-					'dist_func': binned_log_norm_dist if self.parameters.bin_exc_gmax else log_norm_dist,
-					'params': {
-						'gmax_mean': syn_props['gmax_params']['mean'],
-						'gmax_std': syn_props['gmax_params']['std'],
-						'gmax_scalar': syn_props['gmax_params']['scalar'],
-						'clip': syn_props['gmax_params']['clip']
-					}
-				},
-				P_release_params={
-					'dist_func': P_release_dist,
-					'params': {
-						'P_mean': self.parameters.exc_P_release_mean,#syn_props['P_release_params']['mean'],
-						'P_std': self.parameters.exc_P_release_std#syn_props['P_release_params']['std']
-					}
-				},
-				name=f"exc_{sec_type}",
-				exclude_within=exclude_within
-			)
 
 	def build_stylized_cell(self) -> object:
 		geometry_path = os.path.join(self.stylized_templates_folder, self.parameters.geometry_file)
@@ -892,63 +467,3 @@ class CellBuilder:
 		self.logger.log(f"EXC mean fr distribution: {np.mean(exc_mean_frs):.2f}, {np.std(exc_mean_frs):.2f}")
 		self.logger.log(f"INH mean fr distribution: {np.mean(inh_mean_frs):.2f}, {np.std(inh_mean_frs):.2f}")
 		self.logger.log(f"SOMA mean fr distribution: {np.mean(soma_mean_frs):.2f}, {np.std(soma_mean_frs):.2f}")
-
-	# @DEPRACATING neuron_reduce/cable_expander
-	# def perform_reduction(self, reductor, cell, random_state):
-	# 	if self.parameters.reduce_cell:
-	# 			cell, nr_seg_to_seg = reductor.reduce_cell(
-	# 					cell_model = cell,  
-	# 					#random_state = random_state,
-	# 					reduction_frequency = self.parameters.reduction_frequency)
-	# 			if self.parameters.record_seg_to_seg and not self.parameters.expand_cable:
-	# 							nr_seg_to_seg_df = pd.DataFrame(list(nr_seg_to_seg.items()), columns=['detailed', 'neuron_reduce'])
-	# 							nr_seg_to_seg_df.to_csv(os.path.join(self.parameters.path, "nr_seg_to_seg.csv"))
-	# 			if self.parameters.expand_cable:
-	# 					cell, ce_seg_to_seg = reductor.expand_cell(
-	# 							cell_model = cell, 
-    #         		choose_branches = self.parameters.choose_branches, 
-    #         		reduction_frequency = self.parameters.reduction_frequency, 
-    #         		random_state = random_state)
-	# 					if self.parameters.record_seg_to_seg:
-	# 							ce_seg_to_seg_df = pd.DataFrame(list(ce_seg_to_seg.items()), columns=['neuron_reduce', 'cable_expander'])
-	# 							ce_seg_to_seg_df.to_csv(os.path.join(self.parameters.path, "ce_seg_to_seg.csv"))
-	# 			cell._assign_sec_coords(random_state)
-            
-	# 	elif self.parameters.expand_cable:
-	# 			raise(ValueError("expand_cable cannot be True without reduce_cell being True"))
-      
-	# 	else: # call standalone reduction methods without NR or CE
-	# 			if self.parameters.optimize_nseg_by_lambda:
-	# 					self.logger.log("Updating nseg using lambda.")
-	# 					reductor.update_model_nseg_using_lambda(cell)
-	# 			if self.parameters.merge_synapses:
-	# 					self.logger.log("Merging synapses.")
-	# 					reductor.merge_synapses(cell)
-	# 	return cell  
-  
-    # @DEPCRATING Useful for calculating surface area, length constants... 
-    # def perform_MM(self, cell, MM): # need to separate recording nexus_seg_index from this and create constants to control
-	# 	nexus_seg_index, SA_df, L_df, elec_L_of_tufts = MM.run(cell)
-	# 	nexus_seg_index_file_path = os.path.join(self.parameters.path, "nexus_seg_index.txt")
-	# 	with open(nexus_seg_index_file_path, "w") as nexus_seg_index_file:
-	# 			nexus_seg_index_file.write(f"Nexus Seg Index: {nexus_seg_index}")
-	# 	sa_df_to_save = pd.DataFrame(list(SA_df.items()), columns=['Model_Part', 'Surface_Area'])
-	# 	sa_df_to_save.to_csv(os.path.join(self.parameters.path, "SA.csv"), index=False)
-	# 	l_df_to_save = pd.DataFrame(list(L_df.items()), columns=['Model_Part', 'Length'])
-	# 	l_df_to_save.to_csv(os.path.join(self.parameters.path, "L.csv"), index=False)
-	# 	elec_L_of_tufts_file_path = os.path.join(self.parameters.path, "elec_L_of_tufts.txt")
-	# 	with open(elec_L_of_tufts_file_path, "w") as elec_L_of_tufts_file:
-	# 		elec_L_of_tufts_file.write(f"Tuft electrotonic lengths: {elec_L_of_tufts}")
-	# 	if self.parameters.expand_cable:
-	# 		MM.update_reduced_model_tuft_lengths(cell)
-	# 		nexus_seg_index, SA_df, L_df, elec_L_of_tufts = MM.run(cell)
-	# 		nexus_seg_index_file_path = os.path.join(self.parameters.path, "nexus_seg_index.txt")
-	# 		with open(nexus_seg_index_file_path, "w") as nexus_seg_index_file:
-	# 			nexus_seg_index_file.write(f"Nexus Seg Index: {nexus_seg_index}")
-	# 		sa_df_to_save = pd.DataFrame(list(SA_df.items()), columns=['Model_Part', 'Surface_Area'])
-	# 		sa_df_to_save.to_csv(os.path.join(self.parameters.path, "SA_after.csv"), index=False)
-	# 		l_df_to_save = pd.DataFrame(list(L_df.items()), columns=['Model_Part', 'Length'])
-	# 		l_df_to_save.to_csv(os.path.join(self.parameters.path, "L_after.csv"), index=False)
-	# 		elec_L_of_tufts_file_path = os.path.join(self.parameters.path, "elec_L_of_tufts_after.txt")
-	# 		with open(elec_L_of_tufts_file_path, "w") as elec_L_of_tufts_file:
-	# 			elec_L_of_tufts_file.write(f"Tuft electrotonic lengths: {elec_L_of_tufts}")
