@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import warnings
+import os
 
 # generic function for plotting variable over morphology
 def plot(seg_data, data_to_plot, ax, elevation=20, azimuth=-100, radius_scale=1.0, title='', clim_max=30, return_cbar = False, clims = None):
@@ -122,25 +123,21 @@ def plot_segments(seg_data, special_indices, special_colors, title_suffix="", sa
         if show:
             plt.show()
 
-def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.0, deleted_indices=[], show=True): #TODO: rename to plot_morphology_with_highlighted_indices?
-    fig = plt.figure()
+def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.0, deleted_indices=[], show=True, color='red', figsize=(10,6)):
+    fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, projection='3d')
-
     for i, seg in seg_data.iterrows():
-        # Extract x, y, z coordinates
         x_points = [seg['p0_0'], seg['pc_0'], seg['p1_0']]
         y_points = [seg['p0_1'], seg['pc_1'], seg['p1_1']]
         z_points = [seg['p0_2'], seg['pc_2'], seg['p1_2']]
-
-        # Calculate line width and set color based on deleted_indices
         radius = seg['r'] * radius_scale
-        color = 'red' if i in deleted_indices else 'black'
         if i in deleted_indices:
-            radius *= 2  # adjust multiplier to change red line width
-
-        # Note: the order is (x, z, y) to match the original orientation.
-        ax.plot(x_points, z_points, y_points, linewidth=radius, color=color)
-
+            c = color
+            r = radius * 2
+        else:
+            c = 'black'
+            r = radius
+        ax.plot(x_points, z_points, y_points, linewidth=r, color=c)
     ax.view_init(elev=elevation, azim=azimuth)
     ax.set_xlabel('X')
     ax.set_ylabel('Z')
@@ -149,13 +146,13 @@ def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.
         plt.show()
     return fig, ax
 
-def plot_morphology_with_highlighted_sec_type(sec_type, seg_data):
+def plot_morphology_with_highlighted_sec_type(sec_type, seg_data, color='red', **kwargs):
     if (sec_type not in np.unique(seg_data['sec_type_precise'])) and  (sec_type not in ['unlabeled', 'overlapping']):
         print(f"{sec_type} not found in seg_data. Instead, seg_data has sec_types: {np.unique(seg_data['sec_type_precise'])}")
     if sec_type == 'unlabeled': # segments without a seg_id.
-        fig, ax = plot_reduced_morphology(seg_data,deleted_indices=seg_data[seg_data['sec_type_precise'].isna()]['seg_id'].tolist()) #TODO: change deleted_indices to highlighted_indices for clarity.
+        fig, ax = plot_reduced_morphology(seg_data,deleted_indices=seg_data[seg_data['sec_type_precise'].isna()]['seg_id'].tolist(), color=color, **kwargs)
     else:
-        fig, ax = plot_reduced_morphology(seg_data,deleted_indices=seg_data[seg_data['sec_type_precise'] == sec_type]['seg_id'].tolist()) #TODO: also change plot_reduced_morphology to plot_morphology for clarity
+        fig, ax = plot_reduced_morphology(seg_data,deleted_indices=seg_data[seg_data['sec_type_precise'] == sec_type]['seg_id'].tolist(), color=color, **kwargs)
     return fig, ax
 
 def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, elevation=20, azimuth=-100, radius_scale=1.0, title=''):
@@ -439,3 +436,100 @@ def plot_morphology_with_y_range(seg_data, y_min=685, y_max=885, figsize=(12, 10
     
     return fig, ax
     
+def plot_morphology_flex( # flexible function to plot neuron morphology with various highlighting options
+    seg_data,
+    option='specific_sec_type',
+    sec_types=None,
+    y_min=None,
+    y_max=None,
+    out_dir=None,
+    figsize=(10, 6),
+    show=True,
+    save=True,
+    color=None,
+    parameters=None,  # For auto-looping all types
+    **kwargs
+):
+    """
+    Flexible function to plot neuron morphology with various highlighting options.
+    
+    Parameters:
+        seg_data: Data describing the neuron morphology.
+        option: One of ['specific_sec_type', 'each_sec_type', 'y_range', 'single_type'].
+        sec_types: List of section types (for 'specific_sec_type'); or single type as str for 'single_type'.
+        y_min, y_max: For y_range option.
+        out_dir: Directory to save plots; if None, no files saved unless save_path is passed directly.
+        figsize: Tuple for figure size.
+        show: Whether to display plots.
+        save: Whether to save plots.
+        color: Specify a color if desired (for same color).
+        parameters: Used for auto-looping section types (must have inh_syn_properties as dict).
+        **kwargs: Passed to the underlying plotting function.
+    """
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    
+    figs = []
+    axs = []
+
+    if option == 'specific_sec_type':
+        # Highlight multiple section types, different colors (all on one plot)
+        fig, ax = plot_morphology_with_highlighted_sec_types(
+            sec_types, seg_data, figsize=figsize, **kwargs
+        )
+        if save and out_dir:
+            fig.savefig(os.path.join(out_dir, 'highlighted_types.png'))
+        if show:
+            plt.show()
+        figs.append(fig)
+        axs.append(ax)
+
+    elif option == 'each_sec_type':
+        # Loop over types, all with same color (or auto)
+        if parameters is None or not hasattr(parameters, "inh_syn_properties"):
+            raise ValueError("parameters with inh_syn_properties required for this option.")
+        for sec_type in parameters.inh_syn_properties.keys():
+            print(f"Plotting {sec_type}:")
+            fig, ax = plot_morphology_with_highlighted_sec_type(
+                sec_type, seg_data, color=color if color else 'red', figsize=figsize, **kwargs
+            )
+            ax.set_title(sec_type)
+            fig.tight_layout()
+            if show:
+                plt.show()
+            if save and out_dir:
+                fig.savefig(os.path.join(out_dir, f"{sec_type}.png"))
+            figs.append(fig)
+            axs.append(ax)
+
+    elif option == 'y_range':
+        # Highlight custom y-range
+        fig, ax = plot_morphology_with_y_range(
+            seg_data, y_min=y_min, y_max=y_max, figsize=figsize, **kwargs
+        )
+        if save and out_dir:
+            fig.savefig(os.path.join(out_dir, f"y_range_{y_min}_{y_max}.png"))
+        if show:
+            plt.show()
+        figs.append(fig)
+        axs.append(ax)
+
+    elif option == 'single_type':
+        # Highlight a single section type
+        sec_type = sec_types if isinstance(sec_types, str) else sec_types[0]
+        fig, ax = plot_morphology_with_highlighted_sec_type(
+            sec_type, seg_data, color=color if color else 'red', figsize=figsize, **kwargs
+        )
+        ax.set_title(sec_type)
+        fig.tight_layout()
+        if save and out_dir:
+            fig.savefig(os.path.join(out_dir, f"{sec_type}.png"))
+        if show:
+            plt.show()
+        figs.append(fig)
+        axs.append(ax)
+    
+    else:
+        raise ValueError("Unknown option. Choose from: 'specific_sec_type', 'each_sec_type', 'y_range', 'single_type'.")
+    
+    return figs, axs
