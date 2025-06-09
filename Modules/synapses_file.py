@@ -269,14 +269,21 @@ class PreSimSynapseGenerator:
                     
                     # Process each presynaptic cell in this functional group
                     for pc_idx, pc in enumerate(fg.get('presynaptic_cells', [])):
-                        pc_center = np.array(pc['center']) + fg_center  # PC center is relative to FG center
+                        pc_center = np.array(pc['center']) #+ fg_center  # PC center can be relative to FG center
                         pc_radius = pc['radius']
                         
                         # Calculate distances from presynaptic cell center
                         distances_to_pc = np.sqrt(np.sum((coords_this_type - pc_center)**2, axis=1))
-                        
+
+
                         # Get synapses within this presynaptic cell
                         pc_mask = (distances_to_pc <= pc_radius) & fg_mask
+                        if not np.any(pc_mask):  # Warn if no synapses found in this PC
+                            # self.logger.log(f"Warning: No synapses found in presynaptic cell {pc_idx} of functional group {fg_idx} for synapse type {synapse_type} and section {cluster_sec_type}.")
+                            print(f"Warning: No synapses found in presynaptic cell {pc_idx} of functional group {fg_idx} for synapse type {synapse_type} and section {cluster_sec_type}.")
+                            print(f"Coordinates of synapses in this section and synapse type: {coords_this_type[fg_mask]}")
+                            print(f"Coordinates of presynaptic cell center: {pc_center}, radius: {pc_radius}")
+
                         presynaptic_cell_labels[pc_mask] = pc_idx
                 
                 # Assign functional groups and presynaptic cells to synapses
