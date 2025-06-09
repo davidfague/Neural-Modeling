@@ -187,11 +187,8 @@ class Simulation:
         with open(os.path.join(parameters.path, "parameters.pickle"), "wb") as file:
            pickle.dump(parameters, file)
 
-        if parameters.simulate_EPSPs:
-          self.simulate_EPSPs(cell, parameters)
-        else:
-          self.set_all_recorders(cell, parameters)
-          self.simulate(cell, parameters)
+        self.set_all_recorders(cell, parameters)
+        self.simulate(cell, parameters)
 
     def set_all_recorders(self, cell, parameters: SimulationParameters):
         # Set recorders
