@@ -3,8 +3,24 @@ from Modules.cell_builder import CellBuilder, SkeletonCell
 import numpy as np
 import pandas as pd
 from neuron import h
+import pickle
+from Modules.logger import Logger
 
-def generate_segments_csv(sim_dir, parameters, logger): #@TODO: add this to some class... Maybe not CellBuilder because the CellBuilder instance could be temporary instead? discuss with @davidfague
+def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add this to some class... Maybe not CellBuilder because the CellBuilder instance could be temporary instead? discuss with @davidfague
+    """
+    Generate and save segment CSV for the simulation.
+
+    Args:
+        sim_dir (str): Directory of the simulation.
+        parameters (ParametersClass, optional): Simulation parameters.
+            If None, will load from sim_dir/parameters.pickle.
+        logger (Logger, optional): Logger instance. If None, will create one.
+    """
+    if parameters is None:
+        with open(os.path.join(sim_dir, "parameters.pickle"), "rb") as f:
+            parameters = pickle.load(f)
+    if logger is None:
+        logger = Logger(sim_dir) # create per‑sim logger (write info into "sims_dir/sim_dir/log.txt")
     initial_all_synapses_off_parameters = parameters.all_synapses_off
     parameters.all_synapses_off = True
     # build the cell
