@@ -7,6 +7,13 @@ def minmax(x):
 		return x
 	return (x - np.min(x)) / (np.max(x) - np.min(x))
 
+def minmax_mean1(x): # scale between 0 and 1 then shift so that the mean becomes 1.
+    x = np.asarray(x)
+    if np.min(x) == np.max(x):
+        return np.ones_like(x, dtype=float)
+    scaled = (x - np.min(x)) / (np.max(x) - np.min(x))
+    return scaled / np.mean(scaled)
+
 class SpikeTrain:
 
 	def __init__(self, spike_times, T, mean_fr):
@@ -105,7 +112,8 @@ class PoissonTrainGenerator:
 		old_spike_probs = PoissonTrainGenerator.compute_probs_from_spike_trains(num, spike_trains)
 		new_spike_probs = PoissonTrainGenerator.shift_wrap_array(old_spike_probs, 4) # delay the exc spike train
 		new_frs = PoissonTrainGenerator.compute_frs_from_probs(new_spike_probs)
-		return minmax(new_frs) + 0.5 # set between 0 and 1 (min becomes 0 and max becomes 1) then shift to be 0.5 to 1.5
+		# return minmax(new_frs) + 0.5 # set between 0 and 1 (min becomes 0 and max becomes 1) then shift to be 0.5 to 1.5
+		return minmax_mean1(new_frs) # scale between 0 and 1 then shift so that the mean becomes 1.
 
 	@staticmethod
 	def compute_probs_from_spike_trains(num, spike_trains):
