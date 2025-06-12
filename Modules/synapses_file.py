@@ -421,7 +421,14 @@ class PreSimSynapseGenerator:
                         mean_fr = mean_fr_dist(size=1)
                         if not np.isfinite(mean_fr) or mean_fr <= 0:
                             raise ValueError(f"Background mean firing rate is not positive: {mean_fr}")
-                        lambdas = np.ones(h_tstop) * mean_fr
+                        if spike_train_mode == 'pink_noise':
+                            # Generate a unique pink noise modulation for each background synapse if it is pink noise 
+                            fg_trace_bg = generate_fg_trace(fg_id=None, fg=None)  # or use fg_id, fg if you want it FG-specific
+                            lambdas = PoissonTrainGenerator.shift_mean_of_lambdas(fg_trace_bg, mean_fr)
+                        elif spike_train_mode == 'standard':
+                            lambdas = np.ones(h_tstop) * mean_fr # constant fr timecourse (still generated from poisson random sampling)
+                        else:
+                            lambdas = PoissonTrainGenerator.shift_mean_of_lambdas(fg_trace, mean_fr) # if it delayed or rhythmic then the modulation trace will not change between synapses of this type by definition.
                         spike_train = PoissonTrainGenerator.generate_spike_train(lambdas, random_state)
                         synapses.at[idx, 'spike_train'] = spike_train.spike_times
                         synapses.at[idx, 'pc_mean_firing_rate'] = mean_fr
