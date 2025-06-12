@@ -105,7 +105,7 @@ class PoissonTrainGenerator:
 		old_spike_probs = PoissonTrainGenerator.compute_probs_from_spike_trains(num, spike_trains)
 		new_spike_probs = PoissonTrainGenerator.shift_wrap_array(old_spike_probs, 4) # delay the exc spike train
 		new_frs = PoissonTrainGenerator.compute_frs_from_probs(new_spike_probs)
-		return new_frs
+		return minmax(new_frs) + 0.5 # set between 0 and 1 (min becomes 0 and max becomes 1) then shift to be 0.5 to 1.5
 
 	@staticmethod
 	def compute_probs_from_spike_trains(num, spike_trains):
