@@ -65,13 +65,14 @@ class SimulationParameters:
 	# exc_mean_fr_distribution_function: str = 'levy' # 'levy' or 'gamma' # TODO: use string to change. NOTIMPLEMENTED
 	#NOTE: also see __post_init__ for mean_fr distriubtions, initW functions, and synapse
 	exc_syn_properties: dict = field(default_factory=lambda: { 
-		'tuft': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
+		'tuft': {'syn_density': 2.16*0.6*1.40, 'syn_number': 26112/8,
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,2), 'scalar': 1},
 			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,2), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 3333333},
-			'synapse_type': 'exc' #TODO: synapse_type can be in zip with exc_syn_properties and inh_syn_properties when they are accessed.
+			'synapse_type': 'exc', #TODO: synapse_type can be in zip with exc_syn_properties and inh_syn_properties when they are accessed.
+			'spike_train_mode': 'pink_noise',
 			},
 		'nexus':{'syn_density': 2.16*0.05, 'syn_number': 26112/8,
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
@@ -79,7 +80,8 @@ class SimulationParameters:
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 444444444},
-			'synapse_type': 'exc'
+			'synapse_type': 'exc',
+			'spike_train_mode': 'pink_noise',
 			},
 		'trunk': {'syn_density': 2.16*0.25, 'syn_number': 26112/8, 
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
@@ -87,15 +89,17 @@ class SimulationParameters:
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 111111},
-			'synapse_type': 'exc'
+			'synapse_type': 'exc',
+			'spike_train_mode': 'pink_noise',
 			},
-		'oblique': {'syn_density': 2.16*0.4, 'syn_number': 26112/8,
+		'oblique': {'syn_density': 2.16*0.4*0.75, 'syn_number': 26112/8,
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
 			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 222222},
-			'synapse_type': 'exc'
+			'synapse_type': 'exc',
+			'spike_train_mode': 'pink_noise',
 			},
 		'distal_basal': {'syn_density': 2.16*1.05, 'syn_number': 26112,
 			# 'gmax_params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1},
@@ -103,7 +107,8 @@ class SimulationParameters:
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 555555555},
-			'synapse_type': 'exc'
+			'synapse_type': 'exc',
+			'spike_train_mode': 'pink_noise',
 			},
 	})
 	# NOTE: [trunk, oblique, tuft] fields can be replaced with ['distal_apic'] if desired (Not recommended without checking CellModel.get_segments_of_type, etc first.)
@@ -115,7 +120,14 @@ class SimulationParameters:
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 11111111},
-			'synapse_type': 'inh'
+			'synapse_type': 'inh',
+			'spike_train_mode': 'delay',
+			'delay_config': {
+				'ref_synapse_type': 'exc',
+				'ref_sec_type': 'all',    # which sec_type in exc to delay
+				'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
+				'delay_shift': 4           # delay in samples (ms)
+			}
 			},
 		'nexus': {'syn_density': 0.22*1.5, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 1.87*10/10, 'std': 0.08474},#0.08474*0.2*0.66*0.1},
@@ -123,7 +135,14 @@ class SimulationParameters:
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 22222222},
-			'synapse_type': 'inh'
+			'synapse_type': 'inh',
+			'spike_train_mode': 'delay',
+			'delay_config': {
+				'ref_synapse_type': 'exc',
+				'ref_sec_type': 'all',    # which sec_type in exc to delay
+				'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
+				'delay_shift': 4           # delay in samples (ms)
+			}
 			},
 		'trunk': {'syn_density': 0.22, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 1.87/2, 'std': 0.08474},#*0.2*0.66*0.1},
@@ -131,7 +150,14 @@ class SimulationParameters:
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 88888888},
-			'synapse_type': 'inh'
+			'synapse_type': 'inh',
+			'spike_train_mode': 'delay',
+			'delay_config': {
+				'ref_synapse_type': 'exc',
+				'ref_sec_type': 'tuft',    # which sec_type in exc to delay
+				'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
+				'delay_shift': 4           # delay in samples (ms)
+			}
 			},
 		'oblique': {'syn_density': 0.22, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 1.87*4/4, 'std': 0.08474},#*0.2*0.66*0.1},
@@ -139,7 +165,14 @@ class SimulationParameters:
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 99999999},
-			'synapse_type': 'inh'
+			'synapse_type': 'inh',
+			'spike_train_mode': 'delay',
+			'delay_config': {
+				'ref_synapse_type': 'exc',
+				'ref_sec_type': 'tuft',    # which sec_type in exc to delay
+				'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
+				'delay_shift': 4           # delay in samples (ms)
+			}
 			},
 		'distal_basal': {'syn_density': 0.22, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 1.87, 'std': 0.08474},#0.08474*0.916*0.5*.16},
@@ -147,7 +180,14 @@ class SimulationParameters:
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.72, 'std': 0.1}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 111333311},
-			'synapse_type': 'inh'
+			'synapse_type': 'inh',
+			'spike_train_mode': 'delay',
+			'delay_config': {
+				'ref_synapse_type': 'exc',
+				'ref_sec_type': 'all',    # which sec_type in exc to delay
+				'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
+				'delay_shift': 4           # delay in samples (ms)
+			}
 			},
 		'perisomatic': {'syn_density': 0.22*1.125, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 4.6, 'std':  0.175*.5},
@@ -155,7 +195,14 @@ class SimulationParameters:
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.88, 'std': 0.05}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 777777777},
-			'synapse_type': 'inh'
+			'synapse_type': 'inh',
+			'spike_train_mode': 'delay',
+			'delay_config': {
+				'ref_synapse_type': 'exc',
+				'ref_sec_type': 'all',    # which sec_type in exc to delay
+				'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
+				'delay_shift': 4           # delay in samples (ms)
+			}
 			},
 	})
 

@@ -15,6 +15,49 @@ from Modules.logger import Logger
 import numpy as np
 from neuron import h
 
+def serialize_spike_train(arr):
+    """Convert np.ndarray, list, int, or float to a string for saving in CSV."""
+    # Handle None
+    if arr is None:
+        arr = []
+    # Handle numpy arrays
+    elif isinstance(arr, np.ndarray):
+        if arr.ndim == 0:
+            arr = np.array([arr.item()])
+    # Handle plain int/float
+    elif isinstance(arr, (int, np.integer)):
+        arr = [int(arr)]
+    elif isinstance(arr, float):
+        arr = [] if np.isnan(arr) else [int(arr)]
+    # Now treat arr as list-like
+    return "[" + " ".join(str(int(x)) for x in arr) + "]"
+
+
+
+def deserialize_spike_train(s):
+    """
+    Convert a string, int, float, list, or array from CSV back to a numpy array of ints.
+    Always returns a numpy array.
+    """
+    if isinstance(s, np.ndarray):
+        return s.astype(int)
+    if isinstance(s, list):
+        return np.array(s, dtype=int)
+    if isinstance(s, (int, np.integer)):
+        return np.array([s], dtype=int)
+    if isinstance(s, float):
+        if np.isnan(s):
+            return np.array([], dtype=int)
+        else:
+            return np.array([int(s)], dtype=int)
+    if isinstance(s, str):
+        s = s.strip("[]").strip()
+        if not s:
+            return np.array([], dtype=int)
+        return np.fromstring(s, sep=' ', dtype=int)
+    return np.array([], dtype=int)
+
+
 # define a class for generating synapses abstractly
 class PreSimSynapseGenerator:
     def __init__(self, sim_dir):
@@ -28,6 +71,7 @@ class PreSimSynapseGenerator:
 
         if os.path.exists(os.path.join(self.sim_dir, "synapses.csv")):
             self.synapses = pd.read_csv(os.path.join(self.sim_dir, "synapses.csv"))
+            self.synapses['spike_train'] = self.synapses['spike_train'].apply(deserialize_spike_train)
         else:
             self.synapses = pd.DataFrame()
 
@@ -139,6 +183,7 @@ class PreSimSynapseGenerator:
 
         # synapses = pd.DataFrame(columns=['name', 'modfile', 'initW', 'gmax', 'release_probability', 'seg_id']) #@TODO: add columns for possible syn_params keys
 
+        rows = []
         for _ in range(syn_number): # @TODO: do this in parallel instead of serial. Use list comprehension?
             # sample a segment
             segment_id = self.random_state.choice(a=segments_to_generate_on['seg_id'], size=1, replace=True, p=segments_to_generate_on['probability'])[0] #@TODO: check if [0] is necessary
@@ -185,202 +230,321 @@ class PreSimSynapseGenerator:
                 for k, v in syn_params_this_syn.items()
                 if 'gbar' in k
             }
-            # add row to dataframe
-            self.synapses = pd.concat((self.synapses, pd.DataFrame({
+            row = {
                 'name': f"{name}_{_}",
                 'modfile': syn_mod,
-                # 'initW': syn_params_this_syn["initW"],
-                # 'gmax': syn_params_this_syn["gmax"],
-                # 'release_probability': syn_params_this_syn["release_probability"],
                 'P_0': syn_params_this_syn["P_0"],
                 'initW': syn_params_this_syn["initW"],
                 'cell2cell_type': syn_params_this_syn["syn_params_choice"],
-
-                'seg_id': syn_params_this_syn["seg_id"], 
+                'seg_id': syn_params_this_syn["seg_id"],
                 **gbar_params,
-                # **syn_params_this_syn 
-                # #TODO: (SHOULD BE DONE) use a string to indicate which syn_params to use instead of storing all of them in the DataFrame. Also will need to pull out the syn_params that were added to syn_params in this snippet (such as initW, location, release_probability.) and give them their own column.
-            }, index=[0])), ignore_index=True)
+            }
+            rows.append(row)
+        return pd.DataFrame(rows)
+            # # add row to dataframe
+            # self.synapses = pd.concat((self.synapses, pd.DataFrame({
+            #     'name': f"{name}_{_}",
+            #     'modfile': syn_mod,
+            #     # 'initW': syn_params_this_syn["initW"],
+            #     # 'gmax': syn_params_this_syn["gmax"],
+            #     # 'release_probability': syn_params_this_syn["release_probability"],
+            #     'P_0': syn_params_this_syn["P_0"],
+            #     'initW': syn_params_this_syn["initW"],
+            #     'cell2cell_type': syn_params_this_syn["syn_params_choice"],
 
-    def generate_spike_trains_for_synapses(self)->None:
-        synapses = pd.read_csv(os.path.join(self.sim_dir, "synapses.csv"))
+            #     'seg_id': syn_params_this_syn["seg_id"], 
+            #     **gbar_params,
+            #     # **syn_params_this_syn 
+            #     # #TODO: (SHOULD BE DONE) use a string to indicate which syn_params to use instead of storing all of them in the DataFrame. Also will need to pull out the syn_params that were added to syn_params in this snippet (such as initW, location, release_probability.) and give them their own column.
+            # }, index=[0])), ignore_index=True)
 
-        synapses_with_seg_info = synapses.merge( # TODO: alternative could be used to save memory.
-            self.segments, 
-            on='seg_id', 
-            how='left',               # carry along all synapses even if a seg_id is missing
-            suffixes=('','_seg')      # e.g. if both have a 'length' column
+    def assign_synapses_to_cell_assemblies(self, synapses: pd.DataFrame, coords: np.ndarray, clustering_config: dict) -> pd.DataFrame:
+        """
+        Assigns each synapse to a functional group (FG) and presynaptic cell (PC).
+        FG and PC labels are -1 for background/not assigned.
+        """
+        fg_labels = -np.ones(len(synapses), dtype=int)
+        pc_labels = -np.ones(len(synapses), dtype=int)
+        for fg_idx, fg in enumerate(clustering_config.get('functional_groups', [])):
+            fg_center = np.array(fg['center'])
+            fg_radius = fg['radius']
+            distances_to_fg = np.linalg.norm(coords - fg_center, axis=1)
+            in_fg = distances_to_fg <= fg_radius
+            fg_labels[in_fg] = fg_idx
+            for pc_idx, pc in enumerate(fg.get('presynaptic_cells', [])):
+                pc_center = np.array(pc['center'])
+                pc_radius = pc['radius']
+                distances_to_pc = np.linalg.norm(coords - pc_center, axis=1)
+                in_pc = (distances_to_pc <= pc_radius) & in_fg
+                pc_labels[in_pc] = pc_idx
+        synapses['functional_group'] = fg_labels
+        synapses['presynaptic_cell'] = pc_labels
+        return synapses
+
+    def generate_spike_trains_for_cell_assemblies(
+        self,
+        synapses: pd.DataFrame,
+        parameters,
+        h_tstop: int,
+        sec_type: str,
+        synapse_type: str,
+        random_state: np.random.RandomState,
+        fg_traces_store=None,
+        pc_spike_trains_store=None,
+        all_synapses_full=None
+    ):
+        """
+        For each FG and PC, generate appropriate spike trains for synapses (including clustered, background, and delay modes).
+        """
+
+        # Ensure object columns exist and are ready for assignment
+        if 'spike_train' not in synapses.columns:
+            synapses['spike_train'] = [None] * len(synapses)
+        if 'pc_mean_firing_rate' not in synapses.columns:
+            synapses['pc_mean_firing_rate'] = np.nan
+
+        if fg_traces_store is None:
+            fg_traces_store = {}
+        if pc_spike_trains_store is None:
+            pc_spike_trains_store = {}
+
+        props = getattr(parameters, f"{synapse_type}_syn_properties")[sec_type]
+        spike_train_mode = props.get('spike_train_mode', 'standard')
+        mean_fr_dist = partial(
+            props['mean_firing_rate_distribution']['function'],
+            **props['mean_firing_rate_distribution']['params'], size=1
         )
 
-        columns = ['pc_0', 'pc_1', 'pc_2']
+        allowed_modes = {'standard', 'pink_noise', 'rhythmic', 'delay'}
+        if spike_train_mode not in allowed_modes:
+            raise NotImplementedError(
+                f"spike_train_mode '{spike_train_mode}' is not implemented. Allowed: {sorted(allowed_modes)}"
+            )
 
-        # get the coordinates of the synapses
+        clustering_config = getattr(parameters, f"{synapse_type}_clustering", {}).get(sec_type, {})
+        n_fg = len(clustering_config.get('functional_groups', []))
+        delay_config = props.get('delay_config', {})
+
+        def collect_reference_spike_trains(ref_synapse_type, ref_sec_type, ref_fg_id, ref_pc_id):
+            if all_synapses_full is None:
+                raise ValueError("all_synapses_full must be provided for delay mode.")
+            mask = (all_synapses_full['spike_train'].apply(lambda x: isinstance(x, (np.ndarray, list))))
+            if ref_synapse_type != 'all':
+                mask &= all_synapses_full['name'].str.contains(ref_synapse_type, na=False)
+            if ref_sec_type != 'all':
+                mask &= all_synapses_full['name'].str.contains(ref_sec_type, na=False)
+            if ref_fg_id != 'all':
+                mask &= (all_synapses_full['functional_group'] == ref_fg_id)
+            if ref_pc_id != 'all' and ref_pc_id is not None:
+                mask &= (all_synapses_full['presynaptic_cell'] == ref_pc_id)
+            trains = all_synapses_full.loc[mask, 'spike_train'].tolist()
+
+            # out_trains = []
+            # for train in trains:
+            #     # Always deserialize if it's not already an array/list
+            #     arr = deserialize_spike_train(train)
+
+            #     if arr is not None and hasattr(arr, "__len__") and len(arr) > 0:
+            #         out_trains.append(arr)
+            # if not out_trains:
+            #     raise ValueError(
+            #         f"No spike trains found for delay reference with mask: "
+            #         f"ref_synapse_type={ref_synapse_type}, ref_sec_type={ref_sec_type}, "
+            #         f"ref_fg_id={ref_fg_id}, ref_pc_id={ref_pc_id}")
+            # return out_trains
+
+            # All trains are already arrays at this point
+            out_trains = [arr for arr in trains if arr is not None and hasattr(arr, "__len__") and len(arr) > 0]
+            if not out_trains:
+                raise ValueError(
+                    f"No spike trains found for delay reference with mask: "
+                    f"ref_synapse_type={ref_synapse_type}, ref_sec_type={ref_sec_type}, "
+                    f"ref_fg_id={ref_fg_id}, ref_pc_id={ref_pc_id}")
+            return out_trains
+
+        def generate_fg_trace(fg_id=None, fg=None):
+            """
+            Returns the modulatory trace (lambda over time) for a functional group.
+            Respects FG 'modulation_mode' override if present.
+            """
+            mode = spike_train_mode if fg is None else fg.get('modulation_mode', spike_train_mode)
+            if mode == 'standard':
+                return np.ones(h_tstop)
+            elif mode == 'pink_noise':
+                fg_trace = PoissonTrainGenerator.generate_lambdas_from_pink_noise(
+                    num=h_tstop, random_state=random_state)
+                mean_val = np.mean(fg_trace)
+                if mean_val == 0:
+                    raise ValueError("Mean value of pink noise trace is zero; cannot normalize.")
+                return fg_trace / mean_val
+            elif mode == 'rhythmic':
+                base = np.ones(h_tstop)
+                freq = props.get('rhythmic_frequency', None)
+                depth = props.get('rhythmic_depth', None)
+                delta_t = getattr(parameters, 'delta_t', 1)
+                if freq is None or depth is None:
+                    raise ValueError("Both 'rhythmic_frequency' and 'rhythmic_depth' must be set for rhythmic mode.")
+                return PoissonTrainGenerator.rhythmic_modulation(base, freq, depth, delta_t)
+            elif mode == 'delay':
+                shift = delay_config.get('delay_shift', None)
+                if shift is None:
+                    raise ValueError("delay_shift must be specified in delay_config for 'delay' mode.")
+                ref_synapse_type = delay_config.get('ref_synapse_type', 'exc')
+                ref_sec_type = delay_config.get('ref_sec_type', sec_type)
+                ref_fg_id = delay_config.get('ref_fg_id', fg_id)
+                ref_pc_id = delay_config.get('ref_pc_id', None)
+                trains = collect_reference_spike_trains(
+                    ref_synapse_type, ref_sec_type, ref_fg_id, ref_pc_id)
+                if not all(isinstance(train, (np.ndarray, list)) and len(train) > 0 for train in trains):
+                    raise ValueError("All reference spike trains for delay must be non-empty arrays/lists.")
+                delayed_lambdas = PoissonTrainGenerator.generate_lambdas_by_delaying(h_tstop, trains)
+                return delayed_lambdas
+            else:
+                raise NotImplementedError(f"Unrecognized spike_train_mode: {mode}")
+
+        unique_fgs = np.unique(synapses['functional_group'])
+        for fg_id in unique_fgs:
+            fg_mask = (synapses['functional_group'] == fg_id)
+            fg = None
+            if n_fg > 0 and fg_id >= 0:
+                fg = clustering_config['functional_groups'][int(fg_id)]
+            fg_trace = generate_fg_trace(fg_id=fg_id, fg=fg)
+            if fg_trace is None or not isinstance(fg_trace, np.ndarray) or np.any(np.isnan(fg_trace)):
+                raise ValueError(f"fg_trace is not valid for FG {fg_id}, got: {fg_trace}")
+            fg_traces_store[(synapse_type, sec_type, fg_id)] = fg_trace
+
+            pcs_in_fg = np.unique(synapses.loc[fg_mask, 'presynaptic_cell'])
+            for pc_id in pcs_in_fg:
+                pc_mask = fg_mask & (synapses['presynaptic_cell'] == pc_id)
+                if pc_id == -1:
+                    for idx in synapses[pc_mask].index:
+                        mean_fr = mean_fr_dist(size=1)
+                        if not np.isfinite(mean_fr) or mean_fr <= 0:
+                            raise ValueError(f"Background mean firing rate is not positive: {mean_fr}")
+                        lambdas = np.ones(h_tstop) * mean_fr
+                        spike_train = PoissonTrainGenerator.generate_spike_train(lambdas, random_state)
+                        synapses.at[idx, 'spike_train'] = spike_train.spike_times
+                        synapses.at[idx, 'pc_mean_firing_rate'] = mean_fr
+                    continue
+                mean_fr = mean_fr_dist(size=1)
+                if not np.isfinite(mean_fr) or mean_fr <= 0:
+                    raise ValueError(f"PC mean firing rate is not positive: {mean_fr}")
+                # Standard: shift mean, Delay: use fg_trace directly (already population-based)
+                pc_trace = (
+                    fg_trace if spike_train_mode == 'delay'
+                    else PoissonTrainGenerator.shift_mean_of_lambdas(fg_trace, mean_fr)
+                )
+                if pc_trace is None or not isinstance(pc_trace, np.ndarray) or np.any(np.isnan(pc_trace)):
+                    raise ValueError(f"pc_trace is not valid for FG {fg_id} PC {pc_id}, got: {pc_trace}")
+                spike_train = PoissonTrainGenerator.generate_spike_train(pc_trace, random_state)
+                for idx in synapses[pc_mask].index:
+                    synapses.at[idx, 'spike_train'] = spike_train.spike_times
+                    synapses.at[idx, 'pc_mean_firing_rate'] = mean_fr
+                pc_spike_trains_store[(synapse_type, sec_type, fg_id, pc_id)] = spike_train
+        return synapses, fg_traces_store, pc_spike_trains_store
+
+    def generate_spike_trains_for_synapses(self):
+        """
+        Main entrypoint: assigns FG/PC and generates spike trains for all synapses.
+        Ensures all excitatory spike trains are generated before any delayed inhibition.
+        """
+        synapses = pd.read_csv(os.path.join(self.sim_dir, "synapses.csv"))
+
+        segments = self.segments
+        parameters = self.parameters
+        h_tstop = self.parameters.h_tstop
+
+        columns = ['pc_0', 'pc_1', 'pc_2']
+        synapses_with_seg_info = synapses.merge(
+            segments, on='seg_id', how='left', suffixes=('','_seg'))
         synapse_coords = synapses_with_seg_info[columns].values
 
-        random_state = np.random.RandomState(self.parameters.precell_spikes_seeds['inh'])
-        np.random.seed(self.parameters.precell_spikes_seeds['inh'])
-
-        synapses['spike_train'] = np.empty(len(synapses), dtype=object)  # gives dtype=object
-        synapses['pc_mean_firing_rate'] = np.nan            # dtype float, which is fine
-        synapses['functional_group'] = np.nan               # track which functional group each synapse belongs to
-        synapses['presynaptic_cell'] = np.nan               # track which presynaptic cell each synapse belongs to
-
-        # First, generate background firing rate profile for all synapses
-        background_firing_rate_timecourse = np.ones(self.parameters.h_tstop)
-
-        # Process both excitatory and inhibitory synapses
+        # Pass 1: Assign all FG/PCs for ALL synapses
+        all_fg_labels = np.full(len(synapses), -1, dtype=int)
+        all_pc_labels = np.full(len(synapses), -1, dtype=int)
         for synapse_type in ['exc', 'inh']:
-            # Get the appropriate random state for this synapse type
-            random_state = np.random.RandomState(getattr(self.parameters, f"{synapse_type}_syn_properties")[list(getattr(self.parameters, f"{synapse_type}_syn_properties").keys())[0]]['seed']['synapses'])
-            np.random.seed(getattr(self.parameters, f"{synapse_type}_syn_properties")[list(getattr(self.parameters, f"{synapse_type}_syn_properties").keys())[0]]['seed']['synapses'])
-
-            for cluster_sec_type in getattr(self.parameters, f"{synapse_type}_syn_properties").keys():
-                # Get the mean firing rate distribution for this synapse type and section type
-                mean_firing_rate_distribution = getattr(self.parameters, f"{synapse_type}_syn_properties")[cluster_sec_type]['mean_firing_rate_distribution']
-                mean_firing_rate_distribution = partial(mean_firing_rate_distribution['function'], **mean_firing_rate_distribution['params'], size=1)
-
-                # Get synapses of this type and section
-                synapses_this_sec_and_syn_type = (
-                    synapses['name'].str.contains(synapse_type, na=False) 
-                    & synapses['name'].str.contains(cluster_sec_type, na=False)
+            properties_set = getattr(parameters, f"{synapse_type}_syn_properties")
+            for sec_type, props in properties_set.items():
+                syn_mask = (
+                    synapses['name'].str.contains(synapse_type, na=False)
+                    & synapses['name'].str.contains(sec_type, na=False)
                 )
-                
-                # Get coordinates for these synapses
-                coords_this_type = synapse_coords[synapses_this_sec_and_syn_type]
-                
-                # Get clustering configuration for this synapse type and section
-                clustering_config = getattr(self.parameters, f"{synapse_type}_clustering", {}).get(cluster_sec_type, {})
-                
-                # Initialize functional group and presynaptic cell labels (-1 for background)
-                functional_group_labels = -np.ones(len(coords_this_type))
-                presynaptic_cell_labels = -np.ones(len(coords_this_type))
-                
-                # Process each functional group
-                for fg_idx, fg in enumerate(clustering_config.get('functional_groups', [])):
-                    fg_center = np.array(fg['center'])
-                    fg_radius = fg['radius']
-                    
-                    # Calculate distances from functional group center
-                    distances_to_fg = np.sqrt(np.sum((coords_this_type - fg_center)**2, axis=1))
-                    
-                    # Get synapses within this functional group
-                    fg_mask = distances_to_fg <= fg_radius
-                    functional_group_labels[fg_mask] = fg_idx
-                    
-                    # Process each presynaptic cell in this functional group
-                    for pc_idx, pc in enumerate(fg.get('presynaptic_cells', [])):
-                        pc_center = np.array(pc['center']) #+ fg_center  # PC center can be relative to FG center
-                        pc_radius = pc['radius']
-                        
-                        # Calculate distances from presynaptic cell center
-                        distances_to_pc = np.sqrt(np.sum((coords_this_type - pc_center)**2, axis=1))
+                coords_this_type = synapse_coords[syn_mask]
+                clustering_config = getattr(parameters, f"{synapse_type}_clustering", {}).get(sec_type, {})
+                assigned_synapses = self.assign_synapses_to_cell_assemblies(
+                    synapses.loc[syn_mask].copy(), coords_this_type, clustering_config)
+                all_fg_labels[syn_mask] = assigned_synapses['functional_group'].values
+                all_pc_labels[syn_mask] = assigned_synapses['presynaptic_cell'].values
+        synapses['functional_group'] = all_fg_labels
+        synapses['presynaptic_cell'] = all_pc_labels
 
+        all_synapses_full = synapses.copy()
 
-                        # Get synapses within this presynaptic cell
-                        pc_mask = (distances_to_pc <= pc_radius) & fg_mask
-                        if not np.any(pc_mask):  # Warn if no synapses found in this PC
-                            # self.logger.log(f"Warning: No synapses found in presynaptic cell {pc_idx} of functional group {fg_idx} for synapse type {synapse_type} and section {cluster_sec_type}.")
-                            print(f"Warning: No synapses found in presynaptic cell {pc_idx} of functional group {fg_idx} for synapse type {synapse_type} and section {cluster_sec_type}.")
-                            print(f"Coordinates of synapses in this section and synapse type: {coords_this_type[fg_mask]}")
-                            print(f"Coordinates of presynaptic cell center: {pc_center}, radius: {pc_radius}")
+        fg_traces_store = {}
+        pc_spike_trains_store = {}
 
-                        presynaptic_cell_labels[pc_mask] = pc_idx
-                
-                # Assign functional groups and presynaptic cells to synapses
-                synapses.loc[synapses_this_sec_and_syn_type, 'functional_group'] = functional_group_labels
-                synapses.loc[synapses_this_sec_and_syn_type, 'presynaptic_cell'] = presynaptic_cell_labels
-                
-                # For each functional group (including noise points labeled as -1)
-                unique_fgs = np.unique(functional_group_labels)
-                for fg_id in unique_fgs:
-                    # Get synapses in this functional group
-                    fg_mask = (functional_group_labels == fg_id)
-                    
-                    if fg_id == -1:  # Background synapses
-                        # Generate independent spike trains for background synapses
-                        background_synapses = synapses[synapses_this_sec_and_syn_type][fg_mask]
-                        for idx in background_synapses.index:
-                            pc_mean_firing_rate = mean_firing_rate_distribution(size=1)
-                            pc_firing_rate_timecourse = PoissonTrainGenerator.shift_mean_of_lambdas(
-                                lambdas=background_firing_rate_timecourse, 
-                                desired_mean=pc_mean_firing_rate
-                            )
-                            spike_train = PoissonTrainGenerator.generate_spike_train(
-                                lambdas=pc_firing_rate_timecourse, 
-                                random_state=random_state
-                            )
-                            
-                            synapses.at[idx, 'spike_train'] = np.array(spike_train.spike_times)
-                            synapses.at[idx, 'pc_mean_firing_rate'] = pc_mean_firing_rate
-                    else:
-                        # Generate a modulatory trace for this functional group
-                        fg_firing_rate_profile = PoissonTrainGenerator.generate_lambdas_from_pink_noise(
-                            num=self.parameters.h_tstop,
-                            random_state=random_state
-                        )
-                        fg_firing_rate_profile = fg_firing_rate_profile / np.mean(fg_firing_rate_profile)  # Normalize around 1
-                        
-                        # For each presynaptic cell in this functional group
-                        unique_pcs = np.unique(presynaptic_cell_labels[fg_mask])
-                        for pc_id in unique_pcs:
-                            if pc_id == -1:  # These are synapses in the FG but not in any PC - treat as background
-                                # Get these synapses
-                                unassigned_synapses = synapses[synapses_this_sec_and_syn_type][(functional_group_labels == fg_id) & (presynaptic_cell_labels == -1)]
-                                # Generate independent spike trains for them
-                                for idx in unassigned_synapses.index:
-                                    pc_mean_firing_rate = mean_firing_rate_distribution(size=1)
-                                    pc_firing_rate_timecourse = PoissonTrainGenerator.shift_mean_of_lambdas(
-                                        lambdas=background_firing_rate_timecourse, 
-                                        desired_mean=pc_mean_firing_rate
-                                    )
-                                    spike_train = PoissonTrainGenerator.generate_spike_train(
-                                        lambdas=pc_firing_rate_timecourse, 
-                                        random_state=random_state
-                                    )
-                                    
-                                    synapses.at[idx, 'spike_train'] = np.array(spike_train.spike_times)
-                                    synapses.at[idx, 'pc_mean_firing_rate'] = pc_mean_firing_rate
-                                continue
-                                
-                            # Get synapses in this presynaptic cell
-                            pc_mask = (presynaptic_cell_labels == pc_id) & fg_mask
-                            
-                            # Sample a mean firing rate for this presynaptic cell
-                            pc_mean_fr = mean_firing_rate_distribution(size=1)
-                            
-                            # Generate a base spike train for this presynaptic cell
-                            base_firing_rate_timecourse = PoissonTrainGenerator.shift_mean_of_lambdas(
-                                lambdas=fg_firing_rate_profile,
-                                desired_mean=pc_mean_fr
-                            )
-                            base_spike_train = PoissonTrainGenerator.generate_spike_train(
-                                lambdas=base_firing_rate_timecourse,
-                                random_state=random_state
-                            )
-                            
-                            # Assign the same spike train to all synapses in this presynaptic cell
-                            cluster_synapses = synapses[synapses_this_sec_and_syn_type][pc_mask]
-                            for idx in cluster_synapses.index:
-                                synapses.at[idx, 'spike_train'] = np.array(base_spike_train.spike_times)
-                                synapses.at[idx, 'pc_mean_firing_rate'] = pc_mean_fr
+        # Pass 2: Generate spike trains for ALL non-delayed first
+        for synapse_type in ['exc', 'inh']:
+            properties_set = getattr(parameters, f"{synapse_type}_syn_properties")
+            for sec_type, props in properties_set.items():
+                spike_train_mode = props.get('spike_train_mode', 'standard')
+                if spike_train_mode == 'delay':
+                    continue  # skip delayed for now
+                syn_mask = (
+                    synapses['name'].str.contains(synapse_type, na=False)
+                    & synapses['name'].str.contains(sec_type, na=False)
+                )
+                assigned_synapses = synapses.loc[syn_mask].copy()
+                seed = props['seed']['synapses']
+                random_state = np.random.RandomState(seed)
+                assigned_synapses, fg_traces_store, pc_spike_trains_store = self.generate_spike_trains_for_cell_assemblies(
+                    assigned_synapses, parameters, h_tstop, sec_type, synapse_type, random_state,
+                    fg_traces_store=fg_traces_store, pc_spike_trains_store=pc_spike_trains_store,
+                    all_synapses_full=all_synapses_full)
+                for col in ['spike_train', 'pc_mean_firing_rate', 'functional_group', 'presynaptic_cell']:
+                    synapses.loc[assigned_synapses.index, col] = assigned_synapses[col]
+                all_synapses_full.loc[assigned_synapses.index, 'spike_train'] = assigned_synapses['spike_train']
 
-        # Check for any unprocessed synapses
-        remaining_mask = synapses['spike_train'].isna()
-        if remaining_mask.any():
-            raise ValueError(f"Some synapses were not processed in the above loops: {synapses[remaining_mask]['name'].unique()}. Check your provided synapse names and parameters: {getattr(self.parameters, f'{synapse_type}_syn_properties')}")
+        all_synapses_full['spike_train'] = all_synapses_full['spike_train'].apply(deserialize_spike_train)
 
+        # Pass 3: Now, generate spike trains for all delayed synapses
+        for synapse_type in ['exc', 'inh']:
+            properties_set = getattr(parameters, f"{synapse_type}_syn_properties")
+            for sec_type, props in properties_set.items():
+                spike_train_mode = props.get('spike_train_mode', 'standard')
+                if spike_train_mode != 'delay':
+                    continue  # only do delayed in this pass
+                syn_mask = (
+                    synapses['name'].str.contains(synapse_type, na=False)
+                    & synapses['name'].str.contains(sec_type, na=False)
+                )
+                assigned_synapses = synapses.loc[syn_mask].copy()
+                seed = props['seed']['synapses']
+                random_state = np.random.RandomState(seed)
+                assigned_synapses, fg_traces_store, pc_spike_trains_store = self.generate_spike_trains_for_cell_assemblies(
+                    assigned_synapses, parameters, h_tstop, sec_type, synapse_type, random_state,
+                    fg_traces_store=fg_traces_store, pc_spike_trains_store=pc_spike_trains_store,
+                    all_synapses_full=all_synapses_full)
+                for col in ['spike_train', 'pc_mean_firing_rate', 'functional_group', 'presynaptic_cell']:
+                    synapses.loc[assigned_synapses.index, col] = assigned_synapses[col]
+                all_synapses_full.loc[assigned_synapses.index, 'spike_train'] = assigned_synapses['spike_train']
+
+        synapses['spike_train'] = synapses['spike_train'].apply(serialize_spike_train)
         synapses.to_csv(os.path.join(self.sim_dir, "synapses.csv"), index=False)
+
+
 
     def build_synapses_onto_cell_obj(self)->CellModel:
         ## assumes already have parameters and sim_dir defined, even logger (use run_on_all_sims)
 
         # build synapses from synapses csv from simulation folder
         synapses = pd.read_csv(os.path.join(self.sim_dir, "synapses.csv"))
+        synapses['spike_train'] = synapses['spike_train'].apply(deserialize_spike_train)
 
-        # convert each string back to an array
-        synapses["spike_train"] = synapses["spike_train"].apply(
-            lambda s: np.fromstring(s.strip("[]"), sep=" ")
-        )
+        # # convert each string back to an array
+        # synapses["spike_train"] = synapses["spike_train"].apply(
+        #     lambda s: np.fromstring(s.strip("[]"), sep=" ")
+        # )
 
         syn_param_map = {cell2cell_type: getattr(synapse, f"{cell2cell_type}_syn_params") for cell2cell_type in np.unique(synapses.cell2cell_type)}
 
@@ -428,10 +592,6 @@ class PreSimSynapseGenerator:
         logger.log("Finish synapses list in CellModel object")
         return cell
 
-
-
-
-
 #################### ADDITIONAL CODE FOR CLUSTERING THAT WAS WORK IN PROGRESS #####################
 
 
@@ -466,8 +626,8 @@ class PreSimSynapseGenerator:
 
 #     # right now cluster_indices tell the row of synapses_with_seg_info. Need to do the same, but
 #     # only consider for cluster_indices the segments 
-#     # of synapses_with_seg_info['sec_type_precise'] == cluster_sec_type
-#     cluster_indices = np.where(synapses_with_seg_info['sec_type_precise'] == cluster_sec_type)[0][cluster_indices] #TODO: CHECK
+#     # of synapses_with_seg_info['sec_type_precise'] == sec_type
+#     cluster_indices = np.where(synapses_with_seg_info['sec_type_precise'] == sec_type)[0][cluster_indices] #TODO: CHECK
 
 #     # track for all clusters so we can deal with overlapping clusters
 #     cluster_indices_by_cluster.append(cluster_indices)
