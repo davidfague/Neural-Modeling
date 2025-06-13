@@ -424,12 +424,15 @@ def plot_ca_spk_locations(sim_directory, ca_df, segs, dur_to_use, ben):
 def generate_spk_table(sim_directory, dur_to_use, segs_nmda_df, segs_na_df, segs_ca_df):
     # Initialize an empty list to collect rows before converting them into a DataFrame
     rows = []
+    soma_spikes = analysis.DataReader.read_data(sim_directory, 'soma_spikes')
+    parameters = analysis.DataReader.load_parameters(sim_directory)
+    soma_spike_rate = len(soma_spikes[0]) / parameters.h_tstop * 1000
 
     # Define the spike types and their corresponding DataFrames and columns
     spike_types = {
         'num_nmda_spikes': ('Total_NMDA_Spikes', segs_nmda_df),
         'num_na_spikes': ('Total_NA_Spikes', segs_na_df),
-        'num_ca_spikes': ('Total_CA_Spikes', segs_ca_df)
+        'num_ca_spikes': ('Total_CA_Spikes', segs_ca_df),
     }
 
     # Calculate the total number of spikes for each segment type and spike type
@@ -442,6 +445,7 @@ def generate_spk_table(sim_directory, dur_to_use, segs_nmda_df, segs_na_df, segs
 
     # Convert the list of rows into a DataFrame
     spike_table = pd.DataFrame(rows)
+    spike_table['Soma_Spike_Rate'] = soma_spike_rate  # or make a new row if preferred
 
     spike_table.to_csv(os.path.join(sim_directory, 'dSpike_table.csv'))
 
