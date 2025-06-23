@@ -71,7 +71,6 @@ class PreSimSynapseGenerator:
 
         if os.path.exists(os.path.join(self.sim_dir, "synapses.csv")):
             self.synapses = pd.read_csv(os.path.join(self.sim_dir, "synapses.csv"))
-            self.synapses['spike_train'] = self.synapses['spike_train'].apply(deserialize_spike_train)
         else:
             self.synapses = pd.DataFrame()
 
@@ -376,6 +375,7 @@ class PreSimSynapseGenerator:
                 mean_val = np.mean(fg_trace)
                 if mean_val == 0:
                     raise ValueError("Mean value of pink noise trace is zero; cannot normalize.")
+                # print(f'pink noise: {fg_trace / mean_val}\nmean: {np.mean(fg_trace / mean_val)}\nstd: {np.std(fg_trace / mean_val)}')
                 return fg_trace / mean_val
             elif mode == 'rhythmic':
                 base = np.ones(h_tstop)
@@ -384,7 +384,9 @@ class PreSimSynapseGenerator:
                 delta_t = getattr(parameters, 'delta_t', 1)
                 if freq is None or depth is None:
                     raise ValueError("Both 'rhythmic_frequency' and 'rhythmic_depth' must be set for rhythmic mode.")
-                return PoissonTrainGenerator.rhythmic_modulation(base, freq, depth, delta_t)
+                fg_trace = PoissonTrainGenerator.rhythmic_modulation(base, freq, depth, delta_t)
+                # print(f'rhythmic mod: \nmean: {np.mean(fg_trace)}\nstd: {np.std(fg_trace)}')
+                return fg_trace
             elif mode == 'delay':
                 shift = delay_config.get('delay_shift', None)
                 if shift is None:
@@ -418,9 +420,11 @@ class PreSimSynapseGenerator:
                 pc_mask = fg_mask & (synapses['presynaptic_cell'] == pc_id)
                 if pc_id == -1:
                     for idx in synapses[pc_mask].index:
-                        mean_fr = mean_fr_dist(size=1)
-                        if not np.isfinite(mean_fr) or mean_fr <= 0:
-                            raise ValueError(f"Background mean firing rate is not positive: {mean_fr}")
+                        mean_fr = mean_fr_dist(size=1) + props.get('fr_shift', 0)
+                        if mean_fr <= 0:
+                            mean_fr = 0
+                        elif not np.isfinite(mean_fr):
+                            raise ValueError(f"Background mean firing rate is infinite: {mean_fr}")
                         if spike_train_mode == 'pink_noise':
                             # Generate a unique pink noise modulation for each background synapse if it is pink noise 
                             fg_trace_bg = generate_fg_trace(fg_id=None, fg=None)  # or use fg_id, fg if you want it FG-specific
@@ -433,7 +437,7 @@ class PreSimSynapseGenerator:
                         synapses.at[idx, 'spike_train'] = spike_train.spike_times
                         synapses.at[idx, 'pc_mean_firing_rate'] = mean_fr
                     continue
-                mean_fr = mean_fr_dist(size=1)
+                mean_fr = mean_fr_dist(size=1) + props.get('fr_shift', 0)
                 if not np.isfinite(mean_fr) or mean_fr <= 0:
                     raise ValueError(f"PC mean firing rate is not positive: {mean_fr}")
                 # Standard: shift mean, Delay: use fg_trace directly (already population-based)
