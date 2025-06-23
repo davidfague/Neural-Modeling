@@ -34,7 +34,7 @@ class SimulationParameters:
 	# Current injection
 	CI_on: bool = False
 	CI_target: str = 'soma'
-	h_i_amplitude: float = 10.0 # (nA)
+	h_i_amplitude: float = 0.0#10.0 # (nA)
 	h_i_duration: int = 1000 # (ms)
 	h_i_delay: int = 10 # (ms)
   
@@ -73,6 +73,7 @@ class SimulationParameters:
 			'seed': {'synapses': 3333333},
 			'synapse_type': 'exc', #TODO: synapse_type can be in zip with exc_syn_properties and inh_syn_properties when they are accessed.
 			'spike_train_mode': 'pink_noise',
+			'fr_shift': 0 # shift the mean firing rate by this amount.
 			},
 		'nexus':{'syn_density': 2.16*0.05, 'syn_number': 26112/8,
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
@@ -82,6 +83,7 @@ class SimulationParameters:
 			'seed': {'synapses': 444444444},
 			'synapse_type': 'exc',
 			'spike_train_mode': 'pink_noise',
+			'fr_shift': 0 # shift the mean firing rate by this amount.
 			},
 		'trunk': {'syn_density': 2.16*0.25, 'syn_number': 26112/8, 
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
@@ -91,6 +93,7 @@ class SimulationParameters:
 			'seed': {'synapses': 111111},
 			'synapse_type': 'exc',
 			'spike_train_mode': 'pink_noise',
+			'fr_shift': 0 # shift the mean firing rate by this amount.
 			},
 		'oblique': {'syn_density': 2.16*0.4*0.75, 'syn_number': 26112/8,
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
@@ -100,6 +103,7 @@ class SimulationParameters:
 			'seed': {'synapses': 222222},
 			'synapse_type': 'exc',
 			'spike_train_mode': 'pink_noise',
+			'fr_shift': 0 # shift the mean firing rate by this amount.
 			},
 		'distal_basal': {'syn_density': 2.16*1.05, 'syn_number': 26112,
 			# 'gmax_params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1},
@@ -109,6 +113,7 @@ class SimulationParameters:
 			'seed': {'synapses': 555555555},
 			'synapse_type': 'exc',
 			'spike_train_mode': 'pink_noise',
+			'fr_shift': 0 # shift the mean firing rate by this amount.
 			},
 	})
 	# NOTE: [trunk, oblique, tuft] fields can be replaced with ['distal_apic'] if desired (Not recommended without checking CellModel.get_segments_of_type, etc first.)
@@ -127,7 +132,8 @@ class SimulationParameters:
 				'ref_sec_type': 'all',    # which sec_type in exc to delay
 				'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
 				'delay_shift': 4           # delay in samples (ms)
-			}
+			},
+			'fr_shift': 0 # shift the mean firing rate by this amount.
 			},
 		'nexus': {'syn_density': 0.22*1.5, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 1.87*10/10, 'std': 0.08474},#0.08474*0.2*0.66*0.1},
@@ -142,7 +148,8 @@ class SimulationParameters:
 				'ref_sec_type': 'all',    # which sec_type in exc to delay
 				'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
 				'delay_shift': 4           # delay in samples (ms)
-			}
+			},
+			'fr_shift': 0 # shift the mean firing rate by this amount.
 			},
 		'trunk': {'syn_density': 0.22, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 1.87/2, 'std': 0.08474},#*0.2*0.66*0.1},
@@ -154,10 +161,11 @@ class SimulationParameters:
 			'spike_train_mode': 'delay',
 			'delay_config': {
 				'ref_synapse_type': 'exc',
-				'ref_sec_type': 'tuft',    # which sec_type in exc to delay
+				'ref_sec_type': 'all',    # which sec_type in exc to delay
 				'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
 				'delay_shift': 4           # delay in samples (ms)
-			}
+			},
+			'fr_shift': 0 # shift the mean firing rate by this amount.
 			},
 		'oblique': {'syn_density': 0.22, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 1.87*4/4, 'std': 0.08474},#*0.2*0.66*0.1},
@@ -169,10 +177,11 @@ class SimulationParameters:
 			'spike_train_mode': 'delay',
 			'delay_config': {
 				'ref_synapse_type': 'exc',
-				'ref_sec_type': 'tuft',    # which sec_type in exc to delay
+				'ref_sec_type': 'all',    # which sec_type in exc to delay
 				'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
 				'delay_shift': 4           # delay in samples (ms)
-			}
+			},
+			'fr_shift': 0 # shift the mean firing rate by this amount.
 			},
 		'distal_basal': {'syn_density': 0.22, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 1.87, 'std': 0.08474},#0.08474*0.916*0.5*.16},
@@ -187,7 +196,8 @@ class SimulationParameters:
 				'ref_sec_type': 'all',    # which sec_type in exc to delay
 				'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
 				'delay_shift': 4           # delay in samples (ms)
-			}
+			},
+			'fr_shift': 0 # shift the mean firing rate by this amount.
 			},
 		'perisomatic': {'syn_density': 0.22*1.125, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 4.6, 'std':  0.175*.5},
@@ -202,81 +212,82 @@ class SimulationParameters:
 				'ref_sec_type': 'all',    # which sec_type in exc to delay
 				'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
 				'delay_shift': 4           # delay in samples (ms)
-			}
+			},
+			'fr_shift': 0 # shift the mean firing rate by this amount.
 			},
 	})
 
-	# Clustering parameters
+	# Clustering parameters (example, suggest replacing.)
 	exc_clustering: dict = field(default_factory=lambda: {
-		'tuft': {
-			'functional_groups': [
-				{
-					'center': (0, 900, 500),  # 3D coordinates
-					'radius': 500.0,  # microns
-					'presynaptic_cells': [
-						{
-							'center': (0, 900, 500),  # relative to functional group center
-							'radius': 200.0,  # microns
-							'name': 'PC1',
-							'max_synapses': 5000  # maximum number of synapses per PC
-						},
+		# 'tuft': {
+		# 	'functional_groups': [
+		# 		{
+		# 			'center': (0, 900, 500),  # 3D coordinates
+		# 			'radius': 500.0,  # microns
+		# 			'presynaptic_cells': [
+		# 				{
+		# 					'center': (0, 900, 500),  # relative to functional group center
+		# 					'radius': 0.0,  # microns
+		# 					'name': 'PC1',
+		# 					'max_synapses': 5000  # maximum number of synapses per PC
+		# 				},
 						# {
 						# 	'center': (0, 900, -25),
-						# 	'radius': 10.0,
+						# 	'radius': 0.0,
 						# 	'name': 'PC2',
 						# 	'max_synapses': 10
 						# }
-					]
-				},
+					# ]
+				# },
 				# {
 				# 	'center': (0, 0, 0),
 				# 	'radius': 50.0,
 				# 	'presynaptic_cells': [
 				# 		{
 				# 			'center': (0, 0, 0),
-				# 			'radius': 10.0,
+				# 			'radius': 00.0,
 				# 			'name': 'PC3',
 				# 			'max_synapses': 10
 				# 		}
 				# 	]
 				# }
-			]
-		},
-		'trunk': {
-			'functional_groups': [
-				{
-					'center': (0, 0, 0),
-					'radius': 30.0,
-					'presynaptic_cells': [
-						{
-							'center': (0, 0, 0),
-							'radius': 10.0,
-							'name': 'PC4',
-							'max_synapses': 10
-						}
-					]
-				}
-			]
-		}
+		# 	]
+		# },
+		# 'trunk': {
+		# 	'functional_groups': [
+		# 		{
+		# 			'center': (0, 0, 0),
+		# 			'radius': 30.0,
+		# 			'presynaptic_cells': [
+		# 				{
+		# 					'center': (0, 0, 0),
+		# 					'radius': 10.0,
+		# 					'name': 'PC4',
+		# 					'max_synapses': 10
+		# 				}
+		# 			]
+		# 		}
+		# 	]
+		# }
 	})
 
 	inh_clustering: dict = field(default_factory=lambda: {
-		'perisomatic': {
-			'functional_groups': [
-				{
-					'center': (0, 0, 0),
-					'radius': 30.0,
-					'presynaptic_cells': [
-						{
-							'center': (0, 0, 0),
-							'radius': 5.0,
-							'name': 'PC1',
-							'max_synapses': 10
-						}
-					]
-				}
-			]
-		}
+		# 'perisomatic': {
+		# 	'functional_groups': [
+		# 		{
+		# 			'center': (0, 0, 0),
+		# 			'radius': 30.0,
+		# 			'presynaptic_cells': [
+		# 				{
+		# 					'center': (0, 0, 0),
+		# 					'radius': 5.0,
+		# 					'name': 'PC1',
+		# 					'max_synapses': 10
+		# 				}
+		# 			]
+		# 		}
+		# 	]
+		# }
 	})
 
 	# spike train seeding
