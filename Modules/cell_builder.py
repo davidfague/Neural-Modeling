@@ -1,3 +1,7 @@
+import sys 
+sys.path.append("../")
+sys.path.append("../Modules/")
+
 from enum import Enum
 import pickle
 import os
@@ -77,11 +81,14 @@ class CellBuilder:
 	templates_folder = "../cells/templates"
 	stylized_templates_folder = "../cells/stylized_morphologies"
 
-	def __init__(self, cell_type: SkeletonCell, parameters: SimulationParameters, logger: Logger) -> None:
+	def __init__(self, cell_type: SkeletonCell, parameters: SimulationParameters, logger: Logger=None) -> None:
 
 		self.cell_type = cell_type
 		self.parameters = parameters
-		self.logger = logger
+		if logger:
+			self.logger = logger
+		else:
+			self.logger = Logger(self.parameters.path)
 
 	def build_cell(self):
 		start_time = time.time()
