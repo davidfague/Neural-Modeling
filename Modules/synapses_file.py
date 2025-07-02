@@ -1,3 +1,4 @@
+from tokenize import group
 import pandas as pd
 import numpy as np
 from Modules.spike_generator import PoissonTrainGenerator
@@ -97,11 +98,12 @@ class PreSimSynapseGenerator:
                                                             [self.parameters.exc_use_density, self.parameters.inh_use_density],
                                                             [self.parameters.exc_syn_mod, self.parameters.inh_syn_mod],
                                                             [self.parameters.exc_syn_params_choices, self.parameters.inh_syn_params_choices]):
-            for sec_type, synapse_properties in syn_properties_set.items():
-                self.logger.log(f"Generating synapses for {sec_type.upper()} with properties: {synapse_properties}")
+            for input_source, synapse_properties in syn_properties_set.items():
+                sec_type = synapse_properties['sec_type']
+                self.logger.log(f"Generating synapses for {input_source.upper()} with properties: {synapse_properties}")
                 segments_to_generate_on = self.get_segments_of_type(sec_type, self.segments) # get segments
-                self.random_state = np.random.RandomState(self.parameters.inh_syn_properties[sec_type]['seed']['synapses'])
-                np.random.seed(self.parameters.inh_syn_properties[sec_type]['seed']['synapses'])
+                self.random_state = np.random.RandomState(synapse_properties['seed']['synapses'])
+                np.random.seed(synapse_properties['seed']['synapses'])
 
                 synapses_this_sec_type = self.build_synapses_with_specs(segments_to_generate_on = segments_to_generate_on,
                                         sec_type = sec_type,
@@ -113,17 +115,18 @@ class PreSimSynapseGenerator:
                                         release_probability_distribution = synapse_properties['release_probability_distribution'],
                                         syn_mod = syn_mod,
                                         syn_params_choices = syn_params_choices,
-                                        name = f"{synapse_properties['synapse_type']}_{sec_type}"
+                                        input_source = input_source,
+                                        name = f"{synapse_properties['synapse_type']}_{input_source}"
                                         )
                 self.synapses = pd.concat((self.synapses, synapses_this_sec_type), ignore_index=True)
         self.synapses = self.synapses.reset_index(drop=True) #@TODO: check if this is necessary and check self.synapses.
-
+        self.synapses.to_csv(os.path.join(self.sim_dir, "synapses.csv"), index=False)
     def get_segments_of_type(self, sec_type, segments):
         return segments[segments['sec_type_precise'] == sec_type]
     
     def build_synapses_with_specs(self, segments_to_generate_on: pd.DataFrame, sec_type: str, synapse_type: str, use_density: bool,
                                   syn_number: int, syn_density: float, initial_weight_distribution: dict,
-                                  release_probability_distribution: dict, name: str, syn_mod:str, syn_params_choices) -> pd.DataFrame:
+                                  release_probability_distribution: dict, name: str, syn_mod:str, input_source: str, syn_params_choices) -> pd.DataFrame:
         
         if initial_weight_distribution is None or release_probability_distribution is None:
             raise ValueError("Both gmax_dist_params and P_release_params must be provided.")
@@ -230,6 +233,7 @@ class PreSimSynapseGenerator:
                 if 'gbar' in k
             }
             row = {
+                'input_source': input_source,
                 'name': f"{name}_{_}",
                 'modfile': syn_mod,
                 'P_0': syn_params_this_syn["P_0"],
@@ -261,23 +265,60 @@ class PreSimSynapseGenerator:
         """
         Assigns each synapse to a functional group (FG) and presynaptic cell (PC).
         FG and PC labels are -1 for background/not assigned.
+
+        fg_labels and pc_labels initialized to -1 (background).
+
+        Loop Over All FGs in the Config:
+
+            For each functional group (fg):
+
+                matching_mask checks for synapses whose input_source matches the FG's input_source.
+
+                If none match, continue to next FG.
+
+                For matching synapses, check which are within the FG's spatial radius (in_fg_and_input).
+
+                Assign FG index to those synapses.
+
+                For each PC in the FG, repeat the spatial check and assign PC index.
         """
         fg_labels = -np.ones(len(synapses), dtype=int)
         pc_labels = -np.ones(len(synapses), dtype=int)
+        print("Assigning FGs for input_sources:", synapses['input_source'].unique())
         for fg_idx, fg in enumerate(clustering_config.get('functional_groups', [])):
+            print(f"FG {fg_idx} input_source: {fg.get('input_source')}")
+            # Only assign synapses where input_source matches
+            matching_mask = (synapses['input_source'].values == fg.get('input_source', None))
+            print(f"matching_mask: {matching_mask}, fg_idx: {fg_idx}, input_source: {fg.get('input_source', None)}")
+            if not np.any(matching_mask):
+                continue  # No synapses in this batch with this input_source
+            
             fg_center = np.array(fg['center'])
             fg_radius = fg['radius']
             distances_to_fg = np.linalg.norm(coords - fg_center, axis=1)
             in_fg = distances_to_fg <= fg_radius
-            fg_labels[in_fg] = fg_idx
+
+            # Only assign where both input_source AND spatial distance match
+            in_fg_and_input = in_fg & matching_mask
+            fg_labels[in_fg_and_input] = fg_idx
+
+            # Repeat for PCs
             for pc_idx, pc in enumerate(fg.get('presynaptic_cells', [])):
                 pc_center = np.array(pc['center'])
                 pc_radius = pc['radius']
                 distances_to_pc = np.linalg.norm(coords - pc_center, axis=1)
-                in_pc = (distances_to_pc <= pc_radius) & in_fg
+                in_pc = (distances_to_pc <= pc_radius) & in_fg_and_input
                 pc_labels[in_pc] = pc_idx
+
         synapses['functional_group'] = fg_labels
         synapses['presynaptic_cell'] = pc_labels
+
+        # Check if all synapses have been assigned to a functional group
+        fg_input_sources = set(fg.get('input_source', None) for fg in clustering_config.get('functional_groups', []))
+        syn_input_sources = set(synapses['input_source'].unique())
+        assert len(syn_input_sources) == 1, f"Expected only one input_source in this batch, got: {syn_input_sources} synapses: {synapses}"
+        assert syn_input_sources.issubset(fg_input_sources), f"Input source(s) in synapses {syn_input_sources} not present in clustering_config {fg_input_sources}"
+
         return synapses
 
     def generate_spike_trains_for_cell_assemblies(
@@ -285,7 +326,7 @@ class PreSimSynapseGenerator:
         synapses: pd.DataFrame,
         parameters,
         h_tstop: int,
-        sec_type: str,
+        input_source: str,
         synapse_type: str,
         random_state: np.random.RandomState,
         fg_traces_store=None,
@@ -307,7 +348,7 @@ class PreSimSynapseGenerator:
         if pc_spike_trains_store is None:
             pc_spike_trains_store = {}
 
-        props = getattr(parameters, f"{synapse_type}_syn_properties")[sec_type]
+        props = getattr(parameters, f"{synapse_type}_syn_properties")[input_source]
         spike_train_mode = props.get('spike_train_mode', 'standard')
         mean_fr_dist = partial(
             props['mean_firing_rate_distribution']['function'],
@@ -320,7 +361,7 @@ class PreSimSynapseGenerator:
                 f"spike_train_mode '{spike_train_mode}' is not implemented. Allowed: {sorted(allowed_modes)}"
             )
 
-        clustering_config = getattr(parameters, f"{synapse_type}_clustering", {}).get(sec_type, {})
+        clustering_config = getattr(parameters, f"{synapse_type}_clustering", {}).get(input_source, {})
         n_fg = len(clustering_config.get('functional_groups', []))
         delay_config = props.get('delay_config', {})
 
@@ -337,6 +378,8 @@ class PreSimSynapseGenerator:
             if ref_pc_id != 'all' and ref_pc_id is not None:
                 mask &= (all_synapses_full['presynaptic_cell'] == ref_pc_id)
             trains = all_synapses_full.loc[mask, 'spike_train'].tolist()
+            print(f"[delay mode] FG={fg_id}, sec_type={input_source}, n_trains={len(trains)}, ex: {[len(t) for t in trains[:3]]}")
+
 
             # out_trains = []
             # for train in trains:
@@ -392,7 +435,7 @@ class PreSimSynapseGenerator:
                 if shift is None:
                     raise ValueError("delay_shift must be specified in delay_config for 'delay' mode.")
                 ref_synapse_type = delay_config.get('ref_synapse_type', 'exc')
-                ref_sec_type = delay_config.get('ref_sec_type', sec_type)
+                ref_sec_type = delay_config.get('ref_sec_type', input_source)
                 ref_fg_id = delay_config.get('ref_fg_id', fg_id)
                 ref_pc_id = delay_config.get('ref_pc_id', None)
                 trains = collect_reference_spike_trains(
@@ -413,7 +456,7 @@ class PreSimSynapseGenerator:
             fg_trace = generate_fg_trace(fg_id=fg_id, fg=fg)
             if fg_trace is None or not isinstance(fg_trace, np.ndarray) or np.any(np.isnan(fg_trace)):
                 raise ValueError(f"fg_trace is not valid for FG {fg_id}, got: {fg_trace}")
-            fg_traces_store[(synapse_type, sec_type, fg_id)] = fg_trace
+            fg_traces_store[(synapse_type, input_source, fg_id)] = fg_trace
 
             pcs_in_fg = np.unique(synapses.loc[fg_mask, 'presynaptic_cell'])
             for pc_id in pcs_in_fg:
@@ -451,15 +494,19 @@ class PreSimSynapseGenerator:
                 for idx in synapses[pc_mask].index:
                     synapses.at[idx, 'spike_train'] = spike_train.spike_times
                     synapses.at[idx, 'pc_mean_firing_rate'] = mean_fr
-                pc_spike_trains_store[(synapse_type, sec_type, fg_id, pc_id)] = spike_train
+                pc_spike_trains_store[(synapse_type, input_source, fg_id, pc_id)] = spike_train
         return synapses, fg_traces_store, pc_spike_trains_store
 
     def generate_spike_trains_for_synapses(self):
         """
         Main entrypoint: assigns FG/PC and generates spike trains for all synapses.
         Ensures all excitatory spike trains are generated before any delayed inhibition.
+
+        Note: functional groups and presynaptic cells are assigned based on the synapse's input_source. The fg id and pc id are within input_source. (i.e. they reset between input_sources).
+        This means that different input_sources can have the same fg id and pc id, but they will not be the same functional group or presynaptic cell.
         """
         synapses = pd.read_csv(os.path.join(self.sim_dir, "synapses.csv"))
+        print(f"unique input sources in synapses before generating spikes: {synapses['input_source'].unique()}")
 
         segments = self.segments
         parameters = self.parameters
@@ -470,22 +517,46 @@ class PreSimSynapseGenerator:
             segments, on='seg_id', how='left', suffixes=('','_seg'))
         synapse_coords = synapses_with_seg_info[columns].values
 
+        # synapses['input_source'] = ''   # Initialize new column
+
         # Pass 1: Assign all FG/PCs for ALL synapses
-        all_fg_labels = np.full(len(synapses), -1, dtype=int)
-        all_pc_labels = np.full(len(synapses), -1, dtype=int)
+        all_fg_labels = np.full(len(synapses), -1, dtype=int) # default -1 for background/not assigned
+        all_pc_labels = np.full(len(synapses), -1, dtype=int) # default -1 for background/not assigned
+        print(f"Assigning functional groups and presynaptic cells for synapses")
         for synapse_type in ['exc', 'inh']:
-            properties_set = getattr(parameters, f"{synapse_type}_syn_properties")
-            for sec_type, props in properties_set.items():
-                syn_mask = (
+            properties_set = getattr(parameters, f"{synapse_type}_syn_properties") # get synapse property config for this type
+            clustering_dict = getattr(parameters, f"{synapse_type}_clustering", {}) # get synapse clustering config for this type
+            for input_source, props in properties_set.items(): # iterate over all input sources for this synapse type
+                sec_type = props['sec_type'] # get the section type for this input source
+                group = clustering_dict.get(input_source) or clustering_dict.get(sec_type, {}) # Find the group for this sec_type in the clustering config
+
+                matched_fgs = []
+                # Find the functional groups whose input_source matches the input_source, hanfle multiple functional groups per input_source
+                for fg in group.get('functional_groups', []):
+                    if fg['input_source'] == input_source:
+                        matched_fgs.append(fg)
+                if not matched_fgs:
+                    print(f"Warning: No FG found for synapse_type={synapse_type}, sec_type={sec_type}, input_source={input_source}")
+                    continue
+                syn_mask = ( # filter synapses for this synapse type and input source
                     synapses['name'].str.contains(synapse_type, na=False)
-                    & synapses['name'].str.contains(sec_type, na=False)
+                    & (synapses['input_source'] == input_source)
                 )
+                if syn_mask.sum() == 0:
+                    print(f"Warning: No synapses found for {synapse_type} {input_source} in synapses.csv. Skipping.")
+                    continue
                 coords_this_type = synapse_coords[syn_mask]
-                clustering_config = getattr(parameters, f"{synapse_type}_clustering", {}).get(sec_type, {})
-                assigned_synapses = self.assign_synapses_to_cell_assemblies(
-                    synapses.loc[syn_mask].copy(), coords_this_type, clustering_config)
+                # print(f"Assigning for {synapse_type}, sec_type={sec_type}, input_source={input_source}")
+                # print(f"Functional group input_source: {[fg['input_source'] for fg in matched_fgs]}")
+                # print(f"Synapses input_sources (unique): {synapses.loc[syn_mask, 'input_source'].unique()}")
+                # print(f"Number of synapses: {syn_mask.sum()}")
+                clustering_for_assignment = {'functional_groups': matched_fgs}
+                assigned_synapses = self.assign_synapses_to_cell_assemblies( # assign synapses to functional groups and presynaptic cells
+                    synapses.loc[syn_mask].copy(), coords_this_type, clustering_for_assignment
+                )
                 all_fg_labels[syn_mask] = assigned_synapses['functional_group'].values
                 all_pc_labels[syn_mask] = assigned_synapses['presynaptic_cell'].values
+                # synapses.loc[syn_mask, 'input_source'] = input_source # should already be set, but just in case
         synapses['functional_group'] = all_fg_labels
         synapses['presynaptic_cell'] = all_pc_labels
 
@@ -495,21 +566,22 @@ class PreSimSynapseGenerator:
         pc_spike_trains_store = {}
 
         # Pass 2: Generate spike trains for ALL non-delayed first
+        print("Generating spike trains for all non-delayed synapses")
         for synapse_type in ['exc', 'inh']:
             properties_set = getattr(parameters, f"{synapse_type}_syn_properties")
-            for sec_type, props in properties_set.items():
+            for input_source, props in properties_set.items():
                 spike_train_mode = props.get('spike_train_mode', 'standard')
                 if spike_train_mode == 'delay':
                     continue  # skip delayed for now
                 syn_mask = (
                     synapses['name'].str.contains(synapse_type, na=False)
-                    & synapses['name'].str.contains(sec_type, na=False)
+                    & synapses['name'].str.contains(input_source, na=False)
                 )
                 assigned_synapses = synapses.loc[syn_mask].copy()
                 seed = props['seed']['synapses']
                 random_state = np.random.RandomState(seed)
-                assigned_synapses, fg_traces_store, pc_spike_trains_store = self.generate_spike_trains_for_cell_assemblies(
-                    assigned_synapses, parameters, h_tstop, sec_type, synapse_type, random_state,
+                assigned_synapses, fg_traces_store, pc_spike_trains_store = self.generate_spike_trains_for_cell_assemblies( # generate spike trains for this synapse type and input source
+                    assigned_synapses, parameters, h_tstop, input_source, synapse_type, random_state,
                     fg_traces_store=fg_traces_store, pc_spike_trains_store=pc_spike_trains_store,
                     all_synapses_full=all_synapses_full)
                 for col in ['spike_train', 'pc_mean_firing_rate', 'functional_group', 'presynaptic_cell']:
@@ -519,16 +591,18 @@ class PreSimSynapseGenerator:
         all_synapses_full['spike_train'] = all_synapses_full['spike_train'].apply(deserialize_spike_train)
 
         # Pass 3: Now, generate spike trains for all delayed synapses
+        print("Generating spike trains for all delayed synapses")
         for synapse_type in ['exc', 'inh']:
             properties_set = getattr(parameters, f"{synapse_type}_syn_properties")
-            for sec_type, props in properties_set.items():
+            for input_source, props in properties_set.items():
                 spike_train_mode = props.get('spike_train_mode', 'standard')
                 if spike_train_mode != 'delay':
                     continue  # only do delayed in this pass
                 syn_mask = (
                     synapses['name'].str.contains(synapse_type, na=False)
-                    & synapses['name'].str.contains(sec_type, na=False)
+                    & (synapses['input_source'] == input_source)
                 )
+                print(f"Generating delayed spike trains for {synapse_type} {input_source} synapses, n={syn_mask.sum()}")
                 assigned_synapses = synapses.loc[syn_mask].copy()
                 seed = props['seed']['synapses']
                 random_state = np.random.RandomState(seed)
@@ -541,7 +615,8 @@ class PreSimSynapseGenerator:
                 all_synapses_full.loc[assigned_synapses.index, 'spike_train'] = assigned_synapses['spike_train']
 
         synapses['spike_train'] = synapses['spike_train'].apply(serialize_spike_train)
-        synapses.to_csv(os.path.join(self.sim_dir, "synapses.csv"), index=False)
+        self.synapses = synapses.reset_index(drop=True)  # reset index after all operations
+        self.synapses.to_csv(os.path.join(self.sim_dir, "synapses.csv"), index=False)
 
 
 
@@ -602,181 +677,3 @@ class PreSimSynapseGenerator:
         cell.synapses.extend(syn_list)
         logger.log("Finish synapses list in CellModel object")
         return cell
-
-#################### ADDITIONAL CODE FOR CLUSTERING THAT WAS WORK IN PROGRESS #####################
-
-
-
-#         # only consider synapses of this synapse type
-#         synapse_ids_to_consider = synapses[synapses['name'].str.contains(synapse_type)]
-
-# ## get cluster centers randomly
-# # # get the mean and std of the coordinates
-# # mean = np.mean(synapse_coords, axis=0)
-# # std = np.std(synapse_coords, axis=0)
-# # # get the range of the coordinates
-# # range = np.max(synapse_coords, axis=0) - np.min(synapse_coords, axis=0)
-# # # get 10 random cluster centers
-# # cluster_centers = np.random.uniform(low=mean - 3*std, high=mean + 3*std, size=(10, 3)) # TODO: check (can be outside of mins and max, leading to error.)
-# # cluster_centers = np.clip(cluster_centers, mean - 3*std, mean + 3*std)
-# # get 10 random cluster centers by choosing among segments.
-# cluster_centers = synapse_coords[random_state.choice(synapse_coords.shape[0], size=10, replace=False)]
-
-# ## get synapse_ids for each cluster within bounds
-# # get the coordinates of the synapses
-# synapse_coords = synapses_with_seg_info[columns].values
-
-# # use the distance of each synapse from the cluster center to determine if it belongs
-# cluster_indices_by_cluster = []
-# for cluster_center in cluster_centers:
-#     distances = np.linalg.norm(synapse_coords - cluster_center, axis=1)#cluster_center, axis=1)
-#     # get the indices of the synapses that are within 3 std of the cluster center
-#     cluster_indices = np.where(distances < 100)[0]
-#     # make sure the indices are unique across clusters
-#     cluster_indices = np.unique(cluster_indices)
-
-#     # right now cluster_indices tell the row of synapses_with_seg_info. Need to do the same, but
-#     # only consider for cluster_indices the segments 
-#     # of synapses_with_seg_info['sec_type_precise'] == sec_type
-#     cluster_indices = np.where(synapses_with_seg_info['sec_type_precise'] == sec_type)[0][cluster_indices] #TODO: CHECK
-
-#     # track for all clusters so we can deal with overlapping clusters
-#     cluster_indices_by_cluster.append(cluster_indices)
-
-# ## deal with overlapping clusters
-# from collections import defaultdict
-# # turn each cluster's indices into a mutable set
-# cluster_sets = [set(idxs) for idxs in cluster_indices_by_cluster]
-# # build a map from each synapse-index to the list of clusters it appears in
-# idx_to_clusters = defaultdict(list)
-# for cid, idxs in enumerate(cluster_sets):
-#     for idx in idxs:
-#         idx_to_clusters[idx].append(cid)
-# # (optional) for reproducibility
-# # np.random.seed(42)
-# # for any index in >1 cluster, choose one cluster to keep it
-# for idx, cids in idx_to_clusters.items():
-#     if len(cids) > 1:
-#         keep = np.random.choice(cids)
-#         for cid in cids:
-#             if cid != keep:
-#                 cluster_sets[cid].remove(idx)
-
-# # convert back to sorted numpy arrays (if you need arrays)
-# cluster_indices_by_cluster = [
-#     np.array(sorted(s)) for s in cluster_sets
-# ]
-
-# ## generate cluster spike trains
-# # get cluster centers
-# # get row indices that will be clustered for each cluster center (list of lists)
-# # make sure that row indices are unique across clusters
-# # generate spike trains for each cluster
-# from Modules.spike_generator import PoissonTrainGenerator
-# for cluster_indices in cluster_indices_by_cluster:
-#     # generate FR profile for this cluster
-#     firing_rates = PoissonTrainGenerator.generate_lambdas_from_pink_noise(
-#         num = parameters.h_tstop,
-#         random_state = random_state)
-    
-#     mean_fr = 
-
-#     # generate spike train for each synapse
-#     for synapse in synapses.iloc[cluster_indices]:
-#         firing_rates_shifted = PoissonTrainGenerator.shift_mean_of_lambdas(firing_rates, desired_mean=mean_fr) 
-#         spike_train = PoissonTrainGenerator.generate_spike_train(
-#             lambdas = firing_rates_shifted, 
-#             random_state = random_state)
-
-# ## generate background spike train
-# # get row indices that are not in clusters
-# # generate spike trains for these synapses
-
-
-
-################################ MORE #############
-
-
-# USE cell_builder.assign_spikes and presynaptic.py for reference code. 
-# @TODO: adapt presynaptic.py to use segments.csv instead of cell object. cell object is heavilty embedded in presynaptic.py module 
-
-# generate functional groups from params
-
-# generate presynaptic cells from functional groups and params
-
-# generate spike trains for presynaptic cells from params
-
-# load synapse locations from synapses csv
-
-# cluster synapse locations into presynaptic cells
-
-# assign synapses to presynaptic cells
-
-# save spike trains and synapse assignments as spike_trains.csv to simulation folder
-
-
-# #### new code for clusters ####
-
-# # generate 'background' for all. Then form clusters
-
-# def generate_new_spike_trains(synapses: pd.DataFrame, segments:pd.DataFrame)-> pd.DataFrame: # TODO: make functions and class. started this way then realized better to not.
-#     """
-#     Generate spike trains for each synapse in the synapses DataFrame.
-#     """
-#     synapses_with_seg_info = synapses.merge( # TODO: alternative could be used to save memory.
-#         segments, 
-#         on='seg_id', 
-#         how='left',               # carry along all synapses even if a seg_id is missing
-#         suffixes=('','_seg')      # e.g. if both have a 'length' column
-#     )
-
-#     ## generate cluster spike trains
-#     # get cluster center coordinates
-#     centers_coords = [get_cluster_center_coords(synapses_with_seg_info)]
-#     # get row indices that will be clustered for each cluster center (list of lists)
-#     # make sure that row indices are unique across clusters
-#     # generate spike trains for each cluster
-
-#     ## generate background spike train
-#     # get row indices that are not in clusters
-#     # generate spike trains for these synapses
-
-# def get_cluster_center_coords(synapses_with_seg_info: pd.DataFrame, num_centers:int = 10, columns:list = ['pc_0', 'pc_1', 'pc_2']) -> tuple:
-#     """
-#     Get the coordinates of the cluster center.
-#     randomly pick coordiates within 3 std the range of the coordinates of the synapses #TODO: update to pick branches
-#     """
-#     # get the coordinates of the synapses
-#     synapse_coords = synapses_with_seg_info[columns].values
-#     # get the mean and std of the coordinates
-#     mean = np.mean(synapse_coords, axis=0)
-#     std = np.std(synapse_coords, axis=0)
-#     # get the range of the coordinates
-#     range = np.max(synapse_coords, axis=0) - np.min(synapse_coords, axis=0)
-
-#     cluster_center = np.random.uniform(low=mean - 3*std, high=mean + 3*std, size=(num_centers,3))
-#     # make sure the cluster center is within the range of the coordinates
-#     cluster_center = np.clip(cluster_center, mean - 3*std, mean + 3*std)
-#     # return the coordinates of the cluster center
-#     return tuple(cluster_center)
-
-# def get_cluster_row_indices(synapses_with_seg_info: pd.DataFrame, cluster_center: tuple, columns:list = ['pc_0', 'pc_1', 'pc_2'])-> list:
-#     """
-#     Get the row indices of the cluster provided the center of the cluster
-#     """
-#     # get the coordinates of the synapses
-#     synapse_coords = synapses_with_seg_info[columns].values
-#     # get the distance of each synapse from the cluster center
-#     distances = np.linalg.norm(synapse_coords - cluster_center, axis=1)
-#     # get the indices of the synapses that are within 3 std of the cluster center
-#     cluster_indices = np.where(distances < 3*np.std(distances))[0]
-#     # make sure the indices are unique across clusters
-#     cluster_indices = np.unique(cluster_indices)
-#     # return the indices of the synapses in the cluster
-#     return cluster_indices.tolist()
-
-# def generate_background_spike_trains():
-#     pass
-
-# def generate_cluster_spike_trains():
-#     pass
