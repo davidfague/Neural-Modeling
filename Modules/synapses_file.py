@@ -302,13 +302,43 @@ class PreSimSynapseGenerator:
             in_fg_and_input = in_fg & matching_mask
             fg_labels[in_fg_and_input] = fg_idx
 
-            # Repeat for PCs
-            for pc_idx, pc in enumerate(fg.get('presynaptic_cells', [])):
-                pc_center = np.array(pc['center'])
-                pc_radius = pc['radius']
-                distances_to_pc = np.linalg.norm(coords - pc_center, axis=1)
-                in_pc = (distances_to_pc <= pc_radius) & in_fg_and_input
-                pc_labels[in_pc] = pc_idx
+            pcs_cfg = fg.get('presynaptic_cells')
+            if isinstance(pcs_cfg, dict) and pcs_cfg.get('mode') == 'dynamic':
+                max_syn_per_pc = pcs_cfg.get('max_synapses_per_pc')
+                if max_syn_per_pc is None:
+                    raise ValueError(f"max_synapses_per_pc must be specified for dynamic mode in FG {fg_idx}.")
+
+                idxs = np.where(in_fg_and_input)[0]
+                n_syn = len(idxs)
+                idxs = np.sort(idxs)
+                
+                pc_idx = 0
+                cur_idx = 0
+                while cur_idx < n_syn:
+                    # --- New block: allow int/float or dict for max_syn_per_pc ---
+                    this_max_syn = max_syn_per_pc
+                    if isinstance(max_syn_per_pc, dict) and 'dist' in max_syn_per_pc:
+                        # Sample a single value (make sure it's int and at least 1)
+                        this_max_syn = int(np.round(max_syn_per_pc['dist']()))
+                        if this_max_syn < 1:
+                            this_max_syn = 1
+                    # else, if just int or float, use as is
+                    
+                    start = cur_idx
+                    end = min(cur_idx + this_max_syn, n_syn)
+                    pc_indices = idxs[start:end]
+                    pc_labels[pc_indices] = pc_idx
+                    pc_idx += 1
+                    cur_idx = end
+                # Sanity check: all in this FG got assigned
+                assert np.all(pc_labels[idxs] != -1), f"Some synapses in FG {fg_idx} weren't assigned a PC!"
+            else: # assign pcs statically and specifically from config
+                for pc_idx, pc in enumerate(fg.get('presynaptic_cells', [])):
+                    pc_center = np.array(pc['center'])
+                    pc_radius = pc['radius']
+                    distances_to_pc = np.linalg.norm(coords - pc_center, axis=1)
+                    in_pc = (distances_to_pc <= pc_radius) & in_fg_and_input
+                    pc_labels[in_pc] = pc_idx
 
         synapses['functional_group'] = fg_labels
         synapses['presynaptic_cell'] = pc_labels
