@@ -58,37 +58,56 @@ def plot(seg_data, data_to_plot, ax, elevation=20, azimuth=-100, radius_scale=1.
         return cbar
     # cbar.set_label('Your Variable Label')
 
-def plot_special_segments(seg_data, special_indices, special_colors, title_suffix=""): # used in notebooks/plot_reduction_morph and notebooks/build_load_synapses TODO: combine with plot_segments.
+def plot_special_segments(seg_data, special_indices, special_colors, title_suffix=""):
+    # Coordinate selection
     if hasattr(seg_data, 'Coord X'):
         x_coord_name = 'Coord X'
         y_coord_name = 'Coord Y'
-    elif hasattr(seg_data, 'pc_0'): # pc for center, 0 for x
+    elif hasattr(seg_data, 'pc_0'):
         x_coord_name = 'pc_0'
         y_coord_name = 'pc_1'
     else:
-        NotImplementedError('seg_data does not have a valid x_coord_name')
+        raise NotImplementedError('seg_data does not have a valid x_coord_name')
 
+    # Segment ID attribute selection
     if hasattr(seg_data, 'segmentID'):
         seg_id_attr_name = 'segmentID'
+        use_index = False
     elif hasattr(seg_data, 'Unnamed: 0'):
         seg_id_attr_name = 'Unnamed: 0'
+        use_index = False
+    else:
+        # Use row index
+        seg_id_attr_name = None
+        use_index = True
 
-    # Calculate the axis limits
-    all_coords_x = seg_data[x_coord_name].tolist()
-    all_coords_y = seg_data[y_coord_name].tolist()
-    x_min, x_max = min(all_coords_x), max(all_coords_x)
-    y_min, y_max = min(all_coords_y), max(all_coords_y)
-
+    # Plot all segments
     plt.figure()
     plt.scatter(seg_data[x_coord_name], seg_data[y_coord_name], s=0.1)
+
     for j, ind in enumerate(special_indices):
-        plt.plot(seg_data.loc[getattr(seg_data, seg_id_attr_name).isin([ind]), x_coord_name], 
-                    seg_data.loc[getattr(seg_data, seg_id_attr_name).isin([ind]), y_coord_name], special_colors[j])
-    
+        if not use_index:
+            # Select rows where seg_id_attr_name == ind
+            mask = getattr(seg_data, seg_id_attr_name).isin([ind])
+            plt.plot(
+                seg_data.loc[mask, x_coord_name],
+                seg_data.loc[mask, y_coord_name],
+                special_colors[j]
+            )
+        else:
+            # Select by row index
+            # Works if seg_data.index is the default RangeIndex or otherwise matches your input
+            plt.plot(
+                [seg_data.loc[ind, x_coord_name]],
+                [seg_data.loc[ind, y_coord_name]],
+                special_colors[j]
+            )
+
     plt.title(f"Segments {title_suffix}")
-    plt.xlim(x_min, x_max)
-    plt.ylim(y_min, y_max)
+    plt.xlim(seg_data[x_coord_name].min(), seg_data[x_coord_name].max())
+    plt.ylim(seg_data[y_coord_name].min(), seg_data[y_coord_name].max())
     plt.show()
+
 
 def plot_segments(seg_data, special_indices, special_colors, title_suffix="", save_file=None, show=False, ax=None, elevation=0, azimuth=-100, radius_scale=1.0): # from notebooks/plot_voltages.ipynb TODO: combine with plot_special_segments.
     # Calculate the axis limits

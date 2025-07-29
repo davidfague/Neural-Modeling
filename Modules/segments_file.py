@@ -101,7 +101,7 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
     logger.log("Saved segments data to segment_data.csv")
 
     ### new version @TODO: finish this implementation for adding the new sec_types to segments.csv
-    sec_types_to_get = np.unique([sec_type for syn_properties in [parameters.exc_syn_properties, parameters.inh_syn_properties] for sec_type in syn_properties.keys()])
+    sec_types_to_get = np.unique([props['sec_type'] for syn_properties in [parameters.exc_syn_properties, parameters.inh_syn_properties] for input_source, props in syn_properties.items()])
     print(f"getting segments of types: {sec_types_to_get} for synapses")
     # These are the types the method handles currently:
     # sec_types_to_get = [

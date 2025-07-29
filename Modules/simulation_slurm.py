@@ -15,6 +15,14 @@ import time
 from collections.abc import Callable, Iterable
 from typing import Mapping, Union
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
+def process_single_sim(args):
+    sim_dir, fns = args
+    results = []
+    for fn in fns:
+        results.append(fn(sim_dir=sim_dir))
+    return results
+
 class Simulator:
 
     def __init__(self, sim_set_title: str, sim_titles: list, parameter_sets: list):
@@ -74,14 +82,34 @@ class Simulator:
             if not os.path.isdir(sim_dir):
                 continue
 
-            # load parameters
-            with open(os.path.join(sim_dir, "parameters.pickle"), "rb") as f:
-                parameters = pickle.load(f)
+            # # load parameters
+            # with open(os.path.join(sim_dir, "parameters.pickle"), "rb") as f:
+            #     parameters = pickle.load(f)
 
-            logger = Logger(sim_dir) # create per‑sim logger (write info into "sims_dir/sim_dir/log.txt")
+            # logger = Logger(sim_dir) # create per‑sim logger (write info into "sims_dir/sim_dir/log.txt")
 
             for fn in fns :# run each processing function
-                fn(sim_dir=sim_dir, parameters=parameters, logger=logger)
+                fn(sim_dir=sim_dir)
+
+    def run_on_all_sims_parallel(self, sims_dir, process_fns, max_workers=None):
+        if callable(process_fns):
+            fns = [process_fns]
+        else:
+            fns = list(process_fns)
+
+        sim_dirs = [
+            os.path.join(sims_dir, entry)
+            for entry in os.listdir(sims_dir)
+            if os.path.isdir(os.path.join(sims_dir, entry))
+        ]
+
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(process_single_sim, (sim_dir, fns)) for sim_dir in sim_dirs]
+            for future in as_completed(futures):
+                try:
+                    _ = future.result() # optionally collect results
+                except Exception as exc:
+                    print(f"Exception during processing: {exc}")
 
 class Simulation:
 

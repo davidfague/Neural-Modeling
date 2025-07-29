@@ -1,0 +1,14 @@
+(2025-07-01 10:10:43.995435)-[PID: 1404849]–[INFO]: Building SkeletonCell.Hay.
+(2025-07-01 10:10:44.265499)-[PID: 1404849]–[INFO]: CellModel: changed soma nseg from 5 to 1.
+(2025-07-01 10:10:44.265916)-[PID: 1404849]–[INFO]: Setting nseg by length.
+(2025-07-01 10:10:44.266393)-[PID: 1404849]–[INFO]: Total number of segments: 2630
+(2025-07-01 10:10:44.266449)-[PID: 1404849]–[INFO]: Total number of synapses after merging: 0
+(2025-07-01 10:10:44.269630)-[PID: 1404849]–[INFO]: Finished creating a CellModel object.
+(2025-07-01 10:10:44.269685)-[PID: 1404849]–[INFO]: Finish building in 0.2745671272277832
+(2025-07-01 10:16:19.294672)-[PID: 1405273]–[INFO]: Building SkeletonCell.Hay.
+(2025-07-01 10:16:19.564912)-[PID: 1405273]–[INFO]: CellModel: changed soma nseg from 5 to 1.
+(2025-07-01 10:16:19.565206)-[PID: 1405273]–[INFO]: Setting nseg by length.
+(2025-07-01 10:16:19.565691)-[PID: 1405273]–[INFO]: Total number of segments: 2630
+(2025-07-01 10:16:19.565746)-[PID: 1405273]–[INFO]: Total number of synapses after merging: 0
+(2025-07-01 10:16:19.568978)-[PID: 1405273]–[INFO]: Finished creating a CellModel object.
+(2025-07-01 10:16:19.569034)-[PID: 1405273]–[INFO]: Finish building in 0.2747011184692383

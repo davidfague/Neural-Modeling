@@ -82,36 +82,37 @@ select_parameters_to_vary = {
          'nested_keys': ['tuft.syn_density', 'oblique.syn_density', 'nexus.syn_density', 'trunk.syn_density', 'distal_basal.syn_density', 'perisomatic.syn_density'], # give the key to extract the value for simulation naming purposes
          'always_include_suffix': True
     },
-    'exc_syn_properties': {
+    'exc_syn_properties': { # NOTE keys will need to be updated.. ex. "tuft_{local|distant}"
          'values': [ # copy default and override the nested value:
             { **default_exc_syn_properties, 
-                # detailed 1.5% rhyth
-                # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 },
-                # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
-                # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
-                # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
-                # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601}
-
-                # # reduced 1.5% rhyth
-                # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 }, # 60% decrease for detailed
-                # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
-                # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
-                # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
-                # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5} # half for reduced
-
-                # # decreased mean fr stds. # Complex
-                'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 /0.5/0.45}, # 60% decrease for detailed
-                'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 /0.05},
-                'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 /0.25},
-                'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5/0.5/0.3},
-                'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5/0.5/0.601}
-
-                                # # decreased mean fr stds. # reduced
-                # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 }, # 60% decrease for detailed
+                # # detailed 1.5% rhyth
+                # # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 },
                 # # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
-                # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
-                # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
-                # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5*0.95} # 0.9x for reduced
+                # # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
+                # # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
+                # # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601}
+
+                # # # reduced 1.5% rhyth
+                # # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 }, # 60% decrease for detailed
+                # # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
+                # # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
+                # # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
+                # # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5} # half for reduced
+
+                # NOTE THIS WAS BEING USED.
+                # # decreased mean fr stds. # Complex
+                # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 /0.5/0.45}, # 60% decrease for detailed
+                # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 /0.05},
+                # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 /0.25},
+                # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5/0.5/0.3},
+                # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5/0.5/0.601}
+
+                #                 # # decreased mean fr stds. # reduced
+                # # 'tuft': { **default_exc_syn_properties['tuft'], 'syn_density': 2.16*0.45*0.5 }, # 60% decrease for detailed
+                # # # 'oblique': { **default_exc_syn_properties['oblique'],'syn_density': 2.16*0.3*0.5},
+                # # 'nexus': { **default_exc_syn_properties['nexus'],'syn_density': 2.16*0.05 },
+                # # 'trunk': { **default_exc_syn_properties['trunk'],'syn_density':2.16*0.25 },
+                # # 'distal_basal': { **default_exc_syn_properties['distal_basal'],'syn_density':2.16*0.601*0.5*0.95} # 0.9x for reduced
             },
          ],
          'sim_name_suffix': 'ExcTuftDensity',
@@ -182,7 +183,7 @@ select_parameters_to_vary = {
 # Simulation type parameters
 sim_type_params_all = {
     'sta': {  # in vivo simulation with recording currents/conductances
-        'h_tstop': 5000,
+        'h_tstop': 10000,
         'merge_synapses': False,
         'record_ecp': False,
         'record_all_channels': True,
@@ -191,12 +192,14 @@ sim_type_params_all = {
         # 'record_synapse_distributions': True 
     },
     'fi_ci': {  # FR/I - ramp current injection
-        'h_tstop': 5000,
+        'h_tstop': 30000,
         'save_every_ms': 5000,
         'all_synapses_off': False,
         'CI_on': True,
         'h_i_duration': 4950,
         'h_i_delay': 50,
+        'record_all_channels': True,
+        'record_all_synapses': True,
     },
     'fi_exc': {  # FR/I - ramps excitatory firing rates
         'h_tstop': 5000,
@@ -327,6 +330,8 @@ def get_index_matched_parameter_combinations(param_dict):
     that nested value is used to generate the suffix.
     """
     keys = list(param_dict.keys())
+    if not keys:  # handle empty params dict
+        return [{}]
     max_len = max(len(param_dict[k]['values']) for k in keys)
     
     # Validate: all lists with len > 1 must have the same length.
@@ -452,7 +457,7 @@ def generate_simulations(neuron_random_states, numpy_random_states, select_param
                         for varied in varied_params_list:
                             # If the simulation uses current injection, iterate over amplitudes.
                             if 'CI_on' in common_params and common_params['CI_on']:
-                                for amp in np.arange(0, 2.1, 0.5):
+                                for amp in np.arange(-0.5, 2.1, 0.5):
                                     param_obj = create_parameters(numpy_seed, neuron_seed, common_params,
                                                                   morphology_params, syn_reduction_params,
                                                                   ci_replacement_params, varied, amp=amp)

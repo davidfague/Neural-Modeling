@@ -37,7 +37,8 @@ class SynapseAnalyzer:
                           synapse_types: Optional[List[str]] = None,
                           functional_groups: Optional[List[int]] = None,
                           figsize: Tuple[int, int] = (12, 8),
-                          save_path: Optional[str] = None):
+                          save_path: Optional[str] = None,
+                          title: Optional[str] = "Spike Raster Plot"):
         """
         Generate a spike raster plot for the synapses (optionally user-provided).
         """
@@ -59,19 +60,11 @@ class SynapseAnalyzer:
             plt.plot(spikes, [plot_idx] * len(spikes), 'k.', markersize=1)
         plt.xlabel('Time (ms)')
         plt.ylabel('Synapse')
-        plt.title('Spike Raster Plot')
+        plt.title(title)
         plt.ylim(-1, len(filtered_synapses))
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
         plt.show()
-
-    def get_shaded_color(base_rgb, pc_idx, n_pcs):
-        """Return a lighter or darker shade for pc_idx out of n_pcs based on the base_rgb."""
-        # Convert to HLS, vary lightness
-        h, l, s = colorsys.rgb_to_hls(*base_rgb)
-        # Lightness scale between 0.4 and 0.8
-        l_new = 0.4 + 0.4 * (pc_idx / max(n_pcs-1, 1))
-        return colorsys.hls_to_rgb(h, l_new, s)
 
     def plot_spike_raster_fgpc_legend(
         synapses, 
@@ -82,6 +75,13 @@ class SynapseAnalyzer:
         show_y_labels=True,
         legend_loc='upper right'
     ):
+        def get_shaded_color(base_rgb, pc_idx, n_pcs):
+            """Return a lighter or darker shade for pc_idx out of n_pcs based on the base_rgb."""
+            # Convert to HLS, vary lightness
+            h, l, s = colorsys.rgb_to_hls(*base_rgb)
+            # Lightness scale between 0.4 and 0.8
+            l_new = 0.4 + 0.4 * (pc_idx / max(n_pcs-1, 1))
+            return colorsys.hls_to_rgb(h, l_new, s)
         synapses_sorted = synapses.sort_values(['functional_group', 'presynaptic_cell'])
         synapses_sorted = synapses_sorted.reset_index(drop=True)
 
@@ -107,7 +107,13 @@ class SynapseAnalyzer:
         yticklabels = []
         yticks = []
 
+        # force the number of y-ticks to be a clean number
+        n_ticks = 15  # or whatever looks clean
+        yticks = np.linspace(1, len(synapses_sorted), n_ticks, dtype=int)
+        yticklabels = [f"FG{int(synapses_sorted.iloc[i-1]['functional_group'])}_PC{int(synapses_sorted.iloc[i-1]['presynaptic_cell'])}" for i in yticks]
+
         for idx, row in synapses_sorted.iterrows():
+
             # Robust spike train parsing
             spikes = row['spike_train']
             if isinstance(spikes, str):
@@ -129,9 +135,9 @@ class SynapseAnalyzer:
             # Only keep first seen row for legend
             if key not in legend_labels:
                 legend_labels[key] = color
-            if show_y_labels and (idx % yticklabel_stride) == 0:
-                yticklabels.append(key)
-                yticks.append(idx + 1)
+            # if show_y_labels and (idx % yticklabel_stride) == 0:
+                # yticklabels.append(key)
+                # yticks.append(idx + 1)
 
         fig, ax = plt.subplots(figsize=figsize)
         if segments:
@@ -210,6 +216,7 @@ class SynapseAnalyzer:
         }
         
         # Calculate spike train statistics
+        print(f"filtered_synapses['spike_train'].values: {filtered_synapses['spike_train'].values}")
         all_spikes = np.concatenate(filtered_synapses['spike_train'].values)
         if len(all_spikes) > 0:
             stats_dict.update({

@@ -39,11 +39,13 @@ if __name__ == "__main__":
 
     pool = Pool(processes = 6)
 
-    sims_dir = '/home/drfrbc/Neural-Modeling/simulations/2025-06-13-12-26-pink_and_delay_no_clustering_fi' # folder containing simulation folders
+    sims_dir = '/home/drfrbc/Neural-Modeling/simulations/2025-07-25-11-45-all_inh_rhythmic_depth_sweep_lower' # folder containing simulation folders
+
+    print(f'Running simulations in {sims_dir}')
 
     sim_dirs = [os.path.join(sims_dir, sim_dir) for sim_dir in os.listdir(sims_dir)] # every directory in sims_dir
 
-    print(sim_dirs)
+    print(f'Running simulations: {sim_dirs}')
 
     pool.map_async(_run, sim_dirs)
     pool.close()

@@ -34,7 +34,7 @@ class DataReader:
         data = []
         for step in steps:
             with h5py.File(os.path.join(sim_folder, f"saved_at_step_{step}", sim_file_name + ".h5"), 'r') as file:
-                retrieved_data = np.array(file["data"])
+                retrieved_data = np.array(file["data"], dtype=np.float32)
 
                 # Spikes
                 if len(retrieved_data.shape) == 1:
@@ -45,7 +45,8 @@ class DataReader:
                     # Neuron saves traces inconsistently; sometimes the trace length is (t) and sometimes it is (t+1)
                     # Thus, cut the trace at parameters.save_every_ms
                     data.append(retrieved_data[:, :])#parameters.save_every_ms*parameters.record_every_time_steps])
-        data = np.concatenate(data, axis = 1)
+        data = np.concatenate(data, axis=1).astype(np.float32)
+
 
         return data
 

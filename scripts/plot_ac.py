@@ -453,7 +453,7 @@ def analyze_currents(sim_directory):
 	# nexus_seg_index, basal_seg_index, axon_seg_index, tuft_seg_index = seg_indexes["nexus"], seg_indexes["basal"], seg_indexes["axon"], seg_indexes["tuft"]
   
   
-    nexus_seg_inde
+
 	nexus_segs = [sm.segments[nexus_seg_index]]
 	basal_segs = [sm.segments[basal_seg_index]]
 	axon_segs = [sm.segments[axon_seg_index]]

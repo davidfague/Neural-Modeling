@@ -140,7 +140,7 @@ class SimulationParameters:
 			},
 		'trunk_distant': {
 			'sec_type': 'trunk',
-			'syn_density': 2.16*0.25*0.25, #'syn_number': 26112/8, 
+			'syn_density': 2.16*0.3*0.25, #'syn_number': 26112/8, 
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
 			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
@@ -152,7 +152,7 @@ class SimulationParameters:
 			},
 		'trunk_local_L5': {
 			'sec_type': 'trunk',
-			'syn_density': 2.16*0.25*0.75*0.8, # decrease to 25% to encourage activity propagation through instead of spontaneous activity within. 75% are local and 4/5 local are L5#'syn_number': 26112/8,
+			'syn_density': 2.16*0.3*0.75*0.8, # decrease to 25% to encourage activity propagation through instead of spontaneous activity within. 75% are local and 4/5 local are L5#'syn_number': 26112/8,
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
 			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
@@ -164,7 +164,7 @@ class SimulationParameters:
 			},
 		'trunk_local_L23': {
 			'sec_type': 'trunk',
-			'syn_density': 2.16*0.25*0.75*0.2, # decrease to 25% to encourage activity propagation through instead of spontaneous activity within. 75% are local and 1/5 local are L23# #'syn_number': 26112/8, 
+			'syn_density': 2.16*0.3*0.75*0.2, # decrease to 25% to encourage activity propagation through instead of spontaneous activity within. 75% are local and 1/5 local are L23# #'syn_number': 26112/8, 
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
 			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
@@ -176,7 +176,7 @@ class SimulationParameters:
 			},
 		'oblique_distant': {
 			'sec_type': 'oblique',
-			'syn_density': 2.16*0.3*0.35, #decrease to 0.3 to reduce spontaneous activity and focus on propagation from nexus. 35% are distant #'syn_number': 26112/8,
+			'syn_density': 2.16*0.6*0.35, #decrease to 0.3 to reduce spontaneous activity and focus on propagation from nexus. 35% are distant #'syn_number': 26112/8,
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
 			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
@@ -188,7 +188,7 @@ class SimulationParameters:
 			},
 		'oblique_local_L23': {
 			'sec_type': 'oblique',
-			'syn_density': 2.16*0.3*0.65*0.25, #decrease to 0.3 to reduce spontaneous activity and focus on propagation from nexus. 65% are local and 1/4 local are L23 #'syn_number': 26112/8,
+			'syn_density': 2.16*0.6*0.65*0.25, #decrease to 0.3 to reduce spontaneous activity and focus on propagation from nexus. 65% are local and 1/4 local are L23 #'syn_number': 26112/8,
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
 			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
@@ -200,7 +200,7 @@ class SimulationParameters:
 			},
 		'oblique_local_L5': {
 			'sec_type': 'oblique',
-			'syn_density': 2.16*0.3*0.65*0.75, #decrease to 0.3 to reduce spontaneous activity and focus on propagation from nexus. 35% are local and 3/4 local are L5 #'syn_number': 26112/8,
+			'syn_density': 2.16*0.6*0.65*0.75, #decrease to 0.3 to reduce spontaneous activity and focus on propagation from nexus. 35% are local and 3/4 local are L5 #'syn_number': 26112/8,
 			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
 			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
@@ -247,6 +247,7 @@ class SimulationParameters:
 			'fr_shift': 0 # shift the mean firing rate by this amount.
 			},
 	})
+		# input rhythmic modulation # default modulation_depth = 0 (currently only implemented for inhibitory)
 	# NOTE: [trunk, oblique, tuft] fields can be replaced with ['distal_apic'] if desired (Not recommended without checking CellModel.get_segments_of_type, etc first.)
 	# NOTE: gmax WAS clipped to (0,10*mean); no scalar implemented.
 	inh_syn_properties: dict = field(default_factory=lambda: {
@@ -259,7 +260,9 @@ class SimulationParameters:
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 11111111},
 			'synapse_type': 'inh',
-			'spike_train_mode': 'delay',
+			'spike_train_mode': ['delay','rhythmic'],#'delay',
+			'rhythmic_frequency': 16, # frequency of rhythmic modulation (hz)
+			'rhythmic_depth': 0.15, # firing rate timecourse amplitude = depth * mean.
 			'delay_config': {
 				'ref_synapse_type': 'exc',
 				'ref_sec_type': 'all',    # which sec_type in exc to delay
@@ -277,7 +280,9 @@ class SimulationParameters:
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 22222222},
 			'synapse_type': 'inh',
-			'spike_train_mode': 'delay',
+			'spike_train_mode': ['delay','rhythmic'],#'delay',
+			'rhythmic_frequency': 16, # frequency of rhythmic modulation (hz)
+			'rhythmic_depth': 0.15, # firing rate timecourse amplitude = depth * mean.
 			'delay_config': {
 				'ref_synapse_type': 'exc',
 				'ref_sec_type': 'all',    # which sec_type in exc to delay
@@ -295,7 +300,9 @@ class SimulationParameters:
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 88888888},
 			'synapse_type': 'inh',
-			'spike_train_mode': 'delay',
+			'spike_train_mode': ['delay','rhythmic'],#'delay',
+			'rhythmic_frequency': 16, # frequency of rhythmic modulation (hz)
+			'rhythmic_depth': 0.15, # firing rate timecourse amplitude = depth * mean.
 			'delay_config': {
 				'ref_synapse_type': 'exc',
 				'ref_sec_type': 'all',    # which sec_type in exc to delay
@@ -313,7 +320,9 @@ class SimulationParameters:
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 99999999},
 			'synapse_type': 'inh',
-			'spike_train_mode': 'delay',
+			'spike_train_mode':  ['delay','rhythmic'],#'delay',
+			'rhythmic_frequency': 16, # frequency of rhythmic modulation (hz)
+			'rhythmic_depth': 0.15, # firing rate timecourse amplitude = depth * mean.
 			'delay_config': {
 				'ref_synapse_type': 'exc',
 				'ref_sec_type': 'all',    # which sec_type in exc to delay
@@ -331,7 +340,9 @@ class SimulationParameters:
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 111333311},
 			'synapse_type': 'inh',
-			'spike_train_mode': 'delay',
+			'spike_train_mode': ['delay', 'rhythmic'],
+			'rhythmic_frequency': 16, # frequency of rhythmic modulation (hz)
+			'rhythmic_depth': 0.15, # firing rate timecourse amplitude = depth * mean.
 			'delay_config': {
 				'ref_synapse_type': 'exc',
 				'ref_sec_type': 'all',    # which sec_type in exc to delay
@@ -342,14 +353,16 @@ class SimulationParameters:
 			},
 		'perisomatic': {
 			'sec_type':'perisomatic',
-			'syn_density': 0.22*1.125, 'syn_number': 3066,
+			'syn_density': 0.22*1.15, #'syn_number': 3066,
 			# 'gmax_params': {'mean': 4.6, 'std':  0.175*.5},
 			'initial_weight_distribution': {'params': {'mean': 4.6/4, 'std':  0.175*.5, 'clip': [0,5]}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.88, 'std': 0.05}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 777777777},
 			'synapse_type': 'inh',
-			'spike_train_mode': 'delay',
+			'spike_train_mode': ['delay', 'rhythmic'],
+			'rhythmic_frequency': 64, # frequency of rhythmic modulation (hz)
+			'rhythmic_depth': 0.15, # firing rate timecourse amplitude = depth * mean.
 			'delay_config': {
 				'ref_synapse_type': 'exc',
 				'ref_sec_type': 'all',    # which sec_type in exc to delay
@@ -448,8 +461,8 @@ class SimulationParameters:
 
 	# Firing rate distributions
 	use_levy_dist_for_exc: bool = True
-	inh_proximal_mean_fr: float = 16.9
-	inh_proximal_std_fr: float = 14.3 *0.25
+	inh_proximal_mean_fr: float = 16.9 # 9.75#10
+	inh_proximal_std_fr: float = 14.3 *0.25 # 4
 	inh_distal_mean_fr: float = 3.9
 	inh_distal_std_fr: float = 4.9*0.25
 	exc_mean_fr: float = 4.43#6.7967 #4.43
@@ -569,7 +582,8 @@ class SimulationParameters:
 		if self.use_levy_dist_for_exc:
 			for input_source, syn_props in self.exc_syn_properties.items():
 				if 'L5' in input_source: # different mean FRs for L5 PNs
-					levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*0.25*2.5*1.5, 'scale': 0.44} # baseline activity (1-3 Hz. 2.2 Hz mean mean firing rate)
+					levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*0.25*2.5, #*1.5,
+					'scale': 0.44} # baseline activity (1-3 Hz. 2.2 Hz mean mean firing rate)
 					# levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*2, 'scale': 0.44}  # task activity (5-20 Hz. 11.5 Hz mean mean firing rate std 7.5 Hz exponential.)
 				elif 'L23' in input_source: # different mean FRs for L23 PNs
 					levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*0.1*1.5*1.5, 'scale': 0.44}# baseline activity (0.5-2Hz. ~1.2 Hz mean mean firing rate) (actually mean of 1.8 couldn't get to go lower.)

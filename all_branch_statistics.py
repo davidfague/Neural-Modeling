@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path.append('Modules')  # Ensure the Modules directory is in the path
 import pandas as pd
 import numpy as np
 from Modules.segments_file import generate_segments_csv
@@ -48,7 +50,7 @@ def get_branch_statistics_by_section_type(sim_dir, parameters):
             # Calculate statistics for each branch
             for branch_name, segs in branch_segments.items():
                 # Calculate total length
-                total_length = sum(seg.L for seg in segs)
+                total_length = sum(seg.sec.L/seg.sec.nseg for seg in segs)
                 
                 # Calculate center coordinates
                 coords = np.array([seg.coords for seg in segs])
@@ -74,7 +76,7 @@ if __name__ == "__main__":
         "test",
         all_synapses_off=True,
         exc_clustering={},
-        skeleton_cell_type="L5PCtemplate"
+        skeleton_cell_type="Hay"
     )
     
     # Get statistics

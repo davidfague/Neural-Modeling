@@ -101,7 +101,7 @@ class PoissonTrainGenerator:
 		white_noise = random_state.normal(loc = mean, scale = std, size = num_obs + 2000)
 
 		# Apply the FIR/IIR filter to create the 1/f noise, minmax and shift to bounds
-		fr_profile = minmax(lfilter(B, A, white_noise)[2000:])# * (bounds[1] - bounds[0]) + bounds[0]
+		fr_profile = minmax(lfilter(B, A, white_noise)[2000:]) #* (bounds[1] - bounds[0]) + bounds[0]
 
 		return fr_profile
 	
@@ -192,7 +192,7 @@ class PoissonTrainGenerator:
 	@staticmethod
 	def rhythmic_modulation(lambdas: np.ndarray, frequency: float, depth_of_mod: float, delta_t: float):
 		'''mod_trace = mean_fr * (1 + depth_of_mod * np.sin((2 * np.pi * f * t ) + P))
-		assynes that delta_t in ms, frequency in hz.'''
+		assumes that delta_t in ms, frequency in hz.'''
 		assert 0<=depth_of_mod<=1
 		assert frequency > 0
 		assert delta_t > 0
