@@ -212,7 +212,7 @@ class SimulationParameters:
 			},
 		'distal_basal_local_L5': {
 			'sec_type': 'distal_basal',
-			'syn_density': 2.16*0.9*0.9*0.9, # decrease to 0.9 to control soma firing rate. 90% are local, 90% of local are L5 #'syn_number': 26112,
+			'syn_density': 2.16*0.9*0.9, # decrease to 0.9 to control soma firing rate. 90% are local, 90% of local are L5 #'syn_number': 26112,
 			# 'gmax_params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1},
 			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
@@ -224,7 +224,7 @@ class SimulationParameters:
 			},
 		'distal_basal_local_L23': {
 			'sec_type': 'distal_basal',
-			'syn_density': 2.16*0.9*0.9*0.1, # decrease to 0.9 to control soma firing rate. 90% are local, 10% of local are L23 #'syn_number': 26112,
+			'syn_density': 2.16*0.9*0.1, # decrease to 0.9 to control soma firing rate. 90% are local, 10% of local are L23 #'syn_number': 26112,
 			# 'gmax_params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1},
 			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
@@ -236,7 +236,7 @@ class SimulationParameters:
 			},
 		'distal_basal_distant': {
 			'sec_type': 'distal_basal',
-			'syn_density': 2.16*0.9*0.10, # decrease to 0.9 to control soma firing rate. 10% are distant #'syn_number': 26112,
+			'syn_density': 2.16*0.10, # decrease to 0.9 to control soma firing rate. 10% are distant #'syn_number': 26112,
 			# 'gmax_params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1},
 			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
@@ -275,7 +275,7 @@ class SimulationParameters:
 			'sec_type': 'nexus',
 			'syn_density': 0.22*1.5, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 1.87*10/10, 'std': 0.08474},#0.08474*0.2*0.66*0.1},
-			'initial_weight_distribution': {'params': {'mean': 1.87*10/10, 'std': 0.08474, 'clip': [0,5]}},#0.08474*0.2*0.66*0.1},
+			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#0.08474*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 22222222},
@@ -315,7 +315,7 @@ class SimulationParameters:
 			'sec_type': 'oblique',
 			'syn_density': 0.22, 'syn_number': 3066,
 			# 'gmax_params': {'mean': 1.87*4/4, 'std': 0.08474},#*0.2*0.66*0.1},
-			'initial_weight_distribution': {'params': {'mean': 1.87*4/4, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},
+			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 99999999},
@@ -353,7 +353,7 @@ class SimulationParameters:
 			},
 		'perisomatic': {
 			'sec_type':'perisomatic',
-			'syn_density': 0.22*1.15, #'syn_number': 3066,
+			'syn_density': 0.22,#*1.15, #'syn_number': 3066,
 			# 'gmax_params': {'mean': 4.6, 'std':  0.175*.5},
 			'initial_weight_distribution': {'params': {'mean': 4.6/4, 'std':  0.175*.5, 'clip': [0,5]}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.88, 'std': 0.05}},
