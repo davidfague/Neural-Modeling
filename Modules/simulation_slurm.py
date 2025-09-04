@@ -16,13 +16,56 @@ from collections.abc import Callable, Iterable
 from typing import Mapping, Union
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
-def process_single_sim(args):
-    sim_dir, fns = args
+def _apply_fns(sim_dir, fns, fns_args=None):
+    """
+    Internal: run each fn in `fns` on sim_dir, passing optional per-fn args.
+    See run_on_all_sims_parallel docstring for accepted fns_args formats.
+    """
     results = []
-    for fn in fns:
-        results.append(fn(sim_dir=sim_dir))
+    # Normalize per-fn args
+    if fns_args is None or isinstance(fns_args, (dict, list, tuple)):
+        if isinstance(fns_args, (list, tuple)) and len(fns_args) == len(fns):
+            per_fn = fns_args
+        else:
+            per_fn = [fns_args] * len(fns)
+        for fn, arg in zip(fns, per_fn):
+            if arg is None:
+                results.append(fn(sim_dir))
+            elif isinstance(arg, dict):
+                results.append(fn(sim_dir, **arg))
+            elif isinstance(arg, (list, tuple)):
+                results.append(fn(sim_dir, *arg))
+            else:
+                results.append(fn(sim_dir, arg))
+    else:
+        # Unrecognized type -> pass through as single positional argument to each fn
+        for fn in fns:
+            results.append(fn(sim_dir, fns_args))
     return results
 
+def process_single_sim(*args):
+    """
+    Backward-compatible worker.
+
+    Accepts:
+      - (sim_dir, fns)
+      - (sim_dir, fns, fns_args)
+      - ((sim_dir, fns),)
+      - ((sim_dir, fns, fns_args),)
+    """
+    # Allow old style where executor passes a single tuple
+    if len(args) == 1 and isinstance(args[0], tuple):
+        args = args[0]
+
+    if len(args) == 2:
+        sim_dir, fns = args
+        fns_args = None
+    elif len(args) == 3:
+        sim_dir, fns, fns_args = args
+    else:
+        raise TypeError("process_single_sim expects (sim_dir, fns[, fns_args])")
+
+    return _apply_fns(sim_dir, fns, fns_args)
 class Simulator:
 
     def __init__(self, sim_set_title: str, sim_titles: list, parameter_sets: list):
@@ -91,11 +134,9 @@ class Simulator:
             for fn in fns :# run each processing function
                 fn(sim_dir=sim_dir)
 
-    def run_on_all_sims_parallel(self, sims_dir, process_fns, max_workers=None):
-        if callable(process_fns):
-            fns = [process_fns]
-        else:
-            fns = list(process_fns)
+    def run_on_all_sims_parallel(self, sims_dir, process_fns, process_fns_args=None,
+                                 max_workers=None, collect_results=False):
+        fns = [process_fns] if callable(process_fns) else list(process_fns)
 
         sim_dirs = [
             os.path.join(sims_dir, entry)
@@ -103,13 +144,24 @@ class Simulator:
             if os.path.isdir(os.path.join(sims_dir, entry))
         ]
 
+        results = [] if collect_results else None
+
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = [executor.submit(process_single_sim, (sim_dir, fns)) for sim_dir in sim_dirs]
-            for future in as_completed(futures):
+            # New-style submit (separate args). Old-style tuple submit will also work
+            # because process_single_sim above accepts both forms.
+            futures = [
+                executor.submit(process_single_sim, sim_dir, fns, process_fns_args)
+                for sim_dir in sim_dirs
+            ]
+            for future, sim_dir in zip(as_completed(futures), sim_dirs):
                 try:
-                    _ = future.result() # optionally collect results
+                    res = future.result()
+                    if collect_results:
+                        results.append((sim_dir, res))
                 except Exception as exc:
-                    print(f"Exception during processing: {exc}")
+                    print(f"Exception during processing {sim_dir}: {exc}")
+
+        return results
 
 class Simulation:
 
