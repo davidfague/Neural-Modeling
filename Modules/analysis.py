@@ -557,10 +557,51 @@ class ECP:
             new_position = rot.apply(old_position) + translate
         return new_position
                 
-
-
-            
             
 
             
-            
+def load_sim(sim_directory, vars_to_load=['v', 'spktimes', 'spkinds']): #TODO: move this to its own module, include list of variables for generating sim_data
+    print(f"Loading data from {sim_directory}")
+    # load parameters
+    parameters = DataReader.load_parameters(sim_directory)
+
+    # load recorded data
+    sim_data = {
+        'v': DataReader.read_data(sim_directory, "v").T,
+        # 'hva': analysis.DataReader.read_data(sim_directory, "ica_Ca_HVA").T,
+        # 'lva': analysis.DataReader.read_data(sim_directory, "ica_Ca_LVAst").T,
+        # 'ih': analysis.DataReader.read_data(sim_directory, "ihcn_Ih").T,
+        # 'nmda': analysis.DataReader.read_data(sim_directory, "i_NMDA").T,
+        # 'na': analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t").T,
+        'spktimes': DataReader.read_data(sim_directory, "soma_spikes")[0][:],
+        'spkinds': np.sort((DataReader.read_data(sim_directory, "soma_spikes")[0][:] * 10).astype(int)),
+        # 'na_df': pd.read_csv(os.path.join(sim_directory, 'na.csv')),
+        # 'ca_df': pd.read_csv(os.path.join(sim_directory, 'ca.csv')),
+        # 'nmda_df': pd.read_csv(os.path.join(sim_directory, 'nmda.csv'))
+    }
+    # load segment information
+    seg_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
+    seg_data['Sec ID'] = seg_data['idx_in_section_type']
+    seg_data['Type'] = seg_data['section']
+    seg_data['Coord X'] = seg_data['pc_0']
+    seg_data['Coord Y'] = seg_data['pc_1']
+    seg_data['Coord Z'] = seg_data['pc_2']
+    elec_dist = pd.read_csv(os.path.join(sim_directory, f"elec_distance_{'soma'}.csv"))
+    seg_data['Elec_distance'] = elec_dist['25_active']
+    elec_dist = pd.read_csv(os.path.join(sim_directory, f"elec_distance_{'nexus'}.csv"))
+    seg_data['Elec_distance_nexus'] = elec_dist['25_active']
+    Xs = []
+    for seg in seg_data['seg']:
+        Xs.append(seg.split('(')[-1].split(')')[0])
+    seg_data['X'] = Xs
+
+    # continue
+    seg_data['segmentID'] = seg_data.index
+
+    seg_data['Sec ID'] = seg_data['Sec ID'].astype(int)
+    seg_data['X'] = seg_data['X'].astype(float)
+    seg_data['Elec_distanceQ'] = 'None'
+
+    seg_data.loc[seg_data.Type=='dend','Elec_distanceQ'] = pd.qcut(seg_data.loc[seg_data.Type=='dend','Elec_distance'], 10, labels=False)
+    seg_data.loc[seg_data.Type=='apic','Elec_distanceQ'] = pd.qcut(seg_data.loc[seg_data.Type=='apic','Elec_distance'], 10, labels=False)
+    return parameters, sim_data, seg_data, elec_dist
