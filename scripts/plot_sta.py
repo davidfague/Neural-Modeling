@@ -94,52 +94,57 @@ def _compute_sta_for_each_train_in_a_list(
     win_length=None,
     parameters=None,
     time_bounds_ms=(-50, 50),
+    bin_ms=2.0,
 ):
     """
-    Compute STA for each train in list_of_trains with a window derived from ms bounds.
-
-    - If win_length is None, it is computed from time_bounds_ms and parameters.h_dt:
-        win_length (bins) = 2 * round((time_bounds_ms[1]-time_bounds_ms[0])/2 / h_dt)
-
-    Returns
-    -------
-    stas : np.ndarray
-        Concatenated STA rows with shape [n_trains, win_length]
+    Compute STA at native resolution (parameters.h_dt), then downsample to bin_ms.
     """
     if parameters is None:
         raise ValueError("parameters must be provided")
 
-    # Derive win_length from ms if not provided (symmetric window)
+    # 1) Native-resolution window (in samples)
     if win_length is None:
         half_window_ms = (time_bounds_ms[1] - time_bounds_ms[0]) / 2.0
         half_window_samples = int(round(half_window_ms / parameters.h_dt))
-        win_length = max(2 * half_window_samples, 1)
+        win_length_native = max(2 * half_window_samples, 1)
+    else:
+        win_length_native = int(win_length)
 
     stas = []
     total_steps = int(parameters.h_tstop / parameters.h_dt)
 
     for train in list_of_trains:
         if len(train) == 0:
-            stas.append(np.zeros((1, win_length), dtype=np.float32))
+            stas.append(np.zeros((1, win_length_native), dtype=np.float32))
             continue
 
         cont_train = np.zeros(total_steps, dtype=np.float32)
         cont_train[train] = 1.0
-        # remove warmup / initial steps if desired
         cont_train[: parameters.skip] = 0.0
 
-        sta = analysis.SummaryStatistics.spike_triggered_average(
-            cont_train.reshape((1, -1)), spikes, win_length
+        sta_native = analysis.SummaryStatistics.spike_triggered_average(
+            cont_train.reshape((1, -1)), spikes, win_length_native
         )
-        # Normalize to percent change relative to mean rate (avoid division by zero)
-        sta = (sta - np.mean(cont_train)) / (np.mean(cont_train) + 1e-15) * 100.0
-        stas.append(sta.astype(np.float32))
+        sta_native = (sta_native - np.mean(cont_train)) / (np.mean(cont_train) + 1e-15) * 100.0
+        stas.append(sta_native.astype(np.float32))
 
     # Ensure 2D
     stas = [arr.reshape(1, -1) if arr.ndim == 1 else arr for arr in stas]
-    stas = np.concatenate(stas, axis=0)
-    return stas
+    sta_native_all = np.concatenate(stas, axis=0)  # [n_trains, win_length_native]
 
+    # 2) Downsample native STA to bin_ms (e.g., 1 ms)
+    #    bin_factor = number of native samples per output bin
+    bin_factor = max(int(round(bin_ms / parameters.h_dt)), 1)
+    trim_len = (sta_native_all.shape[1] // bin_factor) * bin_factor
+    if trim_len <= 0:
+        # fallback: nothing to downsample
+        return sta_native_all
+
+    sta_native_trim = sta_native_all[:, :trim_len]
+    # reshape to (n_trains, n_bins, bin_factor) and average across the last axis
+    sta_binned = sta_native_trim.reshape(sta_native_trim.shape[0], -1, bin_factor).mean(axis=2)
+
+    return sta_binned
 
 def _map_stas_to_quantiles_and_plot(
     sta,
@@ -274,6 +279,7 @@ def _analyze_spike_relationships(
             spikes=wrt_spikes,
             parameters=parameters,
             time_bounds_ms=time_bounds_ms,
+            bin_ms = 2.0,
             win_length=None,  # derive from ms
         )
 
@@ -308,7 +314,7 @@ def _analyze_spike_relationships(
 
 def analyze_all_spike_relationships(sim_directory, parameters, save, save_directory):
     sections = ["apic", "dend"]
-    spike_types = ["Na", "Ca", "NMDA", "soma_spikes"]
+    spike_types = ["Ca", "NMDA", "soma_spikes", "Na"]
     elec_dists = ["soma", "nexus"]
     for spike_type in spike_types:
         for wrt_spike_type in spike_types:
