@@ -760,3 +760,55 @@ class PreSimSynapseGenerator:
         cell.synapses.extend(syn_list)
         logger.log("Finish synapses list in CellModel object")
         return cell
+    
+def replace_N_synapses(sim_dir, N):
+    """
+    In <sim_dir>/synapses.csv, pick N rows and reset:
+      - spike_train -> []          (empty; written as '[]' string)
+      - pc_mean_firing_rate -> 0
+      - presynaptic_cell (or 'presynaptifc_cell') -> -2
+      - functional_group -> -2
+    """
+    synapses_path = os.path.join(sim_dir, "synapses.csv")
+    synapses = pd.read_csv(synapses_path)
+
+    if N <= 0:
+        raise ValueError("N must be a positive integer.")
+    if N > len(synapses):
+        raise ValueError(f"N ({N}) is greater than the number of synapses ({len(synapses)}).")
+
+    # --- column setup (handle misspelling, create if absent) ---
+    if "presynaptic_cell" in synapses.columns:
+        presyn_col = "presynaptic_cell"
+    else:
+        presyn_col = "presynaptic_cell"
+        synapses[presyn_col] = np.nan
+
+    for col in ("pc_mean_firing_rate", "functional_group", "spike_train"):
+        if col not in synapses.columns:
+            synapses[col] = np.nan
+
+    if "needs_new_spike_train" not in synapses.columns:
+        synapses["needs_new_spike_train"] = False
+
+    # --- pick rows and update ---
+    rng = np.random.default_rng(42)
+    picked_pos = rng.choice(len(synapses), size=N, replace=False)     # integer positions
+    picked_idx = synapses.index[picked_pos]                            # index labels
+
+    # scalar/broadcast-safe assignments
+    synapses.loc[picked_idx, "pc_mean_firing_rate"] = 0
+    synapses.loc[picked_idx, "functional_group"]    = -2
+    synapses.loc[picked_idx, presyn_col]            = -2
+    synapses.loc[picked_idx, "needs_new_spike_train"] = True
+
+    # --- safe spike_train assignment ---
+    # Option A (simple & CSV-friendly): write string '[]' and avoid shape issues
+    synapses.loc[picked_idx, "spike_train"] = "[]"
+
+    # If you truly want Python empty lists in-memory instead, use an index-aligned Series:
+    # synapses.loc[picked_idx, "spike_train"] = pd.Series([[]]*len(picked_idx), index=picked_idx, dtype="object")
+
+    synapses.to_csv(synapses_path, index=False)
+
+
