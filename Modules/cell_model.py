@@ -397,6 +397,18 @@ class CellModel:
 			seg_probs=None,
 			release_p=None,
 			specific_segments=None) -> None:
+		'''
+		segments: list of hoc segment objects
+		nsyn: int, number of synapses to add (if density=True, this is the density per um)
+		syn_mod: str, name of the synaptic mechanism (e.g., 'AMPA', 'GABA', etc.) (check Modules/constants.py for examples)
+		syn_params: dict or list of dicts, parameters for the synaptic mechanism (gbar, tau1, tau2, e, etc.) (check Modules/constants.py for examples)
+		gmax: float or callable, maximum conductance for the synapse
+		name: str, name of the synapse (e.g., 'exc', 'inh', etc.)
+		density: bool, if True, nsyn is treated as density (synapses per um)
+		seg_probs: list of float, probabilities for each segment to receive a synapse (should sum to 1)
+		release_p: callable or dict of callables, function(s) to determine release probability
+		specific_segments: list of hoc segment objects, if provided, synapses will be added only to these segments
+		'''
 		
 		# Check if specific segments are provided
 		if specific_segments is not None:
