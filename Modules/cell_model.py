@@ -416,7 +416,7 @@ class CellModel:
 			else:
 				segment = segments[_]
 
-			if release_p is not None:
+			if release_p is not None: # release probability
 				if isinstance(release_p, dict):
 					sec_type = segment.sec.name().split(".")[-1].split("[")[0]
 					p = release_p[sec_type](size=1)
@@ -430,7 +430,7 @@ class CellModel:
 					continue
 
 			# Create synapse
-			segment_distance = h.distance(segment, self.soma[0](0.5))
+			segment_distance = h.distance(segment, self.soma[0](0.5)) # path distance to soma
 			if isinstance(syn_params, (tuple, list)):  # select a syn_param dictionary from the options
 				# Excitatory
 				if 'AMPA' in syn_mod or 'pyr2pyr' in syn_mod:
@@ -449,7 +449,7 @@ class CellModel:
 			if 'int2pyr' in syn_mod or 'pyr2pyr' in syn_mod:  # these modfiles do release probability computation as spikes arrive during simulation instead of before
 				syn_params["P_0"] = p
 
-			self.synapses.append(Synapse(
+			self.synapses.append(Synapse( # initialize synapse object
 				segment=segment, 
 				syn_mod=syn_mod, 
 				syn_params=syn_params, 
