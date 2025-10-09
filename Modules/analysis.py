@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib import colormaps, colors, cm
 import matplotlib.animation as animation
 
+import pandas as pd
 class DataReader:
 
     @staticmethod
@@ -33,7 +34,7 @@ class DataReader:
 
         data = []
         for step in steps:
-            with h5py.File(os.path.join(sim_folder, f"saved_at_step_{step}", sim_file_name + ".h5"), 'r') as file:
+            with h5py.File(os.path.join(sim_folder, f"raw_data/saved_at_step_{step}", sim_file_name + ".h5"), 'r') as file:
                 retrieved_data = np.array(file["data"], dtype=np.float32)
 
                 # Spikes

@@ -329,6 +329,8 @@ class Simulation:
             #     h.v_init = cell.soma.e_pas
             h.v_init = parameters.h_v_init
             h.finitialize(h.v_init)
+
+            os.mkdir(os.path.join(path, "raw_data"))
     
             if log: self.logger.log("Starting simulation.")
     
@@ -340,7 +342,7 @@ class Simulation:
     
                     # Save data
                     cell.write_recorder_data(
-                        os.path.join(path, f"saved_at_step_{time_step}"), 
+                        os.path.join(path, f"raw_data/saved_at_step_{time_step}"), 
                         parameters.record_every_time_steps)
                     if log: self.logger.log("Finished writing data")
     
