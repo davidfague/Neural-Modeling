@@ -760,7 +760,8 @@ class PreSimSynapseGenerator:
         cell.synapses.extend(syn_list)
         logger.log("Finish synapses list in CellModel object")
         return cell
-    
+
+## The following functions are utilities later added to AA_pre_sim and have yet to be fully integrated into the class above.
 def replace_N_synapses(sim_dir, N):
     """
     In <sim_dir>/synapses.csv, pick N rows and reset:
@@ -811,4 +812,108 @@ def replace_N_synapses(sim_dir, N):
 
     synapses.to_csv(synapses_path, index=False)
 
+from Modules import analysis
+def update_spike_trains(
+        syn_type: str, 
+        rate: float, 
+        df: pd.DataFrame, 
+        sim_duration_ms: int, 
+        base_seed: int = 12345, 
+        spike_train_modulation: str = 'constant', 
+        modulation_params: dict = {}, 
+        region:str = '') -> pd.DataFrame:
+    if not 'needs_new_spike_train' in df.columns:
+        # raise ValueError("DataFrame must contain 'needs_new_spike_train' column to update spike trains.")
+        Warning("DataFrame must contain 'needs_new_spike_train' column to update spike trains.")  
+        return df
+    
+    # Ensure array-capable column
+    if df['spike_train'].dtype != 'object':
+        df['spike_train'] = df['spike_train'].astype('object')
 
+    # Mask: name has syn_type, -2 gate, and needs new train
+    # Tighter, cheaper mask than .str.contains: match prefix "exc_" / "inh_"
+    type_mask = df['name'].str.startswith(f'{syn_type}_', na=False) # df['name'].str.contains(syn_type, case=False, na=False)
+    region_mask = df['name'].str.contains(region, case=False, na=False)
+    print(region_mask)
+    mask = (
+        type_mask
+        & region_mask
+        & df['needs_new_spike_train'].astype(bool)
+        & (df['functional_group'] == -2)
+        & (df['presynaptic_cell'] == -2)
+    )
+
+    idx = df.index[mask]
+    if idx.empty:
+        return df  # nothing to do
+
+    # Reuse a single λ vector across all rows (uniform rate)
+    if not np.isfinite(rate) or rate <= 0:
+        lambda_vec = None  # means: return empty trains below
+    else:
+        lambda_vec = np.full(sim_duration_ms, float(rate), dtype=float)
+
+    if spike_train_modulation == 'rhythmic':
+        lambda_vec_to_use = PoissonTrainGenerator.rhythmic_modulation(
+            lambdas=lambda_vec,
+            frequency=modulation_params.get('frequency'),
+            depth_of_mod=modulation_params.get('depth_of_mod'),
+            delta_t=modulation_params.get('delta_t', 0.1)
+        )
+    elif spike_train_modulation == 'constant':
+        lambda_vec_to_use = lambda_vec
+    else:
+        raise ValueError(f"Notimplemented spike_train_modulation: {spike_train_modulation} choose 'rhythmic' or 'constant'")
+    # Stable per-row seeds:
+    # - Fast: base_seed + integer index (good if index is stable)
+    # - If you need stability across reindexing, hash a stable key instead (slower).
+    seeds = base_seed + pd.Index(range(len(idx))).to_numpy(dtype=np.int64)
+
+
+    def build_train(seed: int):
+        # keep empty if rate <= 0 or NaN
+        if lambda_vec_to_use is None:
+            return np.array([], dtype=np.int32)
+        rng = np.random.RandomState(int(seed))
+        st = PoissonTrainGenerator.generate_spike_train(lambda_vec_to_use, rng)
+        # print(f"Generated spike train {st.spike_times} with seed {seed} and rate {rate}")
+        return st.spike_times#.astype(int)  # only need the spike_times
+
+    # List comprehension is usually fastest in pure Python for this pattern
+    new_trains = [build_train(s) for s in seeds]
+
+    # Aligned assignment
+    df.loc[idx, 'spike_train'] = pd.Series(new_trains, index=idx, dtype='object')
+    df.loc[idx, 'needs_new_spike_train'] = False
+    return df
+
+def update_spike_trains_for_sim(sim_dir, inh_bg_rate, exc_bg_rate):
+    synapses = pd.read_csv(os.path.join(sim_dir, "synapses.csv"))
+    params = analysis.DataReader.load_parameters(sim_dir)
+    print(params)
+    print(params.inh_syn_properties)
+    print(params.inh_syn_properties['perisomatic'])
+    print(params.inh_syn_properties['perisomatic']['rhythmic_depth'])
+    h_tstop = params.h_tstop
+    # # not rhythmic background
+    # synapses = update_spike_trains('inh', inh_bg_rate, synapses, sim_duration_ms=h_tstop, base_seed=12345,
+    #                             spike_train_modulation='constant',
+    #                             modulation_params={},
+    #                             region='')
+    # rhythmic background
+    synapses = update_spike_trains('inh', inh_bg_rate, synapses, sim_duration_ms=h_tstop, base_seed=12345,
+                            spike_train_modulation='rhythmic',
+                            modulation_params={'frequency': params.inh_syn_properties['perisomatic']['rhythmic_frequency'],
+                                               'depth_of_mod': params.inh_syn_properties['perisomatic']['rhythmic_depth'],
+                                               'delta_t': 0.1},
+                            region='perisomatic')
+    synapses = update_spike_trains('inh', inh_bg_rate, synapses, sim_duration_ms=h_tstop, base_seed=12345,
+                            spike_train_modulation='rhythmic',
+                            modulation_params={'frequency': params.inh_syn_properties['distal_basal']['rhythmic_frequency'],
+                                               'depth_of_mod': params.inh_syn_properties['distal_basal']['rhythmic_depth'],
+                                               'delta_t': 0.1},
+                            region='')
+    # Ensure array-capable column
+    synapses = update_spike_trains('exc', exc_bg_rate, synapses, sim_duration_ms=h_tstop, base_seed=12345)
+    synapses.to_csv(os.path.join(sim_dir, "synapses.csv"), index=False)
