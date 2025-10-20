@@ -11,7 +11,7 @@ import pandas as pd
 import os
 import traceback
 import gc  # for garbage collection
-
+import h5py
 
 def _plot_sta(
     sta,
@@ -211,14 +211,30 @@ def _analyze_spike_relationships(
     time_bounds_ms = (-50, 50)
 
     # Load arrays (downcast to float32 to save memory)
-    v = analysis.DataReader.read_data(sim_directory, "v").astype(np.float32)
-    soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
-    ica = analysis.DataReader.read_data(sim_directory, "ica").astype(np.float32)
-    if parameters.exc_syn_mod == "pyr2pyr":
-        inmda = analysis.DataReader.read_data(sim_directory, "inmda").astype(np.float32)
+    if BEN:
+        base_path = os.path.abspath("../scripts/L5BaselineResults/")
+        v = np.array(h5py.File(os.path.join(base_path, 'v_report.h5'), 'r')['report']['biophysical']['data'])
+        hva = np.array(h5py.File(os.path.join(base_path, 'Ca_HVA.ica_report.h5'), 'r')['report']['biophysical']['data'])
+        lva = np.array(h5py.File(os.path.join(base_path, 'Ca_LVAst.ica_report.h5'), 'r')['report']['biophysical']['data'])
+        ica  =  hva+lva
+        # ih = np.array(h5py.File(os.path.join(base_path, 'Ih.ihcn_report.h5'), 'r')['report']['biophysical']['data'])
+        inmda = np.array(h5py.File(os.path.join(base_path, 'inmda_report.h5'), 'r')['report']['biophysical']['data'])
+        # na = np.array(h5py.File(os.path.join(base_path, 'NaTa_t.gNaTa_t_report.h5'), 'r')['report']['biophysical']['data'])
+        spks = h5py.File(os.path.join(base_path, 'spikes.h5'), 'r')
+        spktimes = spks['spikes']['biophysical']['timestamps'][:]
+        spkinds = np.sort((spktimes*10).astype(int))
     else:
-        inmda = analysis.DataReader.read_data(sim_directory, "i_NMDA").astype(np.float32)
-    seg_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
+        v = analysis.DataReader.read_data(sim_directory, "v").astype(np.float32)
+        soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
+        ica = analysis.DataReader.read_data(sim_directory, "ica").astype(np.float32)
+        if parameters.exc_syn_mod == "pyr2pyr":
+            inmda = analysis.DataReader.read_data(sim_directory, "inmda").astype(np.float32)
+        else:
+            inmda = analysis.DataReader.read_data(sim_directory, "i_NMDA").astype(np.float32)
+    if BEN:
+        seg_data = pd.read_csv(os.path.join(base_path, "Segments.csv"))
+    else:
+        seg_data = pd.read_csv(os.path.join(sim_directory, "segment_data.csv"))
     indexes = seg_data[seg_data["section"] == section].index
 
     try:
@@ -341,6 +357,7 @@ def analyze_all_spike_relationships(sim_directory, parameters, save, save_direct
 
 if __name__ == "__main__":
     save = "-s" in sys.argv
+    BEN = "-b" in sys.argv  # whether we are analyzing Ben's simulations
     if "-d" in sys.argv:
         sim_directory = sys.argv[sys.argv.index("-d") + 1]
         if save:
@@ -351,13 +368,17 @@ if __name__ == "__main__":
             save_directory = None
 
         logger = Logger()
-        soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
-        parameters = analysis.DataReader.load_parameters(sim_directory)
-        logger.log(f"Soma firing rate: {round(soma_spikes.shape[1] * 1000 / parameters.h_tstop, 2)} Hz")
+        if BEN:
+            soma_spikes = h5py.File(os.path.join("../scripts/L5BaselineResults/", 'spikes.h5'), 'r')['spikes']['biophysical']['timestamps'][:]
+            parameters = {"h_tstop": 150000.0, "h_dt": 0.1, "skip": 2000}  # dummy
+        else:
+            soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
+            parameters = analysis.DataReader.load_parameters(sim_directory)
+            logger.log(f"Soma firing rate: {round(soma_spikes.shape[1] * 1000 / parameters.h_tstop, 2)} Hz")
         del soma_spikes  # Release memory
         gc.collect()
 
-        if os.path.exists(os.path.join(sim_directory, "parameters.pickle")):
+        if os.path.exists(os.path.join(sim_directory, "parameters.pickle")) or BEN:
             try:
                 logger.log("Analyzing all spike relationships.")
                 analyze_all_spike_relationships(sim_directory, parameters, save, save_directory)
