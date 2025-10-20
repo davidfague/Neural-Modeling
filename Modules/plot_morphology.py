@@ -131,8 +131,11 @@ def plot_segments(seg_data, special_indices, special_colors, title_suffix="", sa
             ax = fig.gca()
         ax.scatter(segs[x_coord_name], segs[y_coord_name], s=0.1)
         for j, ind in enumerate(special_indices):
-            ax.plot(segs.loc[segs.segmentID.isin([ind]), x_coord_name], 
-                   segs.loc[segs.segmentID.isin([ind]), y_coord_name], special_colors[j])
+            ax.plot(
+                segs.loc[segs.segmentID.isin([ind]), x_coord_name],
+                segs.loc[segs.segmentID.isin([ind]), y_coord_name],
+                linestyle='None', marker='*', color=special_colors[j]
+            )
         
         ax.set_title(f"Segments {title_suffix}" if i == 0 else f"Segments {title_suffix}")
         ax.set_xlim(x_min, x_max)
