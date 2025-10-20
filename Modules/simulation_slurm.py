@@ -68,12 +68,19 @@ def process_single_sim(*args):
     return _apply_fns(sim_dir, fns, fns_args)
 class Simulator:
 
-    def __init__(self, sim_set_title: str, sim_titles: list, parameter_sets: list):
+    def __init__(self, sim_set_title: str, sim_titles: list, parameter_sets: list, sims_root: str = None):
         if len(sim_titles) != len(parameter_sets):
             ValueError("sim_titles and parameter_sets must be lists with equal lengths. These lists will be considered corresponding.")
         
-        # make an overarching simulations directory for this set where individual simulations will be stored.
-        self.sims_dir = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')}-{sim_set_title}"
+        # Default root (if none provided): put set folder next to repo root's 'simulations'
+        if sims_root is None:
+            sims_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "simulations"))
+
+        self.sims_root = os.path.abspath(sims_root)
+        os.makedirs(self.sims_root, exist_ok=True)
+
+        set_dirname = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')}-{sim_set_title}"
+        self.sims_dir = os.path.join(self.sims_root, set_dirname)
         os.makedirs(self.sims_dir, exist_ok=True)
 
         self.sim_set_title = sim_set_title # {sims_dir}
