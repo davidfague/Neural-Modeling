@@ -241,27 +241,62 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
             ax.scatter(fg_center[0], fg_center[2], fg_center[1], color='blue', s=50, 
                       label=f'FG Center {fg_idx}' if fg_idx == 0 else None)
             
-            # Plot presynaptic cells
-            for pc_idx, pc in enumerate(fg.get('presynaptic_cells', [])):
-                pc_center = np.array(pc['center']) #+ fg_center
-                pc_radius = pc['radius']
-                
-                # Check if there are any synapses within this presynaptic cell
-                if synapse_coords is not None:
-                    distances_to_pc = np.sqrt(np.sum((synapse_coords - pc_center)**2, axis=1))
-                    synapses_in_pc = np.sum(distances_to_pc <= pc_radius)
-                    if synapses_in_pc == 0:
-                        warnings.warn(f"No synapses found in presynaptic cell {pc_idx} of functional group {fg_idx} in section type {sec_type}")
-                
-                # Create a sphere for the presynaptic cell
-                x = pc_center[0] + pc_radius * np.outer(np.cos(u), np.sin(v))
-                y = pc_center[2] + pc_radius * np.outer(np.sin(u), np.sin(v))
-                z = pc_center[1] + pc_radius * np.outer(np.ones(np.size(u)), np.cos(v))
-                
-                ax.plot_surface(x, y, z, color='red', alpha=0.1, 
-                              label=f'PC {pc_idx}' if pc_idx == 0 and fg_idx == 0 else None)
-                ax.scatter(pc_center[0], pc_center[2], pc_center[1], color='red', s=30,
-                          label=f'PC Center {pc_idx}' if pc_idx == 0 and fg_idx == 0 else None)
+            # --- Plot presynaptic cells (supports dynamic or static) ---
+            # Current fg structure may have:
+            #   - dict: {'mode': 'dynamic', 'max_synapses_per_pc': {...}}
+            #   - list: [{'center': [...], 'radius': ...}, ...]  (static explicit PCs)
+            # print(f"fg: {fg}")
+            pcs_cfg = fg.get('presynaptic_cells', None)
+
+            if isinstance(pcs_cfg, dict):
+                # DYNAMIC MODE: there are no explicit PC centers/radii to draw
+                if pcs_cfg.get('mode') == 'dynamic':
+                    # optional: annotate the FG to indicate dynamic PCs
+                    ax.text(
+                        fg_center[0], fg_center[2], fg_center[1],
+                        "dynamic PCs", fontsize=8
+                    )
+                # if dict but not 'dynamic', nothing to draw safely
+
+            elif isinstance(pcs_cfg, list):
+                # STATIC MODE: explicit PCs to draw
+                for pc_idx, pc in enumerate(pcs_cfg):
+                    # robust guards (skip malformed entries)
+                    if not isinstance(pc, dict) or 'center' not in pc or 'radius' not in pc:
+                        continue
+
+                    # print(f"pc: {pc}")
+                    pc_center = np.array(pc['center'])
+                    pc_radius = float(pc['radius'])
+
+                    # Check for synapses inside this PC (optional)
+                    if synapse_coords is not None:
+                        distances_to_pc = np.sqrt(np.sum((synapse_coords - pc_center)**2, axis=1))
+                        synapses_in_pc = np.sum(distances_to_pc <= pc_radius)
+                        if synapses_in_pc == 0:
+                            warnings.warn(
+                                f"No synapses found in presynaptic cell {pc_idx} of functional group {fg_idx} in section type {sec_type}"
+                            )
+
+                    # Draw PC sphere
+                    x = pc_center[0] + pc_radius * np.outer(np.cos(u), np.sin(v))
+                    y = pc_center[2] + pc_radius * np.outer(np.sin(u), np.cos(v*0) + 1 - 1)  # keep axis mapping like FG
+                    y = pc_center[2] + pc_radius * np.outer(np.sin(u), np.sin(v))
+                    z = pc_center[1] + pc_radius * np.outer(np.ones(np.size(u)), np.cos(v))
+
+                    ax.plot_surface(
+                        x, y, z, color='red', alpha=0.1,
+                        label=f'PC {pc_idx}' if pc_idx == 0 and fg_idx == 0 else None
+                    )
+                    ax.scatter(
+                        pc_center[0], pc_center[2], pc_center[1],
+                        color='red', s=30,
+                        label=f'PC Center {pc_idx}' if pc_idx == 0 and fg_idx == 0 else None
+                    )
+
+            else:
+                # None / unexpected type: nothing to draw
+                pass
     
     ax.set_xlabel('X (um)')
     ax.set_ylabel('Y (um)')
