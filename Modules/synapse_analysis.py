@@ -516,23 +516,15 @@ class SynapseAnalyzer:
         plt.show() 
 
         
-    def plot_all_synapse_clusters(self,
+    def plot_all_synapse_clusters(
+        self,
         synapse_coord_cols=('pc_0', 'pc_1', 'pc_2'),
         plot_both_together=True,
         plot_each_type_separately=True,
         show=True
     ):
-        """
-        Plot synapse clusters (exc & inh) for a simulation directory.
-
-        Args:
-            sim_dir (str): Directory containing simulation files.
-            synapses (pd.DataFrame): DataFrame of synapses, must have 'seg_id' and coordinate columns.
-            synapse_coord_cols (tuple): Columns in synapses_with_seg_info to use as xyz.
-            plot_both_together (bool): If True, plot both exc and inh clusters in one figure.
-            plot_each_type_separately (bool): If True, plot each section type as a separate figure.
-            show (bool): Whether to display the plots.
-        """
+        if not os.path.exists(os.path.join(self.sim_dir, 'clusters')):
+            os.mkdir(os.path.join(self.sim_dir, 'clusters'))
         # Load parameters and segment data
         with open(os.path.join(self.sim_dir, "parameters.pickle"), 'rb') as file:
             parameters = pickle.load(file)
@@ -540,69 +532,88 @@ class SynapseAnalyzer:
 
         # Join synapses with segment info
         synapses_with_seg_info = self.synapses.merge(
-            seg_data,
-            on='seg_id',
-            how='left',
-            suffixes=('', '_seg')
+            seg_data, on='seg_id', how='left', suffixes=('', '_seg')
         )
-        synapse_coords = synapses_with_seg_info[list(synapse_coord_cols)].values
 
-        # Plot both excitatory and inhibitory clusters together
-        if plot_both_together:
+        # Helper to extract coords by mask
+        def coords_for_mask(mask):
+            cols = list(synapse_coord_cols)
+            return synapses_with_seg_info.loc[mask, cols].values
+
+        # Masks to separate exc/inh dots (name format "exc_<input_source>_..."/"inh_...")
+        exc_mask = synapses_with_seg_info['name'].str.startswith('exc_', na=False)
+        inh_mask = synapses_with_seg_info['name'].str.startswith('inh_', na=False)
+        exc_coords = coords_for_mask(exc_mask)
+        inh_coords = coords_for_mask(inh_mask)
+
+        exc_cfg = getattr(parameters, 'exc_clustering', None)
+        inh_cfg = getattr(parameters, 'inh_clustering', None)
+
+        # Plot both together (skip inh if missing)
+        if plot_both_together and exc_cfg is not None:
             fig = plt.figure(figsize=(20, 10))
-            # Excitatory clusters
+
             ax1 = fig.add_subplot(121, projection='3d')
             plot_clusters(
                 seg_data=seg_data,
-                clustering_config=parameters.exc_clustering,
-                synapse_coords=synapse_coords,
+                clustering_config=exc_cfg,
+                synapse_coords=exc_coords,
                 ax=ax1,
-                elevation=20,
-                azimuth=-100,
+                elevation=20, azimuth=-100,
                 title='Excitatory Clusters'
             )
-            # Inhibitory clusters
-            ax2 = fig.add_subplot(122, projection='3d')
-            plot_clusters(
-                seg_data=seg_data,
-                clustering_config=parameters.inh_clustering,
-                synapse_coords=synapse_coords,
-                ax=ax2,
-                elevation=20,
-                azimuth=-100,
-                title='Inhibitory Clusters'
-            )
-            plt.tight_layout()
-            if show: plt.show()
 
-        # Plot each excitatory section type
-        if plot_each_type_separately:
-            for sec_type in parameters.exc_clustering.keys():
+            if inh_cfg is not None:
+                ax2 = fig.add_subplot(122, projection='3d')
+                plot_clusters(
+                    seg_data=seg_data,
+                    clustering_config=inh_cfg,
+                    synapse_coords=inh_coords,
+                    ax=ax2,
+                    elevation=20, azimuth=-100,
+                    title='Inhibitory Clusters'
+                )
+
+            plt.tight_layout()
+            fig.savefig(
+                os.path.join(self.sim_dir, 'clusters', f'clusters_both.png'),
+                dpi=300, bbox_inches='tight'
+                )
+            if show:
+                plt.show()
+
+        # Plot each excitatory input_source separately
+        if plot_each_type_separately and exc_cfg is not None:
+            for input_source in exc_cfg.keys():
                 fig = plt.figure(figsize=(10, 10))
                 ax = fig.add_subplot(111, projection='3d')
                 plot_clusters(
                     seg_data=seg_data,
-                    clustering_config={sec_type: parameters.exc_clustering[sec_type]},
-                    synapse_coords=synapse_coords,
+                    clustering_config={input_source: exc_cfg[input_source]},
+                    synapse_coords=exc_coords,
                     ax=ax,
-                    elevation=20,
-                    azimuth=-100,
-                    title=f'Excitatory Clusters - {sec_type}'
+                    elevation=20, azimuth=-100,
+                    title=f'Excitatory Clusters - {input_source}'
                 )
                 plt.tight_layout()
-                if show: plt.show()
-            # Plot each inhibitory section type
-            for sec_type in parameters.inh_clustering.keys():
+                plt.savefig(os.path.join(self.sim_dir, 'clusters', f'clusters_exc_{input_source}.png'), dpi=300)
+                if show:
+                    plt.show()
+
+        # Plot each inhibitory input_source separately (if provided)
+        if plot_each_type_separately and inh_cfg is not None:
+            for input_source in inh_cfg.keys():
                 fig = plt.figure(figsize=(10, 10))
                 ax = fig.add_subplot(111, projection='3d')
                 plot_clusters(
                     seg_data=seg_data,
-                    clustering_config={sec_type: parameters.inh_clustering[sec_type]},
-                    synapse_coords=synapse_coords,
+                    clustering_config={input_source: inh_cfg[input_source]},
+                    synapse_coords=inh_coords,
                     ax=ax,
-                    elevation=20,
-                    azimuth=-100,
-                    title=f'Inhibitory Clusters - {sec_type}'
+                    elevation=20, azimuth=-100,
+                    title=f'Inhibitory Clusters - {input_source}'
                 )
                 plt.tight_layout()
-                if show: plt.show()
+                plt.savefig(os.path.join(self.sim_dir, 'clusters', f'clusters_inh_{input_source}.png'), dpi=300)
+                if show:
+                    plt.show()
