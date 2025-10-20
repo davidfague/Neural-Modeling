@@ -24,51 +24,42 @@ def load_data(sim_directory, ben=False):
         # lva = np.array(h5py.File('/scripts/L5BaselineResults/Ca_LVAst.ica_report.h5','r')['report']['biophysical']['data'])
         # ih = np.array(h5py.File('/scripts/L5BaselineResults/Ih.ihcn_report.h5','r')['report']['biophysical']['data'])
         # nmda = np.array(h5py.File('/scripts/L5BaselineResults/inmda_report.h5','r')['report']['biophysical']['data'])
-        na = np.array(h5py.File('/scripts/L5BaselineResults/NaTa_t.gNaTa_t_report.h5','r')['report']['biophysical']['data'])
-        spks = h5py.File('/scripts/L5BaselineResults/spikes.h5','r')
+        na = np.array(h5py.File(os.path.join(sim_directory, 'NaTa_t.gNaTa_t_report.h5'),'r')['report']['biophysical']['data'])
+        spks = h5py.File(os.path.join(sim_directory, 'spikes.h5'),'r')
         spktimes = spks['spikes']['biophysical']['timestamps'][:]
         spkinds = np.sort((spktimes*10).astype(int))
 
-        na_df = pd.read_csv('/scripts/L5BaselineResults/na.csv')
-        ca_df = pd.read_csv('/scripts/L5BaselineResults/ca.csv')
-        nmda_df = pd.read_csv('/scripts/L5BaselineResults/nmda.csv')
+        na_df = pd.read_csv(os.path.join(sim_directory, 'na.csv'))
+        ca_df = pd.read_csv(os.path.join(sim_directory, 'ca.csv'))
+        nmda_df = pd.read_csv(os.path.join(sim_directory, 'nmda.csv'))
     else:
         soma_id_to_use = 0
-        # sim_directory = '2024-10-12-00-28-34-ZiaoSynapses_final_detailed_refactored150sec/Complex_InhGmaxApic204_InhGmaxDend7.0_SomaGmax6.0_ExcGmax-1.0351_Np1000' # ziao synapses
-        # sim_directory = '2024-10-11-14-32-54-BenSynapses_final_detailed150sec/Complex_InhGmaxApic7.1_InhGmaxDend0.0016_SomaGmax0.0025_ExcGmax-1.0351_Np1000/' # ben synapses refactored detailed 150 sec
-        #'2024-08-29-12-19-13-CheckdSpikes_AfterTuningSynapses_AfterUpdateExcRates/Complex_InhGmaxApic204_InhGmaxDend7.0_SomaGmax6.0_ExcGmax-1.0351_Np1000'
-        #'2024-08-09-09-19-21-2500Segs_TripleNa/Complex_Np5'
-        # sim_directory = '2024-07-24-15-59-37-STA/Complex_Np5'33
-    #'2024-07-12-12-17-52-STA/Complex_Np5'
-        # %cd ../scripts/
         dur_to_use = analysis.DataReader.load_parameters(sim_directory).h_tstop / 1000
-        # nmda = analysis.DataReader.read_data(sim_directory, "i_NMDA").T
-        # nmda = analysis.DataReader.read_data(sim_directory, "inmda").T
         na = analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t").T
-        spks = analysis.DataReader.read_data(sim_directory, "soma_spikes")
+        # na = analysis.DataReader.read_data(sim_directory, "na")
         # v = analysis.DataReader.read_data(sim_directory, "v").T
         # hva = analysis.DataReader.read_data(sim_directory, "ica_Ca_HVA").T
         # lva = analysis.DataReader.read_data(sim_directory, "ica_Ca_LVAst").T
         # ih = analysis.DataReader.read_data(sim_directory, "ihcn_Ih").T
         # nmda = analysis.DataReader.read_data(sim_directory, "i_NMDA").T
-        # na = analysis.DataReader.read_data(sim_directory, "na")
+        # nmda = analysis.DataReader.read_data(sim_directory, "inmda").T
+        spks = analysis.DataReader.read_data(sim_directory, "soma_spikes")
         spktimes = spks[0][:]
         spkinds = np.sort((spktimes*10).astype(int))
         # print(f"spkinds: {spkinds}")
 
-        import os
         na_df = pd.read_csv(os.path.join(sim_directory,'na.csv'))
         ca_df = pd.read_csv(os.path.join(sim_directory,'ca.csv'))
         nmda_df = pd.read_csv(os.path.join(sim_directory,'nmda.csv'))
         # return v, hva, lva, ih, nmda, na, spktimes, spkinds, na_df, ca_df, nmda_df, dur_to_use, soma_id_to_use
-        return na, spkinds, na_df, ca_df, nmda_df, dur_to_use, soma_id_to_use 
+    return na, spkinds, na_df, ca_df, nmda_df, dur_to_use, soma_id_to_use 
 
 def get_segs(sim_directory, ben=False):
     # get segs from csv
     if ben:
         # segs = pd.read_csv('/Volumes/TOSHIBA EXT/L5NeuronSimulation_new/L5NeuronSimulation/MorphAnalysis/Segments.csv')
-        segs = pd.read_csv('Segments.csv')
-        segs_degrees = pd.read_csv('SegmentsDegrees.csv').groupby(['Type','Sec ID'])['Degrees'].max().reset_index()
+        segs = pd.read_csv(os.path.join(sim_directory, 'Segments.csv'))
+        segs_degrees = pd.read_csv(os.path.join(sim_directory, 'SegmentsDegrees.csv')).groupby(['Type','Sec ID'])['Degrees'].max().reset_index()
         segs['segmentID'] = segs.index
         segs = segs.set_index(['Type','Sec ID']).join(segs_degrees.set_index(['Type','Sec ID'])).reset_index()
 
@@ -483,8 +474,8 @@ def generate_figs_for_simulation(sim_directory):
         if not os.path.exists(f'{sim_directory}/spike_properties'):
             os.makedirs(f'{sim_directory}/spike_properties')
         # v, hva, lva, ih, nmda, na, spktimes, spkinds, na_df, ca_df, nmda_df, dur_to_use, soma_id_to_use = load_data(sim_directory)
-        na, spkinds, na_df, ca_df, nmda_df, dur_to_use, soma_id_to_use = load_data(sim_directory)
-        segs = get_segs(sim_directory)
+        na, spkinds, na_df, ca_df, nmda_df, dur_to_use, soma_id_to_use = load_data(sim_directory, BEN)
+        segs = get_segs(sim_directory, BEN)
 
         # na
         na_df = post_process_na_df(na_df, na)
@@ -508,6 +499,10 @@ def generate_figs_for_simulation(sim_directory):
 
 if __name__ == '__main__':
     # get sim_directories from command line
+    if "-b" in sys.argv:
+        BEN = True
+    else:
+        BEN = False
     if "-d" in sys.argv:
         sim_directory = sys.argv[sys.argv.index("-d") + 1] # (global)
         generate_figs_for_simulation(sim_directory)
