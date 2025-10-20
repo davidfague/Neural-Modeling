@@ -102,7 +102,7 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
 
     ### new version @TODO: finish this implementation for adding the new sec_types to segments.csv
     sec_types_to_get = np.unique([props['sec_type'] for syn_properties in [parameters.exc_syn_properties, parameters.inh_syn_properties] for input_source, props in syn_properties.items()])
-    print(f"getting segments of types: {sec_types_to_get} for synapses")
+    # print(f"getting segments of types: {sec_types_to_get} for synapses")
     # These are the types the method handles currently:
     # sec_types_to_get = [
     #     'soma',
@@ -141,9 +141,9 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
     grouped = df.groupby('seg_id')['sec_type'].unique()
     overlaps = grouped[grouped.apply(lambda arr: len(arr) > 1)]
     if not overlaps.empty:
-        print("Segments with multiple precise sec_types:")
+        logger.log("Segments with multiple precise sec_types:")
         for sid, types in overlaps.items():
-            print(f"  seg_id {sid}: {types.tolist()}")
+            logger.log(f"  seg_id {sid}: {types.tolist()}")
 
     # 5) build a map: if there's exactly one type, keep it; otherwise None
     precise_map = grouped.apply(lambda arr: arr[0] if len(arr) == 1 else None)
