@@ -89,7 +89,8 @@ class PreSimSynapseGenerator:
             if load_modfiles != 1:
                 raise Exception("Error loading mod files")
             else:
-                print("Mod files loaded successfully")
+                # print("Mod files loaded successfully")
+                pass
         except:
             # Already loaded
             pass 
@@ -285,9 +286,9 @@ class PreSimSynapseGenerator:
         """
         fg_labels = -np.ones(len(synapses), dtype=int)
         pc_labels = -np.ones(len(synapses), dtype=int)
-        print("Assigning FGs for input_sources:", synapses['input_source'].unique())
+        # print("Assigning FGs for input_sources:", synapses['input_source'].unique())
         for fg_idx, fg in enumerate(clustering_config.get('functional_groups', [])):
-            print(f"FG {fg_idx} input_source: {fg.get('input_source')}")
+            # print(f"FG {fg_idx} input_source: {fg.get('input_source')}")
             # Only assign synapses where input_source matches
             matching_mask = (synapses['input_source'].values == fg.get('input_source', None))
             # print(f"matching_mask: {matching_mask}, fg_idx: {fg_idx}, input_source: {fg.get('input_source', None)}")
@@ -416,7 +417,7 @@ class PreSimSynapseGenerator:
             if ref_pc_id != 'all' and ref_pc_id is not None:
                 mask &= (all_synapses_full['presynaptic_cell'] == ref_pc_id)
             trains = all_synapses_full.loc[mask, 'spike_train'].tolist()
-            print(f"[delay mode] FG={fg_id}, sec_type={input_source}, n_trains={len(trains)}, ex: {[len(t) for t in trains[:3]]}")
+            # print(f"[delay mode] FG={fg_id}, sec_type={input_source}, n_trains={len(trains)}, ex: {[len(t) for t in trains[:3]]}")
 
 
             # out_trains = []
@@ -589,7 +590,7 @@ class PreSimSynapseGenerator:
         This means that different input_sources can have the same fg id and pc id, but they will not be the same functional group or presynaptic cell.
         """
         synapses = pd.read_csv(os.path.join(self.sim_dir, "synapses.csv"))
-        print(f"unique input sources in synapses before generating spikes: {synapses['input_source'].unique()}")
+        # print(f"unique input sources in synapses before generating spikes: {synapses['input_source'].unique()}")
 
         segments = self.segments
         parameters = self.parameters
@@ -605,7 +606,7 @@ class PreSimSynapseGenerator:
         # Pass 1: Assign all FG/PCs for ALL synapses
         all_fg_labels = np.full(len(synapses), -1, dtype=int) # default -1 for background/not assigned
         all_pc_labels = np.full(len(synapses), -1, dtype=int) # default -1 for background/not assigned
-        print(f"Assigning functional groups and presynaptic cells for synapses")
+        # print(f"Assigning functional groups and presynaptic cells for synapses")
         for synapse_type in ['exc', 'inh']:
             properties_set = getattr(parameters, f"{synapse_type}_syn_properties") # get synapse property config for this type
             clustering_dict = getattr(parameters, f"{synapse_type}_clustering", {}) # get synapse clustering config for this type
@@ -619,14 +620,14 @@ class PreSimSynapseGenerator:
                     if fg['input_source'] == input_source:
                         matched_fgs.append(fg)
                 if not matched_fgs:
-                    print(f"Warning: No FG found for synapse_type={synapse_type}, sec_type={sec_type}, input_source={input_source}")
+                    # print(f"Warning: No FG found for synapse_type={synapse_type}, sec_type={sec_type}, input_source={input_source}")
                     continue
                 syn_mask = ( # filter synapses for this synapse type and input source
                     synapses['name'].str.contains(synapse_type, na=False)
                     & (synapses['input_source'] == input_source)
                 )
                 if syn_mask.sum() == 0:
-                    print(f"Warning: No synapses found for {synapse_type} {input_source} in synapses.csv. Skipping.")
+                    # print(f"Warning: No synapses found for {synapse_type} {input_source} in synapses.csv. Skipping.")
                     continue
                 coords_this_type = synapse_coords[syn_mask]
                 # print(f"Assigning for {synapse_type}, sec_type={sec_type}, input_source={input_source}")
@@ -649,7 +650,7 @@ class PreSimSynapseGenerator:
         pc_spike_trains_store = {}
 
         # Pass 2: Generate spike trains for ALL non-delayed first
-        print("Generating spike trains for all non-delayed synapses")
+        # print("Generating spike trains for all non-delayed synapses")
         for synapse_type in ['exc', 'inh']:
             properties_set = getattr(parameters, f"{synapse_type}_syn_properties")
             for input_source, props in properties_set.items():
@@ -674,7 +675,7 @@ class PreSimSynapseGenerator:
         all_synapses_full['spike_train'] = all_synapses_full['spike_train'].apply(deserialize_spike_train)
 
         # Pass 3: Now, generate spike trains for all delayed synapses
-        print("Generating spike trains for all delayed synapses")
+        # print("Generating spike trains for all delayed synapses")
         for synapse_type in ['exc', 'inh']:
             properties_set = getattr(parameters, f"{synapse_type}_syn_properties")
             for input_source, props in properties_set.items():
@@ -685,7 +686,7 @@ class PreSimSynapseGenerator:
                     synapses['name'].str.contains(synapse_type, na=False)
                     & (synapses['input_source'] == input_source)
                 )
-                print(f"Generating delayed spike trains for {synapse_type} {input_source} synapses, n={syn_mask.sum()}")
+                # print(f"Generating delayed spike trains for {synapse_type} {input_source} synapses, n={syn_mask.sum()}")
                 assigned_synapses = synapses.loc[syn_mask].copy()
                 seed = props['seed']['synapses']
                 random_state = np.random.RandomState(parameters.numpy_random_state+seed)
@@ -835,7 +836,7 @@ def update_spike_trains(
     # Tighter, cheaper mask than .str.contains: match prefix "exc_" / "inh_"
     type_mask = df['name'].str.startswith(f'{syn_type}_', na=False) # df['name'].str.contains(syn_type, case=False, na=False)
     region_mask = df['name'].str.contains(region, case=False, na=False)
-    print(region_mask)
+    # print(region_mask)
     mask = (
         type_mask
         & region_mask
@@ -891,10 +892,10 @@ def update_spike_trains(
 def update_spike_trains_for_sim(sim_dir, inh_bg_rate, exc_bg_rate):
     synapses = pd.read_csv(os.path.join(sim_dir, "synapses.csv"))
     params = analysis.DataReader.load_parameters(sim_dir)
-    print(params)
-    print(params.inh_syn_properties)
-    print(params.inh_syn_properties['perisomatic'])
-    print(params.inh_syn_properties['perisomatic']['rhythmic_depth'])
+    # print(params)
+    # print(params.inh_syn_properties)
+    # print(params.inh_syn_properties['perisomatic'])
+    # print(params.inh_syn_properties['perisomatic']['rhythmic_depth'])
     h_tstop = params.h_tstop
     # # not rhythmic background
     # synapses = update_spike_trains('inh', inh_bg_rate, synapses, sim_duration_ms=h_tstop, base_seed=12345,
