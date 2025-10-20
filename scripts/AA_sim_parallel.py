@@ -37,13 +37,21 @@ def _run(sim_dir):
 
 if __name__ == "__main__":
 
-    pool = Pool(processes = 6)
+    N_PROCESSES = 6  # max number of parallel processes
 
-    sims_dir = '/home/drfrbc/Neural-Modeling/simulations/2025-07-25-11-45-all_inh_rhythmic_depth_sweep_lower' # folder containing simulation folders
+    sims_dir = '/home/drfrbc/Neural-Modeling/simulations/2025-10-15-15-13-1xTuftInh_2xTuftExc_2.5xNexusInh_0.25xNexusExc_ReduceExcFRto0.25x_0.75xBasalExc_2xperisomaticInh' # folder containing simulation folders
 
     print(f'Running simulations in {sims_dir}')
 
-    sim_dirs = [os.path.join(sims_dir, sim_dir) for sim_dir in os.listdir(sims_dir)] # every directory in sims_dir
+    sim_dirs = [
+        os.path.join(sims_dir, sim_dir)
+        for sim_dir in os.listdir(sims_dir)
+        if os.path.isdir(os.path.join(sims_dir, sim_dir))
+    ]
+
+    if len(sim_dirs) < N_PROCESSES:
+        N_PROCESSES = len(sim_dirs)
+    pool = Pool(processes = N_PROCESSES)
 
     print(f'Running simulations: {sim_dirs}')
 
