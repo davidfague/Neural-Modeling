@@ -103,78 +103,118 @@ class SynapseAnalyzer:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
         plt.show()
 
+    @staticmethod
     def plot_spike_raster_fgpc_legend(
-        synapses, 
-        time_window=None, 
-        figsize=(12, 8), 
-        save_path=None,
-        yticklabel_stride=30,
-        show_y_labels=True,
-        legend_loc='upper right'
+        synapses: pd.DataFrame,
+        time_window: Optional[Tuple[float, float]] = None,
+        figsize: Tuple[int, int] = (12, 8),
+        save_path: Optional[str] = None,
+        yticklabel_stride: int = 30,
+        show_y_labels: bool = True,
+        legend_loc: str = 'upper right'
     ):
+        """
+        Spike raster with FG-based base colors and PC-based lightness shading.
+        Accepts a DataFrame with columns: 'functional_group', 'presynaptic_cell', 'spike_train'.
+        """
+
         def get_shaded_color(base_rgb, pc_idx, n_pcs):
-            """Return a lighter or darker shade for pc_idx out of n_pcs based on the base_rgb."""
-            # Convert to HLS, vary lightness
-            h, l, s = colorsys.rgb_to_hls(*base_rgb)
-            # Lightness scale between 0.4 and 0.8
-            l_new = 0.4 + 0.4 * (pc_idx / max(n_pcs-1, 1))
-            return colorsys.hls_to_rgb(h, l_new, s)
-        synapses_sorted = synapses.sort_values(['functional_group', 'presynaptic_cell'])
-        synapses_sorted = synapses_sorted.reset_index(drop=True)
+            """
+            Return a lighter/darker shade (in 0–1 RGB) for pc_idx out of n_pcs based on base_rgb.
+            We vary lightness in HLS between 0.40 and 0.80.
+            """
+            base = np.asarray(base_rgb, dtype=float)
+            if base.max() > 1.0:  # tolerate 0–255
+                base = base / 255.0
+            base = np.clip(base[:3], 0.0, 1.0)
+            h, l, s = colorsys.rgb_to_hls(*base)
+            l_new = 0.4 + 0.4 * (pc_idx / max(n_pcs - 1, 1))
+            rgb = colorsys.hls_to_rgb(h, l_new, s)
+            return tuple(np.clip(rgb, 0.0, 1.0))
 
-        # Get unique FGs and assign a base color per FG using tab20
-        unique_fgs = synapses_sorted['functional_group'].unique()
-        cmap = plt.cm.get_cmap('tab20', len(unique_fgs))
-        fg_base_colors = {fg: cmap(i)[:3] for i, fg in enumerate(unique_fgs)}
+        # Sort and reset index for stable plotting order
+        synapses_sorted = synapses.sort_values(['functional_group', 'presynaptic_cell']).reset_index(drop=True)
 
-        # Find all PC indices per FG for consistent shading
+        # Unique FGs (sorted for stable colors)
+        unique_fgs = sorted(synapses_sorted['functional_group'].dropna().unique().tolist())
+        cmap = plt.cm.get_cmap('tab20', max(len(unique_fgs), 1))
+        # Base colors per FG (tab20 returns 0–1 RGBA; take RGB)
+        fg_base_colors = {fg: cmap(i % cmap.N)[:3] for i, fg in enumerate(unique_fgs)}
+
+        # PCs per FG for consistent shading
         fg_to_pcs = {
-            fg: sorted(synapses_sorted[synapses_sorted['functional_group']==fg]['presynaptic_cell'].unique())
+            fg: sorted(synapses_sorted.loc[synapses_sorted['functional_group'] == fg, 'presynaptic_cell'].dropna().unique().tolist())
             for fg in unique_fgs
         }
-        fg_pc_color = {}
-        for fg, pcs in fg_to_pcs.items():
-            n_pcs = len(pcs)
-            for i, pc in enumerate(pcs):
-                fg_pc_color[(fg, pc)] = get_shaded_color(fg_base_colors[fg], i, n_pcs)
 
+        # Precompute FG/PC → color
+        fg_pc_color: Dict[Tuple[int, int], Tuple[float, float, float, float]] = {}
+        for fg, pcs in fg_to_pcs.items():
+            n_pcs = len(pcs) if len(pcs) > 0 else 1
+            base = fg_base_colors.get(fg, (0.0, 0.0, 0.0))
+            for i, pc in enumerate(pcs):
+                c = get_shaded_color(base, i, n_pcs)
+                fg_pc_color[(fg, pc)] = as_mpl_rgba(c)
+
+        # Build segments for a vertical-tick raster (LineCollection)
         segments = []
         colors = []
-        legend_labels = {}
-        yticklabels = []
-        yticks = []
+        legend_labels: Dict[str, Tuple[float, float, float, float]] = {}
 
-        # force the number of y-ticks to be a clean number
-        n_ticks = 15  # or whatever looks clean
-        yticks = np.linspace(1, len(synapses_sorted), n_ticks, dtype=int)
-        yticklabels = [f"FG{int(synapses_sorted.iloc[i-1]['functional_group'])}_PC{int(synapses_sorted.iloc[i-1]['presynaptic_cell'])}" for i in yticks]
+        n_rows = len(synapses_sorted)
+        if n_rows == 0:
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.set_title("Spike Raster Plot (FG color, PC shade, legend) — no data")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            plt.show()
+            return
+
+        # Precompute y-ticks (either a clean fixed number or stride)
+        if show_y_labels:
+            # Use a clean number of ticks for readability
+            n_ticks = 15
+            yticks = np.linspace(1, n_rows, n_ticks, dtype=int)
+            yticklabels = [
+                f"FG{int(synapses_sorted.iloc[i-1]['functional_group'])}_PC{int(synapses_sorted.iloc[i-1]['presynaptic_cell'])}"
+                for i in yticks
+            ]
+        else:
+            yticks, yticklabels = [], []
 
         for idx, row in synapses_sorted.iterrows():
+            spikes = row.get('spike_train', None)
 
-            # Robust spike train parsing
-            spikes = row['spike_train']
+            # Robust spike parsing
             if isinstance(spikes, str):
                 spikes = np.fromstring(spikes.replace('[', '').replace(']', ''), sep=' ')
             elif isinstance(spikes, (float, int)) or spikes is None or (isinstance(spikes, np.ndarray) and spikes.ndim == 0):
                 continue
             else:
-                spikes = np.array(spikes).flatten()
+                spikes = np.array(spikes, dtype=float).flatten()
+
             if spikes.size == 0:
                 continue
+
             if time_window is not None:
-                spikes = spikes[(spikes >= time_window[0]) & (spikes <= time_window[1])]
-            segs = [((spk, idx + 0.5), (spk, idx + 1.5)) for spk in spikes]
+                t0, t1 = time_window
+                spikes = spikes[(spikes >= t0) & (spikes <= t1)]
+                if spikes.size == 0:
+                    continue
+
+            # Each spike becomes a short vertical segment around row index
+            row_y = idx + 1.0
+            segs = [((spk, row_y - 0.4), (spk, row_y + 0.4)) for spk in spikes]
             segments.extend(segs)
-            fg, pc = row['functional_group'], row['presynaptic_cell']
-            color = fg_pc_color.get((fg, pc), (0,0,0))
-            colors.extend([color]*len(segs))
-            key = f'FG{int(fg)}_PC{int(pc)}'
-            # Only keep first seen row for legend
+
+            fg = row.get('functional_group', None)
+            pc = row.get('presynaptic_cell', None)
+            color = fg_pc_color.get((fg, pc), (0.0, 0.0, 0.0, 1.0))
+            colors.extend([color] * len(segs))
+
+            key = f"FG{int(fg)}_PC{int(pc)}" if pd.notna(fg) and pd.notna(pc) else "FG?_PC?"
             if key not in legend_labels:
-                legend_labels[key] = color
-            # if show_y_labels and (idx % yticklabel_stride) == 0:
-                # yticklabels.append(key)
-                # yticks.append(idx + 1)
+                legend_labels[key] = as_mpl_rgba(color)
 
         fig, ax = plt.subplots(figsize=figsize)
         if segments:
