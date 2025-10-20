@@ -10,6 +10,43 @@ import colorsys
 from matplotlib.patches import Patch
 import pickle
 from Modules.plot_morphology import plot_clusters
+from matplotlib import colors as mplcolors
+
+
+def as_mpl_rgba(c) -> Tuple[float, float, float, float]:
+    """
+    Convert various color specs to a valid RGBA tuple in [0,1], with alpha=1 if missing.
+    - Strings (e.g., '#aabbcc', 'tab:blue') -> mpl conversion
+    - Tuples/lists length 3/4 with 0–1 or 0–255 (auto-detect) -> normalized, clipped
+    - Anything invalid -> returns default black (0,0,0,1)
+    """
+    try:
+        # Directly handle Matplotlib-recognized strings
+        if isinstance(c, str):
+            return mplcolors.to_rgba(c)
+
+        arr = np.asarray(c, dtype=float).flatten()
+        if arr.size == 0:
+            return (0.0, 0.0, 0.0, 1.0)
+
+        # If only 3 components, append alpha=1
+        if arr.size == 3:
+            arr = np.r_[arr, 1.0]
+        elif arr.size > 4:
+            arr = arr[:4]
+
+        # If looks like 0–255, normalize to 0–1
+        if np.nanmax(arr[:3]) > 1.0:
+            arr[:3] = arr[:3] / 255.0
+
+        # Replace NaNs/Infs and clip
+        arr = np.nan_to_num(arr, nan=0.0, posinf=1.0, neginf=0.0)
+        arr[:3] = np.clip(arr[:3], 0.0, 1.0)
+        arr[3] = float(np.clip(arr[3], 0.0, 1.0))
+        return tuple(map(float, arr))
+    except Exception:
+        return (0.0, 0.0, 0.0, 1.0)
+
 
 class SynapseAnalyzer:
     def __init__(self, sim_dir: str):
@@ -149,19 +186,29 @@ class SynapseAnalyzer:
             ax.set_xlim(time_window)
         else:
             try:
-                all_spikes = np.hstack([
-                    np.fromstring(row['spike_train'].replace('[','').replace(']',''), sep=' ') if isinstance(row['spike_train'], str)
-                    else np.array(row['spike_train']).flatten()
-                    for _, row in synapses_sorted.iterrows()
-                    if not isinstance(row['spike_train'], (float, int)) and row['spike_train'] is not None
-                ])
-                ax.set_xlim(np.nanmin(all_spikes), np.nanmax(all_spikes))
-            except:
-                ax.set_xlim(0, 1000)
+                all_spikes = []
+                for _, r in synapses_sorted.iterrows():
+                    st = r['spike_train']
+                    if isinstance(st, str):
+                        st = np.fromstring(st.replace('[', '').replace(']', ''), sep=' ')
+                    elif isinstance(st, (float, int)) or st is None or (isinstance(st, np.ndarray) and st.ndim == 0):
+                        continue
+                    else:
+                        st = np.array(st, dtype=float).flatten()
+                    if st.size:
+                        all_spikes.append(st)
+                if len(all_spikes) > 0:
+                    all_sp = np.hstack(all_spikes)
+                    ax.set_xlim(float(np.nanmin(all_sp)), float(np.nanmax(all_sp)))
+                else:
+                    ax.set_xlim(0, 1)
+            except Exception:
+                ax.set_xlim(0, 1)
 
-        ax.set_ylim(0.5, len(synapses_sorted) + 0.5)
+        ax.set_ylim(0.5, n_rows + 0.5)
         ax.set_ylabel("Synapse (FG/PC grouped)")
         ax.set_xlabel("Time (ms or sample)")
+        ax.set_title("Spike Raster Plot (FG color, PC shade, legend)")
 
         if show_y_labels:
             ax.set_yticks(yticks)
@@ -170,14 +217,18 @@ class SynapseAnalyzer:
             ax.set_yticks([])
             ax.set_yticklabels([])
 
-        ax.set_title("Spike Raster Plot (FG color, PC shade, legend)")
+        # Legend — sanitize colors to valid RGBA
+        patches = []
+        for label, color in legend_labels.items():
+            rgba = as_mpl_rgba(color)
+            patches.append(Patch(facecolor=rgba, edgecolor='black', label=label))
 
-        # Legend
-        patches = [Patch(color=color, label=label) for label, color in legend_labels.items()]
-        # Optionally, only show legend for first N FG/PC combos
+        # Optionally limit legend length for readability
         if len(patches) > 25:
             patches = patches[:25]
-        ax.legend(handles=patches, loc=legend_loc, title='FG_PC', fontsize=7, title_fontsize=8, frameon=True)
+
+        if len(patches) > 0:
+            ax.legend(handles=patches, loc=legend_loc, title='FG_PC', fontsize=7, title_fontsize=8, frameon=True)
 
         plt.tight_layout()
         if save_path:
