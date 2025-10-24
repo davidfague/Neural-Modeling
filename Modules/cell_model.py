@@ -723,7 +723,7 @@ class CellModel:
 			all_segments = [seg for seg in all_segments if h.distance(self.soma[0](0.5), seg) > 50]
 		
 		if sec_type_to_get == 'tuft': # subset the segments that have been gathered for tuft to not include nexus (extra filtering for tuft)
-			all_segments = [seg for seg in all_segments if (h.distance(self.soma[0](0.5), seg) > 800)]
+			all_segments = [seg for seg in all_segments if (h.distance(self.soma[0](0.5), seg) > 950)]
 		
 		if all_segments == []:
 			raise ValueError(f"all_segments is empty for {sec_type_to_get} check intended implementation")
