@@ -67,12 +67,14 @@ def run_one(sim_dir: str):
                 os.path.join(os.path.dirname(__file__), "drew_analysis.py"),
                 "-d", sim_dir],
                check=False)
+    
+    print(f"[AA_sim_then_post_parallel.py] Finished Processing: {sim_dir}", flush=True)
 
 
 
 if __name__ == "__main__":
     # ====== EDIT THIS TO YOUR PARENT SIMS FOLDER ======
-    sims_dir = "/home/drfrbc/Neural-Modeling/simulations/2025-10-17-13-58-SetNexusExc0.15from0.25_DecreaseNexusInh_resetTrunkOblique"
+    sims_dir = "/home/drfrbc/Neural-Modeling/simulations/2025-10-24-14-42-1.0xNexusInhFrom2x_0.25xNexusExc_1.3xTuftExc"
     # ==================================================
 
     # Max number of parallel processes
