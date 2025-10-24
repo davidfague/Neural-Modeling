@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import datetime
 import pickle
 import copy
+import Modules.analysis as analysis
 
 from Modules.constants import HayParameters
 from scripts.configure_sim_params import configure_sim_params
@@ -52,6 +53,42 @@ def write_spike_train_modes(inh_syn_properties, exc_syn_properties):
         for input_source, props in exc_syn_properties.items():
             f.write(f"{input_source}: {props['spike_train_mode']}\n")
 
+def write_synapse_densities_to_txt(sims_dir: str) -> None:
+    # iterate over subfolders only
+    for sim_dir in [d for d in os.listdir(sims_dir) if os.path.isdir(os.path.join(sims_dir, d))]:
+        pkl_path = os.path.join(sims_dir, sim_dir, "parameters.pickle")
+        if not os.path.exists(pkl_path):
+            continue  # skip if this sim doesn't have parameters
+
+        with open(pkl_path, "rb") as f:
+            params = pickle.load(f)
+
+        out_path = os.path.join(sims_dir, sim_dir, "synapse_info.txt")
+        with open(out_path, "w", encoding="utf-8") as out_f:
+            p = lambda *a, **k: print(*a, file=out_f, **k)
+
+            p("Exc synapse densities:")
+            for input_source, props in params.exc_syn_properties.items():
+                p(f"{input_source}: {round(props.get('syn_density'), 4)}")
+
+            p("")  # blank line
+            p("Inh synapse densities:")
+            for input_source, props in params.inh_syn_properties.items():
+                p(f"{input_source}: {round(props.get('syn_density'), 4)}")
+
+            p("")  # blank line
+            p("Exc synapse weights:")
+            for input_source, props in params.exc_syn_properties.items():
+                init_wt_dist = props.get("initial_weight_distribution", {}) or {}
+                wt_params = init_wt_dist.get("params", {}) or {}
+                p(f"{input_source}:  {wt_params}")
+
+            p("")  # blank line
+            p("Inh synapse weights:")
+            for input_source, props in params.inh_syn_properties.items():
+                init_wt_dist = props.get("initial_weight_distribution", {}) or {}
+                wt_params = init_wt_dist.get("params", {}) or {}
+                p(f"{input_source}:  {wt_params}")
 
 # ---------------- load config ----------------
 (
@@ -77,18 +114,10 @@ simulator.create_simulation_folders()
 write_spike_train_modes(inh_syn_properties, exc_syn_properties)
 
 # Run generators across all sims
-log(f"\n[AA_pre_sim] Generating segments CSV on all sims in: {simulator.sims_dir}\n", flush=True)
+log(f"\n[AA_pre_sim] Generating segments CSV on all sims in: {simulator.sims_dir}\n")
 simulator.run_on_all_sims_parallel(simulator.sims_dir, generate_segments_csv)
-log(f"\n[AA_pre_sim] Running synapse generation on all sims in: {simulator.sims_dir}\n", flush=True)
+log(f"\n[AA_pre_sim] Running synapse generation on all sims in: {simulator.sims_dir}\n")
 simulator.run_on_all_sims_parallel(simulator.sims_dir, use_pssg)
-
-# NOTE: tuple fix for single arg
-log(f"\n[AA_pre_sim] Setting N synapses to background on all sims in: {simulator.sims_dir}\n", flush=True)
-simulator.run_on_all_sims_parallel(
-    simulator.sims_dir,
-    replace_N_synapses,
-    process_fns_args=(N_bg_synapses,)
-)
 
 # Build a list of full sim paths
 sim_dirs = [
@@ -98,37 +127,59 @@ sim_dirs = [
 ]
 
 # Update spike trains for each sim
-log(f"\n[AA_pre_sim] Setting background spike trains on all sims in: {simulator.sims_dir}\n", flush=True)
-for sim_dir in sim_dirs:
-    update_spike_trains_for_sim(sim_dir, inh_bg_rate, exc_bg_rate)
+if N_bg_synapses > 0:
+    log(f"\n[AA_pre_sim] Setting {N_bg_synapses} synapses to background on all sims in: {simulator.sims_dir}\n")
+    simulator.run_on_all_sims_parallel(
+        simulator.sims_dir,
+        replace_N_synapses,
+        process_fns_args=(N_bg_synapses,)
+    )
+    log(f"\n[AA_pre_sim] Setting background spike trains on all sims in: {simulator.sims_dir}\n")
+    for sim_dir in sim_dirs:
+        update_spike_trains_for_sim(sim_dir, inh_bg_rate, exc_bg_rate)
 
 # Analyze & plot
 synapse_analyzers = [SynapseAnalyzer(sim_dir) for sim_dir in sim_dirs]
 
-log(f"\n[AA_pre_sim] Generating synapse cluster plots on all sims in: {simulator.sims_dir}\n", flush=True)
+log(f"\n[AA_pre_sim] Generating synapse cluster plots on all sims in: {simulator.sims_dir}\n")
 for synapse_analyzer in synapse_analyzers:
     synapse_analyzer.plot_all_synapse_clusters(
         plot_both_together=True,
         plot_each_type_separately=True
     )
 
-log(f"\n[AA_pre_sim] Generating spike raster plots on all sims in: {simulator.sims_dir}\n", flush=True)
-# Generate a spike raster plot for excitatory synapses
+log(f"\n[AA_pre_sim] Generating spike raster plots on all sims in: {simulator.sims_dir}\n")
+# Generate a spike raster plot for  and inhibitory synapses
 for synapse_analyzer in synapse_analyzers:
+    parameters = analysis.DataReader.load_parameters(synapse_analyzer.sim_dir)
+    spike_rasters_folder = os.path.join(synapse_analyzer.sim_dir, "spike_rasters")
+    os.makedirs(spike_rasters_folder, exist_ok=True)
     synapse_analyzer.plot_spike_raster(
         synapse_types=['exc'],
-        time_window=(49000, 50000),  # last second in a 50s sim
-        save_path=os.path.join(synapse_analyzer.sim_dir, 'exc_spike_raster.png'),
+        time_window=(parameters.h_tstop-1000, parameters.h_tstop),  # last second in sim
+        save_path=os.path.join(spike_rasters_folder, 'exc_spike_raster_end.png'),
         title="Excitatory Synapse Spike Raster"
     )
-# Generate a spike raster plot for inhibitory synapses
-for synapse_analyzer in synapse_analyzers:
     synapse_analyzer.plot_spike_raster(
         synapse_types=['inh'],
-        time_window=(49000, 50000),
-        save_path=os.path.join(synapse_analyzer.sim_dir, 'inh_spike_raster.png'),
+        time_window=(parameters.h_tstop-1000, parameters.h_tstop),
+        save_path=os.path.join(spike_rasters_folder, 'inh_spike_raster_end.png'),
         title="Inhibitory Synapse Spike Raster"
     )
+    synapse_analyzer.plot_spike_raster(
+        synapse_types=['exc'],
+        time_window=(0, 1000),  # first second in sim
+        save_path=os.path.join(spike_rasters_folder, 'exc_spike_raster_start.png'),
+        title="Excitatory Synapse Spike Raster"
+    )
+    synapse_analyzer.plot_spike_raster(
+        synapse_types=['inh'],
+        time_window=(0, 1000),
+        save_path=os.path.join(spike_rasters_folder, 'inh_spike_raster_start.png'),
+        title="Inhibitory Synapse Spike Raster"
+    )
+
+write_synapse_densities_to_txt(simulator.sims_dir)
 
 # h.load_file('stdrun.hoc')
 # if not os.path.exists('x86_64'):

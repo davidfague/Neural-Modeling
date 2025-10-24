@@ -11,6 +11,7 @@ from matplotlib.patches import Patch
 import pickle
 from Modules.plot_morphology import plot_clusters
 from matplotlib import colors as mplcolors
+import matplotlib.lines as mlines
 
 
 def as_mpl_rgba(c) -> Tuple[float, float, float, float]:
@@ -67,41 +68,186 @@ class SynapseAnalyzer:
         suffixes=('','_seg')      # e.g. if both have a 'length' column
         )
         self.synapses = synapses_with_seg_info
-        
-    def plot_spike_raster(self, 
-                          synapses: Optional[pd.DataFrame] = None,
-                          time_window: Optional[Tuple[float, float]] = None,
-                          synapse_types: Optional[List[str]] = None,
-                          functional_groups: Optional[List[int]] = None,
-                          figsize: Tuple[int, int] = (12, 8),
-                          save_path: Optional[str] = None,
-                          title: Optional[str] = "Spike Raster Plot"):
-        """
-        Generate a spike raster plot for the synapses (optionally user-provided).
-        """
-        # Use user-provided synapses or default to self.synapses
-        synapses_to_plot = synapses if synapses is not None else self.synapses
-        
-        mask = pd.Series(True, index=synapses_to_plot.index)
-        if synapse_types is not None:
-            mask &= synapses_to_plot['name'].str.contains('|'.join(synapse_types))
-        if functional_groups is not None:
-            mask &= synapses_to_plot['functional_group'].isin(functional_groups)
-        filtered_synapses = synapses_to_plot[mask]
 
-        plt.figure(figsize=figsize)
-        for plot_idx, (idx, row) in enumerate(filtered_synapses.iterrows()):
-            spikes = row['spike_train']
-            if time_window:
-                spikes = spikes[(spikes >= time_window[0]) & (spikes <= time_window[1])]
-            plt.plot(spikes, [plot_idx] * len(spikes), 'k.', markersize=1)
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Synapse')
-        plt.title(title)
-        plt.ylim(-1, len(filtered_synapses))
+    def plot_spike_raster(
+        self,
+        synapses: pd.DataFrame | None = None,
+        time_window: tuple[float, float] | None = None,
+        synapse_types: list[str] | None = None,
+        functional_groups: list[int] | None = None,
+        figsize: tuple[int, int] = (12, 8),
+        save_path: str | None = None,
+        title: str | None = "Spike Raster Plot",
+        show: bool = False,
+        *,
+        color_by: str = "input_source",
+        # legend and ordering behavior
+        legend_loc: str = "upper right",
+        legend_cols: int = 1,
+        legend_matches_top: bool = True,   # True: legend order matches top row → bottom row
+        # colors
+        shuffle_colors: bool = True,
+        color_seed: int | None = 7,
+        cmap_name: str = "tab20",
+        # separators
+        draw_group_separators: bool = True,
+        separator_kwargs: dict | None = None,
+        # markers
+        marker_size: float = 5,
+    ):
+        """
+        Spike raster sorted by `color_by` (default: input_source), colored per group.
+
+        - If color_by='input_source', groups are ordered:
+            tuft..., nexus..., oblique..., trunk..., perisomatic..., distal_basal...
+        then alphabetically within each block.
+        - Otherwise, groups follow a stable sort on `color_by`.
+
+        Legend order matches the visual top→bottom order when legend_matches_top=True
+        (we invert the y-axis so row 0 is at the top).
+        """
+
+        # ---------- data ----------
+        df_all = synapses if synapses is not None else self.synapses
+        if df_all is None or df_all.empty:
+            raise ValueError("No synapses available to plot.")
+
+        mask = pd.Series(True, index=df_all.index)
+        if synapse_types is not None:
+            mask &= df_all['name'].str.contains('|'.join(synapse_types), na=False)
+        if functional_groups is not None:
+            mask &= df_all['functional_group'].isin(functional_groups)
+
+        df = df_all.loc[mask].copy()
+        if df.empty:
+            raise ValueError("No synapses left after filtering.")
+
+        if color_by not in df.columns:
+            raise KeyError(f"Column '{color_by}' not found in synapses DataFrame.")
+
+        # ---------- group ordering ----------
+        def _input_source_key(s: str) -> tuple[int, str]:
+            s = (s or "").lower()
+            # primary block order
+            blocks = [
+                "tuft", "nexus", "oblique", "trunk", "perisomatic", "distal_basal"
+            ]
+            for rank, b in enumerate(blocks):
+                if s.startswith(b):
+                    return (rank, s)
+            # put unknowns last, keep alphabetical among themselves
+            return (len(blocks), s)
+
+        if color_by == "input_source":
+            # sort by block order then secondary alphabetical
+            df["_sort_key"] = df[color_by].fillna("UNKNOWN").astype(str).map(_input_source_key)
+            df.sort_values(by=["_sort_key", color_by], kind="stable", inplace=True)
+            df.drop(columns=["_sort_key"], inplace=True)
+        else:
+            df.sort_values(by=color_by, kind="stable", inplace=True)
+
+        # y-axis groups in the order they appear
+        ordered_groups = df[color_by].fillna("UNKNOWN").astype(str).drop_duplicates().tolist()
+
+        # ---------- color map ----------
+        cmap = plt.get_cmap(cmap_name)
+        base_colors = [cmap(i % cmap.N) for i in range(len(ordered_groups))]
+        if shuffle_colors and len(base_colors) > 1:
+            rng = np.random.default_rng(color_seed)
+            perm = rng.permutation(len(base_colors))
+            base_colors = [base_colors[i] for i in perm]
+        colors = {grp: base_colors[i] for i, grp in enumerate(ordered_groups)}
+
+        # ---------- spike parsing ----------
+        def _as_array(x):
+            if isinstance(x, np.ndarray):
+                return x
+            if isinstance(x, list):
+                return np.array(x, dtype=int)
+            if isinstance(x, (int, np.integer)):
+                return np.array([int(x)], dtype=int)
+            if isinstance(x, float):
+                return np.array([], dtype=int) if np.isnan(x) else np.array([int(x)], dtype=int)
+            if isinstance(x, str):
+                try:
+                    return deserialize_spike_train(x)  # uses your helper
+                except NameError:
+                    s = x.strip("[]").strip()
+                    return np.fromstring(s, sep=' ', dtype=int) if s else np.array([], dtype=int)
+            return np.array([], dtype=int)
+
+        # ---------- plot ----------
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # draw points (row 0 will be at top if we invert later)
+        for row_idx, (_, row) in enumerate(df.iterrows()):
+            grp = str(row[color_by]) if pd.notna(row[color_by]) else "UNKNOWN"
+            c = colors[grp]
+            spikes = _as_array(row['spike_train'])
+            if time_window is not None:
+                t0, t1 = time_window
+                spikes = spikes[(spikes >= t0) & (spikes <= t1)]
+            if spikes.size:
+                ax.scatter(spikes, np.full_like(spikes, row_idx), s=marker_size, c=[c], marker='.', linewidths=0)
+
+        # y-range and (optional) invert so legend matches top-to-bottom
+        ax.set_ylim(-1, len(df))
+        if time_window is not None:
+            ax.set_xlim(*time_window)
+        if legend_matches_top:
+            ax.invert_yaxis()
+
+        # ---------- separators between groups ----------
+        if draw_group_separators and len(ordered_groups) > 1:
+            # find start/end indices for each group in the *sorted* df
+            group_bounds = []
+            start = 0
+            current = df.iloc[0][color_by]
+            for i, val in enumerate(df[color_by]):
+                if val != current:
+                    group_bounds.append((current, start, i))  # [start, i-1]
+                    start, current = i, val
+            group_bounds.append((current, start, len(df)))     # last
+
+            skw = {
+                "linestyle": (0, (4, 4)),  # dashed
+                "linewidth": 0.6,
+                "alpha": 0.4,
+                "color": "k",
+            }
+            if separator_kwargs:
+                skw.update(separator_kwargs)
+
+            for _, _, end in group_bounds[:-1]:
+                # horizontal line just between groups
+                y = end - 0.5
+                if legend_matches_top:
+                    # y-axis inverted; the numeric y is still correct
+                    ax.axhline(y, **skw)
+                else:
+                    ax.axhline(y, **skw)
+
+        # ---------- legend (order synced with y-axis visual order) ----------
+        handles = [
+            mlines.Line2D([], [], color=colors[g], marker='.', linestyle='None', markersize=6, label=g)
+            for g in ordered_groups
+        ]
+        # If not inverting y, the top of the plot is the *last* group; flip legend to match
+        if not legend_matches_top:
+            handles = list(reversed(handles))
+        if handles:
+            ax.legend(handles=handles, loc=legend_loc, ncol=legend_cols, frameon=False, title=color_by)
+
+        ax.set_xlabel("Time (ms)")
+        ax.set_ylabel(f"Synapse (sorted by {color_by})")
+        ax.set_title(title or "Spike Raster Plot")
+
         if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.show()
+            fig.savefig(save_path, dpi=300, bbox_inches="tight")
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
 
     @staticmethod
     def plot_spike_raster_fgpc_legend(
@@ -111,7 +257,8 @@ class SynapseAnalyzer:
         save_path: Optional[str] = None,
         yticklabel_stride: int = 30,
         show_y_labels: bool = True,
-        legend_loc: str = 'upper right'
+        legend_loc: str = 'upper right',
+        show: bool = False
     ):
         """
         Spike raster with FG-based base colors and PC-based lightness shading.
@@ -167,7 +314,10 @@ class SynapseAnalyzer:
             ax.set_title("Spike Raster Plot (FG color, PC shade, legend) — no data")
             ax.set_xticks([])
             ax.set_yticks([])
-            plt.show()
+            if show:
+                plt.show()
+            else:
+                plt.close()
             return
 
         # Precompute y-ticks (either a clean fixed number or stride)
@@ -273,11 +423,15 @@ class SynapseAnalyzer:
         plt.tight_layout()
         if save_path:
             plt.savefig(save_path, dpi=300)
-        plt.show()
+        if show:
+            plt.show()
+        else:
+            plt.close()
         
     def analyze_cluster_statistics(self, 
                                  functional_group_id: int = None,
-                                 synapse_type: str = None) -> Dict:
+                                 synapse_type: str = None,
+                                 show: bool = False) -> Dict:
         """
         Calculate statistics for synapse clusters.
         
@@ -322,7 +476,8 @@ class SynapseAnalyzer:
                                     synapse_type: str = None,
                                     functional_group: int = None,
                                     figsize: Tuple[int, int] = (10, 6),
-                                    save_path: Optional[str] = None) -> None:
+                                    save_path: Optional[str] = None,
+                                    show: bool = False) -> None:
         """
         Plot the distribution of firing rates across synapses.
         
@@ -350,13 +505,17 @@ class SynapseAnalyzer:
         
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.show()
+        if show:
+            plt.show()
+        else:
+            plt.close()
         
     def plot_weight_distribution(self,
                                synapse_type: str = None,
                                functional_group: int = None,
                                figsize: Tuple[int, int] = (10, 6),
-                               save_path: Optional[str] = None) -> None:
+                               save_path: Optional[str] = None,
+                               show: bool = False) -> None:
         """
         Plot the distribution of synapse weights.
         
@@ -384,13 +543,17 @@ class SynapseAnalyzer:
         
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.show()
-        
+        if show:
+            plt.show()
+        else:
+            plt.close()
+
     def plot_cluster_spatial_distribution(self,
                                         synapse_type: str = None,
                                         functional_group: int = None,
                                         figsize: Tuple[int, int] = (10, 10),
-                                        save_path: Optional[str] = None) -> None:
+                                        save_path: Optional[str] = None,
+                                        show: bool = False) -> None:
         """
         Create a 3D scatter plot of synapse locations, colored by functional group.
         
@@ -439,8 +602,11 @@ class SynapseAnalyzer:
         
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.show()
-        
+        if show:
+            plt.show()
+        else:
+            plt.close()
+
     def calculate_correlation_matrix(self,
                                    synapse_type: str = None,
                                    functional_group: int = None,
@@ -494,7 +660,8 @@ class SynapseAnalyzer:
                               functional_group: int = None,
                               time_window: Tuple[float, float] = None,
                               figsize: Tuple[int, int] = (12, 10),
-                              save_path: Optional[str] = None) -> None:
+                              save_path: Optional[str] = None,
+                              show: bool = False) -> None:
         """
         Plot the correlation matrix between spike trains.
         
@@ -513,7 +680,10 @@ class SynapseAnalyzer:
         
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.show() 
+        if show:
+            plt.show()
+        else:
+            plt.close()
 
         
     def plot_all_synapse_clusters(
@@ -521,7 +691,7 @@ class SynapseAnalyzer:
         synapse_coord_cols=('pc_0', 'pc_1', 'pc_2'),
         plot_both_together=True,
         plot_each_type_separately=True,
-        show=True
+        show=False
     ):
         if not os.path.exists(os.path.join(self.sim_dir, 'clusters')):
             os.mkdir(os.path.join(self.sim_dir, 'clusters'))
@@ -581,6 +751,8 @@ class SynapseAnalyzer:
                 )
             if show:
                 plt.show()
+            else:
+                plt.close()
 
         # Plot each excitatory input_source separately
         if plot_each_type_separately and exc_cfg is not None:
@@ -599,6 +771,8 @@ class SynapseAnalyzer:
                 plt.savefig(os.path.join(self.sim_dir, 'clusters', f'clusters_exc_{input_source}.png'), dpi=300)
                 if show:
                     plt.show()
+                else:
+                    plt.close()
 
         # Plot each inhibitory input_source separately (if provided)
         if plot_each_type_separately and inh_cfg is not None:
@@ -617,3 +791,5 @@ class SynapseAnalyzer:
                 plt.savefig(os.path.join(self.sim_dir, 'clusters', f'clusters_inh_{input_source}.png'), dpi=300)
                 if show:
                     plt.show()
+                else:
+                    plt.close()
