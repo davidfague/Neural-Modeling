@@ -68,9 +68,8 @@ class SimulationParameters:
 	exc_syn_properties: dict = field(default_factory=lambda: { 
 		'tuft_local_L23': {
 			'sec_type': 'tuft',
-			'syn_density': 2.16*0.10*0.66, # 10% of inputs are local and 1/3 local are L23#'syn_number': 26112/8,
-			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,2), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,2), 'scalar': 1}},
+			'syn_density': 2.16*0.10*0.66*1.3, # 10% of inputs are local and 2/3 local are L23 # reduce to 20% to prevent constant depolarization
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,3), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 3333333},
@@ -80,9 +79,8 @@ class SimulationParameters:
 			},
 		'tuft_local_L5': {
 			'sec_type': 'tuft',
-			'syn_density': 2.16*0.10*0.33, #10% are local and 1/3 local are L5 #'syn_number': 26112/8,
-			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,2), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,2), 'scalar': 1}},
+			'syn_density': 2.16*0.10*0.33*1.3, #10% are local and 1/3 local are L5 # reduce to 20% to prevent constant depolarization
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,3), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 3333333},
@@ -92,9 +90,8 @@ class SimulationParameters:
 			},
 		'tuft_distant': {
 			'sec_type': 'tuft',
-			'syn_density': 2.16*0.90, # 90% are distant #'syn_number': 26112/8,
-			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,2), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,2), 'scalar': 1}},
+			'syn_density': 2.16*0.90*1.3, # 90% are distant # reduce to 20% to prevent constant depolarization
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,3), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 3333333},
@@ -104,9 +101,8 @@ class SimulationParameters:
 			},
 		'nexus_local_L23':{
 			'sec_type': 'nexus',
-			'syn_density': 2.16*0.05*0.10*0.25, #decrease to 5% to encourage propagation from tuft instead of spontaneous Ca spike. 10% are local and 1/4 local are L23 #'syn_number': 26112/8,
-			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.10*0.25*0.25, #  10% are local and 1/4 local are L23 # decrease to 5% to encourage propagation from tuft instead of spontaneous Ca spike
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 444444444},
@@ -116,9 +112,8 @@ class SimulationParameters:
 			},
 		'nexus_local_L5':{
 			'sec_type': 'nexus',
-			'syn_density': 2.16*0.05*0.10*0.75, #decrease to 5% to encourage propagation from tuft instead of spontaneous Ca spike. 10% are local and 3/4 local are L5#'syn_number': 26112/8,
-			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.10*0.75*0.25, #  10% are local and 3/4 local are L5 # decrease to 5% to encourage propagation from tuft instead of spontaneous Ca spike
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 444444444},
@@ -128,9 +123,8 @@ class SimulationParameters:
 			},
 		'nexus_distant':{
 			'sec_type': 'nexus',
-			'syn_density': 2.16*0.05*0.90, #'syn_number': 26112/8,
-			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.90*0.25, # 90% are distant # decrease to 5% to encourage propagation from tuft instead of spontaneous Ca spike.
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 444444444},
@@ -140,9 +134,8 @@ class SimulationParameters:
 			},
 		'trunk_distant': {
 			'sec_type': 'trunk',
-			'syn_density': 2.16*0.3*0.25, #'syn_number': 26112/8, 
-			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.25*0.15, # 25% are distant # decrease to 30% to encourage activity propagation through instead of spontaneous activity within.
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 111111},
@@ -152,9 +145,8 @@ class SimulationParameters:
 			},
 		'trunk_local_L5': {
 			'sec_type': 'trunk',
-			'syn_density': 2.16*0.3*0.75*0.8, # decrease to 25% to encourage activity propagation through instead of spontaneous activity within. 75% are local and 4/5 local are L5#'syn_number': 26112/8,
-			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.75*0.8*0.15, # 75% are local and 4/5 local are L5 # decrease to 30% to encourage activity propagation through instead of spontaneous activity within.
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 111111},
@@ -164,9 +156,8 @@ class SimulationParameters:
 			},
 		'trunk_local_L23': {
 			'sec_type': 'trunk',
-			'syn_density': 2.16*0.3*0.75*0.2, # decrease to 25% to encourage activity propagation through instead of spontaneous activity within. 75% are local and 1/5 local are L23# #'syn_number': 26112/8, 
-			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.75*0.2*0.15, #  75% are local and 1/5 local are L23 # decrease to 30% to encourage activity propagation through instead of spontaneous activity within
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 111111},
@@ -176,9 +167,8 @@ class SimulationParameters:
 			},
 		'oblique_distant': {
 			'sec_type': 'oblique',
-			'syn_density': 2.16*0.6*0.35, #decrease to 0.3 to reduce spontaneous activity and focus on propagation from nexus. 35% are distant #'syn_number': 26112/8,
-			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.35*0.25, # 35% are distant # decrease to 0.3 to reduce NMDA spikes in obliques
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 222222},
@@ -188,9 +178,8 @@ class SimulationParameters:
 			},
 		'oblique_local_L23': {
 			'sec_type': 'oblique',
-			'syn_density': 2.16*0.6*0.65*0.25, #decrease to 0.3 to reduce spontaneous activity and focus on propagation from nexus. 65% are local and 1/4 local are L23 #'syn_number': 26112/8,
-			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.65*0.25*0.25, # 65% are local and 1/4 local are L23 # decrease to 0.3 to reduce NMDA spikes in obliques
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 222222},
@@ -200,9 +189,8 @@ class SimulationParameters:
 			},
 		'oblique_local_L5': {
 			'sec_type': 'oblique',
-			'syn_density': 2.16*0.6*0.65*0.75, #decrease to 0.3 to reduce spontaneous activity and focus on propagation from nexus. 35% are local and 3/4 local are L5 #'syn_number': 26112/8,
-			# 'gmax_params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675*0.1, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.65*0.75*0.25, # 35% are local and 3/4 local are L5 # decrease to 0.3 to reduce NMDA spikes in obliques
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 222222},
@@ -212,9 +200,8 @@ class SimulationParameters:
 			},
 		'distal_basal_local_L5': {
 			'sec_type': 'distal_basal',
-			'syn_density': 2.16*0.9*0.9, # decrease to 0.9 to control soma firing rate. 90% are local, 90% of local are L5 #'syn_number': 26112,
-			# 'gmax_params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.9*0.9*1.75, # 90% are local, 90% of local are L5 # decrease to 0.95 to control soma firing rate.
+			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04, 'clip': (0,5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 555555555},
@@ -224,9 +211,8 @@ class SimulationParameters:
 			},
 		'distal_basal_local_L23': {
 			'sec_type': 'distal_basal',
-			'syn_density': 2.16*0.9*0.1, # decrease to 0.9 to control soma firing rate. 90% are local, 10% of local are L23 #'syn_number': 26112,
-			# 'gmax_params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.9*0.1*1.75, # 90% are local, 10% of local are L23 # decrease to 0.95 to control soma firing rate.
+			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04, 'clip': (0,5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 555555555},
@@ -236,9 +222,8 @@ class SimulationParameters:
 			},
 		'distal_basal_distant': {
 			'sec_type': 'distal_basal',
-			'syn_density': 2.16*0.10, # decrease to 0.9 to control soma firing rate. 10% are distant #'syn_number': 26112,
-			# 'gmax_params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1},
-			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04*0.1, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.10*1.75, # 10% are distant # decrease to 0.95 to control soma firing rate.
+			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04, 'clip': (0,5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 555555555},
@@ -253,9 +238,8 @@ class SimulationParameters:
 	inh_syn_properties: dict = field(default_factory=lambda: {
 		'tuft': {
 			'sec_type': 'tuft', # section type to place synapses on
-			'syn_density': 0.22*1.5, 'syn_number': 3066,
-			# 'gmax_params': {'mean': 1.87*8/8*2*4, 'std': 0.08474},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
-			'initial_weight_distribution': {'params': {'mean': 1.87*8/8*2*4, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
+			'syn_density': 0.22,
+			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 11111111},
@@ -273,8 +257,7 @@ class SimulationParameters:
 			},
 		'nexus': {
 			'sec_type': 'nexus',
-			'syn_density': 0.22*1.5, 'syn_number': 3066,
-			# 'gmax_params': {'mean': 1.87*10/10, 'std': 0.08474},#0.08474*0.2*0.66*0.1},
+			'syn_density': 0.22*1.,
 			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#0.08474*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
@@ -293,9 +276,8 @@ class SimulationParameters:
 			},
 		'trunk': {
 			'sec_type': 'trunk',
-			'syn_density': 0.22, 'syn_number': 3066,
-			# 'gmax_params': {'mean': 1.87/2, 'std': 0.08474},#*0.2*0.66*0.1},
-			'initial_weight_distribution': {'params': {'mean': 1.87/2, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},
+			'syn_density': 0.22,
+			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 88888888},
@@ -313,8 +295,7 @@ class SimulationParameters:
 			},
 		'oblique': {
 			'sec_type': 'oblique',
-			'syn_density': 0.22, 'syn_number': 3066,
-			# 'gmax_params': {'mean': 1.87*4/4, 'std': 0.08474},#*0.2*0.66*0.1},
+			'syn_density': 0.22, 
 			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
@@ -333,8 +314,7 @@ class SimulationParameters:
 			},
 		'distal_basal': {
 			'sec_type': 'distal_basal',
-			'syn_density': 0.22, 'syn_number': 3066,
-			# 'gmax_params': {'mean': 1.87, 'std': 0.08474},#0.08474*0.916*0.5*.16},
+			'syn_density': 0.22*1.5,
 			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#0.08474*0.916*0.5*.16},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.72, 'std': 0.1}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
@@ -353,9 +333,8 @@ class SimulationParameters:
 			},
 		'perisomatic': {
 			'sec_type':'perisomatic',
-			'syn_density': 0.22,#*1.15, #'syn_number': 3066,
-			# 'gmax_params': {'mean': 4.6, 'std':  0.175*.5},
-			'initial_weight_distribution': {'params': {'mean': 4.6/4, 'std':  0.175*.5, 'clip': [0,5]}},
+			'syn_density': 0.22,
+			'initial_weight_distribution': {'params': {'mean': 4.6, 'std':  0.175, 'clip': [0,5]}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.88, 'std': 0.05}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 777777777},
@@ -373,7 +352,7 @@ class SimulationParameters:
 			},
 	})
 
-	# Clustering parameters (example, suggest replacing.)
+	# Clustering parameters (example, see modules/clusters_global_l5_fg.py.)
 	exc_clustering: dict = field(default_factory=lambda: {
 		# 'tuft': {
 		# 	'functional_groups': [
@@ -462,11 +441,11 @@ class SimulationParameters:
 	# Firing rate distributions
 	use_levy_dist_for_exc: bool = True
 	inh_proximal_mean_fr: float = 16.9 # 9.75#10
-	inh_proximal_std_fr: float = 14.3 *0.25 # 4
+	inh_proximal_std_fr: float = 14.3 # 4
 	inh_distal_mean_fr: float = 3.9
-	inh_distal_std_fr: float = 4.9*0.25
+	inh_distal_std_fr: float = 4.9
 	exc_mean_fr: float = 4.43#6.7967 #4.43
-	exc_std_fr: float = 4.3*0.25#3.4503#2.9
+	exc_std_fr: float = 4.3#3.4503#2.9
 
   	# exc FR FR/FR curve
 	exc_constant_fr: bool = False # exc synapses will have firing rate of 0 + self.parameters.excFR_increase
@@ -582,14 +561,14 @@ class SimulationParameters:
 		if self.use_levy_dist_for_exc:
 			for input_source, syn_props in self.exc_syn_properties.items():
 				if 'L5' in input_source: # different mean FRs for L5 PNs
-					levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*0.25*2.5, #*1.5,
+					levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*0.25*2.5*0.25, #*1.5,
 					'scale': 0.44} # baseline activity (1-3 Hz. 2.2 Hz mean mean firing rate)
 					# levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*2, 'scale': 0.44}  # task activity (5-20 Hz. 11.5 Hz mean mean firing rate std 7.5 Hz exponential.)
 				elif 'L23' in input_source: # different mean FRs for L23 PNs
-					levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*0.1*1.5*1.5, 'scale': 0.44}# baseline activity (0.5-2Hz. ~1.2 Hz mean mean firing rate) (actually mean of 1.8 couldn't get to go lower.)
+					levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*0.1*1.5*1.5*0.25, 'scale': 0.44}# baseline activity (0.5-2Hz. ~1.2 Hz mean mean firing rate) (actually mean of 1.8 couldn't get to go lower.)
 					# levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*1, 'scale': 0.44}  # task activity (1-10 Hz. ~4.5 Hz mean mean firing rate. 3 Hz std)
 				elif 'distant' in input_source: # distant inputs (same as local L5 for now.)
-					levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*0.25, 'scale': 0.44} # baseline activity (1-3 Hz. 2.2 Hz mean mean firing rate)
+					levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*0.25*0.25, 'scale': 0.44} # baseline activity (1-3 Hz. 2.2 Hz mean mean firing rate)
 					# levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*2, 'scale': 0.44}  # task activity (5-20 Hz. 11.5 Hz mean mean firing rate std 7.5 Hz exponential.)
 				else: # other input sources
 					raise(NotImplementedError(f"desired {input_source} input source not specified for Levy distribution mean firing rate."))
