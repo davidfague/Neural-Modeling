@@ -1,5 +1,20 @@
 # Neural-Modeling
 
+# Instructions:
+
+Start with setup.py
+
+To run a simulation:
+    Use scripts/configure_sim_params.py to make changes to define and change the simulation(s). Default parameters are in constants.py.
+
+    Use scripts/AA_pre_sim.py to prepare simulation(s).
+
+    Use scripts/AA_sim_then_post_parallel.py to run and analyze simulation(s).
+    
+    Check simulations/{your_sims_dir}/{your_sim_dir} for results.
+
+# Below is old and may be outdated
+
 Publication: https://mailmissouri-my.sharepoint.com/:w:/r/personal/nairs_umsystem_edu/Documents/MigratedBoxFiles/nairs/AAWork%20in%20progress/PAPERS%20in%20progress/AA-SingleCell%20and%20WM%20Projects/Reduced%20Order%20Modeling%20Project/Manuscript%20-%20EquivalentModel/2025%20IEEE%20MWSCAS/2025_ieee-DetailedCell.docx?d=w14e2c2d2b3e8490d82f28972448e9762&csf=1&web=1&e=nfMC3R
 
 Start with Neural-Modeling/setup/README.md to get started with installing miniconda, creating an environment, and installing necessary packages.
