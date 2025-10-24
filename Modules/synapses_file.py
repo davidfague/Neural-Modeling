@@ -15,6 +15,8 @@ from Modules.cell_builder import CellBuilder, SkeletonCell
 from Modules.logger import Logger
 import numpy as np
 from neuron import h
+import json
+import h5py
 
 #@TODO: clean up random seeding, clean up parameter loading.
 def serialize_spike_train(arr):
@@ -59,6 +61,57 @@ def deserialize_spike_train(s):
         return np.fromstring(s, sep=' ', dtype=int)
     return np.array([], dtype=int)
 
+### SAVING FG TRACES ###
+def _fg_key(src: str, fg_id: int, syn_type: str) -> str:
+    # A compact key for each FG
+    return f"{syn_type}__{src}__fg{fg_id}"
+
+def save_fg_traces_h5(fg_traces_store: dict, path: str):
+    with h5py.File(path, "w") as f:
+        for (syn_type, src, fg_id), lam in fg_traces_store.items():
+            if lam is None or fg_id < 0:
+                continue
+            grp = f.require_group(f"{syn_type}/{src}/fg_{int(fg_id)}")
+            dset = grp.create_dataset("lambda", data=np.asarray(lam, dtype=float), compression="gzip")
+            dset.attrs["syn_type"] = syn_type
+            dset.attrs["input_source"] = src
+            dset.attrs["fg_id"] = int(fg_id)
+            dset.attrs["length"] = int(len(lam))
+
+def load_fg_traces_h5(path):
+    """
+    Returns:
+      traces: dict keyed by (syn_type, input_source, fg_id) -> np.ndarray
+      meta:   list of dicts with attrs for each FG
+    """
+    traces = {}
+    meta = []
+    with h5py.File(path, "r") as f:
+        # walk all groups and pick those that end with fg_*/lambda
+        def _visit(name, obj):
+            if isinstance(obj, h5py.Dataset) and name.endswith("/lambda"):
+                # name like: "exc/tuft_local_L5/fg_3/lambda"
+                parts = name.split("/")
+                syn_type, input_source, fg_part, _ = parts[-4], parts[-3], parts[-2], parts[-1]
+                fg_id = int(fg_part.split("_")[1])
+
+                lam = obj[()]  # load the array
+                traces[(syn_type, input_source, fg_id)] = lam
+
+                # grab attributes saved with the dataset (optional)
+                attrs = dict(obj.attrs)
+                # ensure required keys are present even if attrs weren’t set
+                attrs.setdefault("syn_type", syn_type)
+                attrs.setdefault("input_source", input_source)
+                attrs.setdefault("fg_id", fg_id)
+                attrs.setdefault("length", int(len(lam)))
+                meta.append(attrs)
+
+        f.visititems(_visit)
+
+    return traces, meta
+
+### ###
 
 # define a class for generating synapses abstractly
 class PreSimSynapseGenerator:
@@ -310,30 +363,88 @@ class PreSimSynapseGenerator:
                 if max_syn_per_pc is None:
                     raise ValueError(f"max_synapses_per_pc must be specified for dynamic mode in FG {fg_idx}.")
 
+                locality = pcs_cfg.get('locality', None)  # None for legacy, 'nearest' for local batching
+
                 idxs = np.where(in_fg_and_input)[0]
                 n_syn = len(idxs)
-                idxs = np.sort(idxs)
-                
-                pc_idx = 0
-                cur_idx = 0
-                while cur_idx < n_syn:
-                    # --- New block: allow int/float or dict for max_syn_per_pc ---
-                    this_max_syn = max_syn_per_pc
+                if n_syn == 0:
+                    continue
+
+                def sample_capacity():
+                    """Return an integer >= 1 from max_syn_per_pc (callable/spec/number)."""
+                    cap = max_syn_per_pc
                     if isinstance(max_syn_per_pc, dict) and 'dist' in max_syn_per_pc:
-                        # Sample a single value (make sure it's int and at least 1)
-                        this_max_syn = int(np.round(max_syn_per_pc['dist']()))
-                        if this_max_syn < 1:
-                            this_max_syn = 1
-                    # else, if just int or float, use as is
-                    
-                    start = cur_idx
-                    end = min(cur_idx + this_max_syn, n_syn)
-                    pc_indices = idxs[start:end]
-                    pc_labels[pc_indices] = pc_idx
-                    pc_idx += 1
-                    cur_idx = end
-                # Sanity check: all in this FG got assigned
-                assert np.all(pc_labels[idxs] != -1), f"Some synapses in FG {fg_idx} weren't assigned a PC!"
+                        dist = max_syn_per_pc['dist']
+                        if callable(dist):
+                            cap = int(np.round(dist()))
+                        elif isinstance(dist, dict):
+                            kind = dist.get('kind')
+                            if kind == 'uniform_int':
+                                low = int(dist['low']); high = int(dist['high'])
+                                try:
+                                    cap = int(np.random.default_rng().integers(low, high + 1))
+                                except AttributeError:
+                                    cap = int(np.random.randint(low, high + 1))  # inclusive
+                            elif kind == 'truncnorm_int':
+                                m = float(dist['mean']); sd = float(dist['sd'])
+                                low = int(dist['low']);  high = int(dist['high'])
+                                val = int(np.round(np.random.normal(loc=m, scale=sd)))
+                                cap = min(max(val, low), high)
+                            else:
+                                raise ValueError(f"Unknown divergence dist spec kind: {kind}")
+                        else:
+                            raise ValueError(f"'dist' must be callable or spec-dict, got {type(dist)}")
+                    elif isinstance(max_syn_per_pc, (int, float)):
+                        cap = int(round(max_syn_per_pc))
+                    else:
+                        # fall back to 1 if truly odd input to avoid infinite loop
+                        cap = 1
+                    return max(cap, 1)
+
+                if locality == 'nearest':
+                    # Spatially local batching
+                    # Use coords only for the synapses in this FG
+                    fg_coords = coords[idxs]
+                    remaining = idxs.copy()
+                    rem_coords = fg_coords.copy()
+
+                    pc_idx_local = 0
+                    while len(remaining) > 0:
+                        # Seed = farthest from centroid (spreads clusters a bit)
+                        centroid = rem_coords.mean(axis=0)
+                        d2c = np.linalg.norm(rem_coords - centroid, axis=1)
+                        seed_i = int(np.argmax(d2c))
+                        seed_coord = rem_coords[seed_i:seed_i+1]
+
+                        dists = np.linalg.norm(rem_coords - seed_coord, axis=1)
+                        order = np.argsort(dists)
+
+                        cap = sample_capacity()
+                        take = order[:min(cap, len(order))]
+
+                        pc_labels[remaining[take]] = pc_idx_local
+                        pc_idx_local += 1
+
+                        keep_mask = np.ones(len(remaining), dtype=bool)
+                        keep_mask[take] = False
+                        remaining = remaining[keep_mask]
+                        rem_coords = rem_coords[keep_mask]
+
+                    assert np.all(pc_labels[idxs] != -1), f"Some synapses in FG {fg_idx} weren't assigned a PC!"
+                else:
+                    # Legacy: sequential chunks (not spatially local)
+                    idxs = np.sort(idxs)
+                    pc_idx_seq = 0
+                    cur = 0
+                    while cur < n_syn:
+                        cap = sample_capacity()
+                        start = cur
+                        end = min(cur + cap, n_syn)
+                        pc_labels[idxs[start:end]] = pc_idx_seq
+                        pc_idx_seq += 1
+                        cur = end
+                    assert np.all(pc_labels[idxs] != -1), f"Some synapses in FG {fg_idx} weren't assigned a PC!"
+
             else: # assign pcs statically and specifically from config
                 for pc_idx, pc in enumerate(fg.get('presynaptic_cells', [])):
                     pc_center = np.array(pc['center'])
@@ -460,75 +571,70 @@ class PreSimSynapseGenerator:
 
         def generate_fg_trace(fg_id=None, fg=None):
             """
-            Returns the modulatory trace (lambda over time) for a functional group.
-            Respects FG 'modulation_mode' override if present.
+            Build FG trace by composing the *source-level* base mode
+            with an optional FG-level extra modulation (usually rhythmic).
+            The FG should never override delay.
             """
-            # Allow for single string or list for modulation_mode
-            mode = spike_train_mode if fg is None else fg.get('modulation_mode', spike_train_mode)
-            if isinstance(mode, str):
-                mode_list = [mode]
+            # 1) normalize the source-level mode into an ordered list
+            if isinstance(spike_train_mode, (list, tuple)):
+                base_modes = list(spike_train_mode)
             else:
-                mode_list = list(mode)
+                base_modes = [spike_train_mode]
+
+            # 2) allow a single *additional* FG modulation (if present and not duplicate)
+            fg_mod = (fg or {}).get('modulation_mode', None)
+            mode_list = base_modes[:]  # e.g., ['delay','rhythmic'] for inh
+            if fg_mod and fg_mod not in mode_list:
+                mode_list.append(fg_mod)
 
             fg_trace = None
-            mean_val = None
-
             for idx, mod in enumerate(mode_list):
-                # Use the current trace as base if it's not the first modulation
                 if idx == 0:
-                    # BASE MODULATION
+                    # BASE modulation
                     if mod == 'standard':
                         fg_trace = np.ones(h_tstop)
                     elif mod == 'pink_noise':
                         fg_trace = PoissonTrainGenerator.generate_lambdas_from_pink_noise(
                             num=h_tstop, random_state=random_state
                         )
-                        mean_val = np.mean(fg_trace)
-                        if mean_val == 0:
-                            raise ValueError("Mean value of pink noise trace is zero; cannot normalize.")
-                        fg_trace = fg_trace / mean_val
+                        m = np.mean(fg_trace)
+                        if m == 0:
+                            raise ValueError("Mean of pink-noise trace is zero; cannot normalize.")
+                        fg_trace = fg_trace / m
                     elif mod == 'delay':
                         shift = delay_config.get('delay_shift', None)
                         if shift is None:
-                            raise ValueError("delay_shift must be specified in delay_config for 'delay' mode.")
+                            raise ValueError("delay_shift must be specified for 'delay' mode.")
                         ref_synapse_type = delay_config.get('ref_synapse_type', 'exc')
-                        ref_sec_type = delay_config.get('ref_sec_type', input_source)
-                        ref_fg_id = delay_config.get('ref_fg_id', fg_id)
-                        ref_pc_id = delay_config.get('ref_pc_id', None)
+                        ref_sec_type     = delay_config.get('ref_sec_type', input_source)
+                        ref_fg_id        = delay_config.get('ref_fg_id', fg_id)
+                        ref_pc_id        = delay_config.get('ref_pc_id', None)
                         trains = collect_reference_spike_trains(
                             ref_synapse_type, ref_sec_type, ref_fg_id, ref_pc_id
                         )
-                        if not all(isinstance(train, (np.ndarray, list)) and len(train) > 0 for train in trains):
-                            raise ValueError("All reference spike trains for delay must be non-empty arrays/lists.")
+                        if not all(isinstance(t,(np.ndarray,list)) and len(t)>0 for t in trains):
+                            raise ValueError("Delay refs must be non-empty arrays/lists.")
                         fg_trace = PoissonTrainGenerator.generate_lambdas_by_delaying(h_tstop, trains)
                     elif mod == 'rhythmic':
                         fg_trace = np.ones(h_tstop)
-                        freq = props.get('rhythmic_frequency', None)
+                        freq  = props.get('rhythmic_frequency', None)
                         depth = props.get('rhythmic_depth', None)
                         if freq is None or depth is None:
-                            raise ValueError("Both 'rhythmic_frequency' and 'rhythmic_depth' must be set for rhythmic mode.")
-                        fg_trace = PoissonTrainGenerator.rhythmic_modulation(fg_trace, freq, depth, 1)#parameters.h_dt)
+                            raise ValueError("Set rhythmic_frequency and rhythmic_depth.")
+                        fg_trace = PoissonTrainGenerator.rhythmic_modulation(fg_trace, freq, depth, 1)
                     else:
-                        raise NotImplementedError(f"Unrecognized spike_train_mode: {mod}")
+                        raise NotImplementedError(f"Unrecognized base mode: {mod}")
                 else:
-                    # SEQUENTIAL MODULATION
+                    # SECONDARY modulation: keep this tight (support rhythmic only)
                     if mod == 'rhythmic':
-                        freq = props.get('rhythmic_frequency', None)
+                        freq  = props.get('rhythmic_frequency', None)
                         depth = props.get('rhythmic_depth', None)
                         if freq is None or depth is None:
-                            raise ValueError("Both 'rhythmic_frequency' and 'rhythmic_depth' must be set for rhythmic mode.")
-                        fg_trace = PoissonTrainGenerator.rhythmic_modulation(fg_trace, freq, depth, 1)#parameters.h_dt)
-                    # elif mod == 'pink_noise':
-                    #     # Allow re-normalizing by mean if "pink_noise" comes later in the chain
-                    #     mean_val = np.mean(fg_trace)
-                    #     if mean_val == 0:
-                    #         raise ValueError("Mean value of trace is zero; cannot normalize.")
-                    #     fg_trace = fg_trace / mean_val
-                    # elif mod == 'delay':
-                    #     # If "delay" is after something else, that's ambiguous!
-                    #     raise NotImplementedError("Applying 'delay' as a second modulation is not supported.")
+                            raise ValueError("Set rhythmic_frequency and rhythmic_depth.")
+                        fg_trace = PoissonTrainGenerator.rhythmic_modulation(fg_trace, freq, depth, 1)
                     else:
-                        raise NotImplementedError(f"Unrecognized follow-up spike_train_mode: {mod}. Only rhythmic is supported.")
+                        # don’t allow 'delay' or 'pink_noise' as a *second* layer
+                        continue
             return fg_trace
 
         unique_fgs = np.unique(synapses['functional_group'])
@@ -540,14 +646,15 @@ class PreSimSynapseGenerator:
             fg_trace = generate_fg_trace(fg_id=fg_id, fg=fg)
             if fg_trace is None or not isinstance(fg_trace, np.ndarray) or np.any(np.isnan(fg_trace)):
                 raise ValueError(f"fg_trace is not valid for FG {fg_id}, got: {fg_trace}")
-            fg_traces_store[(synapse_type, input_source, fg_id)] = fg_trace
+            if fg_id >= 0:
+                fg_traces_store[(synapse_type, input_source, int(fg_id))] = fg_trace
 
             pcs_in_fg = np.unique(synapses.loc[fg_mask, 'presynaptic_cell'])
             for pc_id in pcs_in_fg:
                 pc_mask = fg_mask & (synapses['presynaptic_cell'] == pc_id)
                 if pc_id == -1:
                     for idx in synapses[pc_mask].index:
-                        mean_fr = mean_fr_dist(size=1) + props.get('fr_shift', 0)
+                        mean_fr = float(mean_fr_dist(size=1)) + props.get('fr_shift', 0)
                         if mean_fr <= 0:
                             mean_fr = 0
                         elif not np.isfinite(mean_fr):
@@ -564,14 +671,14 @@ class PreSimSynapseGenerator:
                         synapses.at[idx, 'spike_train'] = spike_train.spike_times
                         synapses.at[idx, 'pc_mean_firing_rate'] = mean_fr
                     continue
-                mean_fr = mean_fr_dist(size=1) + props.get('fr_shift', 0)
+                mean_fr = float(mean_fr_dist(size=1)) + props.get('fr_shift', 0)
                 if not np.isfinite(mean_fr) or mean_fr <= 0:
                     raise ValueError(f"PC mean firing rate is not positive: {mean_fr}")
                 # Standard: shift mean, Delay: use fg_trace directly (already population-based)
-                pc_trace = (
-                    fg_trace if spike_train_mode == 'delay'
-                    else PoissonTrainGenerator.shift_mean_of_lambdas(fg_trace, mean_fr)
+                has_delay = (spike_train_mode == 'delay') or (
+                    isinstance(spike_train_mode, (list, tuple)) and 'delay' in spike_train_mode
                 )
+                pc_trace = PoissonTrainGenerator.shift_mean_of_lambdas(fg_trace, mean_fr)
                 if pc_trace is None or not isinstance(pc_trace, np.ndarray) or np.any(np.isnan(pc_trace)):
                     raise ValueError(f"pc_trace is not valid for FG {fg_id} PC {pc_id}, got: {pc_trace}")
                 spike_train = PoissonTrainGenerator.generate_spike_train(pc_trace, random_state)
@@ -649,51 +756,54 @@ class PreSimSynapseGenerator:
         fg_traces_store = {}
         pc_spike_trains_store = {}
 
-        # Pass 2: Generate spike trains for ALL non-delayed first
-        # print("Generating spike trains for all non-delayed synapses")
+        # --- Pass 2: non-delayed first ---
         for synapse_type in ['exc', 'inh']:
             properties_set = getattr(parameters, f"{synapse_type}_syn_properties")
             for input_source, props in properties_set.items():
-                spike_train_mode = props.get('spike_train_mode', 'standard')
-                if spike_train_mode == 'delay':
-                    continue  # skip delayed for now
+                mode = props.get('spike_train_mode', 'standard')
+                has_delay = (mode == 'delay') or (isinstance(mode, (list, tuple)) and 'delay' in mode)
+                if has_delay:
+                    continue  # defer to Pass 3
                 syn_mask = (
-                    synapses['name'].str.contains(synapse_type, na=False)
-                    & synapses['name'].str.contains(input_source, na=False)
+                    synapses['name'].str.contains(synapse_type, na=False) &
+                    (synapses['input_source'] == input_source)
                 )
                 assigned_synapses = synapses.loc[syn_mask].copy()
                 seed = props['seed']['synapses']
-                random_state = np.random.RandomState(parameters.numpy_random_state+seed)
-                assigned_synapses, fg_traces_store, pc_spike_trains_store = self.generate_spike_trains_for_cell_assemblies( # generate spike trains for this synapse type and input source
+                random_state = np.random.RandomState(parameters.numpy_random_state + seed)
+                assigned_synapses, fg_traces_store, pc_spike_trains_store = self.generate_spike_trains_for_cell_assemblies(
                     assigned_synapses, parameters, h_tstop, input_source, synapse_type, random_state,
                     fg_traces_store=fg_traces_store, pc_spike_trains_store=pc_spike_trains_store,
-                    all_synapses_full=all_synapses_full)
+                    all_synapses_full=all_synapses_full
+                )
                 for col in ['spike_train', 'pc_mean_firing_rate', 'functional_group', 'presynaptic_cell']:
                     synapses.loc[assigned_synapses.index, col] = assigned_synapses[col]
                 all_synapses_full.loc[assigned_synapses.index, 'spike_train'] = assigned_synapses['spike_train']
 
+        # Prepare arrays for delay ref
         all_synapses_full['spike_train'] = all_synapses_full['spike_train'].apply(deserialize_spike_train)
 
-        # Pass 3: Now, generate spike trains for all delayed synapses
-        # print("Generating spike trains for all delayed synapses")
+        # --- Pass 3: delayed sources ---
         for synapse_type in ['exc', 'inh']:
             properties_set = getattr(parameters, f"{synapse_type}_syn_properties")
             for input_source, props in properties_set.items():
-                spike_train_mode = props.get('spike_train_mode', 'standard')
-                if spike_train_mode != 'delay':
-                    continue  # only do delayed in this pass
+                mode = props.get('spike_train_mode', 'standard')
+                has_delay = (mode == 'delay') or (isinstance(mode, (list, tuple)) and 'delay' in mode)
+                if not has_delay:
+                    continue
                 syn_mask = (
                     synapses['name'].str.contains(synapse_type, na=False)
                     & (synapses['input_source'] == input_source)
                 )
-                # print(f"Generating delayed spike trains for {synapse_type} {input_source} synapses, n={syn_mask.sum()}")
                 assigned_synapses = synapses.loc[syn_mask].copy()
                 seed = props['seed']['synapses']
-                random_state = np.random.RandomState(parameters.numpy_random_state+seed)
+                random_state = np.random.RandomState(parameters.numpy_random_state + seed)
+                # NOTE: pass input_source here (see bug #3)
                 assigned_synapses, fg_traces_store, pc_spike_trains_store = self.generate_spike_trains_for_cell_assemblies(
-                    assigned_synapses, parameters, h_tstop, sec_type, synapse_type, random_state,
+                    assigned_synapses, parameters, h_tstop, input_source, synapse_type, random_state,
                     fg_traces_store=fg_traces_store, pc_spike_trains_store=pc_spike_trains_store,
-                    all_synapses_full=all_synapses_full)
+                    all_synapses_full=all_synapses_full
+                )
                 for col in ['spike_train', 'pc_mean_firing_rate', 'functional_group', 'presynaptic_cell']:
                     synapses.loc[assigned_synapses.index, col] = assigned_synapses[col]
                 all_synapses_full.loc[assigned_synapses.index, 'spike_train'] = assigned_synapses['spike_train']
@@ -701,6 +811,7 @@ class PreSimSynapseGenerator:
         synapses['spike_train'] = synapses['spike_train'].apply(serialize_spike_train)
         self.synapses = synapses.reset_index(drop=True)  # reset index after all operations
         self.synapses.to_csv(os.path.join(self.sim_dir, "synapses.csv"), index=False)
+        save_fg_traces_h5(fg_traces_store, os.path.join(self.sim_dir, "fg_traces.h5"))
 
 
 
@@ -856,6 +967,8 @@ def update_spike_trains(
         lambda_vec = np.full(sim_duration_ms, float(rate), dtype=float)
 
     if spike_train_modulation == 'rhythmic':
+        if lambda_vec is None:
+            raise(ValueError(f"lambda_vec: {lambda_vec} should not be None"))
         lambda_vec_to_use = PoissonTrainGenerator.rhythmic_modulation(
             lambdas=lambda_vec,
             frequency=modulation_params.get('frequency'),
@@ -914,7 +1027,8 @@ def update_spike_trains_for_sim(sim_dir, inh_bg_rate, exc_bg_rate):
                             modulation_params={'frequency': params.inh_syn_properties['distal_basal']['rhythmic_frequency'],
                                                'depth_of_mod': params.inh_syn_properties['distal_basal']['rhythmic_depth'],
                                                'delta_t': 0.1},
-                            region='')
+                            region='distal_basal|tuft|trunk|nexus|oblique')
+    
     # Ensure array-capable column
     synapses = update_spike_trains('exc', exc_bg_rate, synapses, sim_duration_ms=h_tstop, base_seed=12345)
     synapses.to_csv(os.path.join(sim_dir, "synapses.csv"), index=False)
