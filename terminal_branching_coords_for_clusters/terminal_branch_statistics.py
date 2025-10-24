@@ -1,5 +1,5 @@
 # Auto-generated terminal branch statistics
-branch_stats = {'axon': {2629: {'center_coords': (45.73, 76.04, -50.25), 'total_length': 4.62}},
+branch_stats = {#'axon': {2629: {'center_coords': (45.73, 76.04, -50.25), 'total_length': 4.62}},
  'distal_basal': {40: {'center_coords': (146.96, 114.64, -14.76), 'total_length': 4.89},
                   61: {'center_coords': (123.18, -16.89, 14.25), 'total_length': 4.87},
                   100: {'center_coords': (226.22, -47.73, -45.1), 'total_length': 4.95},
