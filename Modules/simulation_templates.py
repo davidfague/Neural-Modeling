@@ -13,7 +13,7 @@ These are *static templates* — no NEURON code, no combination logic here.
 # --- Simulation type presets ---
 sim_type_params_all = {
     "sta": {  # in vivo-like simulation with recording
-        "h_tstop": 50000,
+        "h_tstop": 10000,
         "merge_synapses": False,
         "record_ecp": False,
         "record_all_channels": True,
