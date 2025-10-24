@@ -22,7 +22,8 @@ import pickle
 from typing import Optional, Tuple, List
 
 from Modules.constants import HayParameters
-from Modules.clusters_global_l5_fg import exc_clustering, inh_clustering
+from Modules.clusters_global_l5_fg import exc_clustering as EXC_CLUSTERING, inh_clustering as INH_CLUSTERING
+
 
 # Reusable presets / templates
 from Modules.simulation_templates import (
@@ -61,7 +62,7 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     """
 
     # === USER CONFIGURABLE (experiment-specific) ===
-    SIM_SET_TITLE   = "SetNexusExc0.3from0.25_DecreaseNexusInh_resetTrunkOblique"
+    SIM_SET_TITLE   = "1.0xNexusInhFrom2x_0.25xNexusExc_1.3xTuftExc"
     sim_type        = "sta"         # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
 
     # Background spike-train knobs for post-generation update
@@ -70,8 +71,8 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
 
     # Clustering & rhythmicity
     cluster_exc   = True
-    rhythmic_inh  = True
-    depth_values  = [0.15]          # sweep over inhibitory rhythmic depth(s)
+    inh_mode = "delayed"
+    depth_values  = [0]          # sweep over inhibitory rhythmic depth(s)
 
     # Seeds
     numpy_random_states  = [5000]
@@ -82,13 +83,10 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     syn_reductions_to_use    = ["None"]     # keys from simulation_templates.syn_reductions
     ci_replacements_to_use   = ["None"]     # keys from simulation_templates.ci_replacements
 
+    # decide what to pass for exc clustering without rebinding the import
+    exc_clustering_cfg = copy.deepcopy(EXC_CLUSTERING)  # avoid mutating the imported dict
     if not cluster_exc:
-        # empty out clustering if requested
-        try:
-            exc_clustering.clear()
-        except Exception:
-            # if it's not a mutable mapping, just shadow it with an empty one
-            exc_clustering = {}
+        exc_clustering_cfg = {}  # just empty it locally
 
     # Build parameter sets
     all_parameter_sets = []
@@ -115,10 +113,22 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
 
         # Modify all inhibitory section inputs per experiment design
         for input_source, props in inh_syn_properties.items():
-            if rhythmic_inh:
+            if inh_mode == "rhythmic":
                 props["spike_train_mode"] = "rhythmic"
                 props["rhythmic_depth"]  = rhythmic_depth
                 props.pop("delay_config", None)
+            elif inh_mode == "delayed":
+                props["spike_train_mode"] = "delay"
+                props["delay_config"] = {
+                    "delay_shift": 4,          # tweak if you want a lag/lead (ms)
+                    "ref_synapse_type": "exc", # use excitatory trains
+                    "ref_sec_type":   "all",   # across ALL exc input_sources
+                    "ref_fg_id":      "all",   # across ALL exc FGs
+                    "ref_pc_id":      "all",   # across ALL exc PCs
+                }
+                # Optional: if these were set in defaults, remove rhythmic keys
+                props.pop("rhythmic_frequency", None)
+                props.pop("rhythmic_depth", None)
             else:
                 # ensure rhythmic is removed if present
                 mode = props.get("spike_train_mode")
@@ -132,8 +142,8 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
         common_params.update({
             "inh_syn_properties": inh_syn_properties,
             "exc_syn_properties": exc_syn_properties,
-            "exc_clustering":     exc_clustering,
-            "inh_clustering":     inh_clustering,
+            "exc_clustering":     exc_clustering_cfg,
+            "inh_clustering":     INH_CLUSTERING,
             "h_i_amplitude":      0.0,
             "CI_on":              False,
         })
@@ -158,7 +168,11 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
 
         # Name them to reflect your rhythmic depth and seed
         for p in param_objs:
-            p.sim_name = f"allinh_rhythmic_depth_{rhythmic_depth:.2f}_Np{p.numpy_random_state}"
+            if inh_mode == "delayed":
+                p.sim_name = f"allinh_delay_shift_{int(inh_syn_properties[next(iter(inh_syn_properties))]['delay_config']['delay_shift'])}ms_Np{p.numpy_random_state}"
+            else:
+                p.sim_name = f"allinh_rhythmic_depth_{rhythmic_depth:.2f}_Np{p.numpy_random_state}"
+
 
         all_parameter_sets.extend(param_objs)
         all_sim_titles.extend([p.sim_name for p in param_objs])
