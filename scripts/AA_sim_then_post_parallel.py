@@ -54,6 +54,11 @@ def run_one(sim_dir: str):
         subprocess.run(["python", "../scripts/find_events_ben.py", "-d", sim_dir], check=False)
         subprocess.run(["python", "../Modules/event_histograms.py", "-d", sim_dir], check=False)
 
+    # Voltage plots (new)
+    subprocess.run([sys.executable,
+                    os.path.join(os.path.dirname(__file__), "plot_voltages.py"),
+                    "-d", sim_dir],
+                   check=False)
     # STA
     subprocess.run(["python", "../scripts/plot_sta.py", "-d", sim_dir, "-s"], check=False)
 
@@ -103,4 +108,4 @@ if __name__ == "__main__":
         except Exception:
             pass
 
-    print("\nFinished all simulations + post-processing.")
+    print(f"\n[AA_sim_then_post_parallel.py] Finished Processing all simulations in {sims_dir}.", flush=True)
