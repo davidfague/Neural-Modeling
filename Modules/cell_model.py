@@ -88,6 +88,9 @@ class CellModel:
 
 		self.all = self._convert_section_list(self.all) # may not be needed since self.all should not be hoc.SectionList
 
+		# make sure that soma only has one section
+		if len(self.soma) > 1:
+			raise(ValueError(f"Expecting soma to consist of 1 section not {len(self.soma)}. CellModel.soma: {self.soma}"))
 	def _convert_section_list(self, section_list: object) -> list:
 		# If the section list is a hoc object, add its sections to the python list
 		if str(type(section_list)) == "<class 'hoc.HocObject'>":
@@ -199,7 +202,7 @@ class CellModel:
      
 		for i in range(sec.n3d() - 1, 0, -1):
 			if (sec.x3d(i) == sec.x3d(i-1)) and (sec.y3d(i) == sec.y3d(i-1)) and (sec.z3d(i) == sec.z3d(i-1)):
-				print(f"Removing duplicate coordinate at index {i} in section {sec.name()}")
+				self.logger.log(f"Removing duplicate coordinate at index {i} in section {sec.name()}")
 				h.pt3dremove(i, sec=sec)
 
 		seg_coords = np.zeros((sec.nseg, 13))
