@@ -161,12 +161,12 @@ class Simulator:
                 for sim_dir in sim_dirs
             ]
             for future, sim_dir in zip(as_completed(futures), sim_dirs):
-                try:
+                # try:
                     res = future.result()
                     if collect_results:
                         results.append((sim_dir, res))
-                except Exception as exc:
-                    print(f"Exception during processing {sim_dir}: {exc}")
+                # except Exception as exc:
+                #     print(f"Exception during {process_fns} on {sim_dir}: {exc}")
 
         return results
 
