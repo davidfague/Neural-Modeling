@@ -83,10 +83,10 @@ def load_skeleton_cell_from_allen(allen_cell_dir):
     # load user specifications
     # print(f"the directory where we find /user_specifications: {os.path.join(allen_cell_dir, "../user_specifications.json")}")
     # user_specs_dict = load_dictionary_from_json(os.path.join(allen_cell_dir, "../user_specifications.json"))
-    user_specs_dict = load_dictionary_from_json("../user_specifications.json")
+    # user_specs_dict = None # load_dictionary_from_json("../user_specifications.json")
 
-    if user_specs_dict:
-        utils = update_missing_passive_values(utils, user_specs_dict)
+    # if user_specs_dict:
+    #     utils = update_missing_passive_values(utils, user_specs_dict)
 
     # read morphology
     manifest = description.manifest
@@ -94,8 +94,87 @@ def load_skeleton_cell_from_allen(allen_cell_dir):
     utils.generate_morphology(morphology_path.encode('ascii', 'ignore'))
 
     # build the cell. Its parts will be assigned to the h object
-    utils.load_cell_parameters()
+    # utils.load_cell_parameters()
+    apply_cell_parameters(utils)
     skeleton_cell = AllenCell(utils.h)
 
     os.chdir(curr_dir)
     return skeleton_cell
+
+
+def apply_cell_parameters(self):
+        """ Modified from source code utils.load_cell_parameters because data["passive"] does not always have e_pas.
+        Configure a neuron after the cell morphology has been loaded."""
+        passive = self.description.data["passive"][0]
+        genome = self.description.data["genome"]
+        conditions = self.description.data["conditions"][0]
+        h = self.h
+
+        h("access soma")
+
+        # Set fixed passive properties
+        if "e_pas" in passive.keys():
+          for sec in h.allsec():
+              sec.Ra = passive["ra"]
+              sec.insert("pas")
+              for seg in sec:
+                  seg.pas.e = passive["e_pas"]
+        else:
+          e_pas_map = {g["section"]: float(g["value"])
+             for g in genome
+             if g.get("name") == "e_pas"}
+          for sec in h.allsec():
+              sec_type = get_sec_type_from_sec(sec)
+              sec.Ra = passive["ra"]
+              sec.insert("pas")
+              for seg in sec:
+                  seg.pas.e = e_pas_map[sec_type]
+
+        if "cm" in passive.keys():       
+          for c in passive["cm"]:
+            h('forsec "' + c["section"] + '" { cm = %g }' % c["cm"])
+        else:
+           cm_map = {g["section"]: float(g["value"])
+             for g in genome
+             if g.get("name") == "cm"}
+           for sec_type, c in cm_map.items():
+            h('forsec "' + sec_type + '" { cm = %g }' % c)
+
+        # Insert channels and set parameters
+        for p in genome:
+            if p["section"] == "glob":  # global parameter
+                h(p["name"] + " = %g " % p["value"])
+            else:
+                if p["mechanism"] != "":
+                    h(
+                        'forsec "'
+                        + p["section"]
+                        + '" { insert '
+                        + p["mechanism"]
+                        + " }"
+                    )
+                h(
+                    'forsec "'
+                    + p["section"]
+                    + '" { '
+                    + p["name"]
+                    + " = %g }" % p["value"]
+                )
+
+        # Set reversal potentials
+        for erev in conditions["erev"]:
+            h('forsec "' + erev["section"] + '" { ek = %g }' % erev["ek"])
+            h('forsec "' + erev["section"] + '" { ena = %g }' % erev["ena"])
+
+def get_sec_type_from_sec(sec):
+   sec_name = str(sec.name())
+   print(f"sec.name() in allen_interfacing.py: {sec_name}")
+   if "apic" in str(sec_name):
+      return "apic"
+   elif "dend" in sec_name:
+      return "dend"
+   elif "soma" in sec_name:
+      return "soma"
+   elif "axon" in sec_name:
+      return "axon"
+   raise(ValueError(f"cannot get sec_type from {sec} {sec_name}"))
