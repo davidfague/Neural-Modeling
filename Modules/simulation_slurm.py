@@ -16,6 +16,12 @@ from collections.abc import Callable, Iterable
 from typing import Mapping, Union
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
+
+# Global lock and flag for DLL loading
+import threading
+dll_load_lock = threading.Lock()
+dll_loaded = False
+
 def _apply_fns(sim_dir, fns, fns_args=None):
     """
     Internal: run each fn in `fns` on sim_dir, passing optional per-fn args.
@@ -71,7 +77,7 @@ class Simulator:
     def __init__(self, sim_set_title: str, sim_titles: list, parameter_sets: list, sims_root: str = None):
         if len(sim_titles) != len(parameter_sets):
             ValueError("sim_titles and parameter_sets must be lists with equal lengths. These lists will be considered corresponding.")
-        
+
         # Default root (if none provided): put set folder next to repo root's 'simulations'
         if sims_root is None:
             sims_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "simulations"))
@@ -86,9 +92,34 @@ class Simulator:
         self.sim_set_title = sim_set_title # {sims_dir}
         self.sim_titles = sim_titles # sims_dir/{sim_dir}
         self.parameter_sets = parameter_sets
+        self.compile_modfiles()
 
     def compile_modfiles(self):
-        NotImplementedError("Compile the modfiles manually.")
+        unique_modfiles_paths = np.unique([getattr(SkeletonCell, parameters.skeleton_cell_type).value['modfiles'] for parameters in self.parameter_sets])
+
+        # Compile the modfiles and suppress output
+        print(f"Compiling modfiles.")
+
+        # if there is only one then use it, otherwise error.
+        if len(unique_modfiles_paths) == 1:
+         os.system(f"nrnivmodl {unique_modfiles_paths[0]}")# > /dev/null 2>&1")
+        else:
+            raise(NotImplementedError(f"Can only compile modfiles for one celltype at a time. Not {len(unique_modfiles_paths)}: {unique_modfiles_paths}"))
+
+        # with dll_load_lock:
+        #     h.load_file('stdrun.hoc')
+        #     h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
+
+        global dll_loaded
+        with dll_load_lock:
+            if not dll_loaded:
+                try:
+                    h.load_file('stdrun.hoc')
+                    h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
+                    dll_loaded = True
+                except RuntimeError as e:
+                    print(f"Error loading DLL: {e}")
+                    dll_loaded = False
 
     def create_simulation_folders(self):
         # create simulation folders within {sims_dir} and save parameters in the individual simulation folders
