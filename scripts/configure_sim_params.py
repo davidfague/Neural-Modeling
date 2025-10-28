@@ -62,7 +62,8 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     """
 
     # === USER CONFIGURABLE (experiment-specific) ===
-    SIM_SET_TITLE   = "1.0xNexusInhFrom2x_0.25xNexusExc_1.3xTuftExc"
+    skeleton_cell_type = "Hay" #"Allen"
+    SIM_SET_TITLE   = "2.5x_dec_tuft_inh_from_2.5x___3.0x_inc_nexus_inh_from_3x___2.5x_tuft_inh_from_2.5x___3.x_inc_tuft_exc_from_3.0x"
     sim_type        = "sta"         # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
 
     # Background spike-train knobs for post-generation update
@@ -146,6 +147,7 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
             "inh_clustering":     INH_CLUSTERING,
             "h_i_amplitude":      0.0,
             "CI_on":              False,
+            "skeleton_cell_type": skeleton_cell_type,
         })
 
         # No extra sweep here; keep it explicit/empty so future you can add easily
