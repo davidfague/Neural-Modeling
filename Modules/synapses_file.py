@@ -1,3 +1,6 @@
+'''
+Modules/synapses_file.py
+'''
 from tokenize import group
 import pandas as pd
 import numpy as np
@@ -231,7 +234,7 @@ class PreSimSynapseGenerator:
         )
 
         if segments_to_generate_on['probability'].sum() < 0.999 or segments_to_generate_on['probability'].sum() > 1.001:
-            raise ValueError(f"Probabilities do not sum to 1 instead {segments_to_generate_on['probability'].sum()}. Check your segment measurement for probabilities.")
+            raise ValueError(f"Probabilities do not sum to 1 instead {segments_to_generate_on['probability'].sum()}. Check your segment measurement for probabilities.\nsegments_to_generate_on: {segments_to_generate_on}")
 
         if use_density:
             # calculate number of synapses per segment

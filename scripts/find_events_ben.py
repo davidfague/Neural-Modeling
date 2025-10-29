@@ -117,10 +117,10 @@ def load_data(sim_directory, ben):
             hva = analysis.DataReader.read_data(sim_directory, "ica").T
             lva = np.zeros(hva.shape)
         ih = analysis.DataReader.read_data(sim_directory, "ihcn_Ih").T
-        print(F"{np.shape(hva)} {np.shape(lva)} {np.shape(ih)}")
-        print(f"hva[0:10,0]: {hva[0:10,0]}")
-        print(f"lva[0:10,0]: {lva[0:10,0]}")
-        print(f"ih[0:10,0]: {ih[0:10,0]}")
+        # print(F"{np.shape(hva)} {np.shape(lva)} {np.shape(ih)}")
+        # print(f"hva[0:10,0]: {hva[0:10,0]}")
+        # print(f"lva[0:10,0]: {lva[0:10,0]}")
+        # print(f"ih[0:10,0]: {ih[0:10,0]}")
         parameters = analysis.DataReader.load_parameters(sim_directory)
         if parameters.exc_syn_mod == 'pyr2pyr': # two types with different variable name
             nmda = analysis.DataReader.read_data(sim_directory, "inmda").T
@@ -222,7 +222,7 @@ def compute_na_df(na, segs, spkinds, sim_directory, ben):
 
 def compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben):
     ca_df = pd.DataFrame(columns=['segmentID','ca_lower_bound'])
-    print(f"segs: {segs}")
+    # print(f"segs: {segs}")
     segIDs = segs[(segs.Type=='apic')&(segs['Coord Y']>400)&(segs['Coord Y']<1000)]['segmentID']
     ca_df_list = []  # Initialize a list to store individual DataFrames
     # print(f"segIDs: {segIDs}")
@@ -261,7 +261,7 @@ def compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben):
 
     ca_df.reset_index(inplace=True, drop=True)
     segs_ca_df = segs.set_index('segmentID').join(ca_df.set_index('segmentID')).reset_index()
-    print(f"legit ca rows in find_events_ben.compute_ca_df: {ca_df.dropna(subset=['ca_lower_bound', 'ca_upper_bound', 'mag']).shape}")
+    # print(f"legit ca rows in find_events_ben.compute_ca_df: {ca_df.dropna(subset=['ca_lower_bound', 'ca_upper_bound', 'mag']).shape}")
 
     if ben:segs_ca_df.to_csv('ca.csv')
     else:segs_ca_df.to_csv(os.path.join(sim_directory,'ca.csv'))

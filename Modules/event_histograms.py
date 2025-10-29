@@ -124,7 +124,7 @@ def post_process_na_df(na_df, na):
                     raise ValueError("Invalid na_lower_bound, retrying...")
             break  # Exit the retry loop if no errors occur
         except Exception as e:
-            print(f"Retry {_ + 1}/{max_retries} failed: {e}")
+            pass#print(f"Retry {_ + 1}/{max_retries} failed: {e}")
     else:
         print("Maximum retries reached. Unable to process.")
     na_df['duration'] = (na_df['duration_high'] - na_df['duration_low'] + 1)/10
@@ -137,7 +137,7 @@ def post_process_nmda_df(nmda_df):
     return nmda_df
 
 def post_process_ca_df(ca_df, spkinds):
-    print(f"legit rows of ca_df before post_processing: {ca_df.dropna(subset=['ca_lower_bound', 'ca_upper_bound', 'mag']).shape}")
+    # print(f"legit rows of ca_df before post_processing: {ca_df.dropna(subset=['ca_lower_bound', 'ca_upper_bound', 'mag']).shape}")
     # print(f"spkinds: {spkinds}")
     # ca_df['dist_from_soma_spike'] = ca_df['ca_lower_bound'].apply(lambda x: np.min(np.abs(x-spkinds))) # could be no soma spikes.
     ca_df['dist_from_soma_spike'] = ca_df['ca_lower_bound'].apply(
@@ -145,23 +145,23 @@ def post_process_ca_df(ca_df, spkinds):
     )
     ca_df['duration'] = (ca_df['ca_upper_bound'] - ca_df['ca_lower_bound'])/10
     ca_df['mag_dur'] = ca_df['mag']/ca_df['duration']
-    print(f"legit rows of ca_df before final post_processing: {ca_df.dropna(subset=['ca_lower_bound', 'ca_upper_bound', 'mag']).shape}")
-    print(f"mag_dur: {ca_df['mag_dur'].describe()}")
+    # print(f"legit rows of ca_df before final post_processing: {ca_df.dropna(subset=['ca_lower_bound', 'ca_upper_bound', 'mag']).shape}")
+    # print(f"mag_dur: {ca_df['mag_dur'].describe()}")
 
     df = ca_df.copy()
-    print(f"Start: {df.shape[0]} rows")
+    # print(f"Start: {df.shape[0]} rows")
     df = df[df.mag < -0.1]
-    print(f"After mag: {df.shape[0]} rows")
+    # print(f"After mag: {df.shape[0]} rows")
     df = df[df.duration < 250]
-    print(f"After duration < 250: {df.shape[0]} rows")
+    # print(f"After duration < 250: {df.shape[0]} rows")
     df = df[df.duration > 26]
-    print(f"After duration > 26: {df.shape[0]} rows")
+    # print(f"After duration > 26: {df.shape[0]} rows")
     df = df[df.dist_from_soma_spike > 50]
-    print(f"After dist_from_soma_spike: {df.shape[0]} rows")
+    # print(f"After dist_from_soma_spike: {df.shape[0]} rows")
     df = df[df.mag_dur < -0.006]
-    print(f"After mag_dur: {df.shape[0]} rows")
+    # print(f"After mag_dur: {df.shape[0]} rows")
     df = df.dropna(subset=['ca_lower_bound', 'ca_upper_bound', 'mag'])
-    print(f"After dropna: {df.shape[0]} rows")
+    # print(f"After dropna: {df.shape[0]} rows")
 
     ca_df = ca_df[(ca_df.mag<-0.1)&
                             (ca_df.duration<250)&
@@ -169,7 +169,7 @@ def post_process_ca_df(ca_df, spkinds):
                             (ca_df.dist_from_soma_spike>50)&
                             (ca_df.mag_dur<-0.006)]
 
-    print(f"legit rows of ca_df after final post_processing: {ca_df.dropna(subset=['ca_lower_bound', 'ca_upper_bound', 'mag']).shape}")
+    # print(f"legit rows of ca_df after final post_processing: {ca_df.dropna(subset=['ca_lower_bound', 'ca_upper_bound', 'mag']).shape}")
     return ca_df
 
 def plot_na_prop_scatter(sim_directory, na_df):
@@ -341,7 +341,7 @@ def plot_nmda_spk_locations(sim_directory, nmda_df, segs, dur_to_use, soma_id_to
     return segs_nmda_df
 
 def plot_ca_prop_heatmap(sim_directory, ca_df):
-    print(f"ca_df: {ca_df}")
+    # print(f"ca_df: {ca_df}")
     ca_df_bin = ca_df[(ca_df.mag<-0.1)&
                            (ca_df.duration<250)&
                            (ca_df.duration>26)&
@@ -351,10 +351,10 @@ def plot_ca_prop_heatmap(sim_directory, ca_df):
     ca_df_bin['duration_bin'] = pd.cut(ca_df_bin['duration'], bins = 2*np.logspace(1.1,1.5,num=15), labels=False)
     ca_df_bin['mag_bin'] = pd.cut(-ca_df_bin['mag'], bins = np.linspace(0.1,1.4,num=15), labels=False)
 
-    print(f"ca_df_bin: {ca_df_bin}")
+    # print(f"ca_df_bin: {ca_df_bin}")
 
     ca_df_gb = ca_df_bin.groupby(['duration_bin','mag_bin'])['duration'].count().reset_index()
-    print(f"ca_df_gb: {ca_df_gb}")
+    # print(f"ca_df_gb: {ca_df_gb}")
 
     ca_df_imhist = np.zeros((15,15))
     for i in np.arange(0,15):
@@ -365,9 +365,9 @@ def plot_ca_prop_heatmap(sim_directory, ca_df):
                 ca_df_imhist[i,j] = 0
 
     plt.figure(figsize=(6,6))   
-    print(f"np.shape(ca_df_imhist) {np.shape(ca_df_imhist)}")
-    print(f"np.shape(ca_df_imhist.sum()) {np.shape(ca_df_imhist.sum())}")
-    print(f"ca_df_imhist: {ca_df_imhist}")
+    # print(f"np.shape(ca_df_imhist) {np.shape(ca_df_imhist)}")
+    # print(f"np.shape(ca_df_imhist.sum()) {np.shape(ca_df_imhist.sum())}")
+    # print(f"ca_df_imhist: {ca_df_imhist}")
     plt.imshow(100 * ca_df_imhist / ca_df_imhist.sum(), origin = 'lower')
     plt.xlabel('duration (ms)', fontsize = 16)
     plt.ylabel('magnitude (nA ms)', fontsize = 16)

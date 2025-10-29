@@ -168,7 +168,6 @@ def apply_cell_parameters(self):
 
 def get_sec_type_from_sec(sec):
    sec_name = str(sec.name())
-   print(f"sec.name() in allen_interfacing.py: {sec_name}")
    if "apic" in str(sec_name):
       return "apic"
    elif "dend" in sec_name:
