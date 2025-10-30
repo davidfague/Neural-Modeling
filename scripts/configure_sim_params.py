@@ -62,9 +62,43 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     """
 
     # === USER CONFIGURABLE (experiment-specific) ===
-    skeleton_cell_type = "Hay" #"Allen"
-    SIM_SET_TITLE   = "2.5x_dec_tuft_inh_from_2.5x___3.0x_inc_nexus_inh_from_3x___2.5x_tuft_inh_from_2.5x___3.x_inc_tuft_exc_from_3.0x"
+    skeleton_cell_type = 'Hay'#"Hay" #"Allen"
+    SIM_SET_TITLE   = "tuning_tuft_raise_esyn"
     sim_type        = "sta"         # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
+    
+    reduce_cell = False
+    index_matched = True # set False to do every params_to_vary combination, True to make each matching index a combination
+    # analogous example (True, A:[1,2,3], B:[4,5,6]) = [1;4], [2;5], [3;6]
+    params_to_vary = { # set to {} for no parameter sweep
+        # Inhibitory (nexus) density
+        "nexus.syn_density": {
+            "apply_to": "inh_syn_properties",
+            "values": [0.22 * 4.00],  # [0.66, 0.715, 0.77]
+            "sim_name_suffix": "NexInhDen",
+        },
+        "perisomatic.syn_density": {
+            "apply_to": "inh_syn_properties",
+            "values": [0.22],#, 0.33, 0.44],
+            "sim_name_suffix": "SomInhDen"
+        },
+
+        # Excitatory tuft set — three keys, values aligned by index
+        "tuft_local_L23.syn_density": {
+            "apply_to": "exc_syn_properties",
+            "values": [0.49896*1.25, 0.67, 0.71],  # 2.16*0.10*0.66*[3.5, 3.75, 4.0]
+            "sim_name_suffix": "TL23Den", # used
+        },
+        "tuft_local_L5.syn_density": {
+            "apply_to": "exc_syn_properties",
+            "values": [0.24948*1.25, 0.33, 0.36],#, 0.26730*1.25, 0.28512*1.25],  # 2.16*0.10*0.33*[3.5, 3.75, 4.0]
+            "sim_name_suffix": "TL5Den",
+        },
+        "tuft_distant.syn_density": {
+            "apply_to": "exc_syn_properties",
+            "values": [6.80400*1.25, 9.1, 9.7],#, 7.29000*1.25, 7.77600*1.25],  # 2.16*0.90*[3.5, 3.75, 4.0]
+            "sim_name_suffix": "TuftDistDen",
+        },
+    }
 
     # Background spike-train knobs for post-generation update
     inh_bg_rate, exc_bg_rate = 0.85, 0.01
@@ -148,16 +182,14 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
             "h_i_amplitude":      0.0,
             "CI_on":              False,
             "skeleton_cell_type": skeleton_cell_type,
+            "reduce_cell": reduce_cell
         })
-
-        # No extra sweep here; keep it explicit/empty so future you can add easily
-        select_parameters_to_vary = {}
 
         # Generate HayParameters objects (one per seed x profile combo)
         param_objs = generate_simulations(
             neuron_random_states=neuron_random_states,
             numpy_random_states=numpy_random_states,
-            select_params=select_parameters_to_vary,
+            params_to_vary=params_to_vary,
             common_params=common_params,
             sim_type=sim_type,
             morphologies=morphologies,
@@ -166,14 +198,15 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
             morphologies_to_use=morphologies_to_use,
             syn_reductions_to_use=syn_reductions_to_use,
             ci_replacements_to_use=ci_replacements_to_use,
+            index_matched=index_matched,
         )
 
-        # Name them to reflect your rhythmic depth and seed
-        for p in param_objs:
-            if inh_mode == "delayed":
-                p.sim_name = f"allinh_delay_shift_{int(inh_syn_properties[next(iter(inh_syn_properties))]['delay_config']['delay_shift'])}ms_Np{p.numpy_random_state}"
-            else:
-                p.sim_name = f"allinh_rhythmic_depth_{rhythmic_depth:.2f}_Np{p.numpy_random_state}"
+        # # Name them to reflect your rhythmic depth and seed
+        # for p in param_objs:
+        #     if inh_mode == "delayed":
+        #         p.sim_name = f"allinh_delay_shift_{int(inh_syn_properties[next(iter(inh_syn_properties))]['delay_config']['delay_shift'])}ms_Np{p.numpy_random_state}"
+        #     else:
+        #         p.sim_name = f"allinh_rhythmic_depth_{rhythmic_depth:.2f}_Np{p.numpy_random_state}"
 
 
         all_parameter_sets.extend(param_objs)
