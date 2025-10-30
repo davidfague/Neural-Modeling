@@ -516,7 +516,7 @@ exc_clustering = build_exc_clustering_v2(
 
     # DISTAL BASAL (rich L5; smaller L23; modest distant)
     "distal_basal_local_L5": 10,
-    "distal_basal_local_L23": 2,
+    "distal_basal_local_L23": 3, # 2
     "distal_basal_distant":   3,
 
     # OBLIQUE (moderate L5; small L23/distant)
@@ -525,14 +525,14 @@ exc_clustering = build_exc_clustering_v2(
     "oblique_distant":   3,
 
     # TRUNK (sparse overall; L5 > L23/distant)
-    "trunk_local_L5":  4,
-    "trunk_local_L23": 2,
-    "trunk_distant":   2,
+    "trunk_local_L5":  4, #3
+    "trunk_local_L23": 3, #2
+    "trunk_distant":   3, #2
 
     # NEXUS (very light overall by your densities)
-    "nexus_local_L5":  1,
-    "nexus_local_L23": 1,
-    "nexus_distant":   2,
+    "nexus_local_L5":  2, # 1
+    "nexus_local_L23": 2, # 1
+    "nexus_distant":   3, # 2
     }
 )
 
