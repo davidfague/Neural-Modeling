@@ -35,11 +35,13 @@ class CellModel:
 			skeleton_cell: object,
 			random_state: np.random.RandomState,
 			neuron_r: h.Random,
-			logger: Logger):
+			logger: Logger,
+			parameters):
 		self.skeleton_cell = skeleton_cell
 		self.random_state = random_state
 		self.neuron_r = neuron_r
 		self.logger = logger
+		self.parameters = parameters
    
 		# Morphology & Geometry (parse the hoc model)
 		self.all = []
