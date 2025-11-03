@@ -115,20 +115,22 @@ class CellBuilder:
 		elif self.cell_type == SkeletonCell.Allen:
 			skeleton_cell = self.build_Allen_cell()
 
-		from detailed_cell_modeling.reduction_commands import reduce_cell
+		sys.path.append("../reduce-cell-modeling") #from reduce-cell-modeling.reduction_commands import reduce_cell
+		from reduction_commands import reduce_cell
 		# skeleton_cell = reduce_cell(skeleton_cell, 
 		# 					  branch_elec_disparity_tolerance = 0.15, branch_elec_distance_tolerance = 0.05,
 		# 					  series_elec_constant_tolerance = 0.05, series_overhang_elec_tolerance = 0.05, 
 		# 					  preserve_roots = True)
 
-		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger) 
+		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger, self.parameters) 
 
 		if self.parameters.reduce_cell:
-			cell = reduce_cell(cell, 
-								branch_elec_disparity_tolerance = 0.15, branch_elec_distance_tolerance = 0.05,
-								series_elec_constant_tolerance = 0.05, series_overhang_elec_tolerance = 0.05, 
-								preserve_roots = True) 
-			cell = CellModel(cell, random_state, neuron_r, self.logger)  
+			cell = reduce_cell(cell,
+								branch_disparity_elec_tolerance = 0.05, branch_distance_elec_tolerance = 0.05,
+								series_constant_elec_tolerance = 0.05, series_overhang_elec_tolerance = 0.05,
+								branch_mult_tolerance = 0.5, series_mult_tolerance = 0.5,
+								preserve_roots = False, seg_length_um = 5) 
+			cell = CellModel(cell, random_state, neuron_r, self.logger, self.parameters)
 
 		if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:
 			cell, original_seg_data, all_deleted_seg_indices = get_reduced_cell(self, reduce_tufts = self.parameters.reduce_tufts, 

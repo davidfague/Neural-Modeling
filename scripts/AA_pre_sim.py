@@ -28,7 +28,7 @@ from Modules.synapse_analysis import SynapseAnalyzer
 
 
 # ---------------- basics ----------------
-SIMULATIONS_FOLDER = "/home/drfrbc/Neural-Modeling/simulations"  # added leading slash
+SIMULATIONS_FOLDER = "../simulations"  # added leading slash
 
 def _now():
     # Local time; change to .utcnow() if you prefer UTC
