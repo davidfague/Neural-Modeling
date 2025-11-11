@@ -3,6 +3,7 @@ import matplotlib as mpl
 import numpy as np
 import warnings
 import os
+import pandas as pd
 
 # generic function for plotting variable over morphology
 def plot(seg_data, data_to_plot, ax, elevation=20, azimuth=-100, radius_scale=1.0, title='', clim_max=30, return_cbar = False, clims = None):
@@ -109,43 +110,86 @@ def plot_special_segments(seg_data, special_indices, special_colors, title_suffi
     plt.show()
 
 
-def plot_segments(seg_data, special_indices, special_colors, title_suffix="", save_file=None, show=False, ax=None, elevation=0, azimuth=-100, radius_scale=1.0): # from notebooks/plot_voltages.ipynb TODO: combine with plot_special_segments.
-    # Calculate the axis limits
-    if hasattr(seg_data, 'Coord X'):
-        x_coord_name = 'Coord X'
-        y_coord_name = 'Coord Y'
-    elif hasattr(seg_data, 'pc_0'):
-        x_coord_name = 'pc_0'
-        y_coord_name = 'pc_1'
+def plot_segments(
+    seg_data,
+    special_indices,
+    special_colors,
+    title_suffix="",
+    save_file=None,
+    show=False,
+    ax=None,
+    elevation=0,
+    azimuth=-100,
+    radius_scale=1.0,
+    label_special_ids=False,
+):
+    if hasattr(seg_data, "Coord X"):
+        x_coord_name, y_coord_name = "Coord X", "Coord Y"
+    elif hasattr(seg_data, "pc_0"):
+        x_coord_name, y_coord_name = "pc_0", "pc_1"
     else:
-        NotImplementedError('seg_data does not have a valid x_coord_name')
+        raise NotImplementedError("seg_data does not have a valid x_coord_name")
 
-    all_coords_x = seg_data[x_coord_name].tolist()
-    all_coords_y = seg_data[y_coord_name].tolist()
-    x_min, x_max = min(all_coords_x), max(all_coords_x)
-    y_min, y_max = min(all_coords_y), max(all_coords_y)
+    xs = seg_data[x_coord_name].to_numpy()
+    ys = seg_data[y_coord_name].to_numpy()
+    x_min, x_max = xs.min(), xs.max()
+    y_min, y_max = ys.min(), ys.max()
+    x_span = (x_max - x_min) or 1.0
+    y_span = (y_max - y_min) or 1.0
 
-    for i, segs in enumerate([seg_data]):
-        if ax is None:
-            fig = plt.figure()
-            ax = fig.gca()
-        ax.scatter(segs[x_coord_name], segs[y_coord_name], s=0.1)
-        for j, ind in enumerate(special_indices):
-            ax.plot(
-                segs.loc[segs.segmentID.isin([ind]), x_coord_name],
-                segs.loc[segs.segmentID.isin([ind]), y_coord_name],
-                linestyle='None', marker='*', color=special_colors[j]
+    if ax is None:
+        _, ax = plt.subplots()
+
+    ax.scatter(xs, ys, s=0.1)
+
+    dx = 0.015 * x_span
+    dy = 0.01 * y_span
+
+    for j, seg_id in enumerate(special_indices):
+        rows = seg_data[seg_data.segmentID == seg_id]
+        if rows.empty:
+            continue
+
+        x = rows[x_coord_name].iloc[0]
+        y = rows[y_coord_name].iloc[0]
+
+        ax.plot(
+            [x],
+            [y],
+            linestyle="None",
+            marker="*",
+            color=special_colors[j],
+            markersize=6,
+            zorder=4,
+        )
+
+        if label_special_ids:
+            put_right = (x_max - x) >= (x - x_min)
+            text_x = x + dx if put_right else x - dx
+            ha = "left" if put_right else "right"
+            ax.text(
+                text_x,
+                y + dy,
+                str(seg_id),
+                fontsize=6,
+                ha=ha,
+                va="center",
+                zorder=5,
+                bbox=dict(facecolor="white", alpha=0.6, edgecolor="none", pad=0.3),
             )
-        
-        ax.set_title(f"Segments {title_suffix}" if i == 0 else f"Segments {title_suffix}")
-        ax.set_xlim(x_min, x_max)
-        ax.set_ylim(y_min, y_max)
-        if save_file:
-            ax.figure.savefig(f"{save_file}.png", format='png', bbox_inches="tight", dpi=300)
-        if show:
-            plt.show()
 
-def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.0, deleted_indices=[], show=True, color='red', figsize=(10,6)):
+    ax.set_title(f"Segments {title_suffix}")
+    ax.set_xlim(x_min, x_max)
+    ax.set_ylim(y_min, y_max)
+
+    if save_file:
+        ax.figure.savefig(f"{save_file}.png", format="png", bbox_inches="tight", dpi=300)
+    if show:
+        plt.show()
+
+    return ax
+
+def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.0, deleted_indices=[], show=True, color='red', figsize=(10,6), title=None, radius_scale_del_indices = 2.0):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, projection='3d')
     for i, seg in seg_data.iterrows():
@@ -155,7 +199,7 @@ def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.
         radius = seg['r'] * radius_scale
         if i in deleted_indices:
             c = color
-            r = radius * 2
+            r = radius * radius_scale_del_indices
         else:
             c = 'black'
             r = radius
@@ -164,17 +208,39 @@ def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.
     ax.set_xlabel('X')
     ax.set_ylabel('Z')
     ax.set_zlabel('Y')
+    if title is not None:
+        ax.set_title(title)
     if show:
         plt.show()
     return fig, ax
 
 def plot_morphology_with_highlighted_sec_type(sec_type, seg_data, color='red', **kwargs):
-    if (sec_type not in np.unique(seg_data['sec_type_precise'])) and  (sec_type not in ['unlabeled', 'overlapping']):
-        print(f"{sec_type} not found in seg_data. Instead, seg_data has sec_types: {np.unique(seg_data['sec_type_precise'])}")
-    if sec_type == 'unlabeled': # segments without a seg_id.
-        fig, ax = plot_reduced_morphology(seg_data,deleted_indices=seg_data[seg_data['sec_type_precise'].isna()]['seg_id'].tolist(), color=color, **kwargs)
+    # Use pandas.unique to handle mixed dtypes (strings + NaN)
+    present_types = pd.unique(seg_data['sec_type_precise'])
+
+    print(
+        f"sec_type: {sec_type}\n"
+        f"present sec_types in seg_data['sec_type_precise']: {present_types}"
+    )
+
+    # Warn if the requested type isn't actually present (and not a special keyword)
+    if (sec_type not in set(present_types)) and (sec_type not in ['unlabeled', 'overlapping']):
+        print(f"{sec_type} not found in seg_data. Instead, seg_data has sec_types: {present_types}")
+
+    # Decide which seg_ids to highlight
+    if sec_type == 'unlabeled':
+        seg_ids_to_highlight = seg_data[seg_data['sec_type_precise'].isna()]['seg_id'].tolist()
     else:
-        fig, ax = plot_reduced_morphology(seg_data,deleted_indices=seg_data[seg_data['sec_type_precise'] == sec_type]['seg_id'].tolist(), color=color, **kwargs)
+        seg_ids_to_highlight = seg_data[seg_data['sec_type_precise'] == sec_type]['seg_id'].tolist()
+
+    # Reuse your morphology plotter with those segments emphasized
+    fig, ax = plot_reduced_morphology(
+        seg_data,
+        deleted_indices=seg_ids_to_highlight,
+        color=color,
+        **kwargs
+    )
+
     return fig, ax
 
 def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, elevation=20, azimuth=-100, radius_scale=1.0, title=''):
@@ -306,7 +372,7 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
     
     return ax
 
-def plot_morphology_with_highlighted_sec_types(sec_types, seg_data, colors=None, figsize=(12, 10), dpi=600, save_path=None):
+def plot_morphology_with_highlighted_sec_types(sec_types, seg_data, colors=None, figsize=(12, 10), dpi=600, save_path=None, title=None):
     """
     Plot morphology with multiple section types highlighted in different colors.
     
@@ -400,6 +466,8 @@ def plot_morphology_with_highlighted_sec_types(sec_types, seg_data, colors=None,
     
     # Set equal aspect ratio for all axes
     ax.set_box_aspect([1, 2, 1])
+
+    ax.set_title(title if title is not None else sec_type)
     
     # Remove duplicate labels from legend and position it inside the plot in top right
     handles, labels = ax.get_legend_handles_labels()
@@ -542,22 +610,35 @@ def plot_morphology_flex( # flexible function to plot neuron morphology with var
         axs.append(ax)
 
     elif option == 'each_sec_type':
-        # Loop over types, all with same color (or auto)
+        # Loop over types, same color for all plots
         if parameters is None or not hasattr(parameters, "inh_syn_properties"):
             raise ValueError("parameters with inh_syn_properties required for this option.")
+
         for sec_type in parameters.inh_syn_properties.keys():
             print(f"Plotting {sec_type}:")
             fig, ax = plot_morphology_with_highlighted_sec_type(
-                sec_type, seg_data, color=color if color else 'red', figsize=figsize, **kwargs
+                sec_type,
+                seg_data,
+                color=color if color else 'red',
+                title=sec_type,          # <- NEW: ensure title appears on plot
+                figsize=figsize,
+                **kwargs
             )
-            ax.set_title(sec_type)
+
+            # ax.set_title(sec_type)  # no longer needed because we passed title
+
             fig.tight_layout()
+
             if show:
                 plt.show()
+
             if save and out_dir:
-                fig.savefig(os.path.join(out_dir, f"{sec_type}.png"))
+                # save file using the same sec_type string
+                fig.savefig(os.path.join(out_dir, f"{sec_type}.png"), dpi=600, bbox_inches='tight')
+
             figs.append(fig)
             axs.append(ax)
+
 
     elif option == 'y_range':
         # Highlight custom y-range
