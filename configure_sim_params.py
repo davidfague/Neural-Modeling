@@ -63,7 +63,7 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
 
     # === USER CONFIGURABLE (experiment-specific) ===
     skeleton_cell_type = 'Hay'#"Hay" #"Allen"
-    SIM_SET_TITLE   = "test_reduction"
+    SIM_SET_TITLE   = "testing_changes"
     reduce_cell = True
     sim_type        = "testing"         # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
     load_previous_sim_params = True 
