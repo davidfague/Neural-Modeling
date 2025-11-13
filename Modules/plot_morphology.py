@@ -219,10 +219,10 @@ def plot_morphology_with_highlighted_sec_type(sec_type, seg_data, color='red', *
     # Use pandas.unique to handle mixed dtypes (strings + NaN)
     present_types = pd.unique(seg_data['sec_type_precise'])
 
-    print(
-        f"sec_type: {sec_type}\n"
-        f"present sec_types in seg_data['sec_type_precise']: {present_types}"
-    )
+    # print(
+    #     f"sec_type: {sec_type}\n"
+    #     f"present sec_types in seg_data['sec_type_precise']: {present_types}"
+    # )
 
     # Warn if the requested type isn't actually present (and not a special keyword)
     if (sec_type not in set(present_types)) and (sec_type not in ['unlabeled', 'overlapping']):
@@ -614,7 +614,7 @@ def plot_morphology_flex( # flexible function to plot neuron morphology with var
             raise ValueError("parameters with inh_syn_properties required for this option.")
 
         for sec_type in parameters.inh_syn_properties.keys():
-            print(f"Plotting {sec_type}:")
+            # (f"Plotting {sec_type}:")
             fig, ax = plot_morphology_with_highlighted_sec_type(
                 sec_type,
                 seg_data,
