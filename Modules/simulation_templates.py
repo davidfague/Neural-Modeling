@@ -13,7 +13,7 @@ These are *static templates* — no NEURON code, no combination logic here.
 # --- Simulation type presets ---
 sim_type_params_all = {
     "sta": {  # in vivo-like simulation with recording
-        "h_tstop": 10000,
+        "h_tstop": 30000,
         "merge_synapses": False,
         "record_ecp": False,
         "record_all_channels": True,
@@ -21,8 +21,18 @@ sim_type_params_all = {
         # "record_spike_trains": True,
         # "record_synapse_distributions": True,
     },
-    "fi_ci": {  # FR/I - ramp current injection
-        "h_tstop": 100000,
+    "passive_syn_fi_ci": {  # ramp current injection WITHOUT synapses
+        "h_tstop": 5000,
+        "save_every_ms": 5000,
+        "all_synapses_off": True,
+        "CI_on": True,
+        "h_i_duration": 4950,
+        "h_i_delay": 50,
+        "record_all_channels": True,
+        "record_all_synapses": True,
+    },
+    "active_syn_fi_ci": {  # ramp current injection WITH synapses
+        "h_tstop": 5000,
         "save_every_ms": 5000,
         "all_synapses_off": False,
         "CI_on": True,
@@ -31,7 +41,7 @@ sim_type_params_all = {
         "record_all_channels": True,
         "record_all_synapses": True,
     },
-    "fi_exc": {  # FR/I - ramps excitatory firing rates
+    "fi_exc": {  # ramps excitatory firing rates
         "h_tstop": 5000,
         "save_every_ms": 5000,
         "all_synapses_off": False,
@@ -56,6 +66,15 @@ sim_type_params_all = {
         "record_all_synapses": True,
         "record_spike_trains": True,
         "record_synapse_distributions": True,
+    },
+    "testing": {  # in vivo-like simulation with recording
+        "h_tstop": 1000,
+        "merge_synapses": False,
+        "record_ecp": False,
+        "record_all_channels": True,
+        "record_all_synapses": True,
+        # "record_spike_trains": True,
+        # "record_synapse_distributions": True,
     },
 }
 
