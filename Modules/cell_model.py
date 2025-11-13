@@ -508,7 +508,7 @@ class CellModel:
 			y_coord = seg_data[i].coords["p1_1"].iloc[0] if not seg_data[i].coords["p1_1"].empty else None
 			y_coords.append(y_coord)
 		apical_segment_indices = [i for i, seg in enumerate(all_seg_list) if 'apic' in str(seg)]
-		nexus_index_in_all_list, _ = find_branching_seg_with_most_branching_descendants_in_subset_y(adjacency_matrix, apical_segment_indices, y_coords)
+		nexus_index_in_all_list, _ = find_branching_seg_with_most_branching_descendants_in_subset_y(adjacency_matrix, apical_segment_indices, y_coords, self.parameters.sec_type_rules['nexus_min'])
 		return nexus_index_in_all_list
  
 	def get_tuft_root_sections(self):
@@ -659,13 +659,15 @@ class CellModel:
 		actual_root_sec_types = self.get_actual_sec_types(sec_type_to_get)
 		if sec_type_to_get in ['dend','basal','apic','trunk']:
 			parent_sec = self.soma[0]
+			root_sections = [sec for sec in parent_sec.children() if sec in getattr(self, actual_root_sec_types)]
 		elif sec_type_to_get in ['tuft']:
 			parent_sec = self.get_segments(['all'])[0][self.find_nexus_seg()].sec
+			root_sections = [sec for sec in parent_sec.children() if sec in getattr(self, actual_root_sec_types)]
 		elif sec_type_to_get in ['oblique']:
-			return [self.get_segments_without_data(['all'])[i].sec for i in get_divergent_children_of_branching_segments(self.compute_directed_adjacency_matrix(), start=self.get_segments_without_data(['all']).index(self.get_root_sections('trunk')[0](0.0001)), end=self.find_nexus_seg())]
+			root_sections = [self.get_segments_without_data(['all'])[i].sec for i in get_divergent_children_of_branching_segments(self.compute_directed_adjacency_matrix(), start=self.get_segments_without_data(['all']).index(self.get_root_sections('trunk')[0](0.0001)), end=self.find_nexus_seg())]
 		else:
 			NotImplementedError(f"{sec_type_to_get}")
-		root_sections = [sec for sec in parent_sec.children() if sec in getattr(self, actual_root_sec_types)]
+		# print(f"{sec_type_to_get} root sections {root_sections}")
 		return root_sections
 	
 	def get_segments_of_type(self, sec_type_to_get: str):
@@ -707,38 +709,37 @@ class CellModel:
 			# 	stop_segments.add(nexus_seg)
 
 			# Gather segments for trunk, stopping at `stop_segments`
-			all_segments = []
+			segments_to_consider = []
 			for root_section in self.get_root_sections("trunk"):
-				all_segments.extend(gather_segments_recursively(root_section, stop_segments))
+				segments_to_consider.extend(gather_segments_recursively(root_section, stop_segments))
 
 			# return [seg for seg in all_segments if ((h.distance(self.soma[0](0.5), seg) < 400) and (seg.sec in self.apic) and (h.distance(self.soma[0](0.5), seg) > 50))]
-			return[seg for seg in all_segments if ((seg.sec in self.apic) and (h.distance(self.soma[0](0.5), seg) > 50))]
+			all_segments = [seg for seg in segments_to_consider if ((seg.sec in self.apic) and (h.distance(self.soma[0](0.5), seg) > 50))]
 		elif sec_type_to_get == 'soma':
-			return [seg for seg in self.soma[0]]
+			all_segments = [seg for seg in self.soma[0]]
 		elif sec_type_to_get == 'distal_apic':
-			return [seg for sec in self.apic for seg in sec if (h.distance(self.soma[0](0.5), seg) > 50)]
+			all_segments = [seg for sec in self.apic for seg in sec if (h.distance(self.soma[0](0.5), seg) > 50)]
 		elif sec_type_to_get == 'nexus':
-			return [seg for sec in self.apic for seg in sec if ((h.distance(self.soma[0](0.5), seg) > 400) and (h.distance(self.soma[0](0.5), seg) < 950) and (seg.sec.y3d(0) > 400))]#< 800) and (seg.sec.y3d(0) > 400))] # @MARK check if this is correct
+			all_segments = [seg for sec in self.apic for seg in sec if ((h.distance(self.soma[0](0.5), seg) > 400) and (h.distance(self.soma[0](0.5), seg) < 950) and (seg.sec.y3d(0) > 400))]#< 800) and (seg.sec.y3d(0) > 400))] # @MARK check if this is correct
 		elif sec_type_to_get == 'distal_basal':
-			return [seg for sec in self.dend for seg in sec if (h.distance(self.soma[0](0.5), seg) > 50)]
+			all_segments = [seg for sec in self.dend for seg in sec if (h.distance(self.soma[0](0.5), seg) > 50)]
 		elif sec_type_to_get == 'perisomatic':
-			return [seg for sec in self.all for seg in sec if ((h.distance(self.soma[0](0.5), seg) <= 50) and ((sec not in self.axon) and (sec not in self.soma)))]
-
-		# General case: Gather all segments for the specified section type (tuft and oblique)
-		all_segments = []
-		for root_section in self.get_root_sections(sec_type_to_get):
-			all_segments.extend(gather_segments_recursively(root_section))
-			# since this is not perisomatic, use >50 microns away from soma
-			all_segments = [seg for seg in all_segments if h.distance(self.soma[0](0.5), seg) > 50]
-		
-		if sec_type_to_get == 'tuft': # subset the segments that have been gathered for tuft to not include nexus (extra filtering for tuft)
-			all_segments = [seg for seg in all_segments if (h.distance(self.soma[0](0.5), seg) > 950)]
+			all_segments = [seg for sec in self.all for seg in sec if ((h.distance(self.soma[0](0.5), seg) <= 50) and ((sec not in self.axon) and (sec not in self.soma)))]
+		else:
+			# General case: Gather all segments for the specified section type (tuft and oblique)
+			all_segments = []
+			for root_section in self.get_root_sections(sec_type_to_get):
+				all_segments.extend(gather_segments_recursively(root_section))
+				# since this is not perisomatic, use >50 microns away from soma
+				all_segments = [seg for seg in all_segments if h.distance(self.soma[0](0.5), seg) > 50]
+			
+			if sec_type_to_get == 'tuft': # subset the segments that have been gathered for tuft to not include nexus (extra filtering for tuft)
+				all_segments = [seg for seg in all_segments if (h.distance(self.soma[0](0.5), seg) > 950)]
 		
 		if all_segments == []:
 			raise ValueError(f"all_segments is empty for {sec_type_to_get} check intended implementation")
-
 		return all_segments
-	
+
 	def get_actual_sec_types(self, sec_type_to_get):
 		'''converts 'basal' to 'dend'; 'trunk', 'oblique', 'tuft' to 'apic' (the 'actual' names that are the conventional attributes of cell_model and templates.)'''
 		return 'dend' if sec_type_to_get in ['dend','basal'] else 'apic' if sec_type_to_get in ['apic','trunk','oblique','tuft'] else NotImplementedError(f"{sec_type_to_get}")

@@ -11,6 +11,16 @@ class SimulationParameters:
 
 	# optionally name the morphology. (cab be read in analyses)
 	morphology_name: str = 'no_morphology_name_provided'
+	sec_type_rules: dict = field(default_factory=lambda: { # controls for precise section typing (tuft, nexus, oblique, trunk, perisomatic, distal_basal)
+			"perisomatic_max": 50,
+			"prox_apic_min":   50,
+			"nexus_min":      500,
+			"nexus_max":      950,
+			"tuft_min":       950,
+			"apic_y_min": 400,
+			"use_graph_for_obliques": True
+	})
+
 
 	# optionally name the simulation type (can be read in analyses)
 	sim_type: str = 'no_sim_type_provided'
