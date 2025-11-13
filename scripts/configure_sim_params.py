@@ -23,7 +23,7 @@ from typing import Optional, Tuple, List
 
 from Modules.constants import HayParameters
 from Modules.clusters_global_l5_fg import exc_clustering as EXC_CLUSTERING, inh_clustering as INH_CLUSTERING
-
+from Modules import analysis
 
 # Reusable presets / templates
 from Modules.simulation_templates import (
@@ -63,40 +63,40 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
 
     # === USER CONFIGURABLE (experiment-specific) ===
     skeleton_cell_type = 'Hay'#"Hay" #"Allen"
-    SIM_SET_TITLE   = "tuning_tuft_raise_esyn"
-    sim_type        = "sta"         # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
-    
-    reduce_cell = False
-    index_matched = True # set False to do every params_to_vary combination, True to make each matching index a combination
+    SIM_SET_TITLE   = "test_reduction"
+    reduce_cell = True
+    sim_type        = "testing"         # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
+    load_previous_sim_params = True 
+    # template_sim_dir = (
+    #     "/home/drfrbc/Neural-Modeling/simulations/"
+    #     "2025-10-16-08-28-IncreaseNexusMaxYTo950/"
+    #     "allinh_rhythmic_depth_0.00_Np5000"
+    # )
+    parameters_pkl_path = (
+        "/home/drfrbc/Neural-Modeling/simulations/"
+        "2025-10-16-08-28-IncreaseNexusMaxYTo950/"
+        "allinh_rhythmic_depth_0.00_Np5000/"
+        "parameters.pickle"
+    )
+    index_matched = False # set False to do every params_to_vary combination, True to make each matching index a combination
     # analogous example (True, A:[1,2,3], B:[4,5,6]) = [1;4], [2;5], [3;6]
     params_to_vary = { # set to {} for no parameter sweep
-        # Inhibitory (nexus) density
+        # # Inhibitory (nexus) density
         "nexus.syn_density": {
             "apply_to": "inh_syn_properties",
-            "values": [0.22 * 4.00],  # [0.66, 0.715, 0.77]
+            "values": [0.22*3.3],  # [0.66, 0.715, 0.77]
             "sim_name_suffix": "NexInhDen",
         },
         "perisomatic.syn_density": {
             "apply_to": "inh_syn_properties",
-            "values": [0.22],#, 0.33, 0.44],
+            "values": [0.22*1.25],#,0.22*1.3, 0.22*1.35],#, 0.33, 0.44],
             "sim_name_suffix": "SomInhDen"
         },
 
-        # Excitatory tuft set — three keys, values aligned by index
-        "tuft_local_L23.syn_density": {
+        "distal_basal_local_L5.syn_density": {
             "apply_to": "exc_syn_properties",
-            "values": [0.49896*1.25, 0.67, 0.71],  # 2.16*0.10*0.66*[3.5, 3.75, 4.0]
-            "sim_name_suffix": "TL23Den", # used
-        },
-        "tuft_local_L5.syn_density": {
-            "apply_to": "exc_syn_properties",
-            "values": [0.24948*1.25, 0.33, 0.36],#, 0.26730*1.25, 0.28512*1.25],  # 2.16*0.10*0.33*[3.5, 3.75, 4.0]
-            "sim_name_suffix": "TL5Den",
-        },
-        "tuft_distant.syn_density": {
-            "apply_to": "exc_syn_properties",
-            "values": [6.80400*1.25, 9.1, 9.7],#, 7.29000*1.25, 7.77600*1.25],  # 2.16*0.90*[3.5, 3.75, 4.0]
-            "sim_name_suffix": "TuftDistDen",
+            "values": [1.6621*1],#, 1.6621*1.1],#, 0.33, 0.44],
+            "sim_name_suffix": "DBL5Den"
         },
     }
 
@@ -135,7 +135,7 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     # Loop over your inhibitory rhythmic depths (small sweep)
     for rhythmic_depth in depth_values:
         # Load defaults from parameters.pkl if provided, else HayParameters("dummy")
-        if parameters_pkl_path and os.path.exists(parameters_pkl_path):
+        if parameters_pkl_path and os.path.exists(parameters_pkl_path) and load_previous_sim_params:
             with open(parameters_pkl_path, "rb") as f:
                 defaults = pickle.load(f)
             print(f"[configure_sim_params] Loaded defaults from {parameters_pkl_path}")
@@ -207,7 +207,6 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
         #         p.sim_name = f"allinh_delay_shift_{int(inh_syn_properties[next(iter(inh_syn_properties))]['delay_config']['delay_shift'])}ms_Np{p.numpy_random_state}"
         #     else:
         #         p.sim_name = f"allinh_rhythmic_depth_{rhythmic_depth:.2f}_Np{p.numpy_random_state}"
-
 
         all_parameter_sets.extend(param_objs)
         all_sim_titles.extend([p.sim_name for p in param_objs])
