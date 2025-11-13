@@ -4,6 +4,7 @@ import numpy as np
 import warnings
 import os
 import pandas as pd
+from Modules.logger import log_or_warn
 
 # generic function for plotting variable over morphology
 def plot(seg_data, data_to_plot, ax, elevation=20, azimuth=-100, radius_scale=1.0, title='', clim_max=30, return_cbar = False, clims = None):
@@ -189,7 +190,7 @@ def plot_segments(
 
     return ax
 
-def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.0, deleted_indices=[], show=True, color='red', figsize=(10,6), title=None, radius_scale_del_indices = 2.0):
+def plot_reduced_morphology(seg_data, elevation=0, azimuth=-100, radius_scale=1.0, deleted_indices=[], show=True, color='red', figsize=(10,6), title=None, radius_scale_del_indices = 2.0, logger=None):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, projection='3d')
     for i, seg in seg_data.iterrows():
@@ -243,7 +244,7 @@ def plot_morphology_with_highlighted_sec_type(sec_type, seg_data, color='red', *
 
     return fig, ax
 
-def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, elevation=20, azimuth=-100, radius_scale=1.0, title=''):
+def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, elevation=20, azimuth=-100, radius_scale=1.0, title='', logger=None):
     """
     Visualize the clustering configuration including functional groups and presynaptic cells.
     
@@ -294,7 +295,7 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
                 distances_to_fg = np.sqrt(np.sum((synapse_coords - fg_center)**2, axis=1))
                 synapses_in_fg = np.sum(distances_to_fg <= fg_radius)
                 if synapses_in_fg == 0:
-                    warnings.warn(f"No synapses found in functional group {fg_idx} of section type {sec_type}")
+                    log_or_warn(f"No synapses found in functional group {fg_idx} of section type {sec_type}", logger)
             
             # Create a sphere for the functional group
             u = np.linspace(0, 2 * np.pi, 100)
@@ -340,9 +341,7 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
                         distances_to_pc = np.sqrt(np.sum((synapse_coords - pc_center)**2, axis=1))
                         synapses_in_pc = np.sum(distances_to_pc <= pc_radius)
                         if synapses_in_pc == 0:
-                            warnings.warn(
-                                f"No synapses found in presynaptic cell {pc_idx} of functional group {fg_idx} in section type {sec_type}"
-                            )
+                            log_or_warn(f"No synapses found in presynaptic cell {pc_idx} of functional group {fg_idx} in section type {sec_type}", logger)
 
                     # Draw PC sphere
                     x = pc_center[0] + pc_radius * np.outer(np.cos(u), np.sin(v))
@@ -372,7 +371,7 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
     
     return ax
 
-def plot_morphology_with_highlighted_sec_types(sec_types, seg_data, colors=None, figsize=(12, 10), dpi=600, save_path=None, title=None):
+def plot_morphology_with_highlighted_sec_types(sec_types, seg_data, colors=None, figsize=(12, 10), dpi=600, save_path=None, title=None, logger=None):
     """
     Plot morphology with multiple section types highlighted in different colors.
     
@@ -401,7 +400,7 @@ def plot_morphology_with_highlighted_sec_types(sec_types, seg_data, colors=None,
         colors = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'magenta', 'yellow']
     
     if len(sec_types) > len(colors):
-        warnings.warn(f"More section types than colors provided. Some section types will share colors.")
+        log_or_warn(f"More section types than colors provided. Some section types will share colors.", logger)
     
     # Create figure and axes with specified size
     fig = plt.figure(figsize=figsize, dpi=dpi)
@@ -446,7 +445,7 @@ def plot_morphology_with_highlighted_sec_types(sec_types, seg_data, colors=None,
                 highlighted_indices = seg_data[seg_data['sec_type_precise'] == sec_type]['seg_id'].tolist()
                 
             if not highlighted_indices:
-                warnings.warn(f"No segments found for section type: {sec_type}")
+                log_or_warn(f"No segments found for section type: {sec_type}", logger)
                 continue
                 
             # Plot highlighted segments

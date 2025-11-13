@@ -3,6 +3,8 @@ import os
 import psutil
 from multiprocessing import current_process
 import csv
+import warnings
+from typing import Optional, Any
 
 class Logger:
 
@@ -52,3 +54,14 @@ class Logger:
             if file_empty:
                 writer.writerow(["timestamp", "module", "function", "runtime"])
             writer.writerow([datetime.now(), module_name, function_name, runtime])
+
+def log_or_warn(msg: str, logger: Optional[Any] = None, *, stacklevel: int = 2):
+    """
+    If a logger is provided, log the message.
+    Otherwise, fall back to warnings.warn, pointing at the caller.
+    """
+    if logger is not None:
+        logger.log(msg)
+    else:
+        # stacklevel=2 makes the warning appear at the caller of this function instead of inside log_or_warn().
+        warnings.warn(msg, stacklevel=stacklevel)

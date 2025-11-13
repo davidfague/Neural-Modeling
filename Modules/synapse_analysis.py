@@ -14,6 +14,7 @@ from matplotlib import colors as mplcolors
 import matplotlib.lines as mlines
 import re
 from matplotlib.colors import ListedColormap
+from Modules.logger import Logger
 
 def as_mpl_rgba(c) -> Tuple[float, float, float, float]:
     """
@@ -59,6 +60,7 @@ class SynapseAnalyzer:
         self.synapses["spike_train"] = self.synapses["spike_train"].apply(
             lambda s: np.fromstring(s.strip("[]"), sep=" ")
         )
+        self.logger = Logger(sim_dir)
         
     def add_segment_data(self):
         segments = pd.read_csv(os.path.join(self.sim_dir, "segment_data.csv"))
@@ -744,7 +746,8 @@ class SynapseAnalyzer:
                 synapse_coords=exc_coords,
                 ax=ax1,
                 elevation=20, azimuth=-100,
-                title='Excitatory Clusters'
+                title='Excitatory Clusters',
+                logger = self.logger,
             )
 
             if inh_cfg is not None:
@@ -755,7 +758,8 @@ class SynapseAnalyzer:
                     synapse_coords=inh_coords,
                     ax=ax2,
                     elevation=20, azimuth=-100,
-                    title='Inhibitory Clusters'
+                    title='Inhibitory Clusters',
+                    logger = self.logger,
                 )
 
             plt.tight_layout()
@@ -779,7 +783,8 @@ class SynapseAnalyzer:
                     synapse_coords=exc_coords,
                     ax=ax,
                     elevation=20, azimuth=-100,
-                    title=f'Excitatory Clusters - {input_source}'
+                    title=f'Excitatory Clusters - {input_source}',
+                    logger=self.logger,
                 )
                 plt.tight_layout()
                 plt.savefig(os.path.join(self.sim_dir, 'clusters', f'clusters_exc_{input_source}.png'), dpi=300)
@@ -799,7 +804,8 @@ class SynapseAnalyzer:
                     synapse_coords=inh_coords,
                     ax=ax,
                     elevation=20, azimuth=-100,
-                    title=f'Inhibitory Clusters - {input_source}'
+                    title=f'Inhibitory Clusters - {input_source}',
+                    logger=self.logger,
                 )
                 plt.tight_layout()
                 plt.savefig(os.path.join(self.sim_dir, 'clusters', f'clusters_inh_{input_source}.png'), dpi=300)
