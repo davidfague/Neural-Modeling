@@ -68,7 +68,7 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
         sec_name = entry.section.split(".")[-1] # name[idx]
         #print(f"sec_name: {sec_name}")
         seg_sections.append(sec_name.split("[")[0])
-        seg_idx.append(sec_name.split("[")[1].split("]")[0])
+        seg_idx.append(int(sec_name.split("[")[1].split("]")[0].split(",")[0].strip()))
         seg_coords.append(entry.coords)
         seg_half_seg_RAs.append(entry.seg_half_seg_RA)
         seg.append(entry.seg)
@@ -116,11 +116,7 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
     # ]
     rows = []
     for stype in sec_types_to_get:
-        try:
-            segs = cell.get_segments_of_type(stype)
-        except ValueError:
-            # in case a type is empty / not implemented
-            continue
+        segs = cell.get_segments_of_type(stype)
         for seg in segs:
             rows.append({
                 'sec_name': seg.sec.name(),  # e.g. "/cell/apic[12]"
