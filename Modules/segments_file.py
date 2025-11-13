@@ -177,31 +177,31 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
     parameters.all_synapses_off = initial_all_synapses_off_parameters # not sure if this matters. depends on if alterations to parameters in here would affect parameters outside this function.
 
 
-    def check_not_labeled(seg_data, precise_map):
-        '''segs not covered'''
-        all_seg_ids = set(seg_data['seg_id'])
-        typed_seg_ids = set(precise_map.index)
-        missing = sorted(all_seg_ids - typed_seg_ids)
-        if len(missing) > 0:
-            warnings.warn(f"[segments_file] Seg IDs missing from df (no precise type): {len(missing)} -> {missing[:20]} ...")
+def check_not_labeled(seg_data, precise_map):
+    '''segs not covered'''
+    all_seg_ids = set(seg_data['seg_id'])
+    typed_seg_ids = set(precise_map.index)
+    missing = sorted(all_seg_ids - typed_seg_ids)
+    if len(missing) > 0:
+        warnings.warn(f"[segments_file] Seg IDs missing from df (no precise type): {len(missing)} -> {missing[:20]} ...")
 
-    # overlaps check
-    def check_overlapping_labels(df):
-        '''checks if any segments have more than one precise section type label'''
-        grouped = df.groupby('seg_id')['sec_type'].unique()
-        overlaps = grouped[grouped.apply(lambda arr: len(arr) > 1)]
-        if len(overlaps) > 0:
-            warnings.warn(f"[segments_file] Overlapping seg_ids: {len(overlaps)}")
-        # unique_labels = np.unique(np.concatenate(overlaps.values))
-        # print(f"[segments_file] All sec_types found in overlaps:", unique_labels)
+# overlaps check
+def check_overlapping_labels(df):
+    '''checks if any segments have more than one precise section type label'''
+    grouped = df.groupby('seg_id')['sec_type'].unique()
+    overlaps = grouped[grouped.apply(lambda arr: len(arr) > 1)]
+    if len(overlaps) > 0:
+        warnings.warn(f"[segments_file] Overlapping seg_ids: {len(overlaps)}")
+    # unique_labels = np.unique(np.concatenate(overlaps.values))
+    # print(f"[segments_file] All sec_types found in overlaps:", unique_labels)
 
-    # final NaNs after assignment
-    def check_nans_labels(seg_data, precise_map):
-        #@DEPRECATING they should recieve the label 'unlabeled' instead of getting None, which turns into nan.
-        # pass
-        tmp = seg_data.copy()
-        tmp['sec_type_precise'] = tmp['seg_id'].map(precise_map)
-        NaN_count = tmp['sec_type_precise'].isna().sum()
-        if NaN_count > 0:
-            warnings.warn(f"[segments_file] NaN count: {NaN_count}")
-            warnings.warn(f"[segments_file] tmp.loc[tmp['sec_type_precise'].isna(), ['seg_id','section','sec_type_precise']].head(20): \n{tmp.loc[tmp['sec_type_precise'].isna(), ['seg_id','section','sec_type_precise']].head(20)}")
+# final NaNs after assignment
+def check_nans_labels(seg_data, precise_map):
+    #@DEPRECATING they should recieve the label 'unlabeled' instead of getting None, which turns into nan.
+    # pass
+    tmp = seg_data.copy()
+    tmp['sec_type_precise'] = tmp['seg_id'].map(precise_map)
+    NaN_count = tmp['sec_type_precise'].isna().sum()
+    if NaN_count > 0:
+        warnings.warn(f"[segments_file] NaN count: {NaN_count}")
+        warnings.warn(f"[segments_file] tmp.loc[tmp['sec_type_precise'].isna(), ['seg_id','section','sec_type_precise']].head(20): \n{tmp.loc[tmp['sec_type_precise'].isna(), ['seg_id','section','sec_type_precise']].head(20)}")
