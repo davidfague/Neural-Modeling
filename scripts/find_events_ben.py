@@ -1,4 +1,6 @@
-'''note the check that will prevent recomputing: if not os.path.exists(os.path.join(sim_directory, 'nmda.csv'))     '''
+'''
+scripts/find_events_ben.py
+'''
 import pandas as pd
 import h5py
 import numpy as np
@@ -108,12 +110,13 @@ def load_data(sim_directory, ben):
         na = analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t").T
         spks = analysis.DataReader.read_data(sim_directory, "soma_spikes")
         v = analysis.DataReader.read_data(sim_directory, "v").T
-        try:
+        parameters = analysis.DataReader.load_parameters(sim_directory)
+        if os.path.exists(os.path.join(sim_directory, f"raw_data/saved_at_step_{int(parameters.save_every_ms / parameters.h_dt)}", "ica_Ca_HVA" + ".h5")) and os.path.exists(os.path.join(sim_directory, f"raw_data/saved_at_step_{int(parameters.save_every_ms / parameters.h_dt)}", "ica_Ca_HVA" + ".h5")):
             hva = analysis.DataReader.read_data(sim_directory, "ica_Ca_HVA").T
             lva = analysis.DataReader.read_data(sim_directory, "ica_Ca_LVAst").T
-        except Exception as e:
-            print(f"Error loading HVA/LVA data: {e}")
-            Warning("Falling back onto ica. setting HVA = ica and LVA=zeros (easy fix since their sum will be used later anyway.)")
+        else:
+            # print(f"[scripts/find_events_ben.py] Error loading HVA/LVA data: {e}")
+            # Warning("[scripts/find_events_ben.py] Falling back onto ica. setting HVA = ica and LVA=zeros (easy fix since their sum will be used later anyway.)")
             hva = analysis.DataReader.read_data(sim_directory, "ica").T
             lva = np.zeros(hva.shape)
         ih = analysis.DataReader.read_data(sim_directory, "ihcn_Ih").T
@@ -121,7 +124,6 @@ def load_data(sim_directory, ben):
         # print(f"hva[0:10,0]: {hva[0:10,0]}")
         # print(f"lva[0:10,0]: {lva[0:10,0]}")
         # print(f"ih[0:10,0]: {ih[0:10,0]}")
-        parameters = analysis.DataReader.load_parameters(sim_directory)
         if parameters.exc_syn_mod == 'pyr2pyr': # two types with different variable name
             nmda = analysis.DataReader.read_data(sim_directory, "inmda").T
         else:
@@ -304,28 +306,28 @@ def compute_dfs(sim_directory, ben):
     if not os.path.exists(os.path.join(sim_directory, 'na.csv')) or not os.path.exists(os.path.join(sim_directory, 'ca.csv')) or not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
         na, hva, lva, ih, nmda, v, spkinds, segs = load_data(sim_directory, ben)
     else:
-        print(f"DataFrames already exist in {sim_directory}. Skipping computation.")
+        print(f"[scripts/find_events_ben.py] DataFrames already exist in {sim_directory}. Skipping computation.")
         return # skip rest of the function
 
     if not os.path.exists(os.path.join(sim_directory, 'na.csv')):
         compute_na_df(na, segs, spkinds, sim_directory, ben)
     else:
-        print(f"na.csv already exists in {sim_directory}. Skipping computation.")
+        print(f"[scripts/find_events_ben.py] na.csv already exists in {sim_directory}. Skipping computation.")
 
     if not os.path.exists(os.path.join(sim_directory, 'ca.csv')):
         try:
             compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben)
         except Exception as e:
-            print(f"Error computing CA DataFrame (Likely due to no segments meeting the coordinates criteria  if this is L2/3 instead of L5): {e}")
+            print(f"[scripts/find_events_ben.py] Error computing CA DataFrame (Likely due to no segments meeting the coordinates criteria  if this is L2/3 instead of L5): {e}")
     else:
-        print(f"ca.csv already exists in {sim_directory}. Skipping computation.")
+        print(f"[scripts/find_events_ben.py] ca.csv already exists in {sim_directory}. Skipping computation.")
 
     if not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
         compute_nmda_df(nmda, v, segs, sim_directory, ben)
     else:
-        print(f"nmda.csv already exists in {sim_directory}. Skipping computation.")
+        print(f"[scripts/find_events_ben.py] nmda.csv already exists in {sim_directory}. Skipping computation.")
     
-    print(f"DataFrames computed and saved to {sim_directory}")
+    print(f"[scripts/find_events_ben.py] DataFrames computed and saved to {sim_directory}")
 
 if __name__ ==  "__main__":
     ben = False
@@ -334,14 +336,14 @@ if __name__ ==  "__main__":
         compute_dfs(sim_directory, ben)
     elif "-f" in sys.argv:
         simulations_directory = sys.argv[sys.argv.index("-f") + 1]
-        print(f"simulations_directory: {simulations_directory}")
+        print(f"[scripts/find_events_ben.py] simulations_directory: {simulations_directory}")
         for sim_directory in os.listdir(simulations_directory):
             full_path_sim = os.path.join(simulations_directory, sim_directory)
-            print(f"sim_directory: {sim_directory}")
+            print(f"[scripts/find_events_ben.py] sim_directory: {sim_directory}")
             if os.path.exists(os.path.join(full_path_sim, 'parameters.pickle')):
                 compute_dfs(full_path_sim, ben)
             else:
-                print(f" skipping directory because no parameters (likely an analysis folder instead of simulation): {full_path_sim}")
+                print(f"[scripts/find_events_ben.py] skipping directory because no parameters (likely an analysis folder instead of simulation): {full_path_sim}")
     else:
         raise RuntimeError
     
