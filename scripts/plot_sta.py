@@ -287,7 +287,7 @@ def _analyze_spike_relationships(
         else:
             raise ValueError("Invalid 'with respect to' spike type")
 
-        print(f"sim_directory: {sim_directory}")
+        print(f"[scripts/plot_sta.py] sim_directory: {sim_directory}")
 
         # compute STA window from ms bounds + parameters.h_dt
         sta = _compute_sta_for_each_train_in_a_list(
@@ -314,14 +314,14 @@ def _analyze_spike_relationships(
             time_bounds_ms=time_bounds_ms,
         )
         print(
-            f"SUCCESS analyzing {spike_type} spikes w.r.t. {wrt_spike_type} spikes in {section} section, {elec_dist} distance:"
+            f"[scripts/plot_sta.py] SUCCESS analyzing {spike_type} spikes w.r.t. {wrt_spike_type} spikes in {section} section, {elec_dist} distance:"
         )
     except Exception as e:
         print(
-            f"Error analyzing {spike_type} spikes w.r.t. {wrt_spike_type} spikes in {section} section, {elec_dist} distance:"
+            f"[scripts/plot_sta.py] Error analyzing {spike_type} spikes w.r.t. {wrt_spike_type} spikes in {section} section, {elec_dist} distance:"
         )
-        print(traceback.format_exc())
-        print(str(e))
+        print(f"[scripts/plot_sta.py] {traceback.format_exc()}")
+        print(f"[scripts/plot_sta.py] {str(e)}")
     finally:
         # Release large arrays
         del v, ica, inmda, seg_data
@@ -383,19 +383,19 @@ if __name__ == "__main__":
                 logger.log("Analyzing all spike relationships.")
                 analyze_all_spike_relationships(sim_directory, parameters, save, save_directory)
             except Exception:
-                print(traceback.format_exc())
+                print(f"[scripts/plot_sta.py] {traceback.format_exc()}")
         else:
-            print(f"Skipping {sim_directory}. No parameters.pickle found.")
+            print(f"[scripts/plot_sta.py] Skipping {sim_directory}. No parameters.pickle found.")
 
     elif "-f" in sys.argv:
         simulations_dir = sys.argv[sys.argv.index("-f") + 1]
         for sim_folder in os.listdir(simulations_dir):
             sim_directory = os.path.join(simulations_dir, sim_folder)
             if not os.path.exists(os.path.join(sim_directory, "parameters.pickle")):
-                print(f"Skipping {sim_directory}. No parameters.pickle found.")
+                print(f"[scripts/plot_sta.py] Skipping {sim_directory}. No parameters.pickle found.")
                 continue
 
-            print(f"Analyzing {sim_directory}")
+            print(f"[scripts/plot_sta.py] Analyzing {sim_directory}")
             if save:
                 save_directory = os.path.join(sim_directory, "STAs")
                 if not os.path.exists(save_directory):
@@ -406,7 +406,7 @@ if __name__ == "__main__":
             logger = Logger()
             soma_spikes = analysis.DataReader.read_data(sim_directory, "soma_spikes")
             parameters = analysis.DataReader.load_parameters(sim_directory)
-            logger.log(f"Soma firing rate: {round(soma_spikes.shape[1] * 1000 / parameters.h_tstop, 2)} Hz")
+            logger.log(f"[scripts/plot_sta.py]  Soma firing rate: {round(soma_spikes.shape[1] * 1000 / parameters.h_tstop, 2)} Hz")
             del soma_spikes
             gc.collect()
 
@@ -415,8 +415,8 @@ if __name__ == "__main__":
                     logger.log(f"Analyzing all spike relationships for {sim_directory}.")
                     analyze_all_spike_relationships(sim_directory, parameters, save, save_directory)
                 except Exception:
-                    print(traceback.format_exc())
+                    print(f"[scripts/plot_sta.py] {traceback.format_exc()}")
             else:
-                print(f"Skipping {sim_directory}. No parameters.pickle found.")
+                print(f"[scripts/plot_sta.py]  Skipping {sim_directory}. No parameters.pickle found.")
     else:
         raise RuntimeError
