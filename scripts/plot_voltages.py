@@ -52,13 +52,13 @@ def run_find_events(sim_dir: str) -> None:
         script = alt if os.path.exists(alt) else script
 
     if not os.path.exists(script):
-        warnings.warn(f"[plot_voltages] Could not find find_events_ben.py at {script}. Skipping event generation.")
+        warnings.warn(f"[scripts/plot_voltages.py] Could not find find_events_ben.py at {script}. Skipping event generation.")
         return
 
     try:
         subprocess.run([sys.executable, script, "-d", sim_dir], check=False)
     except Exception as e:
-        warnings.warn(f"[plot_voltages] find_events_ben.py failed: {e}")
+        warnings.warn(f"[scripts/plot_voltages.py] find_events_ben.py failed: {e}")
 
 
 def safe_read_event_csvs(sim_dir: str) -> dict:
@@ -74,7 +74,7 @@ def safe_read_event_csvs(sim_dir: str) -> dict:
             try:
                 dfs[k] = pd.read_csv(f)
             except Exception as e:
-                warnings.warn(f"[plot_voltages] Failed to read {f}: {e}")
+                warnings.warn(f"[scripts/plot_voltages.py] Failed to read {f}: {e}")
     return dfs
 
 
@@ -100,7 +100,7 @@ def filter_existing(ids: list[int], avail: set[int]) -> list[int]:
     present = [i for i in ids if i in avail]
     missing = sorted(set(ids) - set(present))
     if missing:
-        warnings.warn(f"[plot_voltages] Skipping missing segment IDs: {missing}")
+        warnings.warn(f"[scripts/plot_voltages.py] Skipping missing segment IDs: {missing}")
     return present
 
 def plot_mean_voltage(seg_data, sim_directory):
@@ -126,7 +126,7 @@ def main():
 
     sim_dir = os.path.abspath(args.dir)
     if not os.path.isdir(sim_dir):
-        raise SystemExit(f"[plot_voltages] Not a directory: {sim_dir}")
+        raise SystemExit(f"[scripts/plot_voltages.py] Not a directory: {sim_dir}")
 
     out_dir = os.path.join(sim_dir, "voltages")
     os.makedirs(out_dir, exist_ok=True)
@@ -163,7 +163,7 @@ def main():
         else:
             plt.close()
     except Exception as e:
-        warnings.warn(f"[plot_voltages] Soma quick plot failed: {e}")
+        warnings.warn(f"[scripts/plot_voltages.py] Soma quick plot failed: {e}")
 
     # Compute x-limits following your original convention (kept exactly):
     #   xlimits = [h_tstop*h_dt - (window_ms/h_dt), h_tstop*h_dt]
@@ -192,9 +192,9 @@ def main():
                 show=args.show,
             )
         except Exception as e:
-            warnings.warn(f"[plot_voltages] plot_voltage (soma) failed: {e}")
+            warnings.warn(f"[scripts/plot_voltages.py] plot_voltage (soma) failed: {e}")
     else:
-        warnings.warn("[plot_voltages] No soma segment found; skipping soma plot.")
+        warnings.warn("[scripts/plot_voltages.py] No soma segment found; skipping soma plot.")
 
     # ------------- Apical plot (predefined IDs, filtered to existing) -------------
     # Your curated set with colors and label suffixes:
@@ -226,9 +226,10 @@ def main():
                 title_suffix="(Apical)",
                 save_file=os.path.join(out_dir, "apic_segs"),
                 show=args.show,
+                label_special_ids=True,
             )
         except Exception as e:
-            warnings.warn(f"[plot_voltages] plot_segments (apic) failed: {e}")
+            warnings.warn(f"[scripts/plot_voltages.py] plot_segments (apic) failed: {e}")
         # voltage traces figure
         try:
             plot_voltage(
@@ -241,11 +242,12 @@ def main():
                 additional_title_suffixes=apic_suffixes,
                 save_file=os.path.join(out_dir, "apical_voltages"),
                 show=args.show,
+                label_special_ids=True,
             )
         except Exception as e:
-            warnings.warn(f"[plot_voltages] plot_voltage (apic) failed: {e}")
+            warnings.warn(f"[scripts/plot_voltages.py] plot_voltage (apic) failed: {e}")
     else:
-        warnings.warn("[plot_voltages] No requested apical segment IDs were found; skipping apical plots.")
+        warnings.warn("[scripts/plot_voltages.py] No requested apical segment IDs were found; skipping apical plots.")
 
     # ------------- Basal/dendritic plot (random sample) -------------
     dend_df = seg_data[seg_data["Type"] == "dend"]
@@ -263,9 +265,10 @@ def main():
                 title_suffix="(Dendritic)",
                 save_file=os.path.join(out_dir, "basal_segs"),
                 show=args.show,
+                label_special_ids=True,
             )
         except Exception as e:
-            warnings.warn(f"[plot_voltages] plot_segments (dend) failed: {e}")
+            warnings.warn(f"[scripts/plot_voltages.py] plot_segments (dend) failed: {e}")
         # voltage traces figure
         try:
             plot_voltage(
@@ -279,11 +282,11 @@ def main():
                 show=args.show,
             )
         except Exception as e:
-            warnings.warn(f"[plot_voltages] plot_voltage (dend) failed: {e}")
+            warnings.warn(f"[scripts/plot_voltages.py] plot_voltage (dend) failed: {e}")
     else:
-        warnings.warn("[plot_voltages] No basal/dendritic segments available to plot.")
+        warnings.warn("[scripts/plot_voltages.py] No basal/dendritic segments available to plot.")
 
-    print(f"[plot_voltages] Done. Figures saved under: {out_dir}")
+    print(f"[scripts/plot_voltages.py] Done. Figures saved under: {out_dir}")
 
 
     plot_mean_voltage(seg_data, sim_dir)
