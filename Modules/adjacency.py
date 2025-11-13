@@ -19,6 +19,9 @@ def find_branching_seg_with_most_branching_descendants_in_subset_y(adjacency_mat
         if count > max_branching_descendants:
             max_branching_descendants = count
             segment_with_most = segment
+
+    if segment_with_most is None:
+        raise(ValueError(f"Could not find segment with most branching descents in subset y (typically for finding nexus segment)"))
             
     return segment_with_most, max_branching_descendants
 
@@ -159,8 +162,10 @@ def is_path_exist(adjacency_matrix, start, end, visited=None):
     return False
 
 def get_divergent_children_of_branching_segments(adjacency_matrix, start, end):
-    # Find the path from start to end using the original find_path_segments function
-    path = find_path_segments(adjacency_matrix, start, end)
+    '''Find the path from start to end using the original find_path_segments function'''
+    # print(f"start and end in get_divergent_children_of_branching_segments: {start}, {end}")
+    path = get_trunk_path(adjacency_matrix, start, end) #path = find_path_segments(adjacency_matrix, start, end)
+    # print(f"path from start to end (trunk root to nexus): {path}")
     
     if path is None:
         raise ValueError(f"No path exists between segment {start} and {end}")
@@ -269,3 +274,48 @@ def get_all_ascendant_seg_indices_of_type(adjacency_matrix, start_segments, seg_
         }
         
     return filtered_ascendants
+
+### go from nexus to trunk root instead of reverse
+def build_parent_lookup(adjacency_matrix):
+    """
+    Returns a dict: parent[child] = parent_index
+    Assumes each child has at most one parent.
+    """
+    adjacency_matrix = np.asarray(adjacency_matrix)
+    nseg = adjacency_matrix.shape[0]
+    
+    parent = {i: None for i in range(nseg)}  # root(s) will stay None
+    
+    for p in range(nseg):
+        children = np.where(adjacency_matrix[p] == 1)[0]
+        for c in children:
+            # if this ever hits twice for same 'c', that means c has >1 parent -> non-tree
+            if parent[c] is not None and parent[c] != p:
+                print(f"WARNING: segment {c} has multiple parents: {parent[c]} and {p}")
+            parent[c] = p
+    
+    return parent
+
+def find_path_via_parents(parent_lookup, start, end):
+    """
+    Walk from `end` upward using parent pointers until we reach `start`.
+    Returns the path from start -> end if reachable, otherwise raises.
+    """
+    path_rev = []
+    cur = end
+    while cur is not None:
+        path_rev.append(cur)
+        if cur == start:
+            break
+        cur = parent_lookup[cur]
+    
+    if path_rev[-1] != start:
+        raise ValueError(f"end ({end}) is not a descendant of start ({start}) in parent tree")
+    
+    # reverse so it's start->...->end
+    return list(reversed(path_rev))
+
+def get_trunk_path(adjacency_matrix, start, end):
+    parent_lookup = build_parent_lookup(adjacency_matrix)
+    path = find_path_via_parents(parent_lookup, start, end)
+    return path
