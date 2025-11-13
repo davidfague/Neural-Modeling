@@ -1,6 +1,8 @@
-# AA_sim_then_post_parallel.py
-# Minimal pipeline: for each sim_dir -> run simulation, then post-process.
-# Parallelized using multiprocessing.Pool with map_async/close/join (like your originals).
+'''
+AA_sim_then_post_parallel.py
+simulate all simulations in a specified sims_dir (ex. ~/simulations/sims_dir)
+then run analysis scripts: ["../scripts/find_events_ben.py", "../Modules/event_histograms.py", "../scripts/plot_voltages.py", "../scripts/plot_sta.py", "../scripts/drew_analysis.py"]
+'''
 
 import os
 import sys
@@ -18,7 +20,7 @@ import Modules.analysis as analysis
 
 
 def run_one(sim_dir: str):
-    print(f"\n=== {sim_dir} ===", flush=True)
+    print(f"\n[scripts/AA_sim_then_post_parallel.py] === {sim_dir} ===", flush=True)
 
     # --- Load params & build cell ---
     parameters = analysis.DataReader.load_parameters(sim_dir)
@@ -31,42 +33,11 @@ def run_one(sim_dir: str):
     sim.logger = Logger(sim_dir)
     sim.run_single_simulation(parameters=parameters, cell=cell)
 
-    # --- Post-processing (same calls you already use) ---
-
-    # Quick soma voltage PNG (optional; keep minimal & non-fatal on error)
-    try:
-        import numpy as np
-        import matplotlib.pyplot as plt
-        v = analysis.DataReader.read_data(sim_dir, 'v')  # shape [nseg, nt]
-        t = np.arange(0, parameters.h_tstop + parameters.h_dt, parameters.h_dt)
-        os.makedirs(os.path.join(sim_dir, "figs"), exist_ok=True)
-        plt.figure()
-        plt.plot(t[:v.shape[1]], v[0, :len(t)])
-        plt.xlabel('Time (ms)'); plt.ylabel('Voltage (mV)')
-        plt.title('Soma voltage (seg 0)'); plt.tight_layout()
-        plt.savefig(os.path.join(sim_dir, "figs", "soma_voltage.png"), dpi=150)
-        plt.close()
-    except Exception:
-        pass
-
-    # Dendritic event detection + histograms if flags allow
-    if getattr(parameters, "record_all_channels", False) and getattr(parameters, "record_all_synapses", False):
-        subprocess.run(["python", "../scripts/find_events_ben.py", "-d", sim_dir], check=False)
-        subprocess.run(["python", "../Modules/event_histograms.py", "-d", sim_dir], check=False)
-
-    # Voltage plots (new)
+    # --- Post sim  analysis ---
     subprocess.run([sys.executable,
-                    os.path.join(os.path.dirname(__file__), "plot_voltages.py"),
+                    os.path.join(os.path.dirname(__file__), "AA_post_sim_analysis.py"),
                     "-d", sim_dir],
                    check=False)
-    # STA
-    subprocess.run(["python", "../scripts/plot_sta.py", "-d", sim_dir, "-s"], check=False)
-
-    # Drew's analysis
-    subprocess.run([sys.executable,
-                os.path.join(os.path.dirname(__file__), "drew_analysis.py"),
-                "-d", sim_dir],
-               check=False)
     
     print(f"[AA_sim_then_post_parallel.py] Finished Processing: {sim_dir}", flush=True)
 
@@ -87,27 +58,27 @@ if __name__ == "__main__":
     ]
 
     if not sim_dirs:
-        print(f"No simulation subfolders found in: {sims_dir}")
+        print(f"[scripts/AA_sim_then_post_parallel.py] No simulation subfolders found in: {sims_dir}")
         sys.exit(0)
 
     if len(sim_dirs) < N_PROCESSES:
         N_PROCESSES = len(sim_dirs)
 
-    print(f"Running {len(sim_dirs)} simulations from: {sims_dir}")
-    print(f"Using {N_PROCESSES} processes...\n")
+    print(f"[scripts/AA_sim_then_post_parallel.py] Running {len(sim_dirs)} simulations from: {sims_dir}")
+    print(f"[scripts/AA_sim_then_post_parallel.py] Using {N_PROCESSES} processes...\n")
 
     from multiprocessing import Pool
     pool = Pool(processes=N_PROCESSES)
-    try:
+    # try:
         # map_async + close + join (your pattern)
-        pool.map_async(run_one, sim_dirs)
-        pool.close()
-        pool.join()
-    finally:
-        # In case of early exceptions
-        try:
-            pool.terminate()
-        except Exception:
-            pass
+    pool.map_async(run_one, sim_dirs)
+    pool.close()
+    pool.join()
+    # finally:
+    #     # In case of early exceptions
+    #     try:
+    #         pool.terminate()
+    #     except Exception:
+    #         pass
 
     print(f"\n[AA_sim_then_post_parallel.py] Finished Processing all simulations in {sims_dir}.", flush=True)
