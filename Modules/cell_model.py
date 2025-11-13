@@ -10,6 +10,7 @@ from recorder import SegmentRecorder, SynapseRecorder, SpikeRecorder, EmptySegme
 from recorder import SynapseRecorderList, SegmentRecorderList
 from synapse import Synapse
 from logger import Logger
+import warnings
 
 from dataclasses import dataclass
 
@@ -67,6 +68,9 @@ class CellModel:
 
 		# Recorders
 		self.recorders = []
+
+		# check if sections are made such that children are more distal from the soma than parents
+		self.warn_non_monotonic_distances()
 
 	# ---------- HOC PARSING ----------
  
@@ -915,3 +919,32 @@ class CellModel:
 	def _write_datafile(self, reportname, data):
 		with h5py.File(reportname, 'w') as file:
 			file.create_dataset("data", data = data)
+
+	def warn_non_monotonic_distances(self, max_examples: int = 20):
+		bad_edges = self.check_monotonic_distance(self.compute_directed_adjacency_matrix())
+		if not bad_edges:
+			return
+		lines = [
+			*(f"Parent {p} @dist {dp:.1f} µm -> Child {c} @dist {dc:.1f} µm  (NON-monotonic)"
+			for (p, c, dp, dc) in bad_edges[:max_examples]),
+			f"Total non-monotonic edges: {len(bad_edges)}"
+		]
+		warnings.warn("\n".join(lines), UserWarning, stacklevel=2)
+
+	def check_monotonic_distance(self, adj):
+		all_segments, _ = self.get_segments(['all'])
+		soma_seg = self.soma[0](0.5)
+
+		bad_edges = []
+		for parent_idx in range(len(all_segments)):
+			parent_seg = all_segments[parent_idx]
+			parent_dist = h.distance(soma_seg, parent_seg)
+
+			children = np.where(adj[parent_idx] == 1)[0]
+			for child_idx in children:
+				child_seg = all_segments[child_idx]
+				child_dist = h.distance(soma_seg, child_seg)
+
+				if child_dist < parent_dist - 1e-6:
+					bad_edges.append((parent_idx, child_idx, parent_dist, child_dist))
+		return bad_edges
