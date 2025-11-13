@@ -25,7 +25,7 @@ from Modules.synapses_file import (
     update_spike_trains_for_sim
 )
 from Modules.synapse_analysis import SynapseAnalyzer
-
+from Modules.plot_morphology import plot_morphology_flex, plot_reduced_morphology
 
 # ---------------- basics ----------------
 SIMULATIONS_FOLDER = "../simulations"  # added leading slash
@@ -90,6 +90,22 @@ def write_synapse_densities_to_txt(sims_dir: str) -> None:
                 wt_params = init_wt_dist.get("params", {}) or {}
                 p(f"{input_source}:  {wt_params}")
 
+def plot_morphology(sim_dir):
+    ### each sec_type
+    seg_data = pd.read_csv(os.path.join(sim_dir, "segment_data.csv"))
+    parameters = analysis.DataReader.load_parameters(sim_dir) # load parameters
+    figs, axs = plot_morphology_flex(
+            seg_data,
+            option='each_sec_type',
+            parameters=parameters,
+            out_dir=os.path.join(sim_dir, "morphology"),
+            figsize=(10,6),
+            show=True,          # set True if you want interactive windows
+            save=True,           # saves PNGs named <sec_type>.png
+            color='red',         # all types get same color; can change
+        )
+
+
 def run_pre_sim():
     # ---------------- load config ----------------
     (
@@ -117,6 +133,8 @@ def run_pre_sim():
     # Run generators across all sims
     log(f"\n[AA_pre_sim] Generating segments CSV on all sims in: {simulator.sims_dir}\n")
     simulator.run_on_all_sims_parallel(simulator.sims_dir, generate_segments_csv)
+    log(f"\n[AA_pre_sim] Plotting morphology on all sims in: {simulator.sims_dir}\n")
+    plot_morphology(sim_dir)
     log(f"\n[AA_pre_sim] Running synapse generation on all sims in: {simulator.sims_dir}\n")
     simulator.run_on_all_sims_parallel(simulator.sims_dir, use_pssg)
 
