@@ -12,7 +12,8 @@ import pickle
 from Modules.plot_morphology import plot_clusters
 from matplotlib import colors as mplcolors
 import matplotlib.lines as mlines
-
+import re
+from matplotlib.colors import ListedColormap
 
 def as_mpl_rgba(c) -> Tuple[float, float, float, float]:
     """
@@ -81,158 +82,167 @@ class SynapseAnalyzer:
         show: bool = False,
         *,
         color_by: str = "input_source",
-        # legend and ordering behavior
         legend_loc: str = "upper right",
         legend_cols: int = 1,
-        legend_matches_top: bool = True,   # True: legend order matches top row → bottom row
-        # colors
+        legend_matches_top: bool = True,
         shuffle_colors: bool = True,
         color_seed: int | None = 7,
         cmap_name: str = "tab20",
-        # separators
         draw_group_separators: bool = True,
         separator_kwargs: dict | None = None,
-        # markers
         marker_size: float = 5,
     ):
-        """
-        Spike raster sorted by `color_by` (default: input_source), colored per group.
+        import matplotlib.pyplot as plt
+        import matplotlib.lines as mlines
+        import numpy as np
+        import pandas as pd
 
-        - If color_by='input_source', groups are ordered:
-            tuft..., nexus..., oblique..., trunk..., perisomatic..., distal_basal...
-        then alphabetically within each block.
-        - Otherwise, groups follow a stable sort on `color_by`.
-
-        Legend order matches the visual top→bottom order when legend_matches_top=True
-        (we invert the y-axis so row 0 is at the top).
-        """
-
-        # ---------- data ----------
         df_all = synapses if synapses is not None else self.synapses
         if df_all is None or df_all.empty:
             raise ValueError("No synapses available to plot.")
+        if color_by not in df_all.columns:
+            raise KeyError(f"Column '{color_by}' not found in synapses DataFrame.")
 
-        mask = pd.Series(True, index=df_all.index)
+        # ----- fast filtering (avoid Series ops when possible)
+        mask = np.ones(len(df_all), dtype=bool)
         if synapse_types is not None:
-            mask &= df_all['name'].str.contains('|'.join(synapse_types), na=False)
+            # compile regex once
+            pat = "|".join(map(re.escape, synapse_types))
+            mask &= df_all["name"].astype("string", copy=False).str.contains(pat, regex=True, na=False).to_numpy()
         if functional_groups is not None:
-            mask &= df_all['functional_group'].isin(functional_groups)
+            mask &= df_all["functional_group"].isin(functional_groups).to_numpy()
 
-        df = df_all.loc[mask].copy()
+        df = df_all.loc[mask, [color_by, "spike_train"]].copy()
         if df.empty:
             raise ValueError("No synapses left after filtering.")
 
-        if color_by not in df.columns:
-            raise KeyError(f"Column '{color_by}' not found in synapses DataFrame.")
-
-        # ---------- group ordering ----------
+        # ----- group ordering (same semantics as your version)
         def _input_source_key(s: str) -> tuple[int, str]:
             s = (s or "").lower()
-            # primary block order
-            blocks = [
-                "tuft", "nexus", "oblique", "trunk", "perisomatic", "distal_basal"
-            ]
+            blocks = ["tuft", "nexus", "oblique", "trunk", "perisomatic", "distal_basal"]
             for rank, b in enumerate(blocks):
                 if s.startswith(b):
                     return (rank, s)
-            # put unknowns last, keep alphabetical among themselves
+            return (len(blocks), s)
+
+        # ----- group ordering (same semantics as before)
+        def _input_source_key(s: str) -> tuple[int, str]:
+            s = (s or "").lower()
+            blocks = ["tuft", "nexus", "oblique", "trunk", "perisomatic", "distal_basal"]
+            for rank, b in enumerate(blocks):
+                if s.startswith(b):
+                    return (rank, s)
             return (len(blocks), s)
 
         if color_by == "input_source":
-            # sort by block order then secondary alphabetical
-            df["_sort_key"] = df[color_by].fillna("UNKNOWN").astype(str).map(_input_source_key)
+            df["_sort_key"] = (
+                df[color_by]
+                .fillna("UNKNOWN")
+                .astype(str)
+                .map(_input_source_key)
+            )
             df.sort_values(by=["_sort_key", color_by], kind="stable", inplace=True)
-            df.drop(columns=["_sort_key"], inplace=True)
+            df.drop(columns="_sort_key", inplace=True)
         else:
             df.sort_values(by=color_by, kind="stable", inplace=True)
 
-        # y-axis groups in the order they appear
-        ordered_groups = df[color_by].fillna("UNKNOWN").astype(str).drop_duplicates().tolist()
+        # ----- stable ordered groups + color mapping
+        groups = df[color_by].fillna("UNKNOWN").astype(str).to_numpy()
+        ordered_groups = pd.unique(groups).tolist()
 
-        # ---------- color map ----------
         cmap = plt.get_cmap(cmap_name)
         base_colors = [cmap(i % cmap.N) for i in range(len(ordered_groups))]
         if shuffle_colors and len(base_colors) > 1:
             rng = np.random.default_rng(color_seed)
-            perm = rng.permutation(len(base_colors))
-            base_colors = [base_colors[i] for i in perm]
-        colors = {grp: base_colors[i] for i, grp in enumerate(ordered_groups)}
+            base_colors = [base_colors[i] for i in rng.permutation(len(base_colors))]
+        # factorize for fast lookup
+        grp_to_idx = {g: i for i, g in enumerate(ordered_groups)}
+        group_codes = np.fromiter((grp_to_idx[g] for g in groups), count=len(groups), dtype=int)
 
-        # ---------- spike parsing ----------
-        def _as_array(x):
+        # ----- parse spike trains fast
+        # Expect spike_train as ndarray/list/str; normalize to ndarray[int] without per-row plotting
+        def _to_array(x):
             if isinstance(x, np.ndarray):
-                return x
+                return x.astype(int, copy=False)
             if isinstance(x, list):
-                return np.array(x, dtype=int)
+                return np.asarray(x, dtype=int)
             if isinstance(x, (int, np.integer)):
                 return np.array([int(x)], dtype=int)
             if isinstance(x, float):
-                return np.array([], dtype=int) if np.isnan(x) else np.array([int(x)], dtype=int)
+                return np.empty(0, dtype=int) if np.isnan(x) else np.array([int(x)], dtype=int)
             if isinstance(x, str):
-                try:
-                    return deserialize_spike_train(x)  # uses your helper
-                except NameError:
-                    s = x.strip("[]").strip()
-                    return np.fromstring(s, sep=' ', dtype=int) if s else np.array([], dtype=int)
-            return np.array([], dtype=int)
+                s = x.strip().strip("[]")
+                return np.fromstring(s, sep=" ", dtype=int) if s else np.empty(0, dtype=int)
+            return np.empty(0, dtype=int)
 
-        # ---------- plot ----------
+        spike_lists = [ _to_array(x) for x in df["spike_train"].to_numpy() ]
+
+        # optional time-window crop (vectorized per row)
+        if time_window is not None:
+            t0, t1 = time_window
+            spike_lists = [arr[(arr >= t0) & (arr <= t1)] if arr.size else arr for arr in spike_lists]
+
+        # ----- build one big scatter payload (no iterrows)
+        # y indices: 0..n-1 (later inverted visually if requested)
+        nrows = len(df)
+        # counts per row → repeat row_idx for each spike in that row
+        counts = np.fromiter((len(a) for a in spike_lists), count=nrows, dtype=int)
+        if counts.sum() == 0:
+            # nothing to plot
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.set_title(title or "Spike Raster Plot")
+            ax.set_xlabel("Time (ms)")
+            ax.set_ylabel(f"Synapse (sorted by {color_by})")
+            if save_path:
+                fig.savefig(save_path, dpi=300, bbox_inches="tight")
+            if show:
+                plt.show()
+            else:
+                plt.close(fig)
+            return
+
+        y_idx = np.repeat(np.arange(nrows, dtype=int), counts)
+        x_all = np.concatenate([a for a in spike_lists if a.size])
+        # per-point colors via row's group code mapped to base_colors
+        # Map each row to an integer group code (already computed as `group_codes`)
+        # Expand to per-point codes using the expanded row indices y_idx
+        codes_all = group_codes[y_idx]  # shape: (total_points,)
+
         fig, ax = plt.subplots(figsize=figsize)
 
-        # draw points (row 0 will be at top if we invert later)
-        for row_idx, (_, row) in enumerate(df.iterrows()):
-            grp = str(row[color_by]) if pd.notna(row[color_by]) else "UNKNOWN"
-            c = colors[grp]
-            spikes = _as_array(row['spike_train'])
-            if time_window is not None:
-                t0, t1 = time_window
-                spikes = spikes[(spikes >= t0) & (spikes <= t1)]
-            if spikes.size:
-                ax.scatter(spikes, np.full_like(spikes, row_idx), s=marker_size, c=[c], marker='.', linewidths=0)
-
-        # y-range and (optional) invert so legend matches top-to-bottom
-        ax.set_ylim(-1, len(df))
+        # single fast scatter
+        # Use integer codes with a ListedColormap: no huge object arrays, no repeat()
+        cmap_obj = ListedColormap(base_colors)
+        sc = ax.scatter(
+            x_all, y_idx,
+            s=marker_size,
+            c=codes_all,                 # integers per point
+            cmap=cmap_obj,
+            vmin=0, vmax=len(base_colors)-1,
+            marker='.',
+            linewidths=0,
+        )
+        ax.set_ylim(-1, nrows)
         if time_window is not None:
             ax.set_xlim(*time_window)
         if legend_matches_top:
             ax.invert_yaxis()
 
-        # ---------- separators between groups ----------
+        # ----- separators (compute group change indices with vector ops)
         if draw_group_separators and len(ordered_groups) > 1:
-            # find start/end indices for each group in the *sorted* df
-            group_bounds = []
-            start = 0
-            current = df.iloc[0][color_by]
-            for i, val in enumerate(df[color_by]):
-                if val != current:
-                    group_bounds.append((current, start, i))  # [start, i-1]
-                    start, current = i, val
-            group_bounds.append((current, start, len(df)))     # last
-
-            skw = {
-                "linestyle": (0, (4, 4)),  # dashed
-                "linewidth": 0.6,
-                "alpha": 0.4,
-                "color": "k",
-            }
+            g = groups  # already numpy array
+            change = np.flatnonzero(g[1:] != g[:-1]) + 1  # row indices where group starts
+            skw = {"linestyle": (0, (4, 4)), "linewidth": 0.6, "alpha": 0.4, "color": "k"}
             if separator_kwargs:
                 skw.update(separator_kwargs)
+            for end in change:
+                ax.axhline(end - 0.5, **skw)
 
-            for _, _, end in group_bounds[:-1]:
-                # horizontal line just between groups
-                y = end - 0.5
-                if legend_matches_top:
-                    # y-axis inverted; the numeric y is still correct
-                    ax.axhline(y, **skw)
-                else:
-                    ax.axhline(y, **skw)
-
-        # ---------- legend (order synced with y-axis visual order) ----------
+        # ----- legend (matches visual order)
         handles = [
-            mlines.Line2D([], [], color=colors[g], marker='.', linestyle='None', markersize=6, label=g)
-            for g in ordered_groups
+            mlines.Line2D([], [], color=base_colors[i], marker='.', linestyle='None', markersize=6, label=g)
+            for i, g in enumerate(ordered_groups)
         ]
-        # If not inverting y, the top of the plot is the *last* group; flip legend to match
         if not legend_matches_top:
             handles = list(reversed(handles))
         if handles:
@@ -241,6 +251,10 @@ class SynapseAnalyzer:
         ax.set_xlabel("Time (ms)")
         ax.set_ylabel(f"Synapse (sorted by {color_by})")
         ax.set_title(title or "Spike Raster Plot")
+
+        # helpful for vector outputs with many points
+        for c in ax.collections:
+            c.set_rasterized(True)
 
         if save_path:
             fig.savefig(save_path, dpi=300, bbox_inches="tight")
