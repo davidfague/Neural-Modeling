@@ -45,7 +45,7 @@ def run_one(sim_dir: str):
 
 if __name__ == "__main__":
     # ====== EDIT THIS TO YOUR PARENT SIMS FOLDER ======
-    sims_dir = "/home/drfrbc/Neural-Modeling/simulations/2025-10-24-14-42-1.0xNexusInhFrom2x_0.25xNexusExc_1.3xTuftExc"
+    sims_dir = "/home/drfrbc/Neural-Modeling/simulations/2025-10-27-19-14-2.5x_dec_tuft_inh_from_2.5x___3.0x_inc_nexus_inh_from_3x___2.5x_tuft_inh_from_2.5x___3.5x_inc_tuft_exc_from_3.0x"
     # ==================================================
 
     # Max number of parallel processes
