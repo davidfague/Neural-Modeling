@@ -1,3 +1,7 @@
+'''
+Generates sim_dir/segment_data.csv
+labels each segment with a precise section type (distal_basal, perisomatic, trunk, oblique, tuft, nexus)
+'''
 import os
 from Modules.cell_builder import CellBuilder, SkeletonCell
 import numpy as np
@@ -5,6 +9,7 @@ import pandas as pd
 from neuron import h
 import pickle
 from Modules.logger import Logger
+import warnings
 
 def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add this to some class... Maybe not CellBuilder because the CellBuilder instance could be temporary instead? discuss with @davidfague
     """
@@ -144,13 +149,59 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
     # 5) build a map: if there's exactly one type, keep it; otherwise None
     precise_map = grouped.apply(lambda arr: arr[0] if len(arr) == 1 else None)
 
-    # 6) assign into your main DataFrame
-    seg_data['sec_type_precise'] = seg_data['seg_id'].map(precise_map)
-    seg_data.loc[seg_data['section'] == 'axon', 'sec_type_precise'] = 'axon'
-    seg_data.loc[seg_data['section'] == 'soma', 'sec_type_precise'] = 'soma'
+    check_not_labeled(seg_data, precise_map)
+    check_overlapping_labels(df)
+    check_nans_labels(seg_data, precise_map)
 
-    # 7) write the integrated CSV back out (overwriting the old one)
+
+    # 6) assign into your main DataFrame
+    seg_data['sec_type_precise'] = seg_data['seg_id'].map(precise_map) #seg_data['sec_type_precise_depracating'] = seg_data['seg_id'].map(precise_map) # deprecating
+
+    # after seg_data is built and seg_id assigned
+    # seg_labels = cell.classify_all_segments()
+    # seg_data['sec_type_precise'] = seg_data['seg_id'].map(seg_labels)
+    seg_data['sec_type_precise'] = seg_data['sec_type_precise'].fillna('unlabeled')
+
+    # keep old for debugging only
+    # seg_data['sec_type_precise_depracating'] = seg_data['seg_id'].map(precise_map)
+    # seg_data['sec_type_precise_depracating'] = seg_data['sec_type_precise_depracating'].fillna('unlabeled')
+
+    # force soma/axon override (paranoid, but harmless)
+    seg_data.loc[seg_data['section'].str.contains('soma'), 'sec_type_precise'] = 'soma'
+    seg_data.loc[seg_data['section'].str.contains('axon'), 'sec_type_precise'] = 'axon'
+
+    # save
     seg_data.to_csv(os.path.join(sim_dir, "segment_data.csv"), index=False)
     logger.log("Saved integrated segment_data.csv with sec_type_precise")
 
     parameters.all_synapses_off = initial_all_synapses_off_parameters # not sure if this matters. depends on if alterations to parameters in here would affect parameters outside this function.
+
+
+    def check_not_labeled(seg_data, precise_map):
+        '''segs not covered'''
+        all_seg_ids = set(seg_data['seg_id'])
+        typed_seg_ids = set(precise_map.index)
+        missing = sorted(all_seg_ids - typed_seg_ids)
+        if len(missing) > 0:
+            warnings.warn(f"[segments_file] Seg IDs missing from df (no precise type): {len(missing)} -> {missing[:20]} ...")
+
+    # overlaps check
+    def check_overlapping_labels(df):
+        '''checks if any segments have more than one precise section type label'''
+        grouped = df.groupby('seg_id')['sec_type'].unique()
+        overlaps = grouped[grouped.apply(lambda arr: len(arr) > 1)]
+        if len(overlaps) > 0:
+            warnings.warn(f"[segments_file] Overlapping seg_ids: {len(overlaps)}")
+        # unique_labels = np.unique(np.concatenate(overlaps.values))
+        # print(f"[segments_file] All sec_types found in overlaps:", unique_labels)
+
+    # final NaNs after assignment
+    def check_nans_labels(seg_data, precise_map):
+        #@DEPRECATING they should recieve the label 'unlabeled' instead of getting None, which turns into nan.
+        # pass
+        tmp = seg_data.copy()
+        tmp['sec_type_precise'] = tmp['seg_id'].map(precise_map)
+        NaN_count = tmp['sec_type_precise'].isna().sum()
+        if NaN_count > 0:
+            warnings.warn(f"[segments_file] NaN count: {NaN_count}")
+            warnings.warn(f"[segments_file] tmp.loc[tmp['sec_type_precise'].isna(), ['seg_id','section','sec_type_precise']].head(20): \n{tmp.loc[tmp['sec_type_precise'].isna(), ['seg_id','section','sec_type_precise']].head(20)}")
