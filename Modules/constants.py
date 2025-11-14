@@ -551,6 +551,18 @@ class SimulationParameters:
      (0.03897, 0.05233), (0.05814, 0.05911)
      ])
 
+	plot_voltages_apic_segment_dict = { # cruate the plotting of specific voltages
+				1647: {"color": "black",  "description": "[most Ca spikes]"},
+				1554: {"color": "green",  "description": "[should be used in nexus elec_distance calc]"},
+				1547: {"color": "orange", "description": "[used in nexus elec_distance calc]"},
+				1842: {"color": "red",    "description": "[right tuft dendrite (halfway)]"},
+				1210: {"color": "lime",   "description": "[oblique (middle, near nexus)]"},
+				1080: {"color": "green",  "description": "[apical trunk (very near soma)]"},
+				1900: {"color": "black",  "description": ""},
+				2000: {"color": "tab:blue","description": ""},
+				1760: {"color": "g",      "description": ""},
+				1340: {"color": "m",      "description": ""},
+			}
 
 	def __post_init__(self): # define parameters that depend on the above parameters. (such as distributions, choices, etc.)
 		# syn params choices

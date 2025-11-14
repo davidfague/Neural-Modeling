@@ -42,6 +42,7 @@ from Modules.analysis import load_sim, DataReader
 from Modules.plot_morphology import plot_segments, plot
 from Modules.plot_voltage import plot_voltage
 
+OVERWRITE = False
 
 def run_find_events(sim_dir: str) -> None:
     """Run find_events_ben.py to generate ca.csv / nmda.csv / na.csv."""
@@ -197,26 +198,27 @@ def main():
         warnings.warn("[scripts/plot_voltages.py] No soma segment found; skipping soma plot.")
 
     # ------------- Apical plot (predefined IDs, filtered to existing) -------------
-    # Your curated set with colors and label suffixes:
-    apic_segment_dict = {
-        1647: {"color": "black",  "description": "[most Ca spikes]"},
-        1554: {"color": "green",  "description": "[should be used in nexus elec_distance calc]"},
-        1547: {"color": "orange", "description": "[used in nexus elec_distance calc]"},
-        1842: {"color": "red",    "description": "[right tuft dendrite (halfway)]"},
-        1210: {"color": "lime",   "description": "[oblique (middle, near nexus)]"},
-        1080: {"color": "green",  "description": "[apical trunk (very near soma)]"},
-        1900: {"color": "black",  "description": ""},
-        2000: {"color": "tab:blue","description": ""},
-        1760: {"color": "g",      "description": ""},
-        1340: {"color": "m",      "description": ""},
-    }
+    # Curate set with colors and label suffixes:
+    if not hasattr(parameters, "plot_voltages_apic_segment_dict") or OVERWRITE:  # fall back on default
+        parameters.plot_voltages_apic_segment_dict = {
+            1647: {"color": "black",  "description": "[most Ca spikes]"},
+            1554: {"color": "green",  "description": "[should be used in nexus elec_distance calc]"},
+            1547: {"color": "orange", "description": "[used in nexus elec_distance calc]"},
+            1842: {"color": "red",    "description": "[right tuft dendrite (halfway)]"},
+            1210: {"color": "lime",   "description": "[oblique (middle, near nexus)]"},
+            1080: {"color": "green",  "description": "[apical trunk (very near soma)]"},
+            1900: {"color": "black",  "description": ""},
+            2000: {"color": "tab:blue","description": ""},
+            1760: {"color": "g",      "description": ""},
+            1340: {"color": "m",      "description": ""},
+        }
     apic_df = seg_data[seg_data["Type"] == "apic"]
     apic_ids_available = set(map(int, apic_df.segmentID.to_numpy(dtype=int)))
-    apic_ids = filter_existing(list(apic_segment_dict.keys()), apic_ids_available)
+    apic_ids = filter_existing(list(parameters.plot_voltages_apic_segment_dict.keys()), apic_ids_available)
 
     if apic_ids:
-        apic_colors = [apic_segment_dict[i]["color"] for i in apic_ids]
-        apic_suffixes = [apic_segment_dict[i]["description"] for i in apic_ids]
+        apic_colors = [parameters.plot_voltages_apic_segment_dict[i]["color"] for i in apic_ids]
+        apic_suffixes = [parameters.plot_voltages_apic_segment_dict[i]["description"] for i in apic_ids]
         # segment locations figure
         try:
             plot_segments(
@@ -242,7 +244,6 @@ def main():
                 additional_title_suffixes=apic_suffixes,
                 save_file=os.path.join(out_dir, "apical_voltages"),
                 show=args.show,
-                label_special_ids=True,
             )
         except Exception as e:
             warnings.warn(f"[scripts/plot_voltages.py] plot_voltage (apic) failed: {e}")
