@@ -6,7 +6,7 @@ sys.path.append('..')
 sys.path.append('../Modules')
 from Modules import drew_functions
 import matplotlib.pyplot as plt
-sys.path.append('/home/drfrbc/InhibOnDendComp_david')
+sys.path.append('/home/drfrbc/InhibOnDendComp') # clone my fork into your user and adjust the path: https://github.com/davidfague/InhibOnDendComp.git
 from src.sta_files import sta_files
 from src.load_caspks_csv import load_caspks_csv
 from src.load_spike_h5 import load_spike_h5
