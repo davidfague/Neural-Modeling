@@ -105,6 +105,7 @@ def filter_existing(ids: list[int], avail: set[int]) -> list[int]:
     return present
 
 def plot_mean_voltage(seg_data, sim_directory):
+    seg_data['mean_v'] = seg_data['v'].mean(axis=0)
     from Modules import plot_morphology
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
