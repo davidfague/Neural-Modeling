@@ -64,7 +64,7 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     # === USER CONFIGURABLE (experiment-specific) ===
     skeleton_cell_type = 'Hay'#"Hay" #"Allen"
     SIM_SET_TITLE   = "testing_changes"
-    reduce_cell = True
+    do_reduce_cell = True
     sim_type        = "testing"         # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
     load_previous_sim_params = True 
     # template_sim_dir = (
@@ -182,7 +182,7 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
             "h_i_amplitude":      0.0,
             "CI_on":              False,
             "skeleton_cell_type": skeleton_cell_type,
-            "reduce_cell": reduce_cell
+            "do_reduce_cell":     do_reduce_cell,
         })
 
         # Generate HayParameters objects (one per seed x profile combo)
