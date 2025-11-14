@@ -5,11 +5,9 @@
 Start with setup.py
 
 To run a simulation:
-    Use scripts/configure_sim_params.py to make changes to define and change the simulation(s). Default parameters are in constants.py.
+    Use configure_sim_params.py to make changes to define and change the simulation(s). Default parameters are in constants.py.
 
-    Use scripts/AA_pre_sim.py to prepare simulation(s).
-
-    Use scripts/AA_sim_then_post_parallel.py to run and analyze simulation(s).
+    Use AA_run_pipeline.py to prepare, run, and analyze simulations.
     
     Check simulations/{your_sims_dir}/{your_sim_dir} for results.
 
