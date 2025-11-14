@@ -37,8 +37,6 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
     logger.log(f"Changing cell morphology, segmentation, etc")
     # manipulate morphology: reduction, segmentation
     #@TODO add code from cellbuilder.py: CellBuilder.build_cell  -lines around reductor code block
-    ####
-    ####
     logger.log(f"Finished changing cell morphology, segmentation, etc")
 
     logger.log("Saving adjacency matrix")
@@ -67,11 +65,7 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
     psegs=[]
     
     for i,entry in enumerate(seg_data):
-        # if parameters.build_stylized: #@DEPRACATED
-        #     sec_name = entry.section.split(".")[-1]
-        # else:
         sec_name = entry.section.split(".")[-1] # name[idx]
-        #print(f"sec_name: {sec_name}")
         seg_sections.append(sec_name.split("[")[0])
         seg_idx.append(int(sec_name.split("[")[1].split("]")[0].split(",")[0].strip()))
         seg_coords.append(entry.coords)
@@ -82,7 +76,6 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
         sec_Ls.append(segments[i].sec.L)
         sec_Ds.append(segments[i].sec.diam)
         seg_distance.append(h.distance(segments[0], segments[i]))
-        
         
     seg_sections = pd.DataFrame({ #@TODO: rename seg_sections to seg_sec_data or something
         "section": seg_sections, 
@@ -102,23 +95,9 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
     seg_data = pd.concat((seg_sections.reset_index(drop = True), seg_coords.reset_index(drop = True)), axis = 1) #@TODO: compute these together instead or make seg_sections computation more concise?
     seg_data = seg_data.reset_index(drop=True) #@TODO: check if this is needed
     seg_data['seg_id'] = seg_data.index # add a seg_id so that row i → seg_id i
-    seg_data.to_csv(os.path.join(sim_dir, "segment_data1.csv"))
-    logger.log("Saved segments data to segment_data.csv")
 
-    ### new version @TODO: finish this implementation for adding the new sec_types to segments.csv
     sec_types_to_get = np.unique([props['sec_type'] for syn_properties in [parameters.exc_syn_properties, parameters.inh_syn_properties] for input_source, props in syn_properties.items()])
-    # print(f"getting segments of types: {sec_types_to_get} for synapses")
-    # These are the types the method handles currently:
-    # sec_types_to_get = [
-    #     'soma',
-    #     'perisomatic',
-    #     'trunk',
-    #     'distal_basal',
-    #     'distal_apic',
-    #     'nexus',
-    #     'tuft',
-    #     'oblique'
-    # ]
+
     rows = []
     for stype in sec_types_to_get:
         segs = cell.get_segments_of_type(stype)
@@ -130,41 +109,18 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
                 'seg_id': segments.index(seg), # index of the segment in the list returned from cell.get_segments(['all'])
             })
 
-    df = pd.DataFrame(rows, # @TODO: check this dataframe. remove duplicate segments. include segment id from the index of the list returned from cell.get_segments(['all'])
-            columns=['sec_name','seg_x','sec_type', 'seg_id'])
-    # df.to_csv(os.path.join(sim_dir, "segment_data2.csv"), index=False)
-    ###
+    df = pd.DataFrame(rows, columns=['sec_name','seg_x','sec_type', 'seg_id']) # @TODO: check this dataframe. remove duplicate segments. include segment id from the index of the list returned from cell.get_segments(['all'])
+    
+    grouped = df.groupby('seg_id')['sec_type'].unique() # group to collect all sec_type per seg_id
+    check_overlapping_labels(grouped, logger)
 
-    ### combining main seg_data with this precise sec_type
-    # print out any seg_ids that have more than one precise type #@TODO: debugging overlapping precise sec_types that may need clearer definitions or stricter logic
-    # (e.g. "perisomatic" and "trunk")
-    # group to collect all sec_type per seg_id
-    grouped = df.groupby('seg_id')['sec_type'].unique()
-    overlaps = grouped[grouped.apply(lambda arr: len(arr) > 1)]
-    if not overlaps.empty:
-        logger.log("Segments with multiple precise sec_types:")
-        for sid, types in overlaps.items():
-            logger.log(f"  seg_id {sid}: {types.tolist()}")
-
-    # 5) build a map: if there's exactly one type, keep it; otherwise None
-    precise_map = grouped.apply(lambda arr: arr[0] if len(arr) == 1 else None)
-
+    precise_map = grouped.apply(lambda arr: arr[0] if len(arr) == 1 else None) # if there's exactly one type, keep it; otherwise None
     check_not_labeled(seg_data, precise_map, logger)
-    check_overlapping_labels(df, logger)
     check_nans_labels(seg_data, precise_map, logger)
 
-
-    # 6) assign into your main DataFrame
+    # assign into main DataFrame
     seg_data['sec_type_precise'] = seg_data['seg_id'].map(precise_map) #seg_data['sec_type_precise_depracating'] = seg_data['seg_id'].map(precise_map) # deprecating
-
-    # after seg_data is built and seg_id assigned
-    # seg_labels = cell.classify_all_segments()
-    # seg_data['sec_type_precise'] = seg_data['seg_id'].map(seg_labels)
-    seg_data['sec_type_precise'] = seg_data['sec_type_precise'].fillna('unlabeled')
-
-    # keep old for debugging only
-    # seg_data['sec_type_precise_depracating'] = seg_data['seg_id'].map(precise_map)
-    # seg_data['sec_type_precise_depracating'] = seg_data['sec_type_precise_depracating'].fillna('unlabeled')
+    seg_data['sec_type_precise'] = seg_data['sec_type_precise'].fillna('unlabeled') # replace None (nan) with 'unlabeled'
 
     # force soma/axon override (paranoid, but harmless)
     seg_data.loc[seg_data['section'].str.contains('soma'), 'sec_type_precise'] = 'soma'
@@ -172,10 +128,9 @@ def generate_segments_csv(sim_dir, parameters=None, logger=None): #@TODO: add th
 
     # save
     seg_data.to_csv(os.path.join(sim_dir, "segment_data.csv"), index=False)
-    logger.log("Saved integrated segment_data.csv with sec_type_precise")
+    logger.log(f'Saved segments with with sec_type_precise: {os.path.join(sim_dir, "segment_data.csv")}')
 
     parameters.all_synapses_off = initial_all_synapses_off_parameters # not sure if this matters. depends on if alterations to parameters in here would affect parameters outside this function.
-
 
 def check_not_labeled(seg_data, precise_map, logger):
     '''segs not covered'''
@@ -186,18 +141,17 @@ def check_not_labeled(seg_data, precise_map, logger):
         logger.log(f"[segments_file] Seg IDs missing from df (no precise type): {len(missing)} -> {missing[:20]} ...")
 
 # overlaps check
-def check_overlapping_labels(df, logger):
+def check_overlapping_labels(grouped, logger):
     '''checks if any segments have more than one precise section type label'''
-    grouped = df.groupby('seg_id')['sec_type'].unique()
     overlaps = grouped[grouped.apply(lambda arr: len(arr) > 1)]
     if len(overlaps) > 0:
         logger.log(f"[segments_file] Overlapping seg_ids: {len(overlaps)}")
-    # unique_labels = np.unique(np.concatenate(overlaps.values))
-    # print(f"[segments_file] All sec_types found in overlaps:", unique_labels)
+        unique_labels = np.unique(np.concatenate(overlaps.values))
+        logger.log(f"[segments_file] All sec_types found in overlaps:", unique_labels)
 
 # final NaNs after assignment
 def check_nans_labels(seg_data, precise_map, logger):
-    #@DEPRECATING they should recieve the label 'unlabeled' instead of getting None, which turns into nan.
+    #@DEPRECATING they later recieve the label 'unlabeled' instead of getting None, which turns into nan.
     # pass
     tmp = seg_data.copy()
     tmp['sec_type_precise'] = tmp['seg_id'].map(precise_map)
