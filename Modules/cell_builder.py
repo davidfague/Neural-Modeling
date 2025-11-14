@@ -124,12 +124,22 @@ class CellBuilder:
 
 		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger, self.parameters) 
 
-		if self.parameters.reduce_cell:
+		print(f"self.parameters.reduction: {self.parameters.reduction}")
+		if self.parameters.do_reduce_cell:
 			cell = reduce_cell(cell,
-								branch_disparity_elec_tolerance = 0.05, branch_distance_elec_tolerance = 0.05,
-								series_constant_elec_tolerance = 0.05, series_overhang_elec_tolerance = 0.05,
-								branch_mult_tolerance = 0.5, series_mult_tolerance = 0.5,
-								preserve_roots = False, seg_length_um = 5) 
+					  # # cool options, but won't throw error if one of the parameters isn't prespecified; instead falls back to using defaults from within reduce_cell()
+					  # # shouldn't use these options until we figure out how to change the params from configure_sim_params while using the original defaults.
+					  #**{k: v for k, v in self.parameters.reduction.items() if k != "do_reduce_cell"} # don't pass the do_reduce_cell key
+					  #**self.parameters.reduction # very simple
+					branch_disparity_elec_tolerance= self.parameters.reduction['branch_disparity_elec_tolerance'], 
+					branch_distance_elec_tolerance= self.parameters.reduction['branch_distance_elec_tolerance'],
+					series_constant_elec_tolerance= self.parameters.reduction['series_constant_elec_tolerance'],
+					series_overhang_elec_tolerance=self.parameters.reduction['series_overhang_elec_tolerance'],
+					branch_mult_tolerance=self.parameters.reduction['branch_mult_tolerance'],
+					series_mult_tolerance=self.parameters.reduction['series_mult_tolerance'],
+					preserve_roots=self.parameters.reduction['preserve_roots'],
+					seg_length_um=self.parameters.reduction['seg_length_um'],
+					  )
 			cell = CellModel(cell, random_state, neuron_r, self.logger, self.parameters)
 
 		if self.parameters.reduce_apic or self.parameters.reduce_basals or self.parameters.reduce_obliques:

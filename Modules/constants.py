@@ -477,6 +477,19 @@ class SimulationParameters:
 	path: str = ''
 
 #### Reduction
+	do_reduce_cell: bool = True
+	reduction: dict = field(default_factory=lambda: {
+		'branch_disparity_elec_tolerance': 0.05, 
+		'branch_distance_elec_tolerance': 0.05,
+		'series_constant_elec_tolerance': 0.05,
+		'series_overhang_elec_tolerance': 0.05,
+		'branch_mult_tolerance': 1.5,
+		'series_mult_tolerance': 1.5,
+		'preserve_roots': False,
+		'seg_length_um': 5,
+		})
+	
+##################################### legacy reduction parameters ##########################################################
 	reduce_cell: bool = False
 	expand_cable: bool = False
 	reduction_frequency: int = 0 # input frequency used for calculating input transfer impedance
@@ -488,9 +501,8 @@ class SimulationParameters:
 	reduce_basals: int = 0
 	synapse_mapping: bool = True # True places synapses on complex cell and maps them using transfer impedance. False places synapses onto reduced cell @TODO: update for synapses_file.
 	choose_branches: int = 22 # for cable expander, how many branches to turn one cable into
-
-
- ### Segment resolution parameters #@TODO: check that we are only doing one or the other and that they aren;t conflicting.
+	
+	### Segment resolution parameters #@TODO: check that we are only doing one or the other and that they aren;t conflicting.
 	optimize_nseg_by_lambda: bool = False # set the segment resolution according to the length constants (electrotonic properties) of the cable sections.
 	segs_per_lambda: int = 10 # number of segments per length constant (lambda) of the cable sections. (more means better resolution, but more segments)
 
@@ -501,7 +513,8 @@ class SimulationParameters:
 	# (synapses should already be merged by the reduce_cell_func, 
 	# but could be merged again if optimize_nseg_by_lambda lowers nseg.)
 	merge_synapses: bool = False # deletes duplicate point processes (synapses) by moving their spike trains to 1 like synapse (on the same segment, with the same synapse parameters including synapse weight, release probability, etc.).
- 
+##################################### end legacy reduction parameters ##########################################################
+
  ### Additional file specifications @TODO: move to a separate file.
 	Hay_biophys: str = "L5PCbiophys3.hoc"
  
