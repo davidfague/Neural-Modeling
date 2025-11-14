@@ -72,8 +72,8 @@ class SkeletonCell(Enum):
 		"morph": None,
 		"template": None,
 		"pickle": None,
-		"directory": "../Allen/Cell_477127614",
-		"modfiles": "../Allen/Cell_477127614/modfiles"
+		"directory": "../Allen/Cell_488683425",
+		"modfiles": "../Allen/Cell_488683425/modfiles"
 	}
 
 class CellBuilder:
@@ -115,22 +115,17 @@ class CellBuilder:
 		elif self.cell_type == SkeletonCell.Allen:
 			skeleton_cell = self.build_Allen_cell()
 
-		sys.path.append("../reduce-cell-modeling") #from reduce-cell-modeling.reduction_commands import reduce_cell
-		from reduction_commands import reduce_cell
-		# skeleton_cell = reduce_cell(skeleton_cell, 
-		# 					  branch_elec_disparity_tolerance = 0.15, branch_elec_distance_tolerance = 0.05,
-		# 					  series_elec_constant_tolerance = 0.05, series_overhang_elec_tolerance = 0.05, 
-		# 					  preserve_roots = True)
-
 		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger, self.parameters) 
 
-		print(f"self.parameters.reduction: {self.parameters.reduction}")
 		if self.parameters.do_reduce_cell:
+			sys.path.append("../reduce-cell-modeling") # clone https://github.com/cyneuro/reduce-cell-modeling.git into this repo
+			from reduction_commands import reduce_cell
 			cell = reduce_cell(cell,
 					  # # cool options, but won't throw error if one of the parameters isn't prespecified; instead falls back to using defaults from within reduce_cell()
 					  # # shouldn't use these options until we figure out how to change the params from configure_sim_params while using the original defaults.
 					  #**{k: v for k, v in self.parameters.reduction.items() if k != "do_reduce_cell"} # don't pass the do_reduce_cell key
 					  #**self.parameters.reduction # very simple
+
 					branch_disparity_elec_tolerance= self.parameters.reduction['branch_disparity_elec_tolerance'], 
 					branch_distance_elec_tolerance= self.parameters.reduction['branch_distance_elec_tolerance'],
 					series_constant_elec_tolerance= self.parameters.reduction['series_constant_elec_tolerance'],
@@ -395,57 +390,30 @@ class CellBuilder:
 		# Record synapse distributions
 		if self.parameters.record_synapse_distributions:
 			all_segments = cell.get_segments_without_data(['all'])
-			# print(f"length of all segments in builder when saving synapses: {len(all_segments)}")
-			# soma_synapses = cell.get_synapses(['soma_inh'])
-			# if len(soma_synapses) == 0:
-			# 	print("No soma synapses found. Feel free to delete.")
-			# inh_synapses = cell.get_synapses(['inh', 'inh_distal_basal', 'inh_distal_apic'])
 			inh_synapses = cell.get_synapses([f'inh_{sec_type}' for sec_type in self.parameters.inh_syn_properties.keys()])
-			# exc_synapses = cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"], all_with_prefix=True)
-			# exc_synapses = cell.get_synapses(["exc", "exc_apic", "exc_tuft","exc_basal","exc_dend","exc_trunk","exc_oblique"])
 			exc_synapses = cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])
 			synapse_data = {
 				'synapse_type': (
-					# [syn.name for syn in soma_synapses] +
 					[syn.name for syn in inh_synapses] +
 					[syn.name for syn in exc_synapses]
-					# ['soma_inh'] * len(soma_synapses) +
-					# ['inh'] * len(inh_synapses) +
-					# ['exc'] * len(exc_synapses)
 				),
 				'mean_firing_rate': (
-					# [syn.pc.mean_fr for syn in soma_synapses] +
 					[syn.pc.mean_fr for syn in inh_synapses] +
 					[syn.pc.mean_fr for syn in exc_synapses]
 				),
 				'weight': (
-					# [syn.gmax_val for syn in soma_synapses] +
 					[syn.gmax_val for syn in inh_synapses] +
 					[syn.gmax_val for syn in exc_synapses]
 				),
 				'seg_id': (
-					# [all_segments.index(syn.h_syn.get_segment()) for syn in soma_synapses] +
 					[all_segments.index(syn.h_syn.get_segment()) for syn in inh_synapses] +
 					[all_segments.index(syn.h_syn.get_segment()) for syn in exc_synapses]
 				),
 				'pc_name': (
-					# [syn.pc.name for syn in soma_synapses] +
 					[syn.pc.name for syn in inh_synapses] +
 					[syn.pc.name for syn in exc_synapses]
 				)
 			}
-
-			# # Check which elements are of object dtype since that is giving error.
-			# for key, values in synapse_data.items():
-			# 	values_array = np.array(values)
-			# 	if values_array.dtype == np.object:
-			# 		print(f"Key '{key}' has object dtype: {values_array.dtype}")
-			# 		print(f"Unique values: {np.unique(values_array)}")
-			# 		for idx,value in enumerate(values_array):
-			# 			synapse_type = synapse_data['synapse_type'][idx]
-			# 			print(f"{synapse_type} Value type: {type(value)}, value: {value}")
-			# 	else:
-			# 		print(f"Key '{key}' has dtype: {values_array.dtype}")
 
 			# Save synapse data to file
 			synapse_file_path = os.path.join(self.parameters.path, 'synapse_data.h5')
@@ -459,9 +427,6 @@ class CellBuilder:
 
 		#@CHECKING PCs
 		# Extract synaptic cells
-		# exc_pcs = [syn.pc for syn in cell.get_synapses(['exc_distal_basal', 'exc_oblique', 'exc_trunk', 'exc_tuft'])]
-		# inh_pcs = [syn.pc for syn in cell.get_synapses(['inh_distal_basal', 'inh_distal_apic']) if syn.h_syn.get_segment() in cell.get_segments_without_data(['dend', 'apic'])]
-		# soma_pcs = [syn.pc for syn in cell.get_synapses(['inh_perisomatic']) if syn.h_syn.get_segment() in cell.get_segments_of_type('perisomatic')]
 		exc_pcs = [syn.pc for syn in cell.get_synapses([f"exc_{sec_type}" for sec_type in self.parameters.exc_syn_properties.keys()])]
 		inh_pcs = [syn.pc for syn in cell.get_synapses([f"inh_{sec_type}" for sec_type in self.parameters.inh_syn_properties.keys() if sec_type != 'perisomatic']) if (syn.h_syn.get_segment() in cell.get_segments_without_data(['dend', 'apic']))]
 		soma_pcs = [syn.pc for syn in cell.get_synapses(['inh_perisomatic']) if syn.h_syn.get_segment() in cell.get_segments_of_type('perisomatic')]
