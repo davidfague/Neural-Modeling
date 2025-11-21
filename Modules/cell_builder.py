@@ -16,7 +16,7 @@ from logger import Logger
 from spike_generator import PoissonTrainGenerator
 from constants import SimulationParameters
 from cell_model import CellModel
-from presynaptic import PCBuilder
+# from presynaptic import PCBuilder  # UNUSED - clustering now handled in synapses_file.py
 from reduction import Reductor
 # from morphology_manipulator import MorphologyManipulator
 import pandas as pd

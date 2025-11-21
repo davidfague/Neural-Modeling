@@ -22,8 +22,14 @@ import pickle
 from typing import Optional, Tuple, List
 
 from Modules.constants import HayParameters
-from Modules.clusters_global_l5_fg import exc_clustering as EXC_CLUSTERING, inh_clustering as INH_CLUSTERING
 from Modules import analysis
+
+# Clustering module (unified)
+from Modules.clustering import (
+    build_clustering,
+    get_default_exc_clustering,
+    get_default_inh_clustering,
+)
 
 # Reusable presets / templates
 from Modules.simulation_templates import (
@@ -63,10 +69,16 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
 
     # === USER CONFIGURABLE (experiment-specific) ===
     skeleton_cell_type = 'Hay'#"Hay" #"Allen"
-    SIM_SET_TITLE   = "testing_changes"
-    do_reduce_cell = True
-    sim_type        = "testing"         # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
-    load_previous_sim_params = True 
+    SIM_SET_TITLE   = "checking_synapses"
+    do_reduce_cell = False
+    sim_type        = "sta"         # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
+    load_previous_sim_params = True
+    
+    # Clustering mode configuration
+    # Options: 'terminal_branch_simple' (one FG per terminal branch, static PCs)
+    #          'terminal_branch_fps' (FPS-based clustering, dynamic PCs - DEFAULT)
+    exc_clustering_mode = 'terminal_branch_fps'
+    inh_clustering_mode = 'global_inh'  # 'global_inh' or 'terminal_branch_fps' 
     # template_sim_dir = (
     #     "/home/drfrbc/Neural-Modeling/simulations/"
     #     "2025-10-16-08-28-IncreaseNexusMaxYTo950/"
@@ -108,6 +120,10 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     cluster_exc   = True
     inh_mode = "delayed"
     depth_values  = [0]          # sweep over inhibitory rhythmic depth(s)
+    
+    # Build clustering configurations based on selected modes
+    exc_clustering_cfg = get_default_exc_clustering(mode=exc_clustering_mode)
+    inh_clustering_cfg = get_default_inh_clustering(mode=inh_clustering_mode)
 
     # Seeds
     numpy_random_states  = [5000]
@@ -118,10 +134,9 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     syn_reductions_to_use    = ["None"]     # keys from simulation_templates.syn_reductions
     ci_replacements_to_use   = ["None"]     # keys from simulation_templates.ci_replacements
 
-    # decide what to pass for exc clustering without rebinding the import
-    exc_clustering_cfg = copy.deepcopy(EXC_CLUSTERING)  # avoid mutating the imported dict
+    # Override clustering if cluster_exc is False
     if not cluster_exc:
-        exc_clustering_cfg = {}  # just empty it locally
+        exc_clustering_cfg = {}  # disable excitatory clustering
 
     # Build parameter sets
     all_parameter_sets = []
@@ -178,7 +193,7 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
             "inh_syn_properties": inh_syn_properties,
             "exc_syn_properties": exc_syn_properties,
             "exc_clustering":     exc_clustering_cfg,
-            "inh_clustering":     INH_CLUSTERING,
+            "inh_clustering":     inh_clustering_cfg,
             "h_i_amplitude":      0.0,
             "CI_on":              False,
             "skeleton_cell_type": skeleton_cell_type,
