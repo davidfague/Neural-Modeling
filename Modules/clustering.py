@@ -1,28 +1,122 @@
 """
-Clustering module for functional groups and presynaptic cells.
+Clustering module for organizing synapses into functional groups and presynaptic cells.
 
-This module provides different clustering strategies for organizing synapses
-into functional groups (FGs) and presynaptic cells (PCs):
+OVERVIEW
+========
+This module organizes synapses into spatial clusters called Functional Groups (FGs),
+where each FG contains one or more Presynaptic Cells (PCs) that generate correlated
+spike trains. All clustering strategies operate on terminal branch statistics computed
+from segment_data.csv.
 
-1. "terminal_branch_simple": One FG per terminal branch with static PC assignment
-2. "terminal_branch_fps": Advanced FPS-based clustering with dynamic PC assignment
-3. Custom: User can provide their own clustering configuration
+CLUSTERING STRATEGIES
+=====================
 
-Both strategies operate on terminal branch statistics computed from segment_data.csv.
+1. TERMINAL_BRANCH_SIMPLE MODE
+   - One Functional Group (FG) per terminal branch
+   - Static PC assignment: Each FG has one PC at the branch center
+   - Use case: Simple spatial organization, one-to-one mapping
+   
+   Step-by-step:
+   a) Load terminal branch statistics (center coords, length per branch)
+   b) Create one FG for each terminal branch
+   c) Set FG center = branch center, radius = branch_length × scale_factor
+   d) Create one PC per FG with same center and radius
+   e) Synapses within FG radius are assigned to that FG's PC
+
+2. TERMINAL_BRANCH_FPS MODE (DEFAULT)
+   - Uses Farthest Point Sampling (FPS) to distribute FGs across branches
+   - Dynamic PC assignment: PCs created on-the-fly based on synapse count
+   - Use case: Targeted FG counts with spatial locality
+   
+   What is FPS (Farthest Point Sampling)?
+   ---------------------------------------
+   A greedy algorithm that selects spatially-distributed representative points:
+   - Start with one point (e.g., first terminal branch center)
+   - Iteratively select the point that is FARTHEST from all currently selected points
+   - Repeat until you have K representative points
+   - Result: Evenly-spread points across the dendritic tree
+   
+   Example: 41 tuft branches → 12 FGs via FPS
+   - Without FPS: Might get 12 FGs clustered in one region
+   - With FPS: 12 FGs spread evenly across all tuft branches
+   
+   Step-by-step:
+   a) Load terminal branch statistics for each sec_type (tuft, basal, etc.)
+   b) For each input_source (e.g., "tuft_local_L5", "tuft_distant"):
+      - Determine target # of FGs (from target_fgs_per_input_source config)
+      - If fewer FGs than branches: Use FPS to select representative centers
+      - If more FGs than branches: Use all branch centers
+   c) Create FGs at selected centers with radius based on nearest branch
+   d) Assign PCs dynamically (see below)
+   e) Synapses within FG radius are assigned to appropriate FG/PC
+   
+   Dynamic vs Static PC Assignment
+   --------------------------------
+   STATIC (simple mode):
+   - Fixed number of PCs per FG, defined in config
+   - PC locations pre-specified
+   - Example: FG has 3 PCs at specific coordinates
+   
+   DYNAMIC (FPS mode):
+   - PCs created on-the-fly when synapses are assigned
+   - Each PC gets a random # of synapses (divergence distribution)
+   - Locality options:
+     * 'nearest': Synapses assigned to spatially nearest PC (spatial clustering)
+     * None: Sequential chunks (first N syns → PC0, next M syns → PC1, etc.)
+   
+   Example of dynamic assignment with locality='nearest':
+   - FG has 50 synapses
+   - Divergence spec: uniform 2-8 synapses per PC
+   - Process:
+     1. Pick farthest synapse from FG center as seed for PC0
+     2. Assign 2-8 (random) nearest synapses to PC0
+     3. From remaining synapses, pick farthest from centroid as seed for PC1
+     4. Assign 2-8 nearest synapses to PC1
+     5. Repeat until all 50 synapses assigned
+   - Result: ~6-25 PCs with spatially-local synapse groups
+
+3. GLOBAL_INH MODE
+   - Single large FG covering entire morphology
+   - Dynamic PC assignment across all inhibitory synapses
+   - Use case: Global inhibitory modulation
+
+USAGE EXAMPLE
+=============
+from Modules.clustering import build_clustering
+
+# Simple mode
+exc_clustering = build_clustering(
+    mode='terminal_branch_simple',
+    synapse_type='exc',
+    branch_stats=branch_stats,
+    radius_scale=5.0
+)
+
+# FPS mode with targeted FG counts
+exc_clustering = build_clustering(
+    mode='terminal_branch_fps',
+    branch_stats=branch_stats,
+    target_fgs_per_input_source={
+        'tuft_distant': 12,      # 12 FGs for tuft_distant
+        'tuft_local_L5': 3,      # 3 FGs for tuft_local_L5
+        'basal_local_L5': 10,    # 10 FGs for basal_local_L5
+    },
+    pc_locality='nearest'        # Use spatial PC assignment
+)
 """
 
 import sys
 import numpy as np
 from functools import partial
 
-# Terminal branch statistics should be imported from the simulation directory
-# The default import here is a fallback; actual usage will pass branch_stats as parameter
+# Terminal branch statistics are generated by get_terminal_branch_stats.py
+# and loaded from terminal_branch_statistics.py in the terminal_branching_coords_for_clusters/ folder
 try:
     sys.path.append('../terminal_branching_coords_for_clusters')
     from terminal_branch_statistics import branch_stats as DEFAULT_BRANCH_STATS
 except ImportError:
     DEFAULT_BRANCH_STATS = {}
-    print("Warning: Could not import default terminal_branch_statistics. Use compute_terminal_branch_stats() first.")
+    print("Warning: Could not import terminal_branch_statistics. Generate it using get_terminal_branch_stats.py first.")
 
 
 # ============================================================================
@@ -67,18 +161,32 @@ def build_simple_terminal_branch_clustering(
 ):
     """
     Simple clustering: One functional group per terminal branch.
-    Each FG has one PC centered at the branch center.
+    Each FG has one PC centered at the branch center (STATIC PC ASSIGNMENT).
+    
+    This is the most straightforward approach:
+    - 193 terminal branches → 193 functional groups
+    - Each FG covers one branch with radius = branch_length × radius_scale
+    - Each FG has exactly one PC at the branch center
+    - All synapses within FG radius assigned to that single PC
     
     Args:
         branch_stats: Dict {sec_type: {seg_id: {'center_coords': [x,y,z], 'total_length': float}}}
+                      from terminal_branch_statistics.py
         synapse_type: 'exc' or 'inh'
         input_source_suffixes: Tuple of suffixes to append to sec_type for input_source naming
+                               e.g., ('_local_L5',) creates 'tuft_local_L5', 'basal_local_L5'
         radius_scale: Multiplier for branch length to determine FG radius
-        max_synapses_per_pc: Maximum synapses per presynaptic cell
-        modulation_mode: Spike train modulation mode
+                      e.g., 5.0 means FG_radius = 5 × branch_length
+        max_synapses_per_pc: Maximum synapses per presynaptic cell (static limit)
+        modulation_mode: Spike train modulation mode ('pink_noise', 'poisson', etc.)
         
     Returns:
-        Dict with clustering configuration
+        Dict with clustering configuration keyed by sec_type:
+        {
+            'tuft': {'functional_groups': [...]},
+            'basal': {'functional_groups': [...]},
+            ...
+        }
     """
     clustering = {}
     
@@ -117,7 +225,23 @@ def build_simple_terminal_branch_clustering(
 
 def _fps_reduce(centers, k):
     """
-    Farthest Point Sampling to select k representative centers from a set of points.
+    Farthest Point Sampling (FPS) to select k representative centers.
+    
+    Algorithm:
+    1. Start with first point as initial selection
+    2. For each remaining point, compute distance to nearest selected point
+    3. Select the point with maximum distance (farthest point)
+    4. Repeat until k points selected
+    
+    This greedy approach ensures selected points are spread out across the space,
+    avoiding clustering in one region.
+    
+    Args:
+        centers: np.ndarray of shape (N, 3) - all candidate center coordinates
+        k: int - number of points to select
+        
+    Returns:
+        np.ndarray of shape (k, 3) - selected representative centers
     """
     if k <= 0 or len(centers) == 0:
         return np.empty((0, 3))
@@ -167,21 +291,88 @@ def build_fps_terminal_branch_clustering(
     pc_locality: str = "nearest"
 ):
     """
-    FPS-based clustering with dynamic PC assignment.
-    Uses Farthest Point Sampling to distribute functional groups across terminal branches.
+    FPS-based clustering with DYNAMIC PC assignment.
+    Uses Farthest Point Sampling to distribute functional groups evenly across branches.
+    
+    PROCESS OVERVIEW:
+    -----------------
+    1. For each section type (tuft, basal, oblique, etc.):
+       - Load all terminal branch centers
+       - For each input_source suffix (e.g., "_local_L5", "_distant"):
+         a) Determine target # of FGs from config
+         b) Use FPS to select that many representative centers from branches
+         c) Create FGs at selected centers
+         d) Configure FGs for DYNAMIC PC assignment (see below)
+    
+    2. During simulation (in synapses_file.py):
+       - Synapses are assigned to FGs based on spatial proximity
+       - PCs are created dynamically as synapses are assigned:
+         * Sample divergence (e.g., 2-8 syns per PC) from divergence_spec
+         * If pc_locality='nearest': group spatially close synapses to same PC
+         * If pc_locality=None: assign sequential chunks to PCs
+    
+    EXAMPLE:
+    --------
+    Input: 41 tuft terminal branches
+    Config: target_fgs_per_input_source={'tuft_local_L5': 3}
+    
+    Step 1: FPS selects 3 representative centers from 41 branches
+            These 3 centers are maximally spread across the tuft
+    
+    Step 2: Create 3 FGs at selected centers with appropriate radius
+    
+    Step 3: During synapse assignment (runtime):
+            - Suppose FG #1 gets 50 synapses within its radius
+            - Divergence spec: uniform 2-8 synapses per PC
+            - With pc_locality='nearest':
+              * Pick farthest synapse as seed for PC_0
+              * Assign 5 (random 2-8) nearest synapses to PC_0
+              * Pick next farthest synapse as seed for PC_1
+              * Assign 7 nearest synapses to PC_1
+              * Continue until all 50 synapses assigned
+            - Result: ~6-12 PCs for this FG, each with spatially-local synapses
     
     Args:
-        branch_stats: Dict of terminal branch statistics
+        branch_stats: Dict {sec_type: {seg_id: {'center_coords': [x,y,z], 'total_length': float}}}
+                      from terminal_branch_statistics.py
         per_branch_suffixes: Suffixes to create multiple input sources per sec_type
-        branch_radius_scale: Scale factor for FG radius based on branch length
-        default_modulation_mode: Default spike train modulation
-        divergence_spec: Specification for dynamic PC divergence
-        target_fgs_per_input_source: Dict mapping input_source to desired # of FGs
-        global_target_fgs: Total target FGs across all input sources (alternative to above)
-        pc_locality: 'nearest' for spatial locality, None for sequential assignment
+                             e.g., ("_local_L5", "_distant") creates:
+                             'tuft_local_L5', 'tuft_distant', 'basal_local_L5', etc.
+        branch_radius_scale: Scale factor for FG radius based on nearest branch length
+                             e.g., 7.5 means FG_radius = 7.5 × nearest_branch_length
+        default_modulation_mode: Spike train modulation ('pink_noise', 'poisson', 'delay', etc.)
+        divergence_spec: Dict specifying how many synapses per PC
+                         e.g., {'kind': 'uniform_int', 'low': 2, 'high': 8}
+                         Means each PC gets 2-8 synapses randomly
+        target_fgs_per_input_source: Dict mapping input_source → target # FGs
+                                     e.g., {'tuft_distant': 12, 'basal_local_L5': 10}
+                                     If not specified, uses one FG per branch (no FPS reduction)
+        global_target_fgs: Alternative to above - total FGs across all input sources
+                           Distributed proportionally by branch count
+        pc_locality: 'nearest' for spatial PC assignment (recommended)
+                     None for sequential chunks
         
     Returns:
-        Dict with clustering configuration
+        Dict with clustering configuration keyed by input_source:
+        {
+            'tuft_local_L5': {'functional_groups': [...]},
+            'tuft_distant': {'functional_groups': [...]},
+            'basal_local_L5': {'functional_groups': [...]},
+            ...
+        }
+        
+        Each FG has structure:
+        {
+            'center': [x, y, z],
+            'radius': float,
+            'modulation_mode': str,
+            'input_source': str,
+            'presynaptic_cells': {
+                'mode': 'dynamic',
+                'max_synapses_per_pc': {'dist': divergence_spec},
+                'locality': 'nearest' or None
+            }
+        }
     """
     clustering = {}
 
@@ -250,17 +441,70 @@ def build_inh_clustering_one_global_for_all(
 ):
     """
     Create a single global inhibitory FG that covers all branches.
+    This creates one large functional group encompassing the entire morphology.
+    
+    USE CASE:
+    ---------
+    Global inhibitory modulation - all inhibitory synapses belong to one large
+    spatial group, but are subdivided into multiple PCs dynamically.
+    
+    PROCESS:
+    --------
+    1. Compute bounding sphere around all terminal branches:
+       - Center = mean of all branch centers
+       - Radius = max distance from center to any branch + padding
+    
+    2. Create one FG per section type (tuft, basal, etc.) with:
+       - Same global center for all
+       - Same global radius for all
+       - Input source = "{sec_type}_perisomatic"
+    
+    3. Configure for DYNAMIC PC assignment:
+       - PCs created as inhibitory synapses are assigned
+       - Divergence typically higher for inhibition (6-18 syns per PC)
+       - With pc_locality='nearest': spatially local inh synapse groups
+    
+    EXAMPLE:
+    --------
+    Morphology with 193 terminal branches across 6 section types
+    → 6 FGs (one per sec_type), all with same large center/radius
+    → All perisomatic inhibitory synapses within global sphere
+    → Dynamically divided into ~10-30 PCs with spatial locality
     
     Args:
-        branch_stats: Dict of terminal branch statistics
+        branch_stats: Dict {sec_type: {seg_id: {...}}} from terminal_branch_statistics.py
+        rng_dist: Optional divergence distribution override
+                  Default uses truncnorm with mean=12, sd=3, range=[6,18]
         default_modulation_mode: Spike train modulation mode
-        global_center: Override center position
-        global_radius: Override radius
-        pad: Padding factor for radius calculation
-        pc_locality: 'nearest' for spatial PC assignment
+                                 'delay' means inhibition follows excitation with delay
+        global_center: Override auto-computed center [x,y,z]
+                       If None, computed as mean of all branch centers
+        global_radius: Override auto-computed radius (float)
+                       If None, computed as max_distance + pad
+        pad: Padding added to radius (μm)
+             Ensures all branches are well within the FG sphere
+        pc_locality: 'nearest' for spatial PC assignment (recommended)
         
     Returns:
-        Dict with clustering configuration
+        Dict with clustering configuration keyed by sec_type:
+        {
+            'tuft': {'functional_groups': [single global FG]},
+            'basal': {'functional_groups': [single global FG]},
+            ...
+        }
+        
+        Each FG has:
+        {
+            'center': [x, y, z],  # same for all
+            'radius': float,       # same for all  
+            'modulation_mode': 'delay',
+            'input_source': '{sec_type}_perisomatic',
+            'presynaptic_cells': {
+                'mode': 'dynamic',
+                'max_synapses_per_pc': {'dist': {...}},
+                'locality': 'nearest'
+            }
+        }
     """
     if global_center is None or global_radius is None:
         c, r = _compute_global_center_radius(branch_stats, pad=pad)
@@ -369,7 +613,7 @@ def build_clustering(
 
 
 # ============================================================================
-# Backward compatibility: Generate default clusterings
+# Default clustering configurations
 # ============================================================================
 
 def get_default_exc_clustering(mode='terminal_branch_fps', branch_stats=None):
@@ -417,7 +661,7 @@ def get_default_inh_clustering(mode='global_inh', branch_stats=None):
 
 
 # ============================================================================
-# Export default configurations for backward compatibility
+# Export default configurations
 # ============================================================================
 
 try:
