@@ -878,11 +878,11 @@ class CellModel:
 		if synapse is None:
 			for syn in self.synapses:
 				try: rec_list.add(SynapseRecorder(syn.h_syn, var_name))
-				except:
-						if str(syn.h_syn) == 'int2pyr' and 'gaba' in var_name.lower():
-							print(f'failed: {print(syn.h_syn)}, {var_name}')
-						elif str(syn.h_syn) == 'pyr2pyr' and 'nmda' in var_name.lower():
-							print(f'failed: {print(syn.h_syn)}, {var_name}')
+				except Exception as e:
+						if (('int2pyr' in str(syn.h_syn) or 'gaba' in str(syn.h_syn).lower()) and ('ampa' in var_name.lower() or 'nmda' in var_name.lower())) or (('pyr2pyr' in str(syn.h_syn) or 'ampa' in str(syn.h_syn).lower()) and 'gaba' in var_name.lower()):							pass # skip because these synapses do not have these variables
+						else:
+							print(f"exception while recording synapse variable: {var_name} from {str(syn.h_syn)}:")
+							raise e
 		else:
 			rec_list.add(SynapseRecorder(synapse.h_syn, var_name))
 		self.recorders.append(rec_list)
