@@ -78,8 +78,8 @@ class SimulationParameters:
 	exc_syn_properties: dict = field(default_factory=lambda: { 
 		'tuft_local_L23': {
 			'sec_type': 'tuft',
-			'syn_density': 2.16*0.10*0.66*1.3, # 10% of inputs are local and 2/3 local are L23 # reduce to 20% to prevent constant depolarization
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,3), 'scalar': 1}},
+			'syn_density': 2.16*0.10*0.66*3.0, # 10% of inputs are local and 2/3 local are L23 # reduce to 20% to prevent constant depolarization
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 3333333},
@@ -89,8 +89,8 @@ class SimulationParameters:
 			},
 		'tuft_local_L5': {
 			'sec_type': 'tuft',
-			'syn_density': 2.16*0.10*0.33*1.3, #10% are local and 1/3 local are L5 # reduce to 20% to prevent constant depolarization
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,3), 'scalar': 1}},
+			'syn_density': 2.16*0.10*0.33*3.0, #10% are local and 1/3 local are L5 # reduce to 20% to prevent constant depolarization
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 3333333},
@@ -100,8 +100,8 @@ class SimulationParameters:
 			},
 		'tuft_distant': {
 			'sec_type': 'tuft',
-			'syn_density': 2.16*0.90*1.3, # 90% are distant # reduce to 20% to prevent constant depolarization
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,3), 'scalar': 1}},
+			'syn_density': 2.16*0.90*3.0, # 90% are distant # reduce to 20% to prevent constant depolarization
+			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 3333333},
@@ -248,7 +248,7 @@ class SimulationParameters:
 	inh_syn_properties: dict = field(default_factory=lambda: {
 		'tuft': {
 			'sec_type': 'tuft', # section type to place synapses on
-			'syn_density': 0.22,
+			'syn_density': 0.22*1.0,
 			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
@@ -267,7 +267,7 @@ class SimulationParameters:
 			},
 		'nexus': {
 			'sec_type': 'nexus',
-			'syn_density': 0.22*1.,
+			'syn_density': 0.22*0.5,
 			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#0.08474*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
@@ -324,7 +324,7 @@ class SimulationParameters:
 			},
 		'distal_basal': {
 			'sec_type': 'distal_basal',
-			'syn_density': 0.22*1.5,
+			'syn_density': 0.22*0.5,#*1.5,
 			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#0.08474*0.916*0.5*.16},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.72, 'std': 0.1}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
@@ -446,7 +446,7 @@ class SimulationParameters:
 	exc_syn_mod: str = 'pyr2pyr'#'AMPA_NMDA_STP'
 	inh_syn_mod: str = 'int2pyr'#'GABA_AB_STP'
  
-	synaptic_currents_to_record =['iampa', 'inmda']# listed are for pyr2pyr.	for AMPA_NMDA: ["i_AMPA", "i_NMDA"]
+	synaptic_vars_to_record =['iampa', 'inmda']#, 'g_NMDA', 'g_AMPA', 'g_GABAA', 'g_GABAB']# listed are for pyr2pyr.	for AMPA_NMDA: ["i_AMPA", "i_NMDA"]
 
 	# Firing rate distributions
 	use_levy_dist_for_exc: bool = True
