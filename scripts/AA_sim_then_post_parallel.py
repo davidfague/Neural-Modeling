@@ -22,23 +22,33 @@ import Modules.analysis as analysis
 def run_one(sim_dir: str):
     print(f"\n[scripts/AA_sim_then_post_parallel.py] === {sim_dir} ===", flush=True)
 
-    # --- Load params & build cell ---
+    logger = Logger(sim_dir)
+    logger.start_timer("entire_run_after_pre_sim_build")
+
+    # Load params & build cell
+    logger.start_timer("load_params_and_build_cell")
     parameters = analysis.DataReader.load_parameters(sim_dir)
     pssg = PreSimSynapseGenerator(sim_dir)
     cell = pssg.build_synapses_onto_cell_obj()
+    logger.log_runtime("AA_sim_then_post_parallel", "load_params_and_build_cell", timer_name="load_params_and_build_cell")
 
-    # --- Run simulation ---
+    # Run simulation
+    logger.start_timer("run_simulation")
     sim = Simulation(getattr(SkeletonCell, parameters.skeleton_cell_type), create_dir=False)
     sim.path = os.path.split(sim_dir)[0]   # parent sims_dir
-    sim.logger = Logger(sim_dir)
+    sim.logger = logger
     sim.run_single_simulation(parameters=parameters, cell=cell)
+    logger.log_runtime("AA_sim_then_post_parallel", "run_simulation", timer_name="run_simulation")
 
-    # --- Post sim  analysis ---
+    # Post sim analysis
+    logger.start_timer("post_sim_analysis")
     subprocess.run([sys.executable,
                     os.path.join(os.path.dirname(__file__), "AA_post_sim_analysis.py"),
                     "-d", sim_dir],
                    check=False)
+    logger.log_runtime("AA_sim_then_post_parallel", "post_sim_analysis", timer_name="post_sim_analysis")
     
+    logger.log_runtime("AA_sim_then_post_parallel", "entire_run_after_pre_sim_build", timer_name="entire_run_after_pre_sim_build")
     print(f"[AA_sim_then_post_parallel.py] Finished Processing: {sim_dir}", flush=True)
 
 

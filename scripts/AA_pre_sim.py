@@ -54,43 +54,135 @@ def write_spike_train_modes(sims_dir, inh_syn_properties, exc_syn_properties):
         for input_source, props in exc_syn_properties.items():
             f.write(f"{input_source}: {props['spike_train_mode']}\n")
 
-def write_synapse_densities_to_txt(sims_dir: str) -> None:
+def write_synapse_densities(p, params, syn_counts):
+    """Write synapse density information for exc and inh synapses."""
+    p("Exc synapse densities and counts:")
+    for input_source, props in params.exc_syn_properties.items():
+        dens = props.get("syn_density")
+        dens_str = "None" if dens is None else round(dens, 4)
+        n_syn = syn_counts.get(input_source, 0)
+        p(f"{input_source}: density={dens_str}, n_synapses={n_syn}")
+    p("")
+    
+    p("Inh synapse densities and counts:")
+    for input_source, props in params.inh_syn_properties.items():
+        dens = props.get("syn_density")
+        dens_str = "None" if dens is None else round(dens, 4)
+        n_syn = syn_counts.get(input_source, 0)
+        p(f"{input_source}: density={dens_str}, n_synapses={n_syn}")
+    p("")
+
+def write_weight_distributions(p, params):
+    """Write weight distribution information for exc and inh synapses."""
+    p("Exc synapse weight distributions:")
+    for input_source, props in params.exc_syn_properties.items():
+        init_wt_dist = props.get("initial_weight_distribution", {}) or {}
+        wt_func = init_wt_dist.get("function")
+        wt_func_name = wt_func.__name__ if wt_func else "None"
+        wt_params = init_wt_dist.get("params", {}) or {}
+        p(f"{input_source}: {wt_func_name}: {wt_params}")
+    p("")
+    
+    p("Inh synapse weight distributions:")
+    for input_source, props in params.inh_syn_properties.items():
+        init_wt_dist = props.get("initial_weight_distribution", {}) or {}
+        wt_func = init_wt_dist.get("function")
+        wt_func_name = wt_func.__name__ if wt_func else "None"
+        wt_params = init_wt_dist.get("params", {}) or {}
+        p(f"{input_source}: {wt_func_name}: {wt_params}")
+    p("")
+
+def write_firing_rate_distributions(p, params):
+    """Write firing rate distribution information for exc and inh synapses."""
+    p("Exc synapse firing rate distributions:")
+    for input_source, props in params.exc_syn_properties.items():
+        fr_dist = props.get("mean_firing_rate_distribution", {}) or {}
+        fr_func = fr_dist.get("function")
+        fr_func_name = fr_func.__name__ if fr_func else "None"
+        fr_params = fr_dist.get("params", {}) or {}
+        fr_shift = props.get("fr_shift", 0)
+        p(f"{input_source}: {fr_func_name}: {fr_params} {f'fr_shift: {fr_shift}' if fr_shift != 0 else ''}")
+    p("")
+    
+    p("Inh synapse firing rate distributions:")
+    for input_source, props in params.inh_syn_properties.items():
+        fr_dist = props.get("mean_firing_rate_distribution", {}) or {}
+        fr_func = fr_dist.get("function")
+        fr_func_name = fr_func.__name__ if fr_func else "None"
+        fr_params = fr_dist.get("params", {}) or {}
+        fr_shift = props.get("fr_shift", 0)
+        p(f"{input_source}: {fr_func_name}: {fr_params} {f'fr_shift: {fr_shift}' if fr_shift != 0 else ''}")
+    p("")
+
+def write_actual_firing_rate_stats(p, syn_df):
+    """Write actual firing rate statistics from synapses.csv."""
+    p("Actual firing rate statistics from synapses:")
+    exc_syns = syn_df[syn_df['name'] == 'exc']
+    inh_syns = syn_df[syn_df['name'] == 'inh']
+    
+    if not exc_syns.empty and 'pc_mean_firing_rate' in exc_syns.columns:
+        p("\nExcitatory synapses by input_source:")
+        for input_source in exc_syns['input_source'].unique():
+            source_syns = exc_syns[exc_syns['input_source'] == input_source]
+            fr_data = source_syns['pc_mean_firing_rate']
+            p(f"  {input_source}:")
+            p(f"    mean={fr_data.mean():.4f} Hz, std={fr_data.std():.4f} Hz")
+            p(f"    min={fr_data.min():.4f} Hz, max={fr_data.max():.4f} Hz")
+            p(f"    median={fr_data.median():.4f} Hz")
+    
+    if not inh_syns.empty and 'pc_mean_firing_rate' in inh_syns.columns:
+        p("\nInhibitory synapses by input_source:")
+        for input_source in inh_syns['input_source'].unique():
+            source_syns = inh_syns[inh_syns['input_source'] == input_source]
+            fr_data = source_syns['pc_mean_firing_rate']
+            p(f"  {input_source}:")
+            p(f"    mean={fr_data.mean():.4f} Hz, std={fr_data.std():.4f} Hz")
+            p(f"    min={fr_data.min():.4f} Hz, max={fr_data.max():.4f} Hz")
+            p(f"    median={fr_data.median():.4f} Hz")
+
+def write_synapse_info_txt_file(sims_dir: str) -> None:
+    """Write comprehensive synapse information to synapse_info.txt for each simulation."""
     # iterate over subfolders only
     for sim_dir in [d for d in os.listdir(sims_dir) if os.path.isdir(os.path.join(sims_dir, d))]:
-        pkl_path = os.path.join(sims_dir, sim_dir, "parameters.pickle")
+        full_sim_dir = os.path.join(sims_dir, sim_dir)
+
+        pkl_path = os.path.join(full_sim_dir, "parameters.pickle")
         if not os.path.exists(pkl_path):
             continue  # skip if this sim doesn't have parameters
+
+        # try to load synapses.csv to get counts per input_source
+        syn_csv_path = os.path.join(full_sim_dir, "synapses.csv")
+        if os.path.exists(syn_csv_path):
+            syn_df = pd.read_csv(syn_csv_path)
+            # value_counts gives a dict: input_source -> n_synapses
+            syn_counts = syn_df["input_source"].value_counts().to_dict()
+        else:
+            syn_counts = {}
+            syn_df = None
 
         with open(pkl_path, "rb") as f:
             params = pickle.load(f)
 
-        out_path = os.path.join(sims_dir, sim_dir, "synapse_info.txt")
+        out_path = os.path.join(full_sim_dir, "synapse_info.txt")
         with open(out_path, "w", encoding="utf-8") as out_f:
             p = lambda *a, **k: print(*a, file=out_f, **k)
 
-            p("Exc synapse densities:")
-            for input_source, props in params.exc_syn_properties.items():
-                p(f"{input_source}: {round(props.get('syn_density'), 4)}")
-
-            p("")  # blank line
-            p("Inh synapse densities:")
-            for input_source, props in params.inh_syn_properties.items():
-                p(f"{input_source}: {round(props.get('syn_density'), 4)}")
-
-            p("")  # blank line
-            p("Exc synapse weights:")
-            for input_source, props in params.exc_syn_properties.items():
-                init_wt_dist = props.get("initial_weight_distribution", {}) or {}
-                wt_params = init_wt_dist.get("params", {}) or {}
-                p(f"{input_source}:  {wt_params}")
-
-            p("")  # blank line
-            p("Inh synapse weights:")
-            for input_source, props in params.inh_syn_properties.items():
-                init_wt_dist = props.get("initial_weight_distribution", {}) or {}
-                wt_params = init_wt_dist.get("params", {}) or {}
-                p(f"{input_source}:  {wt_params}")
-
+            p(f"Simulation: {sim_dir}")
+            p("")
+            
+            # Write synapse densities
+            write_synapse_densities(p, params, syn_counts)
+            
+            # Write weight distributions
+            write_weight_distributions(p, params)
+            
+            # Write firing rate distributions
+            write_firing_rate_distributions(p, params)
+            
+            # Write actual firing rate statistics from synapses.csv
+            if syn_df is not None:
+                write_actual_firing_rate_stats(p, syn_df)
+                
 def plot_morphology(sim_dir):
     ### each sec_type
     seg_data = pd.read_csv(os.path.join(sim_dir, "segment_data.csv"))
@@ -108,69 +200,44 @@ def plot_morphology(sim_dir):
             logger=logger,
         )
 
-
-def run_pre_sim():
-    # ---------------- load config ----------------
-    (
-        all_parameter_sets,
-        all_sim_titles,
-        inh_bg_rate,
-        exc_bg_rate,
-        N_bg_synapses,
-        SIM_SET_TITLE,
-        inh_syn_properties,
-        exc_syn_properties,
-    ) = configure_sim_params(parameters_pkl_path=None)  # optionally set parameters_pkl_path to an existing simulation's parameters.pkl to override defaults and base new sims on the existing sim.
-
-    # All parameter sets are now ready!
-    simulator = Simulator(
-        sim_set_title=SIM_SET_TITLE,
-        sim_titles=all_sim_titles,
-        parameter_sets=all_parameter_sets,
-        sims_root=SIMULATIONS_FOLDER
-    )
-    simulator.create_simulation_folders()
-
-    # Build a list of full sim paths
-    sim_dirs = [
-        os.path.join(simulator.sims_dir, d)
-        for d in os.listdir(simulator.sims_dir)
-        if os.path.isdir(os.path.join(simulator.sims_dir, d))
-    ]
-
-    write_spike_train_modes(simulator.sims_dir, inh_syn_properties, exc_syn_properties)
-
-    # Run generators across all sims
-    log(f"\n[AA_pre_sim] Generating segments CSV on all sims in: {simulator.sims_dir}\n")
-    simulator.run_on_all_sims_parallel(simulator.sims_dir, generate_segments_csv)
-    log(f"\n[AA_pre_sim] Plotting morphology on all sims in: {simulator.sims_dir}\n")
-    simulator.run_on_all_sims_parallel(simulator.sims_dir, plot_morphology)
-    log(f"\n[AA_pre_sim] Running synapse generation on all sims in: {simulator.sims_dir}\n")
-    simulator.run_on_all_sims_parallel(simulator.sims_dir, use_pssg)
-
-    # Update spike trains for each sim
-    if N_bg_synapses > 0:
-        log(f"\n[AA_pre_sim] Setting {N_bg_synapses} synapses to background on all sims in: {simulator.sims_dir}\n")
-        simulator.run_on_all_sims_parallel(
-            simulator.sims_dir,
-            replace_N_synapses,
-            process_fns_args=(N_bg_synapses,)
-        )
-        log(f"\n[AA_pre_sim] Setting background spike trains on all sims in: {simulator.sims_dir}\n")
-        for sim_dir in sim_dirs:
-            update_spike_trains_for_sim(sim_dir, inh_bg_rate, exc_bg_rate)
-
-    # Analyze & plot
-    synapse_analyzers = [SynapseAnalyzer(sim_dir) for sim_dir in sim_dirs]
-
-    log(f"\n[AA_pre_sim] Generating synapse cluster plots on all sims in: {simulator.sims_dir}\n")
+def plot_firing_rate_distributions(simulator, synapse_analyzers, logger):
+    log(f"\n[AA_pre_sim] Generating firing rate distribution plots on all sims in: {simulator.sims_dir}\n")
+    logger.start_timer("firing_rate_distribution_plots")
+    # Generate firing rate distribution plots for exc and inh synapses
     for synapse_analyzer in synapse_analyzers:
-        synapse_analyzer.plot_all_synapse_clusters(
-            plot_both_together=True,
-            plot_each_type_separately=True
+        distributions_folder = os.path.join(synapse_analyzer.sim_dir, "firing_rate_distributions")
+        os.makedirs(distributions_folder, exist_ok=True)
+        
+        # Overall plots by synapse type
+        synapse_analyzer.plot_firing_rate_distribution(
+            synapse_type='exc',
+            save_path=os.path.join(distributions_folder, 'exc_firing_rate_dist.png'),
+            show=False
         )
+        
+        synapse_analyzer.plot_firing_rate_distribution(
+            synapse_type='inh',
+            save_path=os.path.join(distributions_folder, 'inh_firing_rate_dist.png'),
+            show=False
+        )
+        
+        synapse_analyzer.plot_firing_rate_distribution(
+            save_path=os.path.join(distributions_folder, 'all_firing_rate_dist.png'),
+            show=False
+        )
+        
+        for input_source in synapse_analyzer.synapses['input_source'].unique():
+            synapse_type_prefix = 'exc' if synapse_analyzer.synapses[synapse_analyzer.synapses['input_source'] == input_source]['name'].iloc[0].startswith('exc') else 'inh'
+            synapse_analyzer.plot_firing_rate_distribution(
+                input_source=input_source,
+                save_path=os.path.join(distributions_folder, f'{synapse_type_prefix}_{input_source}_firing_rate_dist.png'),
+                show=False
+            )
+    logger.log_runtime("AA_pre_sim", "firing_rate_distribution_plots", timer_name="firing_rate_distribution_plots")
 
+def plot_spike_rasters(simulator, synapse_analyzers, logger):
     log(f"\n[AA_pre_sim] Generating spike raster plots on all sims in: {simulator.sims_dir}\n")
+    logger.start_timer("spike_raster_plots")
     # Generate a spike raster plot for  and inhibitory synapses
     for synapse_analyzer in synapse_analyzers:
         parameters = analysis.DataReader.load_parameters(synapse_analyzer.sim_dir)
@@ -200,8 +267,113 @@ def run_pre_sim():
             save_path=os.path.join(spike_rasters_folder, 'inh_spike_raster_start.png'),
             title="Inhibitory Synapse Spike Raster"
         )
+    logger.log_runtime("AA_pre_sim", "spike_raster_plots", timer_name="spike_raster_plots")
 
-    write_synapse_densities_to_txt(simulator.sims_dir)
+
+def run_pre_sim():
+    # Create a temporary logger for initial setup
+    temp_logger = Logger()
+    temp_logger.start_timer("total_pre_sim")
+    
+    # ---------------- load config ----------------
+    temp_logger.start_timer("configure_sim_params")
+    (
+        all_parameter_sets,
+        all_sim_titles,
+        inh_bg_rate,
+        exc_bg_rate,
+        N_bg_synapses,
+        SIM_SET_TITLE,
+        inh_syn_properties,
+        exc_syn_properties,
+    ) = configure_sim_params(parameters_pkl_path=None)  # optionally set parameters_pkl_path to an existing simulation's parameters.pkl to override defaults and base new sims on the existing sim.
+    temp_logger.log_runtime("AA_pre_sim", "configure_sim_params", timer_name="configure_sim_params")
+
+    # All parameter sets are now ready!
+    temp_logger.start_timer("create_simulation_folders")
+    simulator = Simulator(
+        sim_set_title=SIM_SET_TITLE,
+        sim_titles=all_sim_titles,
+        parameter_sets=all_parameter_sets,
+        sims_root=SIMULATIONS_FOLDER
+    )
+    simulator.create_simulation_folders()
+    temp_logger.log_runtime("AA_pre_sim", "create_simulation_folders", timer_name="create_simulation_folders")
+    
+    # Now create a proper logger with the sims_dir
+    logger = Logger(simulator.sims_dir)
+    # Transfer the total timer to the new logger
+    logger._timers = temp_logger._timers
+
+    # Build a list of full sim paths
+    sim_dirs = [
+        os.path.join(simulator.sims_dir, d)
+        for d in os.listdir(simulator.sims_dir)
+        if os.path.isdir(os.path.join(simulator.sims_dir, d))
+    ]
+
+    write_spike_train_modes(simulator.sims_dir, inh_syn_properties, exc_syn_properties)
+
+    # generate segments CSV
+    log(f"\n[AA_pre_sim] Generating segments CSV on all sims in: {simulator.sims_dir}\n")
+    logger.start_timer("generate_segments_csv")
+    simulator.run_on_all_sims_parallel(simulator.sims_dir, generate_segments_csv)
+    logger.log_runtime("AA_pre_sim", "generate_segments_csv", timer_name="generate_segments_csv")
+
+    # plot morphology
+    log(f"\n[AA_pre_sim] Plotting morphology on all sims in: {simulator.sims_dir}\n")
+    logger.start_timer("plot_morphology")
+    simulator.run_on_all_sims_parallel(simulator.sims_dir, plot_morphology)
+    logger.log_runtime("AA_pre_sim", "plot_morphology", timer_name="plot_morphology")
+    
+    # generate synapses
+    log(f"\n[AA_pre_sim] Running synapse generation on all sims in: {simulator.sims_dir}\n")
+    logger.start_timer("synapse_generation")
+    simulator.run_on_all_sims_parallel(simulator.sims_dir, use_pssg)
+    logger.log_runtime("AA_pre_sim", "synapse_generation", timer_name="synapse_generation")
+
+    # Update background spike trains
+    if N_bg_synapses > 0:
+        log(f"\n[AA_pre_sim] Setting {N_bg_synapses} synapses to background on all sims in: {simulator.sims_dir}\n")
+        logger.start_timer("replace_background_synapses")
+        simulator.run_on_all_sims_parallel(
+            simulator.sims_dir,
+            replace_N_synapses,
+            process_fns_args=(N_bg_synapses,)
+        )
+        logger.log_runtime("AA_pre_sim", "replace_background_synapses", timer_name="replace_background_synapses")
+        
+        log(f"\n[AA_pre_sim] Setting background spike trains on all sims in: {simulator.sims_dir}\n")
+        logger.start_timer("update_background_spike_trains")
+        for sim_dir in sim_dirs:
+            update_spike_trains_for_sim(sim_dir, inh_bg_rate, exc_bg_rate)
+        logger.log_runtime("AA_pre_sim", "update_background_spike_trains", timer_name="update_background_spike_trains")
+
+    # create synapse analyzers for plotting synapse clusters, spikes rasters, firing rate distributions
+    synapse_analyzers = [SynapseAnalyzer(sim_dir) for sim_dir in sim_dirs]
+
+    # synapse cluster plots
+    log(f"\n[AA_pre_sim] Generating synapse cluster plots on all sims in: {simulator.sims_dir}\n")
+    logger.start_timer("synapse_cluster_plots")
+    for synapse_analyzer in synapse_analyzers:
+        synapse_analyzer.plot_all_synapse_clusters(
+            plot_both_together=True,
+            plot_each_type_separately=False  # Skip individual input_source plots to save time
+        )
+    logger.log_runtime("AA_pre_sim", "synapse_cluster_plots", timer_name="synapse_cluster_plots")
+
+    # spike rasters
+    plot_spike_rasters(simulator, synapse_analyzers, logger)
+
+    # firing rate distributions (temporarily disabled)
+    # plot_firing_rate_distributions(simulator, synapse_analyzers, logger)
+
+    # write synapse info
+    logger.start_timer("write_synapse_info")
+    write_synapse_info_txt_file(simulator.sims_dir)
+    logger.log_runtime("AA_pre_sim", "write_synapse_info", timer_name="write_synapse_info")
+
+    logger.log_runtime("AA_pre_sim", "total_pre_sim", timer_name="total_pre_sim") # log total runtime
 
     # h.load_file('stdrun.hoc')
     # if not os.path.exists('x86_64'):

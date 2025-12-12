@@ -9,8 +9,10 @@ from typing import Optional, Any
 class Logger:
 
     def __init__(self, path: str = None):
+        self._timers = {}
         if path is None:
             self.path = None
+            self.runtime_path = None
         else:
             self.path = os.path.join(path, "log.txt")
             self.runtime_path = os.path.join(path, "runtimes.csv")
@@ -45,15 +47,43 @@ class Logger:
             print(f"({datetime.now()})-[PID: {current_process().pid}]–[MEMORY]: available {round(memory.available * 1e-9, 2)}, used: {memory.percent}% of total.", 
                   file = open(self.path, "a"))
 
-    def log_runtime(self, module_name, function_name, runtime):
+    def start_timer(self, timer_name: str = "default"):
+        """Start a named timer. Can have multiple timers running simultaneously."""
+        if not hasattr(self, '_timers'):
+            self._timers = {}
+        import time
+        self._timers[timer_name] = time.time()
+    
+    def log_runtime(self, module_name, function_name, runtime=None, timer_name: str = "default"):
+        """
+        Log runtime to CSV file.
+        
+        Args:
+            module_name: Name of the module/script
+            function_name: Name of the function/operation
+            runtime: Optional explicit runtime in seconds. If None, uses timer started with start_timer()
+            timer_name: Name of timer to use if runtime not provided (default: "default")
+        """
+        if runtime is None:
+            if not hasattr(self, '_timers') or timer_name not in self._timers:
+                raise ValueError(f"Timer '{timer_name}' was not started. Call start_timer('{timer_name}') first or provide explicit runtime.")
+            import time
+            runtime = time.time() - self._timers[timer_name]
+            # Clear the timer after use
+            del self._timers[timer_name]
+        
+        # If no runtime_path set (temporary logger), skip writing to CSV
+        if self.runtime_path is None:
+            return
+        
         file_exists = os.path.exists(self.runtime_path)
         file_empty = not file_exists or os.path.getsize(self.runtime_path) == 0
 
         with open(self.runtime_path, mode="a", newline="") as file:
             writer = csv.writer(file)
             if file_empty:
-                writer.writerow(["timestamp", "module", "function", "runtime"])
-            writer.writerow([datetime.now(), module_name, function_name, runtime])
+                writer.writerow(["timestamp", "module", "function", "runtime_seconds", "runtime_minutes"])
+            writer.writerow([datetime.now(), module_name, function_name, runtime, round(runtime / 60, 2)])
 
 def log_or_warn(msg: str, logger: Optional[Any] = None, *, stacklevel: int = 2):
     """

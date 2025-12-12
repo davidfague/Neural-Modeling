@@ -11,6 +11,8 @@ import AA_pre_sim
 from multiprocessing import set_start_method
 
 def main() -> None:
+    from Modules.logger import Logger
+    
     # Ensure sibling scripts and Modules import cleanly
     THIS_DIR = os.path.dirname(os.path.abspath(__file__))
     REPO_ROOT = os.path.abspath(os.path.join(THIS_DIR, ".."))
@@ -18,11 +20,21 @@ def main() -> None:
         if p not in sys.path:
             sys.path.append(p)
 
-    # --- Step 1: PRE-SIM (executes AA_pre_sim's top-level code) ---
+    # Temporary logger for pipeline timing (don't have simulation folders yet)
+    temp_logger = Logger()
+    temp_logger.start_timer("total_pipeline")
+
+    # run AA_pre_sim.py
+    temp_logger.start_timer("pre_sim_stage")
     simulator = AA_pre_sim.run_pre_sim()
     sims_dir = simulator.sims_dir
+    temp_logger.log_runtime("AA_run_pipeline", "pre_sim_stage", timer_name="pre_sim_stage")
 
     print(f"\n[AA_run_pipeline] Using sims_dir: {sims_dir}\n", flush=True)
+    
+    # Create proper logger with sims_dir (now that we have the simulation folders)
+    logger = Logger(sims_dir)
+    logger._timers = temp_logger._timers
 
     # Build list of simulation subfolders
     sim_dirs = [
@@ -34,26 +46,28 @@ def main() -> None:
         print(f"[AA_run_pipeline] No simulation subfolders found in: {sims_dir}")
         return
 
-    # --- Step 3: SIM + POST ---
-    # IMPORTANT: import the correct module name here
-    import AA_sim_then_post_parallel as simpost  # or rename file to AA_sim_then_post.py
+    # run AA_sim_then_post_parallel.py
+    import AA_sim_then_post_parallel as simpost
 
-    # Pick your parallelism level
-    N_PROCESSES = min(6, len(sim_dirs))
+    # for parallelization
+    N_PROCESSES = min(9, len(sim_dirs))
 
     print(f"[AA_run_pipeline] Running {len(sim_dirs)} simulations from: {sims_dir}")
     print(f"[AA_run_pipeline] Using {N_PROCESSES} processes...\n", flush=True)
 
+    logger.start_timer("sim_and_post_stage")
     from multiprocessing import Pool
-    # Simpler/safer than map_async: map blocks until done and surfaces exceptions immediately
     with Pool(processes=N_PROCESSES) as pool:
         pool.map(simpost.run_one, sim_dirs)
+
+    logger.log_runtime("AA_run_pipeline", "sim_and_post_stage", timer_name="sim_and_post_stage")
+    logger.log_runtime("AA_run_pipeline", "total_pipeline", timer_name="total_pipeline")
 
     print("\n[AA_run_pipeline] Finished pre-sim, simulations, and post-processing.\n")
 
 if __name__ == "__main__":
-    try:
-        set_start_method("spawn")
-    except RuntimeError:
-        pass
+    # try:
+    #     set_start_method("spawn")
+    # except RuntimeError:
+    #     pass
     main()
