@@ -4,7 +4,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
-from Modules.cell_model import find_nexus_seg
+from Modules.cell_model.cell_model import find_nexus_seg
 import Modules.analysis as analysis
 
 
