@@ -104,8 +104,8 @@ def filter_existing(ids: list[int], avail: set[int]) -> list[int]:
         warnings.warn(f"[scripts/plot_voltages.py] Skipping missing segment IDs: {missing}")
     return present
 
-def plot_mean_voltage(seg_data, sim_directory):
-    seg_data['mean_v'] = seg_data['v'].mean(axis=0)
+def plot_mean_voltage(seg_data, sim_data, sim_directory):
+    seg_data['mean_v'] = sim_data['v'].mean(axis=0)
     from Modules import plot_morphology
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
@@ -291,7 +291,7 @@ def main():
     print(f"[scripts/plot_voltages.py] Done. Figures saved under: {out_dir}")
 
 
-    plot_mean_voltage(seg_data, sim_dir)
+    plot_mean_voltage(seg_data, sim_data, sim_dir)
 
 if __name__ == "__main__":
     main()
