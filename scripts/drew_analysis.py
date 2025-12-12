@@ -154,7 +154,7 @@ def plot_dspikes_relative_to_Ca_spikes(pois_ca_sta, figures_folder):
 
 def process_NMDA_CA_coordination(sim_dict, step, sim_win, sta_step, sta_win, samps_per_ms):
     # get spkikes that are 20 ms after the start of a Ca spike
-    caspk_t = load_caspks_csv(sim_dict['CaFile'], BEN=False)
+    caspk_t = load_caspks_csv(sim_dict['CaFile'])
     spk_t = load_spike_h5(sim_dict['APFile'])
 
     lag_win = samps_per_ms * 20
@@ -216,7 +216,7 @@ if __name__ == "__main__":
             if os.path.isdir(os.path.join(sims_dir, d))
         ]
     else: # specify manually in code
-        sim_dirs = ["/home/drfrbc/Neural-Modeling/simulations/2025-10-17-13-58-SetNexusExc0.15from0.25_DecreaseNexusInh_resetTrunkOblique/allinh_rhythmic_depth_0.00_Np5000"]
+        sim_dirs = ["/home/drfrbc/Neural-Modeling/simulations/2025-10-27-13-21-1.2x_trunk_inh___2.25x_inc_nexus_inh_from_2.0x___2.5x_tuft_inh___2.0x_inc_tuft_exc_from_1.75x/allinh_delay_shift_4ms_Np5000"]
 
     for sim_dir in sim_dirs:
         add_elec_quantiles(sim_dir)

@@ -93,24 +93,15 @@ def load_data(sim_directory, ben):
 
 
     else:
-        # sim_directory = 2024-10-11-14-32-54-BenSynapses_final_detailed150secComplex_InhGmaxApic7.1_InhGmaxDend0.0016_SomaGmax0.0025_ExcGmax-1.0351_Np1000/
-        #'2024-10-10-15-46-14-BenSynapses_final_detailed/Complex_InhGmaxApic7.1_InhGmaxDend0.0016_SomaGmax0.0025_ExcGmax-1.0351_Np1000'
-        #'2024-08-29-12-19-13-CheckdSpikes_AfterTuningSynapses_AfterUpdateExcRates/Complex_InhGmaxApic204_InhGmaxDend7.0_SomaGmax6.0_ExcGmax-1.0351_Np1000'
-        #'2024-08-13-23-31-53-TuningSynapses_150%Na/Complex_InhGmax3.0_SomaGmax0.2_Np10'
-    #'2024-08-02-08-31-54-STA/Complex_Np5'
-        # sim_directory = '2024-07-24-17-33-39-STA/Complex_Np5'
-    #'2024-07-24-15-59-37-STA/Complex_Np5'
-    #'2024-07-12-12-17-52-STA/Complex_Np5'
-        # os.chdir("../scripts/")
-        base_path = os.path.curdir#'/home/drfrbc/Neural-Modeling/simulations'#os.path.curdir#os.path.abspath("../scripts/")
+
+        base_path = os.path.abspath("../scripts/")
         sys.path.append(base_path)
         sys.path.append(os.path.join(base_path, "Modules/"))
         sim_directory = os.path.join(base_path, sim_directory)
-        # print(f"sim_directory in find_events_ben.py: {sim_directory}")
+        parameters = analysis.DataReader.load_parameters(sim_directory)
         na = analysis.DataReader.read_data(sim_directory, "gNaTa_t_NaTa_t").T
         spks = analysis.DataReader.read_data(sim_directory, "soma_spikes")
         v = analysis.DataReader.read_data(sim_directory, "v").T
-        parameters = analysis.DataReader.load_parameters(sim_directory)
         if os.path.exists(os.path.join(sim_directory, f"raw_data/saved_at_step_{int(parameters.save_every_ms / parameters.h_dt)}", "ica_Ca_HVA" + ".h5")) and os.path.exists(os.path.join(sim_directory, f"raw_data/saved_at_step_{int(parameters.save_every_ms / parameters.h_dt)}", "ica_Ca_HVA" + ".h5")):
             hva = analysis.DataReader.read_data(sim_directory, "ica_Ca_HVA").T
             lva = analysis.DataReader.read_data(sim_directory, "ica_Ca_LVAst").T
@@ -120,10 +111,6 @@ def load_data(sim_directory, ben):
             hva = analysis.DataReader.read_data(sim_directory, "ica").T
             lva = np.zeros(hva.shape)
         ih = analysis.DataReader.read_data(sim_directory, "ihcn_Ih").T
-        # print(F"{np.shape(hva)} {np.shape(lva)} {np.shape(ih)}")
-        # print(f"hva[0:10,0]: {hva[0:10,0]}")
-        # print(f"lva[0:10,0]: {lva[0:10,0]}")
-        # print(f"ih[0:10,0]: {ih[0:10,0]}")
         if parameters.exc_syn_mod == 'pyr2pyr': # two types with different variable name
             nmda = analysis.DataReader.read_data(sim_directory, "inmda").T
         else:
@@ -135,7 +122,7 @@ def load_data(sim_directory, ben):
     # load segment data
     if ben:
         # segs = pd.read_csv('DetailedSegmentsAxialR.csv')
-        segs = pd.read_csv('Segments.csv')
+        segs = pd.read_csv(os.path.join(sim_directory, 'Segments.csv'))
         segs['segmentID'] = segs.index
 
         segs['Sec ID'] = segs['Sec ID'].astype(int)
@@ -175,7 +162,7 @@ def load_data(sim_directory, ben):
         segs.loc[segs.Type=='dend','Elec_distanceQ'] = pd.qcut(segs.loc[segs.Type=='dend','Elec_distance'], 10, labels=False)
         segs.loc[segs.Type=='apic','Elec_distanceQ'] = pd.qcut(segs.loc[segs.Type=='apic','Elec_distance'], 10, labels=False)
 
-        return na, hva, lva, ih, nmda, v, spkinds, segs
+    return na, hva, lva, ih, nmda, v, spkinds, segs
 
 def compute_na_df(na, segs, spkinds, sim_directory, ben):
     na_df = pd.DataFrame(columns=['segmentID','na_lower_bound'])
@@ -200,34 +187,14 @@ def compute_na_df(na, segs, spkinds, sim_directory, ben):
 
     na_df.reset_index(inplace=True, drop=True)
     segs_na_df = segs.set_index('segmentID').join(na_df.set_index('segmentID')).reset_index()
-    # additional from event histograms ################################
-    # for i in np.random.choice(na_df[(segs_na_df.na_lower_bound>20) & (segs_na_df.na_lower_bound<1400000)].index,10000):
-    #     seg = segs_na_df.loc[i,'segmentID']
-    #     if not pd.isnull(segs_na_df.loc[i,'na_lower_bound']):
-    #         spkt = int(segs_na_df.loc[i,'na_lower_bound'])
-    #         trace = na[spkt-10:spkt+10,seg]#['report']['biophysical']['data'][spkt-10:spkt+10,seg]
-    #         peak_value = np.max(trace)
-    #         half_peak = peak_value/2
-    #         duration = np.arange(0,20)[trace>half_peak] + spkt - 10
-    #         segs_na_df.loc[i,'duration_low'] = duration[0]
-    #         segs_na_df.loc[i,'duration_high'] = duration[-1]
-    #         segs_na_df.loc[i,'peak_value'] = peak_value
-    #     else:
-    #         segs_na_df.loc[i,'duration_low'] = np.nan
-    #         segs_na_df.loc[i,'duration_high'] = np.nan
-    #         segs_na_df.loc[i,'peak_value'] = np.nan
-            
-    # segs_na_df['duration'] = (segs_na_df['duration_high'] - segs_na_df['duration_low'] + 1)/10
-    ####################################################
-    if ben:segs_na_df.to_csv('na.csv')
-    else: segs_na_df.to_csv(os.path.join(sim_directory, 'na.csv'))
+    segs_na_df.to_csv(os.path.join(sim_directory, 'na.csv'))
 
 def compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben):
     ca_df = pd.DataFrame(columns=['segmentID','ca_lower_bound'])
-    # print(f"segs: {segs}")
+
     segIDs = segs[(segs.Type=='apic')&(segs['Coord Y']>400)&(segs['Coord Y']<1000)]['segmentID']
     ca_df_list = []  # Initialize a list to store individual DataFrames
-    # print(f"segIDs: {segIDs}")
+
 
     for p in segIDs:
         trace = (hva[:,p] + #['report']['biophysical']['data'][:,p] + 
@@ -263,10 +230,8 @@ def compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben):
 
     ca_df.reset_index(inplace=True, drop=True)
     segs_ca_df = segs.set_index('segmentID').join(ca_df.set_index('segmentID')).reset_index()
-    # print(f"legit ca rows in find_events_ben.compute_ca_df: {ca_df.dropna(subset=['ca_lower_bound', 'ca_upper_bound', 'mag']).shape}")
 
-    if ben:segs_ca_df.to_csv('ca.csv')
-    else:segs_ca_df.to_csv(os.path.join(sim_directory,'ca.csv'))
+    segs_ca_df.to_csv(os.path.join(sim_directory, 'ca.csv'))
 
 def compute_nmda_df(nmda, v, segs, sim_directory, ben):
     nmda_df = pd.DataFrame(columns=['segmentID','nmda_lower_bound', 'nmda_upper_bound', 'mag'])
@@ -299,9 +264,8 @@ def compute_nmda_df(nmda, v, segs, sim_directory, ben):
 
     nmda_df.rename(columns={'seg_id':'segmentID'},inplace=True)
     segs_nmda_df = segs.set_index('segmentID').join(nmda_df.set_index('segmentID')).reset_index()
-    if ben: segs_nmda_df.to_csv('nmda.csv')
-    else: segs_nmda_df.to_csv(os.path.join(sim_directory, 'nmda.csv'))
-
+    segs_nmda_df.to_csv(os.path.join(sim_directory, 'nmda.csv'))
+    
 def compute_dfs(sim_directory, ben):
     if not os.path.exists(os.path.join(sim_directory, 'na.csv')) or not os.path.exists(os.path.join(sim_directory, 'ca.csv')) or not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
         na, hva, lva, ih, nmda, v, spkinds, segs = load_data(sim_directory, ben)
@@ -331,6 +295,11 @@ def compute_dfs(sim_directory, ben):
 
 if __name__ ==  "__main__":
     ben = False
+    # Check for --ben flag to enable Ben's data format
+    if "--ben" in sys.argv:
+        ben = True
+        sys.argv.remove("--ben")  # Remove flag so it doesn't interfere with other parsing
+    
     if "-d" in sys.argv:
         sim_directory = sys.argv[sys.argv.index("-d") + 1] # (global)
         compute_dfs(sim_directory, ben)
