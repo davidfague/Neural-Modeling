@@ -195,7 +195,7 @@ def build_simple_terminal_branch_clustering(
         
         for seg_id, stats in branches.items():
             center = stats['center_coords']
-            radius = stats['total_length'] * radius_scale
+            radius = stats['total_length'] * radius_scale + 1.0
             
             for suffix in input_source_suffixes:
                 input_source = f"{sec_type}{suffix}"
@@ -241,30 +241,35 @@ def _fps_reduce(centers, k):
         k: int - number of points to select
         
     Returns:
-        np.ndarray of shape (k, 3) - selected representative centers
+        tuple: (selected_centers, assignments)
+            selected_centers: np.ndarray of shape (k, 3) - selected representative centers
+            assignments: np.ndarray of shape (N,) - for each input center, which cluster (0..k-1)
     """
-    if k <= 0 or len(centers) == 0:
-        return np.empty((0, 3))
-    if k >= len(centers):
-        return centers.copy()
+    N = len(centers)
+    if k <= 0 or N == 0:
+        return np.empty((0, 3)), np.empty(0, dtype=int)
+    if k >= N:
+        return centers.copy(), np.arange(N, dtype=int)
 
-    chosen_idx = [0]
-    chosen = [centers[0]]
-    remain = list(range(1, len(centers)))
+    chosen = np.zeros(k, dtype=int)
+    # seed: farthest from mean
+    centroid = centers.mean(axis=0, keepdims=True)
+    d2c = np.linalg.norm(centers - centroid, axis=1)
+    chosen[0] = int(np.argmax(d2c))
 
-    for _ in range(k - 1):
-        if not remain:
-            break
-        dists_to_chosen = []
-        for r_idx in remain:
-            min_dist = min(np.linalg.norm(centers[r_idx] - c) for c in chosen)
-            dists_to_chosen.append(min_dist)
-        farthest = remain[int(np.argmax(dists_to_chosen))]
-        chosen_idx.append(farthest)
-        chosen.append(centers[farthest])
-        remain.remove(farthest)
+    min_dist = np.linalg.norm(centers - centers[chosen[0]], axis=1)
 
-    return np.array(chosen)
+    for i in range(1, k):
+        next_idx = int(np.argmax(min_dist))
+        chosen[i] = next_idx
+        # update distances
+        new_d = np.linalg.norm(centers - centers[next_idx], axis=1)
+        min_dist = np.minimum(min_dist, new_d)
+
+    # final assignment to nearest chosen center
+    dists = np.stack([np.linalg.norm(centers - centers[c], axis=1) for c in chosen], axis=0)  # (k,N)
+    assign = np.argmin(dists, axis=0)  # which chosen center each point goes to (0..k-1)
+    return chosen, assign
 
 
 def _branch_centers(branches_dict):
@@ -399,20 +404,35 @@ def build_fps_terminal_branch_clustering(
 
             # Use FPS to select representative centers
             if n_fg < n_branches:
-                selected_centers = _fps_reduce(centers, n_fg)
+                chosen_indices, assignments = _fps_reduce(centers, n_fg)
             else:
-                selected_centers = centers
+                # One FG per branch (default)
+                chosen_indices = np.arange(n_branches, dtype=int)
+                assignments = np.arange(n_branches, dtype=int)
 
             # Create FGs - key by input_source to match legacy behavior
             if input_source not in clustering:
                 clustering[input_source] = {'functional_groups': []}
 
-            for i, fg_center in enumerate(selected_centers):
-                # Find nearest branch to this FG center for radius estimation
-                dists = np.linalg.norm(centers - fg_center, axis=1)
-                nearest_branch_idx = int(np.argmin(dists))
-                nearest_seg_id = seg_ids[nearest_branch_idx]
-                fg_radius = _radius_from_branch(branches[nearest_seg_id], scale=branch_radius_scale)
+            for k_idx in range(len(chosen_indices)):
+                # Find all member branches assigned to this FG
+                member_mask = (assignments == k_idx)
+                member_idx = np.where(member_mask)[0]
+                member_centers = centers[member_mask]
+                
+                if member_centers.shape[0] == 0:
+                    continue
+                
+                # FG center = mean of member branch centers
+                fg_center = member_centers.mean(axis=0)
+                
+                # Calculate radius using OLD logic: max(dist + branch_radius) * 1.05
+                per_branch_radii = [
+                    _radius_from_branch(branches[seg_ids[j]], scale=branch_radius_scale)
+                    for j in member_idx
+                ]
+                dists = np.linalg.norm(member_centers - fg_center, axis=1)
+                fg_radius = float(np.max(dists + np.asarray(per_branch_radii)) * 1.05)
 
                 fg = {
                     'center': fg_center.tolist(),
@@ -625,6 +645,7 @@ def get_default_exc_clustering(mode='terminal_branch_fps', branch_stats=None):
         return build_fps_terminal_branch_clustering(
             branch_stats,
             pc_locality="nearest",
+            branch_radius_scale=7.5,
             target_fgs_per_input_source={
                 "tuft_local_L23": 4,
                 "tuft_local_L5": 3,
@@ -648,7 +669,7 @@ def get_default_exc_clustering(mode='terminal_branch_fps', branch_stats=None):
             branch_stats,
             synapse_type='exc',
             input_source_suffixes=('_local_L5',),
-            radius_scale=5.0
+            radius_scale=7.5  # Match FPS mode scale
         )
 
 

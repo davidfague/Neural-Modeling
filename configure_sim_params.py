@@ -26,7 +26,6 @@ from Modules import analysis
 
 # Clustering module (unified)
 from Modules.clustering import (
-    build_clustering,
     get_default_exc_clustering,
     get_default_inh_clustering,
 )
@@ -78,7 +77,8 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     # Options: 'terminal_branch_simple' (one FG per terminal branch, static PCs)
     #          'terminal_branch_fps' (FPS-based clustering, dynamic PCs - DEFAULT)
     exc_clustering_mode = 'terminal_branch_fps'
-    inh_clustering_mode = 'global_inh'  # 'global_inh' or 'terminal_branch_fps' 
+    inh_clustering_mode = 'global_inh'  # 'global_inh' or 'terminal_branch_fps'
+    
     # template_sim_dir = (
     #     "/home/drfrbc/Neural-Modeling/simulations/"
     #     "2025-10-16-08-28-IncreaseNexusMaxYTo950/"
