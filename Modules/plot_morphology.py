@@ -244,7 +244,8 @@ def plot_morphology_with_highlighted_sec_type(sec_type, seg_data, color='red', *
 
     return fig, ax
 
-def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, elevation=20, azimuth=-100, radius_scale=1.0, title='', logger=None):
+def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, elevation=20, azimuth=-100, radius_scale=1.0, title='', logger=None, 
+                  sphere_resolution=20, use_wireframe=True, min_radius_to_plot=5.0):
     """
     Visualize the clustering configuration including functional groups and presynaptic cells.
     
@@ -266,6 +267,12 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
         Scale factor for segment radii
     title : str, optional
         Title for the plot
+    sphere_resolution : int, optional
+        Resolution for sphere meshes (lower = faster). Default 20 (was 100).
+    use_wireframe : bool, optional
+        Use wireframe instead of surface for spheres (much faster). Default True.
+    min_radius_to_plot : float, optional
+        Skip plotting spheres with radius below this threshold. Default 5.0 μm.
     """
     if ax is None:
         fig = plt.figure(figsize=(10, 10))
@@ -283,6 +290,13 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
             c='gray', alpha=0.3, s=5, label='Synapses'
         )
     
+    # Pre-compute sphere mesh once (reuse for all spheres)
+    u = np.linspace(0, 2 * np.pi, sphere_resolution)
+    v = np.linspace(0, np.pi, sphere_resolution)
+    sphere_x = np.outer(np.cos(u), np.sin(v))
+    sphere_y = np.outer(np.sin(u), np.sin(v))
+    sphere_z = np.outer(np.ones(np.size(u)), np.cos(v))
+    
     # Plot functional groups and presynaptic cells
     for sec_type, sec_config in clustering_config.items():
         for fg_idx, fg in enumerate(sec_config.get('functional_groups', [])):
@@ -290,21 +304,28 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
             fg_center = np.array(fg['center'])
             fg_radius = fg['radius']
             
+            # Skip small spheres
+            if fg_radius < min_radius_to_plot:
+                continue
+            
             # Check if there are any synapses within this functional group
             if synapse_coords is not None:
-                distances_to_fg = np.sqrt(np.sum((synapse_coords - fg_center)**2, axis=1))
+                distances_to_fg = np.linalg.norm(synapse_coords - fg_center, axis=1)  # Vectorized
                 synapses_in_fg = np.sum(distances_to_fg <= fg_radius)
                 if synapses_in_fg == 0:
                     log_or_warn(f"No synapses found in functional group {fg_idx} of section type {sec_type}", logger)
             
-            # Create a sphere for the functional group
-            u = np.linspace(0, 2 * np.pi, 100)
-            v = np.linspace(0, np.pi, 100)
-            x = fg_center[0] + fg_radius * np.outer(np.cos(u), np.sin(v))
-            y = fg_center[2] + fg_radius * np.outer(np.sin(u), np.sin(v))
-            z = fg_center[1] + fg_radius * np.outer(np.ones(np.size(u)), np.cos(v))
+            # Scale and translate pre-computed sphere mesh
+            x = fg_center[0] + fg_radius * sphere_x
+            y = fg_center[2] + fg_radius * sphere_y
+            z = fg_center[1] + fg_radius * sphere_z
             
-            ax.plot_surface(x, y, z, color='blue', alpha=0.1, label=f'FG {fg_idx}' if fg_idx == 0 else None)
+            if use_wireframe:
+                ax.plot_wireframe(x, y, z, color='blue', alpha=0.2, linewidth=0.5, 
+                                 label=f'FG {fg_idx}' if fg_idx == 0 else None)
+            else:
+                ax.plot_surface(x, y, z, color='blue', alpha=0.1, 
+                               label=f'FG {fg_idx}' if fg_idx == 0 else None)
             ax.scatter(fg_center[0], fg_center[2], fg_center[1], color='blue', s=50, 
                       label=f'FG Center {fg_idx}' if fg_idx == 0 else None)
             
@@ -335,24 +356,33 @@ def plot_clusters(seg_data, clustering_config, synapse_coords=None, ax=None, ele
                     # print(f"pc: {pc}")
                     pc_center = np.array(pc['center'])
                     pc_radius = float(pc['radius'])
+                    
+                    # Skip small PC spheres
+                    if pc_radius < min_radius_to_plot:
+                        continue
 
-                    # Check for synapses inside this PC (optional)
+                    # Check for synapses inside this PC (optional) - vectorized
                     if synapse_coords is not None:
-                        distances_to_pc = np.sqrt(np.sum((synapse_coords - pc_center)**2, axis=1))
+                        distances_to_pc = np.linalg.norm(synapse_coords - pc_center, axis=1)  # Faster
                         synapses_in_pc = np.sum(distances_to_pc <= pc_radius)
                         if synapses_in_pc == 0:
                             log_or_warn(f"No synapses found in presynaptic cell {pc_idx} of functional group {fg_idx} in section type {sec_type}", logger)
 
-                    # Draw PC sphere
-                    x = pc_center[0] + pc_radius * np.outer(np.cos(u), np.sin(v))
-                    y = pc_center[2] + pc_radius * np.outer(np.sin(u), np.cos(v*0) + 1 - 1)  # keep axis mapping like FG
-                    y = pc_center[2] + pc_radius * np.outer(np.sin(u), np.sin(v))
-                    z = pc_center[1] + pc_radius * np.outer(np.ones(np.size(u)), np.cos(v))
+                    # Draw PC sphere using pre-computed mesh
+                    x = pc_center[0] + pc_radius * sphere_x
+                    y = pc_center[2] + pc_radius * sphere_y
+                    z = pc_center[1] + pc_radius * sphere_z
 
-                    ax.plot_surface(
-                        x, y, z, color='red', alpha=0.1,
-                        label=f'PC {pc_idx}' if pc_idx == 0 and fg_idx == 0 else None
-                    )
+                    if use_wireframe:
+                        ax.plot_wireframe(
+                            x, y, z, color='red', alpha=0.2, linewidth=0.5,
+                            label=f'PC {pc_idx}' if pc_idx == 0 and fg_idx == 0 else None
+                        )
+                    else:
+                        ax.plot_surface(
+                            x, y, z, color='red', alpha=0.1,
+                            label=f'PC {pc_idx}' if pc_idx == 0 and fg_idx == 0 else None
+                        )
                     ax.scatter(
                         pc_center[0], pc_center[2], pc_center[1],
                         color='red', s=30,
@@ -607,6 +637,7 @@ def plot_morphology_flex( # flexible function to plot neuron morphology with var
             plt.show()
         figs.append(fig)
         axs.append(ax)
+        plt.close(fig)
 
     elif option == 'each_sec_type':
         # Loop over types, same color for all plots
@@ -637,7 +668,7 @@ def plot_morphology_flex( # flexible function to plot neuron morphology with var
 
             figs.append(fig)
             axs.append(ax)
-
+            plt.close(fig)
 
     elif option == 'y_range':
         # Highlight custom y-range
@@ -650,6 +681,7 @@ def plot_morphology_flex( # flexible function to plot neuron morphology with var
             plt.show()
         figs.append(fig)
         axs.append(ax)
+        plt.close(fig)
 
     elif option == 'single_type':
         # Highlight a single section type
@@ -665,6 +697,7 @@ def plot_morphology_flex( # flexible function to plot neuron morphology with var
             plt.show()
         figs.append(fig)
         axs.append(ax)
+        plt.close(fig)
     
     else:
         raise ValueError("Unknown option. Choose from: 'specific_sec_type', 'each_sec_type', 'y_range', 'single_type'.")
