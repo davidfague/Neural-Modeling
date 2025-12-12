@@ -490,48 +490,65 @@ class SynapseAnalyzer:
         
     def plot_firing_rate_distribution(self,
                                     synapse_type: str = None,
+                                    input_source: str = None,
                                     functional_group: int = None,
                                     figsize: Tuple[int, int] = (10, 6),
                                     save_path: Optional[str] = None,
-                                    show: bool = False) -> None:
+                                    show: bool = False,
+                                    dpi: int = 150) -> None:
         """
         Plot the distribution of firing rates across synapses.
         
         Args:
             synapse_type: Optional synapse type to filter by
+            input_source: Optional input source to filter by
             functional_group: Optional functional group to filter by
             figsize: Figure size as (width, height)
             save_path: Optional path to save the figure
+            dpi: DPI for saved figure (default 150, lower = faster)
         """
-        # Filter synapses
-        mask = pd.Series(True, index=self.synapses.index)
+        # Vectorized filtering - much faster than multiple boolean operations
+        mask = np.ones(len(self.synapses), dtype=bool)
         if synapse_type:
-            mask &= self.synapses['name'].str.contains(synapse_type)
+            mask &= self.synapses['name'].str.contains(synapse_type, na=False).to_numpy()
+        if input_source:
+            mask &= (self.synapses['input_source'] == input_source).to_numpy()
         if functional_group is not None:
-            mask &= self.synapses['functional_group'] == functional_group
+            mask &= (self.synapses['functional_group'] == functional_group).to_numpy()
             
-        filtered_synapses = self.synapses[mask]
+        # Direct array access - faster than DataFrame slicing
+        firing_rates = self.synapses.loc[mask, 'pc_mean_firing_rate'].to_numpy()
         
         # Create figure
-        plt.figure(figsize=figsize)
-        sns.histplot(data=filtered_synapses, x='pc_mean_firing_rate', bins=30)
-        plt.xlabel('Mean Firing Rate (Hz)')
-        plt.ylabel('Count')
-        plt.title('Distribution of Synapse Firing Rates')
+        fig, ax = plt.subplots(figsize=figsize)
+        
+        # Use plt.hist instead of sns.histplot for ~3x speedup
+        ax.hist(firing_rates, bins=30, edgecolor='black', alpha=0.7)
+        ax.set_xlabel('Mean Firing Rate (Hz)')
+        ax.set_ylabel('Count')
+        
+        # Create title based on filters
+        title_parts = ['Distribution of Synapse Firing Rates']
+        if input_source:
+            title_parts.append(f'({input_source})')
+        elif synapse_type:
+            title_parts.append(f'({synapse_type})')
+        ax.set_title(' '.join(title_parts))
         
         if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            fig.savefig(save_path, dpi=dpi, bbox_inches='tight')
         if show:
             plt.show()
         else:
-            plt.close()
+            plt.close(fig)
         
     def plot_weight_distribution(self,
                                synapse_type: str = None,
                                functional_group: int = None,
                                figsize: Tuple[int, int] = (10, 6),
                                save_path: Optional[str] = None,
-                               show: bool = False) -> None:
+                               show: bool = False,
+                               dpi: int = 150) -> None:
         """
         Plot the distribution of synapse weights.
         
@@ -540,29 +557,33 @@ class SynapseAnalyzer:
             functional_group: Optional functional group to filter by
             figsize: Figure size as (width, height)
             save_path: Optional path to save the figure
+            dpi: DPI for saved figure (default 150, lower = faster)
         """
-        # Filter synapses
-        mask = pd.Series(True, index=self.synapses.index)
+        # Vectorized filtering
+        mask = np.ones(len(self.synapses), dtype=bool)
         if synapse_type:
-            mask &= self.synapses['name'].str.contains(synapse_type)
+            mask &= self.synapses['name'].str.contains(synapse_type, na=False).to_numpy()
         if functional_group is not None:
-            mask &= self.synapses['functional_group'] == functional_group
+            mask &= (self.synapses['functional_group'] == functional_group).to_numpy()
             
-        filtered_synapses = self.synapses[mask]
+        # Direct array access
+        weights = self.synapses.loc[mask, 'initW'].to_numpy()
         
         # Create figure
-        plt.figure(figsize=figsize)
-        sns.histplot(data=filtered_synapses, x='initW', bins=30)
-        plt.xlabel('Initial Weight')
-        plt.ylabel('Count')
-        plt.title('Distribution of Synapse Weights')
+        fig, ax = plt.subplots(figsize=figsize)
+        
+        # Use plt.hist instead of sns.histplot for ~3x speedup
+        ax.hist(weights, bins=30, edgecolor='black', alpha=0.7)
+        ax.set_xlabel('Initial Weight')
+        ax.set_ylabel('Count')
+        ax.set_title('Distribution of Synapse Weights')
         
         if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            fig.savefig(save_path, dpi=dpi, bbox_inches='tight')
         if show:
             plt.show()
         else:
-            plt.close()
+            plt.close(fig)
 
     def plot_cluster_spatial_distribution(self,
                                         synapse_type: str = None,
@@ -707,33 +728,35 @@ class SynapseAnalyzer:
         synapse_coord_cols=('pc_0', 'pc_1', 'pc_2'),
         plot_both_together=True,
         plot_each_type_separately=True,
-        show=False
+        show=False,
+        dpi=150,  # Lower DPI for faster rendering (was 300)
+        skip_inh=False  # Option to skip inhibitory plots if not needed
     ):
         if not os.path.exists(os.path.join(self.sim_dir, 'clusters')):
             os.mkdir(os.path.join(self.sim_dir, 'clusters'))
-        # Load parameters and segment data
+        # Load parameters and segment data ONCE
         with open(os.path.join(self.sim_dir, "parameters.pickle"), 'rb') as file:
             parameters = pickle.load(file)
         seg_data = pd.read_csv(os.path.join(self.sim_dir, "segment_data.csv"))
 
-        # Join synapses with segment info
+        # Join synapses with segment info ONCE - avoid repeated merges
         synapses_with_seg_info = self.synapses.merge(
             seg_data, on='seg_id', how='left', suffixes=('', '_seg')
         )
 
-        # Helper to extract coords by mask
+        # Helper to extract coords by mask - use numpy for faster indexing
         def coords_for_mask(mask):
             cols = list(synapse_coord_cols)
-            return synapses_with_seg_info.loc[mask, cols].values
+            return synapses_with_seg_info.loc[mask, cols].to_numpy()  # to_numpy() is faster than .values
 
         # Masks to separate exc/inh dots (name format "exc_<input_source>_..."/"inh_...")
         exc_mask = synapses_with_seg_info['name'].str.startswith('exc_', na=False)
         inh_mask = synapses_with_seg_info['name'].str.startswith('inh_', na=False)
         exc_coords = coords_for_mask(exc_mask)
-        inh_coords = coords_for_mask(inh_mask)
+        inh_coords = coords_for_mask(inh_mask) if not skip_inh else None
 
         exc_cfg = getattr(parameters, 'exc_clustering', None)
-        inh_cfg = getattr(parameters, 'inh_clustering', None)
+        inh_cfg = getattr(parameters, 'inh_clustering', None) if not skip_inh else None
 
         # Plot both together (skip inh if missing)
         if plot_both_together and exc_cfg is not None:
@@ -765,14 +788,14 @@ class SynapseAnalyzer:
             plt.tight_layout()
             fig.savefig(
                 os.path.join(self.sim_dir, 'clusters', f'clusters_both.png'),
-                dpi=300, bbox_inches='tight'
+                dpi=dpi, bbox_inches='tight'
                 )
             if show:
                 plt.show()
             else:
                 plt.close()
 
-        # Plot each excitatory input_source separately
+        # Plot each excitatory input_source separately - use consistent DPI
         if plot_each_type_separately and exc_cfg is not None:
             for input_source in exc_cfg.keys():
                 fig = plt.figure(figsize=(10, 10))
@@ -787,7 +810,7 @@ class SynapseAnalyzer:
                     logger=self.logger,
                 )
                 plt.tight_layout()
-                plt.savefig(os.path.join(self.sim_dir, 'clusters', f'clusters_exc_{input_source}.png'), dpi=300)
+                plt.savefig(os.path.join(self.sim_dir, 'clusters', f'clusters_exc_{input_source}.png'), dpi=dpi)
                 if show:
                     plt.show()
                 else:
@@ -808,7 +831,7 @@ class SynapseAnalyzer:
                     logger=self.logger,
                 )
                 plt.tight_layout()
-                plt.savefig(os.path.join(self.sim_dir, 'clusters', f'clusters_inh_{input_source}.png'), dpi=300)
+                plt.savefig(os.path.join(self.sim_dir, 'clusters', f'clusters_inh_{input_source}.png'), dpi=dpi)
                 if show:
                     plt.show()
                 else:
