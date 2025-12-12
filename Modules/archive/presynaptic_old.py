@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.cluster import KMeans
-from cell_model import CellModel
+from Modules.cell_model.cell_model import CellModel
 from neuron import h
 import pandas as pd
 

@@ -23,13 +23,13 @@ import pandas as pd
 import time
 
 from Modules.cell_model.electrotonic_distance import *
-from surface_area import *
+from Modules.cell_model.surface_area import *
 
 from Modules.reduction.morph_reduction_utils import get_reduced_cell, replace_dend_with_CI
 
-from Modules.allen_interfacing import load_skeleton_cell_from_allen
+from Modules.cell_model.allen_interfacing.allen_interfacing import load_skeleton_cell_from_allen
 
-from stylized_module import Builder
+from Modules.cell_model.stylized.stylized_module import Builder
 
 import h5py
 

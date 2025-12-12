@@ -7,7 +7,7 @@ sys.path.append("../Modules/")
 
 import numpy as np
 from neuron import h
-from Modules.simulation import Simulation
+from Modules.sim.legacy.simulation import Simulation
 from Modules.cell_model.cell_builder import SkeletonCell, CellBuilder
 from Modules.parameters.constants import HayParameters
 import math

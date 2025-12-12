@@ -26,7 +26,7 @@ from Modules.clustering.clustering import (
     get_default_exc_clustering,
     get_default_inh_clustering,
 )
-from Modules import analysis
+from Modules.post_sim import analysis
 
 # Reusable presets / templates
 from Modules.pre_sim.simulation_templates import (
@@ -68,7 +68,7 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     skeleton_cell_type = 'Hay'  # "Hay" or "Allen"
     SIM_SET_TITLE   = "testing_pipeline_refactor"  # descriptive name for this set of sims
     do_reduce_cell = False
-    sim_type        = "sta"  # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
+    sim_type        = "testing"  # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
     load_previous_sim_params = True
     
     # Clustering mode configuration
@@ -156,7 +156,7 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
 
     # Pull base sim-type params
     if sim_type not in sim_type_params_all:
-        raise ValueError(f"Unknown sim_type '{sim_type}'. Valid: {list(sim_type_params_all.keys())} see scripts/simulation_templates.py")
+        raise ValueError(f"Unknown sim_type '{sim_type}'. Valid: {list(sim_type_params_all.keys())} see Modules/cell_model/simulation_templates.py")
     base_params = sim_type_params_all[sim_type].copy()
 
     # Loop over your inhibitory rhythmic depths (small sweep)

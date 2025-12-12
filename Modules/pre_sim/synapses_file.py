@@ -927,7 +927,7 @@ def replace_N_synapses(sim_dir, N):
 
     synapses.to_csv(synapses_path, index=False)
 
-from Modules import analysis
+from Modules.post_sim import analysis
 def update_spike_trains(
         syn_type: str, 
         rate: float, 

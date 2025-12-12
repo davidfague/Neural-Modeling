@@ -5,7 +5,7 @@ import sys
 sys.path.append("../")
 sys.path.append("../Modules/")
 
-from Modules.simulation import Simulation
+from Modules.sim.legacy.simulation import Simulation
 from Modules.cell_model.cell_builder import SkeletonCell
 from Modules.parameters.constants import HayParameters
 

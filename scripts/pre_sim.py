@@ -6,7 +6,7 @@ import os
 sys.path.append('..')
 sys.path.append('../Modules')
 
-import Modules.analysis as analysis
+import Modules.post_sim.analysis as analysis
 
 from configure_sim_params import configure_sim_params
 from Modules.sim.simulation_slurm import Simulator

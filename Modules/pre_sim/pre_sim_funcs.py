@@ -8,7 +8,7 @@ These functions perform computational tasks for the pre-simulation pipeline stag
 import os
 import pandas as pd
 import datetime
-import Modules.analysis as analysis
+import Modules.post_sim.analysis as analysis
 from Modules.pre_sim.synapses_file import PreSimSynapseGenerator
 from Modules.cell_model.plot_morphology import plot_morphology_flex
 from Modules.logger import Logger

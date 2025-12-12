@@ -68,7 +68,7 @@ sim_type_params_all = {
         "record_synapse_distributions": True,
     },
     "testing": {  # in vivo-like simulation with recording
-        "h_tstop": 10000,
+        "h_tstop": 5000,
         "merge_synapses": False,
         "record_ecp": False,
         "record_all_channels": True,
