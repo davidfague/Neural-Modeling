@@ -1,0 +1,9 @@
+Label,Sim_Path,N_bg_synapses,Rhythm,N_Synapses,Total_Input_Spikes,Spikes_per_Synapse,Soma_Spike_Rate
+0bg_synapses_with_both_rhythm,/home/drfrbc/Neural-Modeling/simulations/2025-09-19-15-26-0bg_synapses_with_both_rhythm0.05/allinh_rhythmic_depth_0.05_Np5000,0,0.05rhythm,23930,1427882,59.669118261596324,3.95
+10000bg_synapses_with_both_rhythm,/home/drfrbc/Neural-Modeling/simulations/2025-09-19-16-07-10000bg_synapses_with_both_rhythm0.05/allinh_rhythmic_depth_0.05_Np5000,10000,0.05rhythm,23930,861356,35.994818219807776,8.75
+20000bg_synapses_with_both_rhythm,/home/drfrbc/Neural-Modeling/simulations/2025-09-19-15-54-20000bg_synapses_with_both_rhythm0.05/allinh_rhythmic_depth_0.05_Np5000,20000,0.05rhythm,23930,283998,11.867864605098204,4.8500000000000005
+23930bg_synapses_with_both_rhythm,/home/drfrbc/Neural-Modeling/simulations/2025-09-19-15-37-23930bg_synapses_with_both_rhythm0.05/allinh_rhythmic_depth_0.05_Np5000,23930,0.05rhythm,23930,57768,2.4140409527789384,0.0
+0bg_synapses_no_rhythm,/home/drfrbc/Neural-Modeling/simulations/2025-09-19-14-26-0bg_synapses_no_rhythm/allinh_rhythmic_depth_0.00_Np5000,0,no_rhythm,23930,1443878,60.33756790639365,7.9
+10000bg_synapses_no_rhythm,/home/drfrbc/Neural-Modeling/simulations/2025-09-19-14-14-10000bg_synapses_no_rhythm/allinh_rhythmic_depth_0.00_Np5000,10000,no_rhythm,23930,861768,36.012035102381944,10.8
+20000bg_synapses_no_rhythm,/home/drfrbc/Neural-Modeling/simulations/2025-09-19-14-37-20000bg_synapses_no_rhythm/allinh_rhythmic_depth_0.00_Np5000,20000,no_rhythm,23930,284180,11.875470121186796,4.45
+23930bg_synapses_with_no_rhythm,/home/drfrbc/Neural-Modeling/simulations/2025-09-19-15-10-23930bg_synapses_no_rhythm/allinh_rhythmic_depth_0.00_Np5000,23930,no_rhythm,23930,57682,2.4104471374843293,0.0

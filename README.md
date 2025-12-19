@@ -11,6 +11,14 @@ To run a simulation:
     
     Check simulations/{your_sims_dir}/{your_sim_dir} for results.
 
+# When developing a new feature, create an example:
+
+In configure_sim_params.py, use the 'testing' sim_type and name your simulation according to what you are developing.
+
+In "examples/", create a ".ipynb" notebook named according to what you are developing that references the simulation. 
+
+Move the simulation into "examples/examples_simulations/"
+
 # Below is old and may be outdated
 
 Publication: https://mailmissouri-my.sharepoint.com/:w:/r/personal/nairs_umsystem_edu/Documents/MigratedBoxFiles/nairs/AAWork%20in%20progress/PAPERS%20in%20progress/AA-SingleCell%20and%20WM%20Projects/Reduced%20Order%20Modeling%20Project/Manuscript%20-%20EquivalentModel/2025%20IEEE%20MWSCAS/2025_ieee-DetailedCell.docx?d=w14e2c2d2b3e8490d82f28972448e9762&csf=1&web=1&e=nfMC3R

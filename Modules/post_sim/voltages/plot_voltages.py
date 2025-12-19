@@ -110,12 +110,14 @@ def plot_mean_voltage(seg_data, sim_data, sim_directory):
     fig = plot(seg_data,  seg_data['mean_v'], ax, clims = [-80, -10], radius_scale=1.5)
     ax.clabel('mean voltage')
     plt.savefig(os.path.join(sim_directory, 'voltages', 'mean_v_morphology'))
+    plt.close(fig)
     # std
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
     fig = plot(seg_data,  seg_data['std_v'], ax, clims = [-80, -10], radius_scale=1.5)
     ax.clabel('std voltage')
     plt.savefig(os.path.join(sim_directory, 'voltages', 'std_v_morphology'))
+    plt.close(fig)
 
 
 def main():
