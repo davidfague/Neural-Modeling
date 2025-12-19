@@ -13,7 +13,7 @@ import sys
 # Add the parent directory of "Modules" to the system path
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../Modules"))
-import Modules.analysis as analysis
+import Modules.post_sim.analysis as analysis
 
 def voltage_criterion(data=None, v_thresh=-40, time_thresh=260):
     threshold_crossings = np.diff(data > v_thresh, prepend=False)

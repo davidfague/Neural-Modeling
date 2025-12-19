@@ -10,7 +10,7 @@ from Modules.pre_sim.synapses_file import PreSimSynapseGenerator
 from Modules.sim.simulation_slurm import Simulation
 from Modules.cell_model.cell_builder import SkeletonCell
 from Modules.logger import Logger
-import Modules.analysis as analysis
+import Modules.post_sim.analysis as analysis
 
 
 def run_single_sim(sim_dir: str, logger=None):

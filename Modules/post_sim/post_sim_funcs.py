@@ -8,7 +8,7 @@ These functions perform analysis and visualization after simulation completion.
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import Modules.analysis as analysis
+import Modules.post_sim.analysis as analysis
 
 
 def plot_soma_voltage(sim_dir: str):

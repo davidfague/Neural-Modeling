@@ -9,7 +9,7 @@ import sys
 import subprocess
 
 sys.path.append('..')
-import Modules.analysis as analysis
+import Modules.post_sim.analysis as analysis
 from Modules.logger import Logger
 from Modules.post_sim.post_sim_funcs import plot_soma_voltage
 
@@ -43,7 +43,7 @@ def run_post_analysis(sim_dir: str):
     # Voltage plots
     logger.start_timer("plot_voltages")
     subprocess.run([sys.executable,
-                    os.path.join(os.path.dirname(__file__), "plot_voltages.py"),
+                    os.path.join(os.path.dirname(__file__), "../Modules/post_sim/voltages/plot_voltages.py"),
                     "-d", sim_dir],
                    check=False)
     logger.log_runtime("post_sim_analysis", "plot_voltages", timer_name="plot_voltages")
@@ -51,7 +51,7 @@ def run_post_analysis(sim_dir: str):
     # Drew's analysis
     logger.start_timer("drew_analysis")
     subprocess.run([sys.executable,
-                    os.path.join(os.path.dirname(__file__), "drew_analysis.py"),
+                    os.path.join(os.path.dirname(__file__), "../Modules/dendritic_spikes/drew_analysis.py"),
                     "-d", sim_dir],
                    check=False)
     logger.log_runtime("post_sim_analysis", "drew_analysis", timer_name="drew_analysis")
@@ -63,7 +63,7 @@ def run_post_analysis(sim_dir: str):
     logger.start_timer("analyze_clustering")
     try:
         subprocess.run([sys.executable,
-                        os.path.join(os.path.dirname(__file__), "analyze_clustering.py"),
+                        os.path.join(os.path.dirname(__file__), "../Modules/clustering/analyze_clustering.py"),
                         "-d", sim_dir],
                        check=False)
         logger.log_runtime("post_sim_analysis", "analyze_clustering", timer_name="analyze_clustering")

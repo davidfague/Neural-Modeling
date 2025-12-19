@@ -31,36 +31,31 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Repo-relative imports (match other scripts)
-THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(THIS_DIR, ".."))
-for p in (REPO_ROOT, THIS_DIR, os.path.join(REPO_ROOT, "Modules")):
-    if p not in sys.path:
-        sys.path.append(p)
+# THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+# REPO_ROOT = os.path.abspath(os.path.join(THIS_DIR, ".."))
+# for p in (REPO_ROOT, THIS_DIR, os.path.join(REPO_ROOT, "Modules")):
+#     if p not in sys.path:
+#         sys.path.append(p)
+sys.path.append('..')
+sys.path.append("../Modules")
 
 # Now import your modules
-from Modules.analysis import load_sim, DataReader
+from Modules.post_sim.analysis import load_sim, DataReader
 from Modules.cell_model.plot_morphology import plot_segments, plot
-from Modules.voltages.plot_voltage import plot_voltage
+from Modules.post_sim.voltages.plot_voltage import plot_voltage
 
 OVERWRITE = False
 
 def run_find_events(sim_dir: str) -> None:
     """Run find_events_ben.py to generate ca.csv / nmda.csv / na.csv."""
-    script = os.path.join(THIS_DIR, "find_events_ben.py")
-    if not os.path.exists(script):
-        # Fallback: maybe it’s in scripts/ sibling (when executed from elsewhere)
-        alt = os.path.join(REPO_ROOT, "scripts", "find_events_ben.py")
-        script = alt if os.path.exists(alt) else script
-
+    script = "../Modules/dendritic_spikes/find_events_ben.py"
     if not os.path.exists(script):
         warnings.warn(f"[scripts/plot_voltages.py] Could not find find_events_ben.py at {script}. Skipping event generation.")
         return
-
     try:
         subprocess.run([sys.executable, script, "-d", sim_dir], check=False)
     except Exception as e:
         warnings.warn(f"[scripts/plot_voltages.py] find_events_ben.py failed: {e}")
-
 
 def safe_read_event_csvs(sim_dir: str) -> dict:
     """Try to read ca.csv, nmda.csv, na.csv if present."""
@@ -106,13 +101,21 @@ def filter_existing(ids: list[int], avail: set[int]) -> list[int]:
 
 def plot_mean_voltage(seg_data, sim_data, sim_directory):
     seg_data['mean_v'] = sim_data['v'].mean(axis=0)
-    from Modules.cell_model import plot_morphology
+    seg_data['std_v'] = sim_data['v'].std(axis=0)
+    # Save to segment_data.csv
+    seg_data.to_csv(os.path.join(sim_directory, 'segment_data.csv'), index=False)
+    # mean
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
-    # plot_morphology.plot(seg_data,  seg_data['mean_v'], ax, clims = [min(seg_data['mean_v']), max(seg_data['mean_v'])], radius_scale=1.5)
     fig = plot(seg_data,  seg_data['mean_v'], ax, clims = [-80, -10], radius_scale=1.5)
     ax.clabel('mean voltage')
     plt.savefig(os.path.join(sim_directory, 'voltages', 'mean_v_morphology'))
+    # std
+    fig = plt.figure(figsize=(12, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    fig = plot(seg_data,  seg_data['std_v'], ax, clims = [-80, -10], radius_scale=1.5)
+    ax.clabel('std voltage')
+    plt.savefig(os.path.join(sim_directory, 'voltages', 'std_v_morphology'))
 
 
 def main():
@@ -167,9 +170,6 @@ def main():
     except Exception as e:
         warnings.warn(f"[scripts/plot_voltages.py] Soma quick plot failed: {e}")
 
-    # Compute x-limits following your original convention (kept exactly):
-    #   xlimits = [h_tstop*h_dt - (window_ms/h_dt), h_tstop*h_dt]
-    # This matches your previous Modules.plot_voltage usage.
     try:
         xlimits = [
             parameters.h_tstop / parameters.h_dt - (args.window_ms / parameters.h_dt),
@@ -202,8 +202,8 @@ def main():
     # Curate set with colors and label suffixes:
     if not hasattr(parameters, "plot_voltages_apic_segment_dict") or OVERWRITE:  # fall back on default
         parameters.plot_voltages_apic_segment_dict = {
-            1647: {"color": "black",  "description": "[most Ca spikes]"},
-            1554: {"color": "green",  "description": "[should be used in nexus elec_distance calc]"},
+            1647: {"color": "black",  "description": "[somtimes most Ca spikes]"},
+            1554: {"color": "green",  "description": "[used in Ben's nexus elec_distance calc]"},
             1547: {"color": "orange", "description": "[used in nexus elec_distance calc]"},
             1842: {"color": "red",    "description": "[right tuft dendrite (halfway)]"},
             1210: {"color": "lime",   "description": "[oblique (middle, near nexus)]"},

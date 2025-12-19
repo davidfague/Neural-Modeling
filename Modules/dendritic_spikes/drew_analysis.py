@@ -10,7 +10,7 @@ sys.path.append('/home/drfrbc/InhibOnDendComp') # clone my fork into your user a
 from src.sta_files import sta_files
 from src.load_caspks_csv import load_caspks_csv
 from src.load_spike_h5 import load_spike_h5
-from Modules import analysis
+from Modules.post_sim import analysis
 
 def add_elec_quantiles(sim_dir):
     ds_fpaths = [os.path.join(sim_dir, 'ca.csv'),

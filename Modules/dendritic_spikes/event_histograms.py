@@ -7,7 +7,7 @@ import numpy as np
 import sys
 sys.path.append("../")
 sys.path.append("../Modules/")
-import analysis
+import Modules.post_sim.analysis as analysis
 import os
 import matplotlib
 from matplotlib.colors import Normalize
