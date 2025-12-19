@@ -10,6 +10,7 @@ import os
 import sys
 import pre_sim as pre_sim
 from multiprocessing import set_start_method
+from clean_up_data.delete_saved_time_data_for_sim import delete_saved_time_data_for_sim
 
 def run_sim_and_analysis(sim_dir: str):
     """
@@ -31,6 +32,10 @@ def run_sim_and_analysis(sim_dir: str):
     
     # Run post-analysis immediately after
     post_sim.run_post_analysis(sim_dir)
+
+    # Cleanup bulky saved data after analysis
+    deleted = delete_saved_time_data_for_sim(sim_dir, subdir="raw_data", dry_run=False, verbose=True)
+    logger.log(f"[cleanup] raw_data deleted={deleted}")
     
     logger.log_runtime("run_pipeline", "sim_and_analysis_paired", timer_name="sim_and_analysis_paired")
     print(f"[run_pipeline] Completed sim+analysis for: {sim_dir}", flush=True)
