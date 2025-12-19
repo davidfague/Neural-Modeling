@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # scripts/AA_run_pipeline.py
 #
-# 1) Run pre-sim pipeline via scripts/AA_pre_sim.
-# 2) Pull sims_dir from AA_pre_sim.simulator.
+# 1) Run pre-sim pipeline via scripts/pre_sim.py
+# 2) Pull sims_dir from pre_sim.simulator.
 # 3) Run sim and post-analysis in parallel, pairing each sim_dir's simulation
 #    and analysis into one sequential process.
 
@@ -12,7 +12,7 @@ import pre_sim as pre_sim
 from multiprocessing import set_start_method
 from clean_up_data.delete_saved_time_data_for_sim import delete_saved_time_data_for_sim
 
-def run_sim_and_analysis(sim_dir: str):
+def run_sim_and_analysis(sim_dir: str, delete_raw_data: bool = True) -> None:
     """
     Run simulation followed by post-analysis for a single sim_dir.
     This ensures analysis starts immediately after simulation completes.
@@ -34,8 +34,9 @@ def run_sim_and_analysis(sim_dir: str):
     post_sim.run_post_analysis(sim_dir)
 
     # Cleanup bulky saved data after analysis
-    deleted = delete_saved_time_data_for_sim(sim_dir, subdir="raw_data", dry_run=False, verbose=True)
-    logger.log(f"[cleanup] raw_data deleted={deleted}")
+    if delete_raw_data:
+        deleted = delete_saved_time_data_for_sim(sim_dir, subdir="raw_data", dry_run=False, verbose=True)
+        logger.log(f"[cleanup] raw_data deleted={deleted}")
     
     logger.log_runtime("run_pipeline", "sim_and_analysis_paired", timer_name="sim_and_analysis_paired")
     print(f"[run_pipeline] Completed sim+analysis for: {sim_dir}", flush=True)
@@ -75,17 +76,26 @@ def main() -> None:
     if not sim_dirs:
         print(f"[AA_run_pipeline] No simulation subfolders found in: {sims_dir}")
         return
+    n_simulations = len(sim_dirs)
 
     # For parallelization - each process runs one sim + its analysis
-    N_PROCESSES = min(9, len(sim_dirs))
+    N_PROCESSES = min(9, n_simulations)
 
-    print(f"[AA_run_pipeline] Running {len(sim_dirs)} simulations from: {sims_dir}")
+    print(f"[AA_run_pipeline] Running {n_simulations} simulations from: {sims_dir}")
     print(f"[AA_run_pipeline] Using {N_PROCESSES} processes (paired sim+analysis)...\n", flush=True)
 
     logger.start_timer("sim_and_post_stage")
+
+    # decide whether to delete raw data after each sim+analysis
+    if n_simulations > 3:
+        delete_raw_data_bools = n_simulations * [True]
+    else:
+        delete_raw_data_bools = [False] # If only few simulations, keep raw data for inspection
+
+    # run simulations and analyses in parallel
     from multiprocessing import Pool
     with Pool(processes=N_PROCESSES) as pool:
-        pool.map(run_sim_and_analysis, sim_dirs)
+        pool.starmap(run_sim_and_analysis, zip(sim_dirs, delete_raw_data_bools))
 
     logger.log_runtime("AA_run_pipeline", "sim_and_post_stage", timer_name="sim_and_post_stage")
     logger.log_runtime("AA_run_pipeline", "total_pipeline", timer_name="total_pipeline")
