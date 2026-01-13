@@ -6,6 +6,8 @@ sys.path.append('..')
 sys.path.append('../Modules')
 from Modules.dendritic_spikes import drew_functions
 import matplotlib.pyplot as plt
+from pathlib import Path
+import h5py
 sys.path.append('/home/drfrbc/InhibOnDendComp') # clone my fork into your user and adjust the path: https://github.com/davidfague/InhibOnDendComp.git
 from src.sta_files import sta_files
 from src.load_caspks_csv import load_caspks_csv
@@ -64,6 +66,8 @@ def dspike_analysis(sim_dir):
     pois_canmda_sta = process_NMDA_CA_coordination(sim_dict, step, sim_win, sta_step, sta_win, samps_per_ms)
     plot_NMDA_CA_coordination(pois_canmda_sta, pois_sta, figures_folder)
 
+    save_sta_npz(os.path.join(sim_dir, 'dspike_sta.npz'), pois_sta=pois_sta,
+                pois_ca_sta=pois_ca_sta, pois_canmda_sta=pois_canmda_sta)
 
     
 def plot_dspikes_relative_to_APs(pois_sta, figures_folder):
@@ -158,7 +162,7 @@ def process_NMDA_CA_coordination(sim_dict, step, sim_win, sta_step, sta_win, sam
     spk_t = load_spike_h5(sim_dict['APFile'])
 
     lag_win = samps_per_ms * 20
-    spk_ca_t = [curr_spk for curr_spk in spk_t if np.any(((curr_spk-caspk_t)<lag_win)&((curr_spk-caspk_t)>=0))]
+    spk_ca_t = [curr_spk for curr_spk in spk_t if np.any(((curr_spk-caspk_t)<lag_win)&((curr_spk-caspk_t)>=0))] # find APs that occur within 20 ms of a Ca spike
 
 
     pois_canmda_sta = {}
@@ -197,6 +201,36 @@ def plot_NMDA_CA_coordination(pois_canmda_sta, pois_sta, figures_folder):
     fig.tight_layout()
     # fig.savefig('../figures/NMDAAPCC_modbyCa.pdf')
     fig.savefig(os.path.join(figures_folder,'NMDAAPCC_modbyCa.png'))
+
+def save_sta_npz(path, *, pois_sta, pois_ca_sta, pois_canmda_sta, dtype=np.float32):
+    packed = {}
+
+    def add_matrix(name, arr):
+        arr = np.asarray(arr)
+        if dtype is not None:
+            arr = arr.astype(dtype, copy=False)
+        if not np.issubdtype(arr.dtype, np.number):
+            raise TypeError(f"{name} is not numeric (dtype={arr.dtype})")
+        packed[name] = arr
+
+    for varname, d in [
+        ("pois_sta", pois_sta),
+        ("pois_ca_sta", pois_ca_sta),
+        ("pois_canmda_sta", pois_canmda_sta),
+    ]:
+        for key, v in d.items():
+            # Case 1: pandas DataFrame that stores arrays in cells (your *_sta)
+            if hasattr(v, "iterrows") and hasattr(v, "columns"):
+                # Prefer the 'sta' column if present, else first column
+                col = "sta" if "sta" in v.columns else v.columns[0]
+                for idx, row in v.iterrows():
+                    add_matrix(f"{varname}__{key}__{idx}", row[col])
+            else:
+                # Case 2: already a numeric ndarray
+                add_matrix(f"{varname}__{key}", v)
+
+    np.savez_compressed(path, **packed)
+    print(f"[drew_analysis] Saved STA data to {path}")
 
 if __name__ == "__main__":
     # specifiy the simulation directories to analyze
