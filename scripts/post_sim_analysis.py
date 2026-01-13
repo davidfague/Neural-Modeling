@@ -40,11 +40,12 @@ def run_post_analysis(sim_dir: str):
         subprocess.run(["python", "../Modules/dendritic_spikes/event_histograms.py", "-d", sim_dir], check=False)
         logger.log_runtime("post_sim_analysis", "event_histograms", timer_name="event_histograms")
 
-    # Voltage plots
+    # Voltage plots (including spike-centered plots for NMDA/Na/Ca)
     logger.start_timer("plot_voltages")
     subprocess.run([sys.executable,
                     os.path.join(os.path.dirname(__file__), "../Modules/post_sim/voltages/plot_voltages.py"),
-                    "-d", sim_dir],
+                    "-d", sim_dir,
+                    "--no-events"],  # Skip event detection since it's already run above
                    check=False)
     logger.log_runtime("post_sim_analysis", "plot_voltages", timer_name="plot_voltages")
 

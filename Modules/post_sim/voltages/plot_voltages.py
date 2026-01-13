@@ -31,18 +31,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Repo-relative imports (match other scripts)
-# THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-# REPO_ROOT = os.path.abspath(os.path.join(THIS_DIR, ".."))
-# for p in (REPO_ROOT, THIS_DIR, os.path.join(REPO_ROOT, "Modules")):
-#     if p not in sys.path:
-#         sys.path.append(p)
-sys.path.append('..')
-sys.path.append("../Modules")
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(THIS_DIR, "..", "..", ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 # Now import your modules
 from Modules.post_sim.analysis import load_sim, DataReader
 from Modules.cell_model.plot_morphology import plot_segments, plot
-from Modules.post_sim.voltages.plot_voltage import plot_voltage
+from Modules.post_sim.voltages.plot_voltage import plot_voltage, plot_voltages_centered_on_spikes
 
 OVERWRITE = False
 
@@ -99,7 +96,7 @@ def filter_existing(ids: list[int], avail: set[int]) -> list[int]:
         warnings.warn(f"[scripts/plot_voltages.py] Skipping missing segment IDs: {missing}")
     return present
 
-def plot_mean_voltage(seg_data, sim_data, sim_directory):
+def plot_mean_voltage(seg_data, sim_data, sim_directory, specific_time_dir):
     seg_data['mean_v'] = sim_data['v'].mean(axis=0)
     seg_data['std_v'] = sim_data['v'].std(axis=0)
     # Save to segment_data.csv
@@ -109,14 +106,14 @@ def plot_mean_voltage(seg_data, sim_data, sim_directory):
     ax = fig.add_subplot(111, projection='3d')
     fig = plot(seg_data,  seg_data['mean_v'], ax, clims = [-80, -10], radius_scale=1.5)
     ax.clabel('mean voltage')
-    plt.savefig(os.path.join(sim_directory, 'voltages', 'mean_v_morphology'))
+    plt.savefig(os.path.join(specific_time_dir, 'mean_v_morphology'))
     plt.close(fig)
     # std
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
     fig = plot(seg_data,  seg_data['std_v'], ax, clims = [-80, -10], radius_scale=1.5)
     ax.clabel('std voltage')
-    plt.savefig(os.path.join(sim_directory, 'voltages', 'std_v_morphology'))
+    plt.savefig(os.path.join(specific_time_dir, 'std_v_morphology'))
     plt.close(fig)
 
 
@@ -137,6 +134,10 @@ def main():
 
     out_dir = os.path.join(sim_dir, "voltages")
     os.makedirs(out_dir, exist_ok=True)
+    
+    # Create subdirectory for specific time plots
+    specific_time_dir = os.path.join(out_dir, "specific_time")
+    os.makedirs(specific_time_dir, exist_ok=True)
 
     # Optionally generate dendritic event CSVs
     if not args.no_events:
@@ -164,7 +165,7 @@ def main():
         plt.title(f"SOMA Voltage (segment 0)")
         plt.xlabel(f"Timesteps (dt={parameters.h_dt} ms)")
         plt.tight_layout()
-        plt.savefig(os.path.join(out_dir, "soma_voltage_init.png"), dpi=args.dpi, bbox_inches="tight")
+        plt.savefig(os.path.join(specific_time_dir, "soma_voltage_init.png"), dpi=args.dpi, bbox_inches="tight")
         if args.show:
             plt.show()
         else:
@@ -192,7 +193,7 @@ def main():
                 ["k"],
                 xlims=xlimits,
                 title_suffix="(Soma)",
-                save_file=os.path.join(out_dir, "soma_voltage"),
+                save_file=os.path.join(specific_time_dir, "soma_voltage"),
                 show=args.show,
             )
         except Exception as e:
@@ -229,7 +230,7 @@ def main():
                 apic_ids,
                 apic_colors,
                 title_suffix="(Apical)",
-                save_file=os.path.join(out_dir, "apic_segs"),
+                save_file=os.path.join(specific_time_dir, "apic_segs"),
                 show=args.show,
                 label_special_ids=True,
             )
@@ -245,7 +246,7 @@ def main():
                 title_suffix="(Apical)",
                 dendritic_dfs=dendritic_dfs,
                 additional_title_suffixes=apic_suffixes,
-                save_file=os.path.join(out_dir, "apical_voltages"),
+                save_file=os.path.join(specific_time_dir, "apical_voltages"),
                 show=args.show,
             )
         except Exception as e:
@@ -267,7 +268,7 @@ def main():
                 dend_ids,
                 dend_colors,
                 title_suffix="(Dendritic)",
-                save_file=os.path.join(out_dir, "basal_segs"),
+                save_file=os.path.join(specific_time_dir, "basal_segs"),
                 show=args.show,
                 label_special_ids=True,
             )
@@ -282,7 +283,7 @@ def main():
                 xlims=xlimits,
                 title_suffix="(Dendritic)",
                 dendritic_dfs=dendritic_dfs,
-                save_file=os.path.join(out_dir, "basal_voltages"),
+                save_file=os.path.join(specific_time_dir, "basal_voltages"),
                 show=args.show,
             )
         except Exception as e:
@@ -290,10 +291,43 @@ def main():
     else:
         warnings.warn("[scripts/plot_voltages.py] No basal/dendritic segments available to plot.")
 
+    # ------------- Spike-centered plots -------------
+    # Collect all segment IDs that were plotted
+    all_seg_ids = []
+    if soma_idx is not None:
+        all_seg_ids.append(soma_idx)
+    if apic_ids:
+        all_seg_ids.extend(apic_ids)
+    if dend_ids:
+        all_seg_ids.extend(dend_ids)
+    
+    # Build segment descriptions dictionary
+    seg_descriptions = {}
+    if hasattr(parameters, "plot_voltages_apic_segment_dict"):
+        for seg_id in all_seg_ids:
+            if seg_id in parameters.plot_voltages_apic_segment_dict:
+                seg_descriptions[seg_id] = parameters.plot_voltages_apic_segment_dict[seg_id]["description"]
+    
+    # Plot voltages centered on dendritic spikes
+    if all_seg_ids and dendritic_dfs:
+        try:
+            plot_voltages_centered_on_spikes(
+                sim_data=sim_data,
+                seg_ids=all_seg_ids,
+                dendritic_dfs=dendritic_dfs,
+                output_dir=out_dir,
+                window_ms=200,
+                dt=parameters.h_dt,
+                show=args.show,
+                seed=args.seed,
+                seg_descriptions=seg_descriptions
+            )
+        except Exception as e:
+            warnings.warn(f"[scripts/plot_voltages.py] plot_voltages_centered_on_spikes failed: {e}")
+    
     print(f"[scripts/plot_voltages.py] Done. Figures saved under: {out_dir}")
 
-
-    plot_mean_voltage(seg_data, sim_data, sim_dir)
+    plot_mean_voltage(seg_data, sim_data, sim_dir, specific_time_dir)
 
 if __name__ == "__main__":
     main()
