@@ -10,7 +10,7 @@ User-facing configuration for a specific simulation set.
   can create folders, write spike-train mode notes, and run generators.
 
 Usage (from another script):
-    from scripts.configure_sim_params import configure_sim_params
+    from configure_sim_params import configure_sim_params
     (all_parameter_sets, all_sim_titles, inh_bg_rate, exc_bg_rate,
      N_bg_synapses, SIM_SET_TITLE, inh_syn_props, exc_syn_props) = \
         configure_sim_params(parameters_pkl_path=None)
@@ -21,12 +21,15 @@ import copy
 import pickle
 from typing import Optional, Tuple, List
 
-from Modules.constants import HayParameters
-from Modules.clusters_global_l5_fg import exc_clustering as EXC_CLUSTERING, inh_clustering as INH_CLUSTERING
-from Modules import analysis
+from Modules.parameters.constants import HayParameters
+from Modules.clustering.clustering import (
+    get_default_exc_clustering,
+    get_default_inh_clustering,
+)
+from Modules.post_sim import analysis
 
 # Reusable presets / templates
-from Modules.simulation_templates import (
+from Modules.pre_sim.simulation_templates import (
     sim_type_params_all,
     morphologies,
     syn_reductions,
@@ -34,7 +37,7 @@ from Modules.simulation_templates import (
 )
 
 # Param generation logic
-from scripts.generate_param_sets import generate_simulations
+from Modules.parameters.generate_param_sets import generate_simulations
 
 
 def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
@@ -62,11 +65,18 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     """
 
     # === USER CONFIGURABLE (experiment-specific) ===
-    skeleton_cell_type = 'Hay'#"Hay" #"Allen"
-    SIM_SET_TITLE   = "testing_changes"
-    do_reduce_cell = True
-    sim_type        = "testing"         # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
-    load_previous_sim_params = True 
+    skeleton_cell_type = 'Hay'  # "Hay" or "Allen"
+    SIM_SET_TITLE   = "testing_pipeline_refactor"  # descriptive name for this set of sims
+    do_reduce_cell = False
+    sim_type        = "testing"  # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
+    load_previous_sim_params = True
+    
+    # Clustering mode configuration
+    # Options: 'terminal_branch_simple' (one FG per terminal branch, static PCs)
+    #          'terminal_branch_fps' (FPS-based clustering, dynamic PCs - DEFAULT)
+    exc_clustering_mode = 'terminal_branch_fps'
+    inh_clustering_mode = 'global_inh'  # 'global_inh' or 'terminal_branch_fps'
+    
     # template_sim_dir = (
     #     "/home/drfrbc/Neural-Modeling/simulations/"
     #     "2025-10-16-08-28-IncreaseNexusMaxYTo950/"
@@ -78,26 +88,40 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
         "allinh_rhythmic_depth_0.00_Np5000/"
         "parameters.pickle"
     )
-    index_matched = False # set False to do every params_to_vary combination, True to make each matching index a combination
+    index_matched = False  # set False to do every params_to_vary combination, True to make each matching index a combination
     # analogous example (True, A:[1,2,3], B:[4,5,6]) = [1;4], [2;5], [3;6]
-    params_to_vary = { # set to {} for no parameter sweep
-        # # Inhibitory (nexus) density
-        "nexus.syn_density": {
-            "apply_to": "inh_syn_properties",
-            "values": [0.22*3.3],  # [0.66, 0.715, 0.77]
-            "sim_name_suffix": "NexInhDen",
-        },
-        "perisomatic.syn_density": {
-            "apply_to": "inh_syn_properties",
-            "values": [0.22*1.25],#,0.22*1.3, 0.22*1.35],#, 0.33, 0.44],
-            "sim_name_suffix": "SomInhDen"
-        },
-
-        "distal_basal_local_L5.syn_density": {
-            "apply_to": "exc_syn_properties",
-            "values": [1.6621*1],#, 1.6621*1.1],#, 0.33, 0.44],
-            "sim_name_suffix": "DBL5Den"
-        },
+    params_to_vary = {  # set to {} for no parameter sweep
+        
+        # "nexus.syn_density": {
+        #     "apply_to": "inh_syn_properties",
+        #     "values": [0.5, 0.11, 0.15, 0.2], # best was 0.11 not 0.22
+        #     "sim_name_suffix": "NexInhDen",
+        # },
+        # "perisomatic.syn_density": {
+        #     "apply_to": "inh_syn_properties",
+        #     "values": [0.15, 0.22, 0.3], # best was 0.22 not [0.11, 0.16]
+        #     "sim_name_suffix": "PeriInhDen",
+        # },
+        # "distal_basal.syn_density": {
+        #     "apply_to": "inh_syn_properties",
+        #     "values": [0.50, 0.11, 0.15], # best was 0.11 not 0.22
+        #     "sim_name_suffix": "DistBasInhDen",
+        # },
+        # "tuft.syn_density": {
+        #     "apply_to": "inh_syn_properties",
+        #     "values": [0.15, 0.22, 0.3, 0.4, 0.5], # best was 0.22 not 0.11
+        #     "sim_name_suffix": "TuftInhDen",
+        # },
+        # "tuft_distant.syn_density": {
+        #     "apply_to": "exc_syn_properties",
+        #     "values": [4,5,6, 3, 2, 1], # best was all [6, 7, 8] needs finer tuning
+        #     "sim_name_suffix": "TuftDistExcDen",
+        # },
+        # "distal_basal_local_L5.syn_density": {
+        #     "apply_to": "exc_syn_properties",
+        #     "values": [2.75, 3, 3.25], # best was 2.16*0.9*0.9*1.75=3.1 not [2.5, 3.5]
+        #     "sim_name_suffix": "DistBasLocL5ExcDen",
+        # },
     }
 
     # Background spike-train knobs for post-generation update
@@ -105,9 +129,13 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     N_bg_synapses = 0  # how many synapses to force to "background" (via replace_N_synapses)
 
     # Clustering & rhythmicity
-    cluster_exc   = True
+    cluster_exc = True
     inh_mode = "delayed"
-    depth_values  = [0]          # sweep over inhibitory rhythmic depth(s)
+    depth_values = [0]  # sweep over inhibitory rhythmic depth(s)
+    
+    # Build clustering configurations based on selected modes
+    exc_clustering_cfg = get_default_exc_clustering(mode=exc_clustering_mode)
+    inh_clustering_cfg = get_default_inh_clustering(mode=inh_clustering_mode)
 
     # Seeds
     numpy_random_states  = [5000]
@@ -118,10 +146,9 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     syn_reductions_to_use    = ["None"]     # keys from simulation_templates.syn_reductions
     ci_replacements_to_use   = ["None"]     # keys from simulation_templates.ci_replacements
 
-    # decide what to pass for exc clustering without rebinding the import
-    exc_clustering_cfg = copy.deepcopy(EXC_CLUSTERING)  # avoid mutating the imported dict
+    # Override clustering if cluster_exc is False
     if not cluster_exc:
-        exc_clustering_cfg = {}  # just empty it locally
+        exc_clustering_cfg = {}  # disable excitatory clustering
 
     # Build parameter sets
     all_parameter_sets = []
@@ -129,7 +156,7 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
 
     # Pull base sim-type params
     if sim_type not in sim_type_params_all:
-        raise ValueError(f"Unknown sim_type '{sim_type}'. Valid: {list(sim_type_params_all.keys())}")
+        raise ValueError(f"Unknown sim_type '{sim_type}'. Valid: {list(sim_type_params_all.keys())} see Modules/cell_model/simulation_templates.py")
     base_params = sim_type_params_all[sim_type].copy()
 
     # Loop over your inhibitory rhythmic depths (small sweep)
@@ -178,7 +205,7 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
             "inh_syn_properties": inh_syn_properties,
             "exc_syn_properties": exc_syn_properties,
             "exc_clustering":     exc_clustering_cfg,
-            "inh_clustering":     INH_CLUSTERING,
+            "inh_clustering":     inh_clustering_cfg,
             "h_i_amplitude":      0.0,
             "CI_on":              False,
             "skeleton_cell_type": skeleton_cell_type,

@@ -1,0 +1,425 @@
+'''
+Modules/simulation_slurm.py
+'''
+from Modules.cell_model.cell_builder import SkeletonCell, CellBuilder
+from Modules.parameters.constants import SimulationParameters
+from logger import Logger
+from Modules.cell_model.cell_model import CellModel
+
+from neuron import h
+
+import os, datetime
+import pickle
+import pandas as pd
+
+import numpy as np
+import time
+
+from collections.abc import Callable, Iterable
+from typing import Mapping, Union
+
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
+# Global lock and flag for DLL loading
+import threading
+dll_load_lock = threading.Lock()
+dll_loaded = False
+
+def _apply_fns(sim_dir, fns, fns_args=None):
+    """
+    Internal: run each fn in `fns` on sim_dir, passing optional per-fn args.
+    See run_on_all_sims_parallel docstring for accepted fns_args formats.
+    """
+    results = []
+    # Normalize per-fn args
+    if fns_args is None or isinstance(fns_args, (dict, list, tuple)):
+        if isinstance(fns_args, (list, tuple)) and len(fns_args) == len(fns):
+            per_fn = fns_args
+        else:
+            per_fn = [fns_args] * len(fns)
+        for fn, arg in zip(fns, per_fn):
+            if arg is None:
+                results.append(fn(sim_dir))
+            elif isinstance(arg, dict):
+                results.append(fn(sim_dir, **arg))
+            elif isinstance(arg, (list, tuple)):
+                results.append(fn(sim_dir, *arg))
+            else:
+                results.append(fn(sim_dir, arg))
+    else:
+        # Unrecognized type -> pass through as single positional argument to each fn
+        for fn in fns:
+            results.append(fn(sim_dir, fns_args))
+    return results
+
+def process_single_sim(*args):
+    """
+    Backward-compatible worker.
+
+    Accepts:
+      - (sim_dir, fns)
+      - (sim_dir, fns, fns_args)
+      - ((sim_dir, fns),)
+      - ((sim_dir, fns, fns_args),)
+    """
+    # Allow old style where executor passes a single tuple
+    if len(args) == 1 and isinstance(args[0], tuple):
+        args = args[0]
+
+    if len(args) == 2:
+        sim_dir, fns = args
+        fns_args = None
+    elif len(args) == 3:
+        sim_dir, fns, fns_args = args
+    else:
+        raise TypeError("process_single_sim expects (sim_dir, fns[, fns_args])")
+
+    return _apply_fns(sim_dir, fns, fns_args)
+class Simulator:
+
+    def __init__(self, sim_set_title: str, sim_titles: list, parameter_sets: list, sims_root: str = None):
+        if len(sim_titles) != len(parameter_sets):
+            ValueError("sim_titles and parameter_sets must be lists with equal lengths. These lists will be considered corresponding.")
+
+        # Default root (if none provided): put set folder next to repo root's 'simulations'
+        if sims_root is None:
+            sims_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "simulations"))
+
+        self.sims_root = os.path.abspath(sims_root)
+        os.makedirs(self.sims_root, exist_ok=True)
+
+        set_dirname = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')}-{sim_set_title}"
+        self.sims_dir = os.path.join(self.sims_root, set_dirname)
+        os.makedirs(self.sims_dir, exist_ok=True)
+
+        self.sim_set_title = sim_set_title # {sims_dir}
+        self.sim_titles = sim_titles # sims_dir/{sim_dir}
+        self.parameter_sets = parameter_sets
+        self.compile_modfiles()
+
+    def compile_modfiles(self):
+        unique_modfiles_paths = np.unique([getattr(SkeletonCell, parameters.skeleton_cell_type).value['modfiles'] for parameters in self.parameter_sets])
+
+        # Compile the modfiles and suppress output
+        print(f"Compiling modfiles.")
+
+        # if there is only one then use it, otherwise error.
+        if len(unique_modfiles_paths) == 1:
+         os.system(f"nrnivmodl {unique_modfiles_paths[0]}")# > /dev/null 2>&1")
+        else:
+            raise(NotImplementedError(f"Can only compile modfiles for one celltype at a time. Not {len(unique_modfiles_paths)}: {unique_modfiles_paths}"))
+
+        # with dll_load_lock:
+        #     h.load_file('stdrun.hoc')
+        #     h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
+
+        global dll_loaded
+        with dll_load_lock:
+            if not dll_loaded:
+                try:
+                    h.load_file('stdrun.hoc')
+                    h.nrn_load_dll('./x86_64/.libs/libnrnmech.so')
+                    dll_loaded = True
+                except RuntimeError as e:
+                    print(f"Error loading DLL: {e}")
+                    dll_loaded = False
+
+    def create_simulation_folders(self):
+        # create simulation folders within {sims_dir} and save parameters in the individual simulation folders
+        for parameters, sim_title in zip(self.parameter_sets, self.sim_titles):
+            # create simulation folder
+            sim_dir = os.path.join(self.sims_dir, sim_title)
+            os.makedirs(sim_dir, exist_ok=True)
+
+            with open(os.path.join(sim_dir, "parameters.pickle"), 'wb') as file:
+                pickle.dump(parameters, file)
+
+            # load modfiles
+            try:
+                h.load_file('stdrun.hoc')
+                # h.nrn_load_dll('./x86_64/.libs/libnrnmech.so' # IF IN SCRIPTS FOLDER
+                load_modfiles = h.nrn_load_dll('../scripts/x86_64/.libs/libnrnmech.so') # IF IN SIMULATIONS FOLDER
+                if load_modfiles != 1:
+                    raise Exception("Error loading mod files")
+                else:
+                    print("Mod files loaded successfully")
+            except:
+                # Already loaded
+                pass 
+
+    def run_on_all_sims( #TODO: Use MPI to process these in parallel. Evenly Distribute sims to workers instead of using 1 per rank. add to class?
+        self,
+        sims_dir: str,
+        process_fns: Union[Callable[[str, Mapping, object], None],
+                        Iterable[Callable[[str, Mapping, object], None]]]
+    ) -> None:
+        """process_fns can be a single function or a list of functions. 
+        Each function should take the simulation directory, parameters, and logger as arguments."""
+        # normalize to a list
+        if callable(process_fns):
+            fns = [process_fns]
+        else:
+            fns = list(process_fns)
+
+        for entry in os.listdir(sims_dir):
+            sim_dir = os.path.join(sims_dir, entry)
+            if not os.path.isdir(sim_dir):
+                continue
+
+            # # load parameters
+            # with open(os.path.join(sim_dir, "parameters.pickle"), "rb") as f:
+            #     parameters = pickle.load(f)
+
+            # logger = Logger(sim_dir) # create per‑sim logger (write info into "sims_dir/sim_dir/log.txt")
+
+            for fn in fns :# run each processing function
+                fn(sim_dir=sim_dir)
+
+    def run_on_all_sims_parallel(self, sims_dir, process_fns, process_fns_args=None,
+                                 max_workers=None, collect_results=False):
+        fns = [process_fns] if callable(process_fns) else list(process_fns)
+
+        sim_dirs = [
+            os.path.join(sims_dir, entry)
+            for entry in os.listdir(sims_dir)
+            if os.path.isdir(os.path.join(sims_dir, entry))
+        ]
+
+        results = [] if collect_results else None
+
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            # New-style submit (separate args). Old-style tuple submit will also work
+            # because process_single_sim above accepts both forms.
+            futures = [
+                executor.submit(process_single_sim, sim_dir, fns, process_fns_args)
+                for sim_dir in sim_dirs
+            ]
+            for future, sim_dir in zip(as_completed(futures), sim_dirs):
+                # try:
+                    res = future.result()
+                    if collect_results:
+                        results.append((sim_dir, res))
+                # except Exception as exc:
+                #     print(f"Exception during {process_fns} on {sim_dir}: {exc}")
+
+        return results
+
+class Simulation:
+
+    def __init__(self, cell_type: SkeletonCell, title = None, create_dir = True):
+        self.cell_type = cell_type
+        if title:
+          self.title = title
+          self.path = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')}-{title}"#-%S')}-{title}" # had to remove seconds because with mpi the timing can be slightly off.
+        else:
+          self.title = None
+          self.path = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')}-{cell_type}"#-%S')}-{cell_type}"
+
+        self.logger = Logger(None)
+        self.pool = []
+
+        # Create the simulations parent folder
+        if create_dir and not os.path.exists(self.path):
+            os.mkdir(self.path)
+
+    def run_single_simulation(self, parameters: SimulationParameters, cell: CellModel=None):
+
+        single_sim_path = os.path.join(self.path, parameters.sim_name)
+        if not os.path.exists(single_sim_path):
+            os.mkdir(single_sim_path)
+        
+        parameters.path = single_sim_path # fixing the path os.path.join(parameters.sim_name)
+        self.logger.set_path(single_sim_path)
+
+        # Build the cell
+        if not cell:
+            cell_builder = CellBuilder(self.cell_type, parameters, self.logger)
+            cell, _ = cell_builder.build_cell()
+        
+        adj_matrix = cell.compute_directed_adjacency_matrix()
+        np.savetxt(os.path.join(parameters.path, "adj_matrix.txt"), adj_matrix.astype(int))
+
+        # Classify segments by morphology, save coordinates
+        segments, seg_data = cell.get_segments(["all"]) # (segments is returned here to preserve NEURON references)
+        seg_sections = []
+        seg_idx = []
+        seg_coords = []
+        seg_half_seg_RAs = []
+        seg = []
+        seg_Ls = []
+        sec_Ls = []
+        sec_Ds = []
+        seg_distance = []
+        psegs=[]
+        
+        for i,entry in enumerate(seg_data):
+            # if parameters.build_stylized: #@DEPRACATED
+            #     sec_name = entry.section.split(".")[-1]
+            # else:
+            sec_name = entry.section.split(".")[-1] # name[idx]
+            #print(f"sec_name: {sec_name}")
+            seg_sections.append(sec_name.split("[")[0])
+            seg_idx.append(sec_name.split("[")[1].split("]")[0])
+            seg_coords.append(entry.coords)
+            seg_half_seg_RAs.append(entry.seg_half_seg_RA)
+            seg.append(entry.seg)
+            seg_Ls.append(entry.L)
+            psegs.append(entry.pseg)
+            sec_Ls.append(segments[i].sec.L)
+            sec_Ds.append(segments[i].sec.diam)
+            seg_distance.append(h.distance(segments[0], segments[i]))
+            
+            
+        seg_sections = pd.DataFrame({
+            "section": seg_sections, 
+            "idx_in_section_type": seg_idx,
+            "seg_half_seg_RA": seg_half_seg_RAs,
+            "L": seg_Ls,
+            "seg":seg,
+            "pseg":psegs,
+            "Section_L":sec_Ls,
+            "Section_diam":sec_Ds,
+            "Distance":seg_distance
+            })
+
+        seg_coords = pd.concat(seg_coords)
+
+        seg_data = pd.concat((seg_sections.reset_index(drop = True), seg_coords.reset_index(drop = True)), axis = 1)
+        if not os.path.exists(os.path.join(parameters.path, "segment_data.csv")): # don't overwrite if it already exists. This is because we are writing it using Modules.segments_file import generate_segments_csv now.
+            seg_data.to_csv(os.path.join(parameters.path, "segment_data.csv"))
+
+        # Compute electrotonic distances from soma
+        elec_distances_soma = cell.compute_electrotonic_distance(from_segment = cell.soma[0](0.5))
+        elec_distances_soma.to_csv(os.path.join(parameters.path, "elec_distance_soma.csv"))
+        
+        if not parameters.reduce_apic:
+            nexus_seg_index = cell.find_nexus_seg()
+        else:
+            nexus_seg_index = segments.index(cell.apic[0](0.4)) #New.apic[109](0.386364),New.apic[109](0.431818), chooses seg 0.386. may need to check
+                
+        if parameters.reduce_soma_gpas:
+            cell.soma[0](0.5).g_pas = 10 * cell.soma[0](0.5).g_pas
+
+        # Compute electrotonic distances from nexus
+        elec_distances_nexus = cell.compute_electrotonic_distance(from_segment = segments[nexus_seg_index])
+        elec_distances_nexus.to_csv(os.path.join(parameters.path, "elec_distance_nexus.csv"))
+
+        # Save constants
+        with open(os.path.join(parameters.path, "parameters.pickle"), "wb") as file:
+           pickle.dump(parameters, file)
+
+        self.set_all_recorders(cell, parameters)
+        self.simulate(cell, parameters)
+
+    def set_all_recorders(self, cell, parameters: SimulationParameters):
+        # Set recorders
+        if parameters.record_all_channels:
+            for var_name in parameters.channel_names:
+                cell.add_segment_recorders(var_name = var_name)
+        if parameters.record_all_v:
+            cell.add_segment_recorders(var_name = "v")
+       
+        if parameters.record_ecp == True:
+    			# Create an ECP object for extracellular potential
+    			#elec_pos = params.ELECTRODE_POSITION
+    			#ecp = EcpMod(cell, elec_pos, min_distance = params.MIN_DISTANCE)
+    			#     # Reason: (NEURON: Impedance calculation with extracellular not implemented)
+            self.logger.log_warining("Recording ECP adds the extracellular channel to all segments after computing electrotonic distance.\
+                                      This channel is therefore not accounted for in impedence calculation, but it might affect the simulation.")
+            h.cvode.use_fast_imem(1)
+    			#for sec in cell.all: sec.insert('extracellular') # may not be needed
+            cell.add_segment_recorders(var_name = "i_membrane_")
+    		
+        if (parameters.record_all_synapses): # and (not parameters.all_synapses_off)
+            for var_name in parameters.synaptic_vars_to_record:#["i_AMPA", "i_NMDA"], "igaba", "inmda"]: # additional for pyr2pyr and int2pyr synapses.
+                cell.add_synapse_recorders(var_name = var_name)
+        if parameters.record_soma_spikes:
+            cell.add_spike_recorder(sec = cell.soma[0], var_name = "soma_spikes", spike_threshold = parameters.spike_threshold)
+        if parameters.record_axon_spikes:
+            cell.add_spike_recorder(sec = cell.axon[0], var_name = "axon_spikes", spike_threshold = parameters.spike_threshold)
+
+    def set_neuron_parameters(self, parameters):
+        h.celsius = parameters.h_celcius
+        h.tstop = parameters.h_tstop
+        h.dt = parameters.h_dt
+        h.steps_per_ms = 1 / h.dt
+        h.v_init = parameters.h_v_init
+        h.finitialize(h.v_init)         
+      
+    def simulate(self, cell, parameters: SimulationParameters, log=True, record_runtime=True, path=None):
+            #@MARK TODO: Can change this to cells a list of cells to record. 
+            # This is because if you build cells in a notebook and then simulate them 1 at a time then all cells will get solved for each cell.
+            if path is None:
+                path = parameters.path
+                
+            if not os.path.exists(path):
+                os.mkdir(path)
+                
+            with open(os.path.join(parameters.path, "parameters.pickle"), "wb") as file:
+                pickle.dump(parameters, file)
+            # In time stamps, i.e., ms / dt
+            time_step = 0
+    
+            h.celsius = parameters.h_celcius
+            h.tstop = parameters.h_tstop
+            h.dt = parameters.h_dt
+            h.steps_per_ms = 1 / h.dt
+            # if is_indexable(cell.soma):
+            #     h.v_init = cell.soma[0].e_pas
+            # else:
+            #     h.v_init = cell.soma.e_pas
+            h.v_init = parameters.h_v_init
+            h.finitialize(h.v_init)
+
+            os.mkdir(os.path.join(path, "raw_data"))
+    
+            if log: self.logger.log("Starting simulation.")
+    
+            if record_runtime: start_time = time.time()
+            while h.t <= h.tstop + 1:
+    
+                if (time_step > 0) and (time_step % (parameters.save_every_ms / parameters.h_dt) == 0):
+                    self.logger.log(f"Saving data at step: {time_step}")
+    
+                    # Save data
+                    cell.write_recorder_data(
+                        os.path.join(path, f"raw_data/saved_at_step_{time_step}"), 
+                        parameters.record_every_time_steps)
+                    if log: self.logger.log("Finished writing data")
+    
+                    # Reinitialize recording vectors
+                    for recorder_or_list in cell.recorders: recorder_or_list.clear()
+                    if log: self.logger.log("Finished clearing recorders")
+    
+                try:
+                    h.fadvance()
+                except Exception as e:
+                    self.logger.log(f"Error advancing simulation at time_step {time_step}: {e}")
+                    break  # Exit the loop on error
+                
+                time_step += 1
+    
+            if record_runtime: 
+              end_time = time.time()
+              simulation_runtime = end_time - start_time
+            if log: self.logger.log(f"Finish simulation in {simulation_runtime:.3f} seconds")
+            # Record the simulation runtime to a file
+            if record_runtime:
+              self.logger.log_runtime("simulation_slurm", "simulate", simulation_runtime)
+              runtime_file_path = os.path.join(path, "simulation_runtime.txt")
+              with open(runtime_file_path, "w") as runtime_file:
+                  runtime_file.write(f"{simulation_runtime:.3f} seconds")
+            #except Exception as e:
+            #  self.logger.log(f"Unexpected error in run_single_simulation: {e}")
+
+def is_indexable(obj: object):
+    """
+    Check if the object is indexable.
+    """
+    try:
+        _ = obj[0]
+        return True
+    except:
+        return False
+    
+

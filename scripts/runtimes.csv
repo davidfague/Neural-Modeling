@@ -1,5 +1,0 @@
-timestamp,module,function,runtime
-2025-07-01 10:10:44.265875,cell_builder,replace_dend_with_CI,9.5367431640625e-07
-2025-07-01 10:10:44.269742,cell_builder,build_cell,0.2745671272277832
-2025-07-01 10:16:19.565171,cell_builder,replace_dend_with_CI,7.152557373046875e-07
-2025-07-01 10:16:19.569071,cell_builder,build_cell,0.2747011184692383
