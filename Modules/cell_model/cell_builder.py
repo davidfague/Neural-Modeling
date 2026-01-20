@@ -154,7 +154,6 @@ class CellBuilder:
 		self.logger.log_runtime("cell_builder", "replace_dend_with_CI", total_replace_time)
 		
 		# merge synapses/optimize nseg by lambda
-		reductor = Reductor(logger = self.logger)
 		if self.parameters.optimize_nseg_by_lambda and self.parameters.set_nseg_by_length:
 			raise ValueError("Cannot set nseg by length and optimize nseg by lambda at the same time. Please choose one of these options in the parameters.")
 		elif self.parameters.set_nseg_by_length:
@@ -164,11 +163,16 @@ class CellBuilder:
 					sec.nseg = max(1, int(math.ceil(sec.L / self.parameters.microns_per_segment)))
 		elif self.parameters.optimize_nseg_by_lambda:
 				self.logger.log("Updating nseg using lambda.")
+				if 'reductor' not in locals():
+					reductor = Reductor(logger = self.logger)
 				reductor.update_model_nseg_using_lambda(cell, segs_per_lambda=self.parameters.segs_per_lambda)
 		self.logger.log(f"Total number of segments: {sum([sec.nseg for sec in cell.all])}")
 
 		if self.parameters.merge_synapses:
 				self.logger.log("Merging synapses.")
+				# check if reductor exists (from optimize_nseg_by_lambda)
+				if 'reductor' not in locals():
+					reductor = Reductor(logger = self.logger)
 				reductor.merge_synapses(cell)
 		self.logger.log(f"Total number of synapses after merging: {len(cell.get_synapses(['all']))}")
 
