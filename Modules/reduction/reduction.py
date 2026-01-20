@@ -1,6 +1,6 @@
 import numpy as np
 from neuron import h
-from neuron_reduce import subtree_reductor
+# from neuron_reduce import subtree_reductor
 
 from Modules.reduction.cable_expander_func import cable_expander, get_hsyn_to_netcons
 from Modules.cell_model.synapse import Synapse
