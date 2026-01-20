@@ -1,0 +1,1 @@
+axial_current refers to intracellular current between adjacent compartments (segments)

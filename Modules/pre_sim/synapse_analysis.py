@@ -110,9 +110,9 @@ class SynapseAnalyzer:
         if synapse_types is not None:
             # compile regex once
             pat = "|".join(map(re.escape, synapse_types))
-            mask &= df_all["name"].astype("string", copy=False).str.contains(pat, regex=True, na=False).to_numpy()
+            mask &= df_all["name"].astype("string", copy=False).str.contains(pat, regex=True, na=False).to_numpy(dtype=bool)
         if functional_groups is not None:
-            mask &= df_all["functional_group"].isin(functional_groups).to_numpy()
+            mask &= df_all["functional_group"].isin(functional_groups).to_numpy(dtype=bool)
 
         df = df_all.loc[mask, [color_by, "spike_train"]].copy()
         if df.empty:
