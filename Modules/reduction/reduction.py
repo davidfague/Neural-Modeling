@@ -1,6 +1,5 @@
 import numpy as np
 from neuron import h
-# from neuron_reduce import subtree_reductor
 
 from Modules.reduction.cable_expander_func import cable_expander, get_hsyn_to_netcons
 from Modules.cell_model.synapse import Synapse
@@ -26,6 +25,7 @@ class Reductor():
         netcons_list = [netcon for synapse in cell_model.synapses for netcon in synapse.netcons]
         
         self.log_with_timestamp(f'using subtree reductor')
+        from neuron_reduce import subtree_reductor
         reduced_skeleton_cell, hoc_synapses_list, netcons_list, seg_to_seg = subtree_reductor(
             cell_model.skeleton_cell, list(original_py_to_hoc_syns.values()), netcons_list, reduction_frequency, return_seg_to_seg=True)
             
