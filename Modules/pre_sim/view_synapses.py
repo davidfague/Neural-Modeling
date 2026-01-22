@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from collections import Counter
 import numpy as np
 
-from Modules import analysis
+from Modules.post_sim import analysis
 
 # read synapse_data.h5 from our simulations.
 def read_synapse_distribution_file(sim_directory):

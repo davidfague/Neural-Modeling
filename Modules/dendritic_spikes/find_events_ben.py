@@ -80,16 +80,27 @@ def current_criterion(legit_uc_iso=[], legit_dc_iso=[], p=1, control_inmda=np.ar
 def load_data(sim_directory, ben):
     # load simulated data
     if ben:
-        base_path = os.path.abspath("../scripts/L5BaselineResults/")
-        v = np.array(h5py.File(os.path.join(base_path, 'v_report.h5'), 'r')['report']['biophysical']['data'])
-        hva = np.array(h5py.File(os.path.join(base_path, 'Ca_HVA.ica_report.h5'), 'r')['report']['biophysical']['data'])
-        lva = np.array(h5py.File(os.path.join(base_path, 'Ca_LVAst.ica_report.h5'), 'r')['report']['biophysical']['data'])
-        ih = np.array(h5py.File(os.path.join(base_path, 'Ih.ihcn_report.h5'), 'r')['report']['biophysical']['data'])
-        nmda = np.array(h5py.File(os.path.join(base_path, 'inmda_report.h5'), 'r')['report']['biophysical']['data'])
-        na = np.array(h5py.File(os.path.join(base_path, 'NaTa_t.gNaTa_t_report.h5'), 'r')['report']['biophysical']['data'])
+        # Use the provided sim_directory instead of hardcoded path
+        base_path = sim_directory if os.path.isabs(sim_directory) else os.path.abspath(sim_directory)
+        # Open HDF5 files and keep references (don't load entire arrays into memory)
+        v_file = h5py.File(os.path.join(base_path, 'v_report.h5'), 'r')
+        v = v_file['report']['biophysical']['data']
+        hva_file = h5py.File(os.path.join(base_path, 'Ca_HVA.ica_report.h5'), 'r')
+        hva = hva_file['report']['biophysical']['data']
+        lva_file = h5py.File(os.path.join(base_path, 'Ca_LVAst.ica_report.h5'), 'r')
+        lva = lva_file['report']['biophysical']['data']
+        ih_file = h5py.File(os.path.join(base_path, 'Ih.ihcn_report.h5'), 'r')
+        ih = ih_file['report']['biophysical']['data']
+        nmda_file = h5py.File(os.path.join(base_path, 'inmda_report.h5'), 'r')
+        nmda = nmda_file['report']['biophysical']['data']
+        na_file = h5py.File(os.path.join(base_path, 'NaTa_t.gNaTa_t_report.h5'), 'r')
+        na = na_file['report']['biophysical']['data']
         spks = h5py.File(os.path.join(base_path, 'spikes.h5'), 'r')
         spktimes = spks['spikes']['biophysical']['timestamps'][:]
         spkinds = np.sort((spktimes*10).astype(int))
+        
+        # Store file handles so they can be closed later
+        h5_files = [v_file, hva_file, lva_file, ih_file, nmda_file, na_file, spks]
 
 
     else:
@@ -118,6 +129,7 @@ def load_data(sim_directory, ben):
         # na = analysis.DataReader.read_data(sim_directory, "na")
         spktimes = spks[0][:]
         spkinds = np.sort((spktimes*10).astype(int))
+        h5_files = []  # No h5 files to manage for non-ben mode
 
     # load segment data
     if ben:
@@ -162,7 +174,7 @@ def load_data(sim_directory, ben):
         segs.loc[segs.Type=='dend','Elec_distanceQ'] = pd.qcut(segs.loc[segs.Type=='dend','Elec_distance'], 10, labels=False)
         segs.loc[segs.Type=='apic','Elec_distanceQ'] = pd.qcut(segs.loc[segs.Type=='apic','Elec_distance'], 10, labels=False)
 
-    return na, hva, lva, ih, nmda, v, spkinds, segs
+    return na, hva, lva, ih, nmda, v, spkinds, segs, h5_files
 
 def compute_na_df(na, segs, spkinds, sim_directory, ben):
     na_df = pd.DataFrame(columns=['segmentID','na_lower_bound'])
@@ -267,31 +279,40 @@ def compute_nmda_df(nmda, v, segs, sim_directory, ben):
     segs_nmda_df.to_csv(os.path.join(sim_directory, 'nmda.csv'))
     
 def compute_dfs(sim_directory, ben):
-    if not os.path.exists(os.path.join(sim_directory, 'na.csv')) or not os.path.exists(os.path.join(sim_directory, 'ca.csv')) or not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
-        na, hva, lva, ih, nmda, v, spkinds, segs = load_data(sim_directory, ben)
-    else:
-        print(f"[scripts/find_events_ben.py] DataFrames already exist in {sim_directory}. Skipping computation.")
-        return # skip rest of the function
+    h5_files = []
+    try:
+        if not os.path.exists(os.path.join(sim_directory, 'na.csv')) or not os.path.exists(os.path.join(sim_directory, 'ca.csv')) or not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
+            na, hva, lva, ih, nmda, v, spkinds, segs, h5_files = load_data(sim_directory, ben)
+        else:
+            print(f"[scripts/find_events_ben.py] DataFrames already exist in {sim_directory}. Skipping computation.")
+            return # skip rest of the function
 
-    if not os.path.exists(os.path.join(sim_directory, 'na.csv')):
-        compute_na_df(na, segs, spkinds, sim_directory, ben)
-    else:
-        print(f"[scripts/find_events_ben.py] na.csv already exists in {sim_directory}. Skipping computation.")
+        if not os.path.exists(os.path.join(sim_directory, 'na.csv')):
+            compute_na_df(na, segs, spkinds, sim_directory, ben)
+        else:
+            print(f"[scripts/find_events_ben.py] na.csv already exists in {sim_directory}. Skipping computation.")
 
-    if not os.path.exists(os.path.join(sim_directory, 'ca.csv')):
-        try:
-            compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben)
-        except Exception as e:
-            print(f"[scripts/find_events_ben.py] Error computing CA DataFrame (Likely due to no segments meeting the coordinates criteria  if this is L2/3 instead of L5): {e}")
-    else:
-        print(f"[scripts/find_events_ben.py] ca.csv already exists in {sim_directory}. Skipping computation.")
+        if not os.path.exists(os.path.join(sim_directory, 'ca.csv')):
+            try:
+                compute_ca_df(v, hva, lva, ih, segs, sim_directory, ben)
+            except Exception as e:
+                print(f"[scripts/find_events_ben.py] Error computing CA DataFrame (Likely due to no segments meeting the coordinates criteria  if this is L2/3 instead of L5): {e}")
+        else:
+            print(f"[scripts/find_events_ben.py] ca.csv already exists in {sim_directory}. Skipping computation.")
 
-    if not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
-        compute_nmda_df(nmda, v, segs, sim_directory, ben)
-    else:
-        print(f"[scripts/find_events_ben.py] nmda.csv already exists in {sim_directory}. Skipping computation.")
-    
-    print(f"[scripts/find_events_ben.py] DataFrames computed and saved to {sim_directory}")
+        if not os.path.exists(os.path.join(sim_directory, 'nmda.csv')):
+            compute_nmda_df(nmda, v, segs, sim_directory, ben)
+        else:
+            print(f"[scripts/find_events_ben.py] nmda.csv already exists in {sim_directory}. Skipping computation.")
+        
+        print(f"[scripts/find_events_ben.py] DataFrames computed and saved to {sim_directory}")
+    finally:
+        # Close all HDF5 files
+        for f in h5_files:
+            try:
+                f.close()
+            except:
+                pass
 
 if __name__ ==  "__main__":
     ben = False

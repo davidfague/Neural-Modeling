@@ -3,6 +3,8 @@
 
 import sys
 import os
+from functools import partial
+
 sys.path.append('..')
 sys.path.append('../Modules')
 
@@ -77,24 +79,33 @@ def run_pre_sim():
         if os.path.isdir(os.path.join(simulator.sims_dir, d))
     ]
 
+    # Determine optimal worker count (consistent with run_pipeline.py)
+    n_simulations = len(sim_dirs)
+    MAX_WORKERS = min(9, n_simulations)
+    log(f"[AA_pre_sim] Using {MAX_WORKERS} workers for {n_simulations} simulations")
+
     write_spike_train_config(simulator.sims_dir, inh_syn_properties, exc_syn_properties)
 
-    # generate segments CSV
+    # generate segments CSV with morphology caching
     log(f"\n[AA_pre_sim] Generating segments CSV on all sims in: {simulator.sims_dir}\n")
     logger.start_timer("generate_segments_csv")
-    simulator.run_on_all_sims_parallel(simulator.sims_dir, generate_segments_csv)
+    
+    # Use functools.partial to bind sims_dir for morphology caching (picklable)
+    generate_segments_with_cache = partial(generate_segments_csv, sims_dir=simulator.sims_dir)
+    
+    simulator.run_on_all_sims_parallel(simulator.sims_dir, generate_segments_with_cache, max_workers=MAX_WORKERS)
     logger.log_runtime("AA_pre_sim", "generate_segments_csv", timer_name="generate_segments_csv")
 
     # plot morphology
-    log(f"\n[AA_pre_sim] Plotting morphology on all sims in: {simulator.sims_dir}\n")
-    logger.start_timer("plot_morphology")
-    simulator.run_on_all_sims_parallel(simulator.sims_dir, plot_morphology_for_sim)
-    logger.log_runtime("AA_pre_sim", "plot_morphology", timer_name="plot_morphology")
+    # log(f"\n[AA_pre_sim] Plotting morphology on all sims in: {simulator.sims_dir}\n")
+    # logger.start_timer("plot_morphology")
+    # simulator.run_on_all_sims_parallel(simulator.sims_dir, plot_morphology_for_sim, max_workers=MAX_WORKERS)
+    # logger.log_runtime("AA_pre_sim", "plot_morphology", timer_name="plot_morphology")
     
     # generate synapses
     log(f"\n[AA_pre_sim] Running synapse generation on all sims in: {simulator.sims_dir}\n")
     logger.start_timer("synapse_generation")
-    simulator.run_on_all_sims_parallel(simulator.sims_dir, generate_synapses_for_sim)
+    simulator.run_on_all_sims_parallel(simulator.sims_dir, generate_synapses_for_sim, max_workers=MAX_WORKERS)
     logger.log_runtime("AA_pre_sim", "synapse_generation", timer_name="synapse_generation")
 
     # Update background spike trains
@@ -104,7 +115,8 @@ def run_pre_sim():
         simulator.run_on_all_sims_parallel(
             simulator.sims_dir,
             replace_N_synapses,
-            process_fns_args=(N_bg_synapses,)
+            process_fns_args=(N_bg_synapses,),
+            max_workers=MAX_WORKERS
         )
         logger.log_runtime("AA_pre_sim", "replace_background_synapses", timer_name="replace_background_synapses")
         

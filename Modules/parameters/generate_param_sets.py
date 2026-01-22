@@ -190,25 +190,87 @@ def _format_value(value: Any) -> str:
 def get_parameter_combinations(param_dict: Dict[str, Dict[str, Any]],
                                decimals_plan: Optional[Dict[str, int]] = None) -> List[Dict[str, Any]]:
     """
-    Cartesian-product combinations for params_to_vary.
+    Grouped-Cartesian combinations for params_to_vary.
+    
+    Parameters with the same "group" field covary (index-matched within group).
+    Different groups and ungrouped parameters are crossed (Cartesian product).
+    
     Each key maps to a dict with:
         - "values": list of values
         - "sim_name_suffix": str for naming
+        - optional "group": str - parameters with same group covary
         - optional "nested_keys": list[str] for dict-valued params
         - optional "always_include_suffix": bool
+    
+    Example:
+        params_to_vary = {
+            "tuft_distant.syn_density": {"values": [2, 3, 4], "group": "tuft", ...},
+            "tuft_local.syn_density": {"values": [0.2, 0.3, 0.4], "group": "tuft", ...},
+            "nexus.syn_density": {"values": [0.1, 0.2], ...},  # no group
+        }
+        Result: tuft params covary (2 with 0.2, 3 with 0.3, etc.), 
+                then crossed with nexus (4 tuft combos × 2 nexus = 8 total)
     """
     import itertools
 
-    keys = list(param_dict.keys())
-    value_lists = [param_dict[k]["values"] for k in keys]
+    # Organize parameters by group
+    groups: Dict[str, List[str]] = {}  # group_name -> [param_keys]
+    ungrouped: List[str] = []
+    
+    for key in param_dict.keys():
+        group = param_dict[key].get("group")
+        if group:
+            if group not in groups:
+                groups[group] = []
+            groups[group].append(key)
+        else:
+            ungrouped.append(key)
+    
+    # Build combinations for each group (index-matched within group)
+    group_combos: List[List[Dict[str, Any]]] = []
+    
+    for group_name, group_keys in groups.items():
+        # Validate: all params in group must have same length
+        lengths = [len(param_dict[k]["values"]) for k in group_keys]
+        if len(set(lengths)) > 1:
+            raise ValueError(
+                f"Group '{group_name}' has parameters with different lengths: "
+                f"{dict(zip(group_keys, lengths))}. All must match."
+            )
+        
+        # Create index-matched combinations for this group
+        group_length = lengths[0] if lengths else 1
+        this_group_combos = []
+        for i in range(group_length):
+            combo = {}
+            for k in group_keys:
+                combo[k] = param_dict[k]["values"][i]
+            this_group_combos.append(combo)
+        group_combos.append(this_group_combos)
+    
+    # Build individual lists for ungrouped params (each is its own dimension)
+    for key in ungrouped:
+        individual_combos = [{key: val} for val in param_dict[key]["values"]]
+        group_combos.append(individual_combos)
+    
+    # Cartesian product across all groups and ungrouped params
+    if not group_combos:
+        return [{}]
+    
     combos: List[Dict[str, Any]] = []
-
-    for values in itertools.product(*value_lists):
+    
+    for combo_parts in itertools.product(*group_combos):
+        # Merge all the partial combos from each group/param
         combo: Dict[str, Any] = {}
+        for part in combo_parts:
+            combo.update(part)
+        
+        # Build suffix from all parameters
         suffix_parts: List[str] = []
-
-        for key, value in zip(keys, values):
-            combo[key] = value
+        for key in param_dict.keys():
+            if key not in combo:
+                continue
+            value = combo[key]
             show_suffix = (
                 len(param_dict[key]["values"]) > 1
                 or param_dict[key].get("always_include_suffix", False)
