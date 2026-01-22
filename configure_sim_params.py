@@ -77,11 +77,6 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     exc_clustering_mode = 'terminal_branch_fps'
     inh_clustering_mode = 'global_inh'  # 'global_inh' or 'terminal_branch_fps'
     
-    # template_sim_dir = (
-    #     "/home/drfrbc/Neural-Modeling/simulations/"
-    #     "2025-10-16-08-28-IncreaseNexusMaxYTo950/"
-    #     "allinh_rhythmic_depth_0.00_Np5000"
-    # )
     parameters_pkl_path = (
         "/home/drfrbc/Neural-Modeling/simulations/"
         "2025-10-16-08-28-IncreaseNexusMaxYTo950/"
@@ -249,7 +244,29 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
         inh_syn_properties,
         exc_syn_properties,
     )
+def log_params_updated_from_loaded_pickle(params: HayParameters, pickle_path: str) -> None:
+    """Log which parameters were updated from the loaded pickle for transparency."""
+    with open(pickle_path, "rb") as f:
+        loaded_params = pickle.load(f)
+    loaded_inh_props = loaded_params.inh_syn_properties
+    loaded_exc_props = loaded_params.exc_syn_properties
 
+    for input_source, props in params.inh_syn_properties.items():
+        if input_source in loaded_inh_props:
+            for key, value in props.items():
+                if loaded_inh_props[input_source].get(key) != value:
+                    print(f"[configure_sim_params] Inh param '{input_source}.{key}' updated from loaded pickle: {loaded_inh_props[input_source].get(key)} -> {value}")
+
+    for input_source, props in params.exc_syn_properties.items():
+        if input_source in loaded_exc_props:
+            for key, value in props.items():
+                if loaded_exc_props[input_source].get(key) != value:
+                    print(f"[configure_sim_params] Exc param '{input_source}.{key}' updated from loaded pickle: {loaded_exc_props[input_source].get(key)} -> {value}")
+    # check for clustering changes
+    if params.exc_clustering != loaded_params.exc_clustering:
+        print(f"[configure_sim_params] Exc clustering updated from loaded pickle.")
+    if params.inh_clustering != loaded_params.inh_clustering:
+        print(f"[configure_sim_params] Inh clustering updated from loaded pickle.")
 
 if __name__ == "__main__":
     import argparse
