@@ -39,7 +39,7 @@ def generate_synapses_for_sim(sim_dir):
     pssg.generate_spike_trains_for_synapses()
 
 
-def plot_morphology_for_sim(sim_dir):
+def plot_morphology_for_sim(sim_dir, skip_if_exists=True):
     """
     Plot morphology for a single simulation.
     
@@ -47,7 +47,14 @@ def plot_morphology_for_sim(sim_dir):
     
     Args:
         sim_dir: Path to simulation directory
+        skip_if_exists: Skip if morphology plots already exist
     """
+    morph_dir = os.path.join(sim_dir, "morphology")
+    
+    # Skip if already exists (for large simulation sets)
+    if skip_if_exists and os.path.exists(morph_dir) and len(os.listdir(morph_dir)) > 0:
+        return
+    
     seg_data = pd.read_csv(os.path.join(sim_dir, "segment_data.csv"))
     parameters = analysis.DataReader.load_parameters(sim_dir)
     logger = Logger(sim_dir)
@@ -55,13 +62,16 @@ def plot_morphology_for_sim(sim_dir):
         seg_data,
         option='each_sec_type',
         parameters=parameters,
-        out_dir=os.path.join(sim_dir, "morphology"),
-        figsize=(10, 6),
-        show=True,
+        out_dir=morph_dir,
+        figsize=(8, 5),  # Smaller for speed
+        show=False,  # Don't display (faster)
         save=True,
         color='red',
         logger=logger,
     )
+    # Close figures to free memory
+    import matplotlib.pyplot as plt
+    plt.close('all')
 
 
 def plot_firing_rate_distributions_for_sim(simulator, synapse_analyzers, logger):
