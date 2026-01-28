@@ -66,10 +66,10 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
 
     # === USER CONFIGURABLE (experiment-specific) ===
     skeleton_cell_type = 'Hay'  # "Hay" or "Allen"
-    SIM_SET_TITLE   = "testing_pipeline_refactor"  # descriptive name for this set of sims
+    SIM_SET_TITLE   = "testing_reduction_pair"  # descriptive name for this set of sims
     do_reduce_cell = False
     sim_type        = "testing"  # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
-    load_previous_sim_params = True
+    load_previous_sim_params = False #True
     
     # Clustering mode configuration
     # Options: 'terminal_branch_simple' (one FG per terminal branch, static PCs)
@@ -86,37 +86,110 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     index_matched = False  # set False to do every params_to_vary combination, True to make each matching index a combination
     # analogous example (True, A:[1,2,3], B:[4,5,6]) = [1;4], [2;5], [3;6]
     params_to_vary = {  # set to {} for no parameter sweep
-        
+        "do_reduce_cell": {
+            "apply_to": "common_params",
+            "values": [False, True],
+            "sim_name_suffix": "Reduced",
+        },
+        "reduction.branch_disparity_elec_tolerance": {
+            "apply_to": "common_params",
+            "values": [0.03, 0.07],
+            "sim_name_suffix": "BrDispTol",
+            "requires": {"do_reduce_cell": True},  # Only vary when reduction is enabled
+        },
+        "reduction.branch_distance_elec_tolerance": {
+            "apply_to": "common_params",
+            "values": [0.03, 0.07],
+            "sim_name_suffix": "BrDistTol",
+            "requires": {"do_reduce_cell": True},  # Only vary when reduction is enabled
+        },
+        # "reduction.series_constant_elec_tolerance": {
+        #     "apply_to": "common_params",
+        #     "values": [0.03, 0.07],
+        #     "sim_name_suffix": "SerConstTol",
+        #     "requires": {"do_reduce_cell": True},  # Only vary when reduction is enabled
+        # },
+        # "reduction.branch_mult_tolerance": {
+        #     "apply_to": "common_params",
+        #     "values": [1.5, 1.7],
+        #     "sim_name_suffix": "BrMultTol",
+        #     "requires": {"do_reduce_cell": True},  # Only vary when reduction is enabled
+        # },
+        # "reduction.seg_length_um": {
+        #     "apply_to": "common_params",
+        #     "values": [3, 10],
+        #     "sim_name_suffix": "SegLen",
+        #     "requires": {"do_reduce_cell": True},  # Only vary when reduction is enabled
+        # },
         # "nexus.syn_density": {
         #     "apply_to": "inh_syn_properties",
-        #     "values": [0.5, 0.11, 0.15, 0.2], # best was 0.11 not 0.22
+        #     "values": [0.22],#, 0.2],  # Min and max from original [0.05, 0.11, 0.15, 0.2]
         #     "sim_name_suffix": "NexInhDen",
         # },
         # "perisomatic.syn_density": {
         #     "apply_to": "inh_syn_properties",
-        #     "values": [0.15, 0.22, 0.3], # best was 0.22 not [0.11, 0.16]
+        #     "values": [0.6],#[0.15, 0.22],  # Min and max from original [0.15, 0.22, 0.275, 0.3]
         #     "sim_name_suffix": "PeriInhDen",
         # },
         # "distal_basal.syn_density": {
         #     "apply_to": "inh_syn_properties",
-        #     "values": [0.50, 0.11, 0.15], # best was 0.11 not 0.22
+        #     "values": [0.22],#[0.11, 0.22],  # Keep both (already only 2 values)
         #     "sim_name_suffix": "DistBasInhDen",
         # },
         # "tuft.syn_density": {
         #     "apply_to": "inh_syn_properties",
-        #     "values": [0.15, 0.22, 0.3, 0.4, 0.5], # best was 0.22 not 0.11
+        #     "values": [0.3],  # Min and max from original [0.1, 0.15, 0.2, 0.3, 0.4]
         #     "sim_name_suffix": "TuftInhDen",
         # },
+
         # "tuft_distant.syn_density": {
         #     "apply_to": "exc_syn_properties",
-        #     "values": [4,5,6, 3, 2, 1], # best was all [6, 7, 8] needs finer tuning
-        #     "sim_name_suffix": "TuftDistExcDen",
+        #     "values": [0.90*s for s in [0.3]],  # Min and max scales from (2:6:1)
+        #     "sim_name_suffix": "TuftExcScale",
+        #     "group": "tuft_exc",  # All with same group covary
+        # },
+        # "tuft_local_L23.syn_density": {
+        #     "apply_to": "exc_syn_properties",
+        #     "values": [0.10*0.25*s for s in [0.3]],  # Matched
+        #     "sim_name_suffix": "",
+        #     "group": "tuft_exc",  # Same group - will vary together
+        # },
+        # "tuft_local_L5.syn_density": {
+        #     "apply_to": "exc_syn_properties",
+        #     "values": [0.10*0.75*s for s in [0.3]],  # Matched
+        #     "sim_name_suffix": "",
+        #     "group": "tuft_exc",  # Same group - will vary together
+        # },
+
+        # "distal_basal_distant.syn_density": {
+        #     "apply_to": "exc_syn_properties",
+        #     "values": [0.10*s for s in [0.6]],  # Min and max scales from 1.5, 2.2, 2.7, 3.1
+        #     "sim_name_suffix": "",
+        #     "group": "basal_exc",  # All with same group covary
+        # },
+        # "distal_basal_local_L23.syn_density": {
+        #     "apply_to": "exc_syn_properties",
+        #     "values": [0.9*0.1*s for s in [0.6]],  # Matched
+        #     "sim_name_suffix": "",
+        #     "group": "basal_exc",  # Same group - will vary together
         # },
         # "distal_basal_local_L5.syn_density": {
         #     "apply_to": "exc_syn_properties",
-        #     "values": [2.75, 3, 3.25], # best was 2.16*0.9*0.9*1.75=3.1 not [2.5, 3.5]
-        #     "sim_name_suffix": "DistBasLocL5ExcDen",
+        #     "values": [0.9*0.9*s for s in [0.6]],  # Matched
+        #     "sim_name_suffix": "DistBasExcScale",
+        #     "group": "basal_exc",  # Same group - will vary together
         # },
+        # # # Vary inhibitory weights
+        # "tuft.initial_weight_distribution.params.mean": {
+        #     "apply_to": "inh_syn_properties",
+        #     "values": [0.003],  # MinS and max from [0.006, 0.012, 0.024]
+        #     "sim_name_suffix": "TuftInhWtMean",
+        # },
+        # # "trunk.initial_weight_distribution.params.mean": {
+        # #     "apply_to": "inh_syn_properties",
+        # #     "values": [0.006, 0.012],  # Min and max from [0.006, 0.012, 0.024]
+        # #     "sim_name_suffix": "TrunkInhWtMean",
+        # # },
     }
 
     # Background spike-train knobs for post-generation update

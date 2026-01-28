@@ -42,6 +42,69 @@ def _min_decimals_for_uniqueness(values: List[float], max_decimals: int = 6) -> 
     return max_decimals
 
 
+def filter_parameter_combinations(
+    combos: List[Dict[str, Any]],
+    params_to_vary: Dict[str, Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    """
+    Filter parameter combinations based on 'requires' constraints.
+    
+    If a parameter has a 'requires' field like {\"do_reduce_cell\": True},
+    then combinations where that requirement isn't met will have that
+    parameter set to its first/default value only.
+    
+    This prevents generating multiple variations of reduction parameters
+    when do_reduce_cell=False, for example.
+    """
+    filtered_combos: List[Dict[str, Any]] = []
+    seen_signatures: set = set()
+    
+    for combo in combos:
+        # Check each parameter for requirements
+        adjusted_combo = combo.copy()
+        
+        for key, value in combo.items():
+            if key == "sim_name_suffix":
+                continue
+                
+            spec = params_to_vary.get(key, {})
+            requirements = spec.get("requires", {})
+            
+            if requirements:
+                # Check if all requirements are met
+                requirements_met = True
+                for req_key, req_value in requirements.items():
+                    if combo.get(req_key) != req_value:
+                        requirements_met = False
+                        break
+                
+                # If requirements not met, use the first/default value
+                if not requirements_met:
+                    default_val = spec["values"][0]
+                    adjusted_combo[key] = default_val
+        
+        # Create a signature to detect duplicates after adjustment
+        sig_items = [(k, v) for k, v in sorted(adjusted_combo.items()) if k != "sim_name_suffix"]
+        signature = tuple(sig_items)
+        
+        if signature not in seen_signatures:
+            seen_signatures.add(signature)
+            # Rebuild suffix based on adjusted combo
+            suffix_parts = []
+            for key, value in adjusted_combo.items():
+                if key == "sim_name_suffix":
+                    continue
+                spec = params_to_vary.get(key, {})
+                name_suffix = spec.get("sim_name_suffix", "")
+                if name_suffix:
+                    suffix_parts.append(name_suffix + _format_value(value))
+            
+            adjusted_combo["sim_name_suffix"] = "_".join(suffix_parts)
+            filtered_combos.append(adjusted_combo)
+    
+    return filtered_combos
+
+
 def compute_suffix_decimals(
     params_to_vary: Dict[str, Dict[str, Any]],
     max_decimals: int = 6
@@ -457,6 +520,9 @@ def generate_simulations(
         if index_matched else
         get_parameter_combinations(params_to_vary, decimals_plan=decimals_plan)
     )
+    
+    # Filter combinations based on requirements (e.g., skip reduction params when do_reduce_cell=False)
+    varied_list = filter_parameter_combinations(varied_list, params_to_vary)
     # Decide the "modifier" dimension once (CI amps / EXC FR increases / or nothing)
     if common_params.get("CI_on", False):
         modifier_kind = "amp"
