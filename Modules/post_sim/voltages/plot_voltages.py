@@ -205,7 +205,7 @@ def main():
     # Curate set with colors and label suffixes:
     if not hasattr(parameters, "plot_voltages_apic_segment_dict") or OVERWRITE:  # fall back on default
         parameters.plot_voltages_apic_segment_dict = {
-            1647: {"color": "black",  "description": "[somtimes most Ca spikes]"},
+            1647: {"color": "black",  "description": "[sometimes most Ca spikes]"},
             1554: {"color": "green",  "description": "[used in Ben's nexus elec_distance calc]"},
             1547: {"color": "orange", "description": "[used in nexus elec_distance calc]"},
             1842: {"color": "red",    "description": "[right tuft dendrite (halfway)]"},
