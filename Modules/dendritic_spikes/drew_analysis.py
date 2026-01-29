@@ -111,6 +111,20 @@ def try_to_load_max_timestep(sim_dir):
         n_timesteps = 1500000  # default to 1500000 (150 seconds at dt=0.1 ms)
         return n_timesteps
 
+def safe_extract_sta(df, index_name, column='sta'):
+    """Safely extract STA data, returning NaN array if index doesn't exist."""
+    try:
+        return df.loc[index_name, column]
+    except KeyError:
+        print(f"Warning: Index '{index_name}' not found in STA data. Creating NaN array.")
+        # Create a NaN array with appropriate shape based on other data in df
+        if len(df) > 0:
+            sample_data = df.iloc[0][column]
+            return np.full_like(sample_data, np.nan)
+        else:
+            # Fallback: create a simple NaN array
+            return np.array([[np.nan]])
+
 def process_dspikes_relative_to_APs(sim_dict, step, sim_win, sta_step, sta_win):
     # process the simulation
     pois_sta = {}
@@ -121,11 +135,11 @@ def process_dspikes_relative_to_APs(sim_dict, step, sim_win, sta_step, sta_win):
     pois_sta['na_sta'] = sta_files(sim_dict['NaFile'], sim_dict['APFile'], 
                                 step, sim_win,sta_step,sta_win, agg_colname='Elec_distanceQ')
 
-    pois_sta['ca_a'] = pois_sta['ca_sta'].loc['apic','sta']
-    pois_sta['nmda_a'] = pois_sta['nmda_sta'].loc['apic','sta']
-    pois_sta['nmda_b'] = pois_sta['nmda_sta'].loc['dend','sta']
-    pois_sta['na_a'] = pois_sta['na_sta'].loc['apic','sta']
-    pois_sta['na_b'] = pois_sta['na_sta'].loc['dend','sta']
+    pois_sta['ca_a'] = safe_extract_sta(pois_sta['ca_sta'], 'apic')
+    pois_sta['nmda_a'] = safe_extract_sta(pois_sta['nmda_sta'], 'apic')
+    pois_sta['nmda_b'] = safe_extract_sta(pois_sta['nmda_sta'], 'dend')
+    pois_sta['na_a'] = safe_extract_sta(pois_sta['na_sta'], 'apic')
+    pois_sta['na_b'] = safe_extract_sta(pois_sta['na_sta'], 'dend')
     return pois_sta
 
 def process_dspikes_relative_to_Ca_spikes(sim_dict, step, sim_win, sta_step, sta_win):
@@ -173,10 +187,10 @@ def process_NMDA_CA_coordination(sim_dict, step, sim_win, sta_step, sta_win, sam
                                     step, sim_win,sta_step,sta_win, 
                                     agg_colname='Elec_distanceQ')
 
-    pois_canmda_sta['nmda_a'] = pois_canmda_sta['nmda_sta'].loc['apic','sta']
-    pois_canmda_sta['nmda_b'] = pois_canmda_sta['nmda_sta'].loc['dend','sta']
-    pois_canmda_sta['na_a'] = pois_canmda_sta['na_sta'].loc['apic','sta']
-    pois_canmda_sta['na_b'] = pois_canmda_sta['na_sta'].loc['dend','sta']
+    pois_canmda_sta['nmda_a'] = safe_extract_sta(pois_canmda_sta['nmda_sta'], 'apic')
+    pois_canmda_sta['nmda_b'] = safe_extract_sta(pois_canmda_sta['nmda_sta'], 'dend')
+    pois_canmda_sta['na_a'] = safe_extract_sta(pois_canmda_sta['na_sta'], 'apic')
+    pois_canmda_sta['na_b'] = safe_extract_sta(pois_canmda_sta['na_sta'], 'dend')
     return pois_canmda_sta
 
 def plot_NMDA_CA_coordination(pois_canmda_sta, pois_sta, figures_folder):
