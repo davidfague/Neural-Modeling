@@ -66,9 +66,9 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
 
     # === USER CONFIGURABLE (experiment-specific) ===
     skeleton_cell_type = 'Hay'  # "Hay" or "Allen"
-    SIM_SET_TITLE   = "testing_reduction_pair"  # descriptive name for this set of sims
+    SIM_SET_TITLE   = "lower_syn_conductances_increase_e_pas_to_-75_and_set_exc_fr_to_50mHz"  # descriptive name for this set of sims
     do_reduce_cell = False
-    sim_type        = "testing"  # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
+    sim_type        = "sta"  # one of: 'sta', 'fi_ci', 'fi_exc', 'check_synapses', 'tuning'
     load_previous_sim_params = False #True
     
     # Clustering mode configuration
@@ -86,23 +86,23 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     index_matched = False  # set False to do every params_to_vary combination, True to make each matching index a combination
     # analogous example (True, A:[1,2,3], B:[4,5,6]) = [1;4], [2;5], [3;6]
     params_to_vary = {  # set to {} for no parameter sweep
-        "do_reduce_cell": {
-            "apply_to": "common_params",
-            "values": [False, True],
-            "sim_name_suffix": "Reduced",
-        },
-        "reduction.branch_disparity_elec_tolerance": {
-            "apply_to": "common_params",
-            "values": [0.03, 0.07],
-            "sim_name_suffix": "BrDispTol",
-            "requires": {"do_reduce_cell": True},  # Only vary when reduction is enabled
-        },
-        "reduction.branch_distance_elec_tolerance": {
-            "apply_to": "common_params",
-            "values": [0.03, 0.07],
-            "sim_name_suffix": "BrDistTol",
-            "requires": {"do_reduce_cell": True},  # Only vary when reduction is enabled
-        },
+        # "do_reduce_cell": {
+        #     "apply_to": "common_params",
+        #     "values": [False, True],
+        #     "sim_name_suffix": "Reduced",
+        # },
+        # "reduction.branch_disparity_elec_tolerance": {
+        #     "apply_to": "common_params",
+        #     "values": [0.03, 0.07],
+        #     "sim_name_suffix": "BrDispTol",
+        #     "requires": {"do_reduce_cell": True},  # Only vary when reduction is enabled
+        # },
+        # "reduction.branch_distance_elec_tolerance": {
+        #     "apply_to": "common_params",
+        #     "values": [0.03, 0.07],
+        #     "sim_name_suffix": "BrDistTol",
+        #     "requires": {"do_reduce_cell": True},  # Only vary when reduction is enabled
+        # },
         # "reduction.series_constant_elec_tolerance": {
         #     "apply_to": "common_params",
         #     "values": [0.03, 0.07],
