@@ -14,7 +14,7 @@ proc biophys() {
 	  insert pas
 		cm = 1
 		Ra = 100
-		e_pas = -90
+		e_pas = -75 // originally: -90
 	}
 
   forsec $o1.somatic {
