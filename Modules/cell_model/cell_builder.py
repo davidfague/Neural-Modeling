@@ -17,7 +17,6 @@ from Modules.pre_sim.spike_generator import PoissonTrainGenerator
 from Modules.parameters.constants import SimulationParameters
 from Modules.cell_model.cell_model import CellModel
 # from presynaptic import PCBuilder  # UNUSED - clustering now handled in synapses_file.py
-from Modules.reduction.reduction import Reductor
 # from morphology_manipulator import MorphologyManipulator
 import pandas as pd
 import time
@@ -169,6 +168,7 @@ class CellBuilder:
 		self.logger.log_runtime("cell_builder", "replace_dend_with_CI", total_replace_time)
 
 		if self.parameters.merge_synapses:
+				from Modules.reduction.reduction import Reductor
 				self.logger.log("Merging synapses.")
 				# check if reductor exists (from optimize_nseg_by_lambda)
 				if 'reductor' not in locals():
