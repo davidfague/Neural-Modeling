@@ -43,7 +43,7 @@ PV2PN_syn_params = { # for int2pyr.mod
     "AlphaTmax_gaba": 1.52,
     "Beta_gaba": 0.14,
     "Cdur_gaba": 0.7254,
-    "gbar_gaba": 0.05,#1,
+    "gbar_gaba": 0.001,#1, # was 0.05
     "Erev_gaba": -75,
     "initW": 1.3239, #1
     "Wmax": 3,
@@ -67,7 +67,7 @@ SOM2PN_syn_params = { # for int2pyr.mod
     "AlphaTmax_gaba": 1.52,
     "Beta_gaba": 0.14,
     "Cdur_gaba": 0.7254,
-    "gbar_gaba": 0.006,
+    "gbar_gaba": 0.001, # was 0.006
     "Erev_gaba": -75,
     "initW": 1.4, #1,
     "Wmax": 3,
@@ -91,12 +91,12 @@ PN2PN_syn_params = { # for pyr2pyr.mod
     "AlphaTmax_ampa": 5,
     "Beta_ampa": 0.5882,
     "Cdur_ampa": .2,
-    "gbar_ampa": 0.00159,#0.001,
+    "gbar_ampa": 0.00075,#0.00159,
     "Erev_ampa": 0,
     "AlphaTmax_nmda": 3.4483,
     "Beta_nmda": 0.0233,
     "Cdur_nmda": 0.29,
-    "gbar_nmda": 0.001868,#0.0005,
+    "gbar_nmda": 0.00025, #0.001868,#0.0005,
     "Erev_nmda": 0,
     "initW": 0.4375,#5,
     "delay": 0.9,

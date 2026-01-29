@@ -1,5 +1,10 @@
 from dataclasses import dataclass, field
 from Modules.cell_model.synapse import CS2CP_syn_params, CP2CP_syn_params, FSI_syn_params, LTS_syn_params, PV2PN_syn_params, SOM2PN_syn_params, PN2PN_syn_params
+from Modules.parameters.distributions import (
+	norm_dist, log_norm_dist, precompute_bin_means, binned_log_norm_dist,
+	create_binned_version, exp_levy_dist, exp_levy_params_from_mean,
+	calibrate_exp_levy_params, gamma_dist, P_release_dist
+)
 
 import numpy as np
 import scipy.stats as st
@@ -29,6 +34,7 @@ class SimulationParameters:
 
 	us_allen_cell: bool = False # if true, use the allen cell
 
+	# determine if synapse densities are distributed by surface area or length
 	segment_measurement_for_probabilities: str = 'length' # 'length' or 'surface_area' @TODO: remove parameters.use_SA_probs. cannot remove for original pipeline's sake tho.
 
 	# Random state
@@ -60,7 +66,7 @@ class SimulationParameters:
 	# num_soma_inh_syns: int = 450 # 150 PCs * ~3 divergence
 
 	# exc gmax distributions
-	bin_exc_gmax: bool = False # controls if the exc gmax values should be limited on the values they can take (helps with merging synapses)
+	bin_exc_gmax: bool = False # controls if the exc gmax values should be limited on the values they can take (helps with merging synapses if they have same gmax)
 
 	# Density/Number of synapses
 	exc_use_density: bool = True # NOTE: setting to false uses "exc_syn_number" instead of "exc_synaptic_density"
@@ -78,8 +84,8 @@ class SimulationParameters:
 	exc_syn_properties: dict = field(default_factory=lambda: { 
 		'tuft_local_L23': {
 			'sec_type': 'tuft',
-			'syn_density': 2.16*0.10*0.66*3.0, # 10% of inputs are local and 2/3 local are L23 # reduce to 20% to prevent constant depolarization
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.10*0.66, # 10% of inputs are local and 2/3 local are L23
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 3333333},
@@ -89,8 +95,8 @@ class SimulationParameters:
 			},
 		'tuft_local_L5': {
 			'sec_type': 'tuft',
-			'syn_density': 2.16*0.10*0.33*3.0, #10% are local and 1/3 local are L5 # reduce to 20% to prevent constant depolarization
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.10*0.33, #10% are local and 1/3 local are L5
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 3333333},
@@ -100,8 +106,8 @@ class SimulationParameters:
 			},
 		'tuft_distant': {
 			'sec_type': 'tuft',
-			'syn_density': 2.16*0.90*3.0, # 90% are distant # reduce to 20% to prevent constant depolarization
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.90, # 90% are distant
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 3333333},
@@ -111,8 +117,8 @@ class SimulationParameters:
 			},
 		'nexus_local_L23':{
 			'sec_type': 'nexus',
-			'syn_density': 2.16*0.10*0.25*0.25, #  10% are local and 1/4 local are L23 # decrease to 5% to encourage propagation from tuft instead of spontaneous Ca spike
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.10*0.25, #  10% are local and 1/4 local are L23
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 444444444},
@@ -122,8 +128,8 @@ class SimulationParameters:
 			},
 		'nexus_local_L5':{
 			'sec_type': 'nexus',
-			'syn_density': 2.16*0.10*0.75*0.25, #  10% are local and 3/4 local are L5 # decrease to 5% to encourage propagation from tuft instead of spontaneous Ca spike
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.10*0.75, #  10% are local and 3/4 local are L5
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 444444444},
@@ -133,8 +139,8 @@ class SimulationParameters:
 			},
 		'nexus_distant':{
 			'sec_type': 'nexus',
-			'syn_density': 2.16*0.90*0.25, # 90% are distant # decrease to 5% to encourage propagation from tuft instead of spontaneous Ca spike.
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.90, # 90% are distant
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 444444444},
@@ -144,8 +150,8 @@ class SimulationParameters:
 			},
 		'trunk_distant': {
 			'sec_type': 'trunk',
-			'syn_density': 2.16*0.25*0.15, # 25% are distant # decrease to 30% to encourage activity propagation through instead of spontaneous activity within.
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.25, # 25% are distant
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 111111},
@@ -155,8 +161,8 @@ class SimulationParameters:
 			},
 		'trunk_local_L5': {
 			'sec_type': 'trunk',
-			'syn_density': 2.16*0.75*0.8*0.15, # 75% are local and 4/5 local are L5 # decrease to 30% to encourage activity propagation through instead of spontaneous activity within.
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.75*0.8, # 75% are local and 4/5 local are L5
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 111111},
@@ -166,8 +172,8 @@ class SimulationParameters:
 			},
 		'trunk_local_L23': {
 			'sec_type': 'trunk',
-			'syn_density': 2.16*0.75*0.2*0.15, #  75% are local and 1/5 local are L23 # decrease to 30% to encourage activity propagation through instead of spontaneous activity within
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.75*0.2, #  75% are local and 1/5 local are L23
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 111111},
@@ -177,8 +183,8 @@ class SimulationParameters:
 			},
 		'oblique_distant': {
 			'sec_type': 'oblique',
-			'syn_density': 2.16*0.35*0.25, # 35% are distant # decrease to 0.3 to reduce NMDA spikes in obliques
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.35, # 35% are distant
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 222222},
@@ -188,8 +194,8 @@ class SimulationParameters:
 			},
 		'oblique_local_L23': {
 			'sec_type': 'oblique',
-			'syn_density': 2.16*0.65*0.25*0.25, # 65% are local and 1/4 local are L23 # decrease to 0.3 to reduce NMDA spikes in obliques
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.65*0.25, # 65% are local and 1/4 local are L23
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 222222},
@@ -199,8 +205,8 @@ class SimulationParameters:
 			},
 		'oblique_local_L5': {
 			'sec_type': 'oblique',
-			'syn_density': 2.16*0.65*0.75*0.25, # 35% are local and 3/4 local are L5 # decrease to 0.3 to reduce NMDA spikes in obliques
-			'initial_weight_distribution': {'params': {'mean': 0.42, 'std': 0.9675, 'clip': (0,1.5), 'scalar': 1}},
+			'syn_density': 2.16*0.65*0.75, # 65% are local and 3/4 local are L5
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 222222},
@@ -210,8 +216,8 @@ class SimulationParameters:
 			},
 		'distal_basal_local_L5': {
 			'sec_type': 'distal_basal',
-			'syn_density': 2.16*0.9*0.9*1.75, # 90% are local, 90% of local are L5 # decrease to 0.95 to control soma firing rate.
-			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04, 'clip': (0,5), 'scalar': 1}},
+			'syn_density': 2.16*0.9*0.9, # 90% are local, 90% of local are L5
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 555555555},
@@ -221,8 +227,8 @@ class SimulationParameters:
 			},
 		'distal_basal_local_L23': {
 			'sec_type': 'distal_basal',
-			'syn_density': 2.16*0.9*0.1*1.75, # 90% are local, 10% of local are L23 # decrease to 0.95 to control soma firing rate.
-			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04, 'clip': (0,5), 'scalar': 1}},
+			'syn_density': 2.16*0.9*0.1, # 90% are local, 10% of local are L23
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 555555555},
@@ -232,8 +238,8 @@ class SimulationParameters:
 			},
 		'distal_basal_distant': {
 			'sec_type': 'distal_basal',
-			'syn_density': 2.16*0.10*1.75, # 10% are distant # decrease to 0.95 to control soma firing rate.
-			'initial_weight_distribution': {'params': {'mean': 0.396, 'std': 1.04, 'clip': (0,5), 'scalar': 1}},
+			'syn_density': 2.16*0.10, # 10% are distant
+			'initial_weight_distribution': {'function': log_norm_dist, 'params': {'mean': 0.42, 'std': 0.15, 'clip': (0,1), 'scalar': 1}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.53, 'std': 0.22}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 555555555},
@@ -248,8 +254,8 @@ class SimulationParameters:
 	inh_syn_properties: dict = field(default_factory=lambda: {
 		'tuft': {
 			'sec_type': 'tuft', # section type to place synapses on
-			'syn_density': 0.22*1.0,
-			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
+			'syn_density': 0.22,
+			'initial_weight_distribution': {'function': norm_dist, 'params': {'mean': 0.5, 'std': 0.085, 'clip': [0,1]}},#*0.2*0.66*0.1},#0.08474*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 11111111},
@@ -267,8 +273,8 @@ class SimulationParameters:
 			},
 		'nexus': {
 			'sec_type': 'nexus',
-			'syn_density': 0.22*0.5,
-			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#0.08474*0.2*0.66*0.1},
+			'syn_density': 0.22,
+			'initial_weight_distribution': {'function': norm_dist, 'params': {'mean': 0.5, 'std': 0.085, 'clip': [0,1]}},#0.08474*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 22222222},
@@ -287,7 +293,7 @@ class SimulationParameters:
 		'trunk': {
 			'sec_type': 'trunk',
 			'syn_density': 0.22,
-			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},
+			'initial_weight_distribution': {'function': norm_dist, 'params': {'mean': 0.5, 'std': 0.085, 'clip': [0,1]}},#*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 88888888},
@@ -306,7 +312,7 @@ class SimulationParameters:
 		'oblique': {
 			'sec_type': 'oblique',
 			'syn_density': 0.22, 
-			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#*0.2*0.66*0.1},
+			'initial_weight_distribution': {'function': norm_dist, 'params': {'mean': 0.5, 'std': 0.085, 'clip': [0,1]}},#*0.2*0.66*0.1},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.3, 'std': 0.08}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 99999999},
@@ -324,8 +330,8 @@ class SimulationParameters:
 			},
 		'distal_basal': {
 			'sec_type': 'distal_basal',
-			'syn_density': 0.22*0.5,#*1.5,
-			'initial_weight_distribution': {'params': {'mean': 1.87, 'std': 0.08474, 'clip': [0,5]}},#0.08474*0.916*0.5*.16},
+			'syn_density': 0.22,#*1.5,
+			'initial_weight_distribution': {'function': norm_dist, 'params': {'mean': 0.5, 'std': 0.085, 'clip': [0,1]}},#0.08474*0.916*0.5*.16},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.72, 'std': 0.1}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 111333311},
@@ -343,8 +349,8 @@ class SimulationParameters:
 			},
 		'perisomatic': {
 			'sec_type':'perisomatic',
-			'syn_density': 0.22,
-			'initial_weight_distribution': {'params': {'mean': 4.6, 'std':  0.175, 'clip': [0,5]}},
+			'syn_density': 0.8,
+			'initial_weight_distribution': {'function': norm_dist, 'params': {'mean': 0.75, 'std':  0.25, 'clip': [0,2]}},
 			'release_probability_distribution': {'function': P_release_dist, 'params': {'mean': 0.88, 'std': 0.05}},
 			'mean_firing_rate_distribution': {}, # check __post_init__
 			'seed': {'synapses': 777777777},
@@ -362,7 +368,7 @@ class SimulationParameters:
 			},
 	})
 
-	# Clustering parameters (example, see modules/clusters_global_l5_fg.py.)
+	# Clustering parameters (example, see modules/clustering/clusters.py for actual implementation)
 	exc_clustering: dict = field(default_factory=lambda: {
 		# 'tuft': {
 		# 	'functional_groups': [
@@ -446,7 +452,7 @@ class SimulationParameters:
 	exc_syn_mod: str = 'pyr2pyr'#'AMPA_NMDA_STP'
 	inh_syn_mod: str = 'int2pyr'#'GABA_AB_STP'
  
-	synaptic_vars_to_record =['iampa', 'inmda']#, 'g_NMDA', 'g_AMPA', 'g_GABAA', 'g_GABAB']# listed are for pyr2pyr.	for AMPA_NMDA: ["i_AMPA", "i_NMDA"]
+	synaptic_vars_to_record =['iampa', 'inmda', 'igaba']#, 'g_NMDA', 'g_AMPA', 'g_GABAA', 'g_GABAB']# listed are for pyr2pyr.	for AMPA_NMDA: ["i_AMPA", "i_NMDA"]
 
 	# Firing rate distributions
 	use_levy_dist_for_exc: bool = True
@@ -478,7 +484,7 @@ class SimulationParameters:
 
 #### Reduction
 	do_reduce_cell: bool = True
-	reduction: dict = field(default_factory=lambda: {
+	reduction: dict = field(default_factory=lambda: { # see https:// for explaination of parameters
 		'branch_disparity_elec_tolerance': 0.05, 
 		'branch_distance_elec_tolerance': 0.05,
 		'series_constant_elec_tolerance': 0.05,
@@ -579,32 +585,31 @@ class SimulationParameters:
 		else:
 			raise(NotImplementedError(f"desired {self.inh_syn_mod} syn_params not specified"))
 		
-		# initW distributions
+		# initW distributions - apply binning if requested
 		# exc
 		if self.bin_exc_gmax:
 			for input_source, syn_props in self.exc_syn_properties.items():
-				self.exc_syn_properties[input_source]['initial_weight_distribution']['function'] = binned_log_norm_dist
-		else:
-			for input_source, syn_props in self.exc_syn_properties.items():
-				self.exc_syn_properties[input_source]['initial_weight_distribution']['function'] = log_norm_dist
-		# inh
-		for input_source in self.inh_syn_properties.keys():
-			self.inh_syn_properties[input_source]['initial_weight_distribution']['function'] = norm_dist
+				base_func = syn_props['initial_weight_distribution']['function']
+				params = syn_props['initial_weight_distribution']['params']
+				self.exc_syn_properties[input_source]['initial_weight_distribution']['function'] = create_binned_version(base_func, params)
+		# inh - binning not currently applied to inhibitory, but could be added here in the future
 
 		# mean_fr distributions
 		# exc
 		if self.use_levy_dist_for_exc:
 			for input_source, syn_props in self.exc_syn_properties.items():
 				if 'L5' in input_source: # different mean FRs for L5 PNs
-					levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*0.25*2.5*0.25, #*1.5,
-					'scale': 0.44} # baseline activity (1-3 Hz. 2.2 Hz mean mean firing rate)
-					# levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*2, 'scale': 0.44}  # task activity (5-20 Hz. 11.5 Hz mean mean firing rate std 7.5 Hz exponential.)
+					result = calibrate_exp_levy_params(target_mean=0.050, target_std=0.050, alpha=1.37, beta=-1.00, clip=(0,0.5))
+					levy_params = {'alpha': result['alpha'], 'beta': result['beta'], 
+					              'loc': result['loc'], 'scale': result['scale'], 'clip': result['clip']}
 				elif 'L23' in input_source: # different mean FRs for L23 PNs
-					levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*0.1*1.5*1.5*0.25, 'scale': 0.44}# baseline activity (0.5-2Hz. ~1.2 Hz mean mean firing rate) (actually mean of 1.8 couldn't get to go lower.)
-					# levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*1, 'scale': 0.44}  # task activity (1-10 Hz. ~4.5 Hz mean mean firing rate. 3 Hz std)
+					result = calibrate_exp_levy_params(target_mean=0.050, target_std=0.050, alpha=1.37, beta=-1.00, clip=(0,0.5))
+					levy_params = {'alpha': result['alpha'], 'beta': result['beta'], 
+					              'loc': result['loc'], 'scale': result['scale'], 'clip': result['clip']}
 				elif 'distant' in input_source: # distant inputs (same as local L5 for now.)
-					levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*0.25*0.25, 'scale': 0.44} # baseline activity (1-3 Hz. 2.2 Hz mean mean firing rate)
-					# levy_params = {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*2, 'scale': 0.44}  # task activity (5-20 Hz. 11.5 Hz mean mean firing rate std 7.5 Hz exponential.)
+					result = calibrate_exp_levy_params(target_mean=0.050, target_std=0.050, alpha=1.37, beta=-1.00, clip=(0,0.5))
+					levy_params = {'alpha': result['alpha'], 'beta': result['beta'], 
+					              'loc': result['loc'], 'scale': result['scale'], 'clip': result['clip']}
 				else: # other input sources
 					raise(NotImplementedError(f"desired {input_source} input source not specified for Levy distribution mean firing rate."))
 				# assign the parameters to the mean firing rate distribution
@@ -641,61 +646,3 @@ class HayParameters(SimulationParameters):
 		# 'ica_Ca_HVA', 
 		# 'ica_Ca_LVAst'
 		]
-
-def norm_dist(mean, std, size, clip): # inh
-  val = np.random.normal(mean, std, size)
-  s = float(np.clip(val, clip[0], clip[1]))
-  return s
-
-
-def log_norm_dist(mean, std, scalar, size, clip):
-	val = np.random.lognormal(mean, std, size)
-	s = scalar * float(np.clip(val, clip[0], clip[1]))
-	return s
-
-def precompute_bin_means(gmax_mean, gmax_std, gmax_scalar, clip, large_sample_size=10000): # should make this work for any function so we can use for norm_dist, too.
-    # Generate a large number of log-normal distributed values
-    val = np.random.lognormal(gmax_mean, gmax_std, large_sample_size)
-    s = gmax_scalar * np.clip(val, clip[0], clip[1])
-
-    # Determine bins and compute the mean for each bin
-    num_bins = 10
-    bin_edges = np.percentile(s, np.linspace(0, 100, num_bins + 1))
-    bin_means = [(bin_edges[i] + bin_edges[i+1]) / 2 for i in range(num_bins)]
-
-    return bin_means
-
-def binned_log_norm_dist(gmax_mean, gmax_std, gmax_scalar, size, clip, bin_means):
-    # Generate log-normal distributed values
-    val = np.random.lognormal(gmax_mean, gmax_std, size)
-    # Clip the values
-    s = gmax_scalar * np.clip(val, clip[0], clip[1])
-    # Assign each value to the nearest bin mean
-    binned_values = np.zeros_like(s)
-    for i in range(size):
-        # Find the bin the value belongs to
-        bin_index = np.digitize(s[i], bin_means) - 1
-        # Assign the value to the bin mean
-        binned_values[i] = bin_means[bin_index]
-    return binned_values
-
-# Firing rate distribution
-def exp_levy_dist(alpha = 1.37, beta = -1.00, loc = 0.92, scale = 0.44, size = 1):
-	return np.exp(st.levy_stable.rvs(alpha = alpha, beta = beta, loc = loc, scale = scale, size = size)) + 1e-15
-
-def gamma_dist(mean, size = 1):
-	shape = 5
-	scale = mean / shape
-	return np.random.gamma(shape, scale, size) + 1e-15
-
-# Release probability distribution
-def P_release_dist(P_mean, P_std, size):
-	val = np.random.normal(P_mean, P_std, size)
-	s = float(np.clip(val, 0, 1))
-	return s
-
-# Release probability distribution
-def P_release_dist(mean, std, size):
-	val = np.random.normal(mean, std, size)
-	s = float(np.clip(val, 0, 1))
-	return s
