@@ -252,7 +252,7 @@ class PreSimSynapseGenerator:
             if len(syn_params_choices['choices']) == 1:
                 syn_params_made_choice = syn_params_choices['choices'][0]
             elif syn_params_choices['probs'] == 'perisomatic_distance':
-                syn_params_made_choice = syn_params_choices['choices'][1] if segment['Distance'].values[0] > 100 else syn_params_choices['choices'][0]
+                syn_params_made_choice = syn_params_choices['choices'][1] if segment['Distance'].values[0] > 100 else syn_params_choices['choices'][0] # perisomatic distance
             else:
                 syn_params_made_choice = self.random_state.choice(syn_params_choices['choices'], p=syn_params_choices['probs']) # choose between CS2CP and CP2CP if it is AMPA. pyr2pyr will not be a tuple or list.
 

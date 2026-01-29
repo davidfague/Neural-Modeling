@@ -116,6 +116,21 @@ class CellBuilder:
 
 		cell = CellModel(skeleton_cell, random_state, neuron_r, self.logger, self.parameters) 
 
+		# merge synapses/optimize nseg by lambda
+		if self.parameters.optimize_nseg_by_lambda and self.parameters.set_nseg_by_length:
+			raise ValueError("Cannot set nseg by length and optimize nseg by lambda at the same time. Please choose one of these options in the parameters.")
+		elif self.parameters.set_nseg_by_length:
+			self.logger.log("Setting nseg by length.")
+			for sec in cell.all:
+				if sec not in cell.soma:
+					sec.nseg = max(1, int(math.ceil(sec.L / self.parameters.microns_per_segment)))
+		elif self.parameters.optimize_nseg_by_lambda:
+				self.logger.log("Updating nseg using lambda.")
+				if 'reductor' not in locals():
+					reductor = Reductor(logger = self.logger)
+				reductor.update_model_nseg_using_lambda(cell, segs_per_lambda=self.parameters.segs_per_lambda)
+		self.logger.log(f"Total number of segments: {sum([sec.nseg for sec in cell.all])}")
+
 		if self.parameters.do_reduce_cell:
 			sys.path.append("../reduce-cell-modeling") # clone https://github.com/cyneuro/reduce-cell-modeling.git into this repo
 			from reduction_commands import reduce_cell
@@ -151,22 +166,6 @@ class CellBuilder:
 		replace_end_time = time.time()
 		total_replace_time = replace_end_time - replace_start_time
 		self.logger.log_runtime("cell_builder", "replace_dend_with_CI", total_replace_time)
-		
-		# merge synapses/optimize nseg by lambda
-		if self.parameters.optimize_nseg_by_lambda and self.parameters.set_nseg_by_length:
-			raise ValueError("Cannot set nseg by length and optimize nseg by lambda at the same time. Please choose one of these options in the parameters.")
-		elif self.parameters.set_nseg_by_length:
-			self.logger.log("Setting nseg by length.")
-			for sec in cell.all:
-				if sec not in cell.soma:
-					sec.nseg = max(1, int(math.ceil(sec.L / self.parameters.microns_per_segment)))
-		elif self.parameters.optimize_nseg_by_lambda:
-				from Modules.reduction.reduction import Reductor
-				self.logger.log("Updating nseg using lambda.")
-				if 'reductor' not in locals():
-					reductor = Reductor(logger = self.logger)
-				reductor.update_model_nseg_using_lambda(cell, segs_per_lambda=self.parameters.segs_per_lambda)
-		self.logger.log(f"Total number of segments: {sum([sec.nseg for sec in cell.all])}")
 
 		if self.parameters.merge_synapses:
 				from Modules.reduction.reduction import Reductor
