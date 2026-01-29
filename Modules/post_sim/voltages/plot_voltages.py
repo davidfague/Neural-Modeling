@@ -111,7 +111,7 @@ def plot_mean_voltage(seg_data, sim_data, sim_directory, specific_time_dir):
     # std
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
-    fig = plot(seg_data,  seg_data['std_v'], ax, clims = [-80, -10], radius_scale=1.5)
+    fig = plot(seg_data,  seg_data['std_v'], ax, clims = [0, 40], radius_scale=1.5)
     ax.clabel('std voltage')
     plt.savefig(os.path.join(specific_time_dir, 'std_v_morphology'))
     plt.close(fig)
@@ -216,6 +216,12 @@ def main():
             1760: {"color": "g",      "description": ""},
             1340: {"color": "m",      "description": ""},
         }
+    # use mapping if reduction was done
+    # if parameters.do_reduce_cell:
+    #     mapping = read_mapping_file(sim_dir)
+    #     parameteres.plot_voltages_apic_segment_dict = {
+    #         mapping[k]: v for k, v in parameters.plot_voltages_apic_segment_dict.items() if k in mapping
+    #     }
     apic_df = seg_data[seg_data["Type"] == "apic"]
     apic_ids_available = set(map(int, apic_df.segmentID.to_numpy(dtype=int)))
     apic_ids = filter_existing(list(parameters.plot_voltages_apic_segment_dict.keys()), apic_ids_available)
