@@ -16,6 +16,17 @@ def norm_dist(mean, std, size, clip):
 	s = float(np.clip(val, clip[0], clip[1]))
 	return s
 
+def custom_gamma_dist(a, mean, std, size, clip, scalar): # rename variables in case analysis assumes the names "mean, std" and add clipping
+	"""Custom gamma distribution with clipping."""
+	val = st.gamma.rvs(a=a, loc=mean, scale=std, size=size)
+	s = float(np.clip(scalar * val, clip[0], clip[1]))
+	return s
+
+def custom_weibull_dist(c, mean, std, size, clip, scalar): # rename variables in case analysis assumes the names "mean, std" and add clipping
+	"""Custom Weibull distribution with clipping."""
+	val = st.weibull_min.rvs(c=c, loc=mean, scale=std, size=size)
+	s = float(np.clip(scalar * val, clip[0], clip[1]))
+	return s
 
 def log_norm_dist(mean, std, scalar, size, clip):
 	"""
