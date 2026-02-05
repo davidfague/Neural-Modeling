@@ -81,6 +81,70 @@ class SimulationParameters:
 	# exc_mean_fr_distribution_function: str = 'levy' # 'levy' or 'gamma' # TODO: use string to change. NOTIMPLEMENTED
 	#NOTE: also see __post_init__ for mean_fr distriubtions, initW functions, and synapse
 	# TODO: merge exc_syn_properties and inh_syn_properties into one dictionary with prop syn_type=[]'exc'|'inh']
+	
+	# Firing rate distribution parameters
+	use_levy_dist_for_exc: bool = True
+	inh_proximal_mean_fr: float = 0.01 # 9.75#10
+	inh_proximal_std_fr: float = 0.005 # 4
+	inh_distal_mean_fr: float = 0.01
+	inh_distal_std_fr: float = 0.005
+	exc_mean_fr: float = 4.43# only for use_levy_dist_for_exc = False
+	exc_std_fr: float = 4.3# only for use_levy_dist_for_exc = False
+
+	exc_syn_firing_rate_dist: dict = field(default_factory=lambda: { # only used if use_levy_dist_for_exc = True
+		'target_mean': 1,
+		'target_std': None,  # if None, calculated as target_mean * std_multiplier
+		'std_multiplier': 0.5,  # std = mean * std_multiplier (used when target_std is None)
+		'alpha': 1.37,
+		'beta': -1.00,
+		'clip_max_multiplier': 2.0  # clip_max = target_mean * multiplier
+	})
+	task_synapses_config: dict = field(default_factory=lambda: {
+		'tuft_exc_task': { # potentially repeat for nexus_exc_task, trunk_exc_task, oblique_exc_task, distal_basal_exc_task
+		'syn_type': 'exc',
+		'num_pcs': 3, # number of presynaptic cells to turn into task-related synapses
+		'sec_type': 'tuft',
+		'spike_train_mode': 'pink_noise',  # 
+		'seed': 123456,
+		'firing_rate': 4.5,  # Hz
+		# 'firing_rate_distribution': {'function': exp_levy_dist, 'params': {'alpha': 1.37, 'beta': -1.00, 'loc': 0.92*1, 'scale': 0.44}}  # task activity (1-10 Hz. ~4.5 Hz mean mean firing rate. 3 Hz std)
+		},
+		'tuft_inh_task': { # potentially repeat for nexus_inh_task, trunk_inh_task, oblique_inh_task, distal_basal_inh_task
+		'syn_type': 'inh',
+		'num_pcs': 3, # number of presynaptic cells to turn into task-related synapses
+		'sec_type': 'tuft',
+		'spike_train_mode': ['delay','rhythmic'],#'delay',
+		'rhythmic_frequency': 16, # frequency of rhythmic modulation (hz)
+		'rhythmic_depth': 0.15, # firing rate timecourse amplitude = depth * mean.
+		'delay_config': {
+			'ref_synapse_type': 'exc',
+			'ref_sec_type': 'all',    # which sec_type in exc to delay
+			'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
+			'delay_shift': 4           # delay in samples (ms)
+		},
+		'seed': 123456,
+		'firing_rate': 5.7,  # Hz
+		# 'firing_rate_distribution': {'function': st.truncnorm.rvs, 'params': {'a': (0 - 3.9) / 4.9, 'b': (100 - 3.9) / 4.9, 'loc': 3.9, 'scale': 4.9}}  # task activity (1-10 Hz. ~4.5 Hz mean mean firing rate. 3 Hz std)
+		}, #'params': {'a': (0 - mean_fr) / std_fr, 'b': (100 - mean_fr) / std_fr, 'loc': mean_fr, 'scale': std_fr}}
+		'perisomatic_inh_task': {
+		'syn_type': 'inh',
+		'num_pcs': 3, # number of presynaptic cells to turn into task-related synapses
+		'sec_type': 'perisomatic',
+		'synapse_type': 'inh',
+		'spike_train_mode': ['delay', 'rhythmic'],
+		'rhythmic_frequency': 64, # frequency of rhythmic modulation (hz)
+		'rhythmic_depth': 0.15, # firing rate timecourse amplitude = depth * mean.
+		'delay_config': {
+			'ref_synapse_type': 'exc',
+			'ref_sec_type': 'all',    # which sec_type in exc to delay
+			'ref_fg_id': 'all',            # which FG (use integer, or None for all/first)
+			'delay_shift': 4           # delay in samples (ms)
+		},
+		'seed': 123456,
+		'firing_rate': 20,  # Hz
+		# 'firing_rate_distribution': {'function': st.truncnorm.rvs, 'params': {'a': (0 - 16.9) / 14.3, 'b': (100 - 16.9) / 14.3, 'loc': 16.9, 'scale': 14.3}}   # task activity (1-10 Hz. ~4.5 Hz mean mean firing rate. 3 Hz std)
+		}
+	})
 	exc_syn_properties: dict = field(default_factory=lambda: { 
 		'tuft_local_L23': {
 			'sec_type': 'tuft',
@@ -453,15 +517,6 @@ class SimulationParameters:
 	inh_syn_mod: str = 'int2pyr'#'GABA_AB_STP'
  
 	synaptic_vars_to_record =['iampa', 'inmda', 'igaba']#, 'g_NMDA', 'g_AMPA', 'g_GABAA', 'g_GABAB']# listed are for pyr2pyr.	for AMPA_NMDA: ["i_AMPA", "i_NMDA"]
-
-	# Firing rate distributions
-	use_levy_dist_for_exc: bool = True
-	inh_proximal_mean_fr: float = 16.9 # 9.75#10
-	inh_proximal_std_fr: float = 14.3 # 4
-	inh_distal_mean_fr: float = 3.9
-	inh_distal_std_fr: float = 4.9
-	exc_mean_fr: float = 4.43#6.7967 #4.43
-	exc_std_fr: float = 4.3#3.4503#2.9
 
   	# exc FR FR/FR curve
 	exc_constant_fr: bool = False # exc synapses will have firing rate of 0 + self.parameters.excFR_increase

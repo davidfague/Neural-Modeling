@@ -467,6 +467,236 @@ class PreSimSynapseGenerator:
 
         return synapses
 
+    def convert_pcs_to_task_synapses(self, synapses: pd.DataFrame, parameters) -> pd.DataFrame:
+        """
+        Convert presynaptic cell assemblies to task-related synapses based on task_synapses_config.
+        
+        For each task configuration, selects num_pcs presynaptic cells from the specified 
+        sec_type and syn_type, and reassigns them to a special task functional group.
+        
+        Args:
+            synapses: DataFrame with functional_group and presynaptic_cell already assigned
+            parameters: SimulationParameters object containing task_synapses_config
+            
+        Returns:
+            Modified synapses DataFrame with task synapses reassigned
+        """
+        if not hasattr(parameters, 'task_synapses_config'):
+            return synapses
+            
+        task_config = parameters.task_synapses_config
+        
+        for task_name, task_specs in task_config.items():
+            # Skip if task synapses already exist (to avoid re-conversion on regeneration)
+            if (synapses['input_source'] == task_name).any():
+                self.logger.log(f"Task synapses for {task_name} already exist, skipping conversion")
+                continue
+                
+            syn_type = task_specs['syn_type']
+            sec_type = task_specs['sec_type']
+            num_pcs = task_specs['num_pcs']
+            seed = task_specs.get('seed', 123456)
+            
+            # Find all synapses of the specified type and section
+            # Match synapses that have the synapse type and section type in their name
+            syn_mask = (
+                synapses['name'].str.contains(syn_type, na=False) &
+                synapses['name'].str.contains(sec_type, na=False)
+            )
+            
+            candidate_synapses = synapses[syn_mask]
+            
+            if len(candidate_synapses) == 0:
+                self.logger.log(f"Warning: No synapses found for task {task_name} "
+                               f"(syn_type={syn_type}, sec_type={sec_type})")
+                continue
+            
+            # Get unique presynaptic cells from these synapses
+            unique_pcs = candidate_synapses['presynaptic_cell'].unique()
+            # Filter out background synapses (pc == -1)
+            unique_pcs = unique_pcs[unique_pcs >= 0]
+            
+            if len(unique_pcs) == 0:
+                self.logger.log(f"Warning: No presynaptic cells found for task {task_name}")
+                continue
+                
+            if len(unique_pcs) < num_pcs:
+                self.logger.log(f"Warning: Only {len(unique_pcs)} PCs available for task {task_name}, "
+                               f"requested {num_pcs}. Using all available.")
+                num_pcs = len(unique_pcs)
+            
+            # Randomly select num_pcs presynaptic cells
+            rng = np.random.RandomState(seed)
+            selected_pcs = rng.choice(unique_pcs, size=num_pcs, replace=False)
+            
+            self.logger.log(f"Converting {num_pcs} presynaptic cells to task synapses for {task_name}: "
+                           f"original PCs {selected_pcs}")
+            
+            # Mark synapses from selected PCs as task synapses
+            # Use local indexing: FG ID = 0 (single FG per task), PC IDs numbered 0, 1, 2, ...
+            # This is consistent with regular synapses where FG/PC IDs are scoped to input_source
+            task_fg_id = 0  # Single functional group for this task input_source
+            
+            for new_pc_id, original_pc_id in enumerate(selected_pcs):
+                task_syn_mask = syn_mask & (synapses['presynaptic_cell'] == original_pc_id)
+                # Reassign to task input_source
+                synapses.loc[task_syn_mask, 'input_source'] = task_name
+                # Update functional group to task FG (locally scoped)
+                synapses.loc[task_syn_mask, 'functional_group'] = task_fg_id
+                # Renumber presynaptic_cell ID to be locally scoped (0, 1, 2, ...)
+                synapses.loc[task_syn_mask, 'presynaptic_cell'] = new_pc_id
+        
+        return synapses
+
+    def generate_task_spike_trains(
+        self,
+        synapses: pd.DataFrame,
+        task_specs: dict,
+        h_tstop: int,
+        random_state: np.random.RandomState,
+        all_synapses_full=None
+    ) -> pd.DataFrame:
+        """
+        Generate spike trains for task-related synapses.
+        
+        Supports firing_rate or firing_rate_distribution, and multiple spike_train_modes
+        including 'delay' and 'rhythmic'.
+        """
+        # Ensure spike train column exists
+        if 'spike_train' not in synapses.columns:
+            synapses['spike_train'] = [None] * len(synapses)
+        if 'pc_mean_firing_rate' not in synapses.columns:
+            synapses['pc_mean_firing_rate'] = np.nan
+        
+        # Get firing rate configuration
+        if 'firing_rate_distribution' in task_specs:
+            # Sample from distribution for each PC
+            fr_dist = partial(
+                task_specs['firing_rate_distribution']['function'],
+                **task_specs['firing_rate_distribution']['params'], size=1
+            )
+            use_fr_distribution = True
+        elif 'firing_rate' in task_specs:
+            # Single firing rate for all PCs
+            firing_rate = task_specs['firing_rate']
+            use_fr_distribution = False
+        else:
+            raise ValueError("Task specs must include either 'firing_rate' or 'firing_rate_distribution'")
+        
+        spike_train_mode = task_specs.get('spike_train_mode', 'pink_noise')
+        
+        # Normalize spike_train_mode to list
+        if not isinstance(spike_train_mode, (list, tuple)):
+            spike_train_mode = [spike_train_mode]
+        
+        # Check for delay mode
+        has_delay = 'delay' in spike_train_mode
+        has_rhythmic = 'rhythmic' in spike_train_mode
+        
+        # Get delay config if needed
+        if has_delay:
+            if 'delay_config' not in task_specs:
+                raise ValueError("delay_config required when spike_train_mode includes 'delay'")
+            delay_config = task_specs['delay_config']
+        
+        # Get rhythmic params if needed
+        if has_rhythmic:
+            rhythmic_freq = task_specs.get('rhythmic_frequency', 10.0)
+            rhythmic_depth = task_specs.get('rhythmic_depth', 0.15)
+        
+        # Generate FG trace (shared across all PCs in this task)
+        fg_trace = None
+        if has_delay:
+            # Generate trace by delaying reference spike trains
+            ref_synapse_type = delay_config.get('ref_synapse_type', 'exc')
+            ref_sec_type = delay_config.get('ref_sec_type', 'all')
+            ref_fg_id = delay_config.get('ref_fg_id', 'all')
+            delay_shift = delay_config.get('delay_shift', 4)
+            
+            if all_synapses_full is None:
+                raise ValueError("all_synapses_full required for delay mode")
+            
+            # Collect reference spike trains
+            mask = (all_synapses_full['spike_train'].apply(lambda x: isinstance(x, (np.ndarray, list))))
+            if ref_synapse_type != 'all':
+                mask &= all_synapses_full['name'].str.contains(ref_synapse_type, na=False)
+            if ref_sec_type != 'all':
+                mask &= all_synapses_full['name'].str.contains(ref_sec_type, na=False)
+            if ref_fg_id != 'all' and isinstance(ref_fg_id, int):
+                mask &= (all_synapses_full['functional_group'] == ref_fg_id)
+            
+            ref_trains = [deserialize_spike_train(st) for st in all_synapses_full.loc[mask, 'spike_train']]
+            
+            if len(ref_trains) == 0:
+                raise ValueError(f"No reference spike trains found for delay mode (type={ref_synapse_type}, sec={ref_sec_type}, fg={ref_fg_id})")
+            
+            fg_trace = PoissonTrainGenerator.generate_lambdas_by_delaying(h_tstop, ref_trains)
+            
+        elif has_rhythmic or 'pink_noise' in spike_train_mode:
+            # Generate pink noise trace
+            fg_trace = PoissonTrainGenerator.generate_lambdas_from_pink_noise(
+                num=h_tstop,
+                random_state=random_state,
+                lambda_mean=1.0
+            )
+        
+        # Apply rhythmic modulation to FG trace if needed
+        if has_rhythmic and fg_trace is not None:
+            fg_trace = PoissonTrainGenerator.rhythmic_modulation(
+                fg_trace, rhythmic_freq, rhythmic_depth, 1
+            )
+        
+        # Get unique presynaptic cells in this task
+        unique_pcs = synapses['presynaptic_cell'].unique()
+        
+        for pc_id in unique_pcs:
+            pc_mask = synapses['presynaptic_cell'] == pc_id
+            
+            # Sample firing rate for this PC
+            if use_fr_distribution:
+                mean_fr = float(fr_dist(size=1))
+                if not np.isfinite(mean_fr) or mean_fr <= 0:
+                    self.logger.log(f"Warning: Invalid firing rate {mean_fr} for task PC {pc_id}, using 1.0 Hz")
+                    mean_fr = 1.0
+            else:
+                mean_fr = firing_rate
+            
+            # Generate spike train for this PC
+            if 'regular' in spike_train_mode:
+                # Regular spiking at specified rate
+                if mean_fr > 0:
+                    isi = 1000.0 / mean_fr
+                    spike_times = np.arange(isi, h_tstop, isi)
+                else:
+                    spike_times = np.array([])
+                # Directly assign spike times
+                for idx in synapses.index[pc_mask]:
+                    synapses.at[idx, 'spike_train'] = spike_times.copy()
+                    synapses.at[idx, 'pc_mean_firing_rate'] = mean_fr
+                continue
+            
+            elif fg_trace is not None:
+                # Use FG trace (delay or rhythmic or both)
+                if has_delay:
+                    # For delay mode, fg_trace is already population-based
+                    pc_trace = fg_trace
+                else:
+                    # Shift trace to PC's firing rate
+                    pc_trace = PoissonTrainGenerator.shift_mean_of_lambdas(fg_trace, mean_fr, logger=self.logger)
+            else:
+                # Standard Poisson with constant rate
+                pc_trace = np.ones(h_tstop) * mean_fr
+            
+            # Generate spike train from trace
+            spike_train = PoissonTrainGenerator.generate_spike_train(pc_trace, random_state)
+            
+            # Assign the same spike train to all synapses from this PC
+            for idx in synapses.index[pc_mask]:
+                synapses.at[idx, 'spike_train'] = spike_train.spike_times
+                synapses.at[idx, 'pc_mean_firing_rate'] = mean_fr
+        
+        return synapses
+
     def generate_spike_trains_for_cell_assemblies(
         self,
         synapses: pd.DataFrame,
@@ -754,19 +984,49 @@ class PreSimSynapseGenerator:
         synapses['functional_group'] = all_fg_labels
         synapses['presynaptic_cell'] = all_pc_labels
 
+        # Convert selected presynaptic cells to task synapses
+        synapses = self.convert_pcs_to_task_synapses(synapses, parameters)
+
         all_synapses_full = synapses.copy()
 
         fg_traces_store = {}
         pc_spike_trains_store = {}
 
-        # --- Pass 2: non-delayed first ---
+        # --- Pass 2: Generate spike trains for task synapses first ---
+        if hasattr(parameters, 'task_synapses_config'):
+            for task_name, task_specs in parameters.task_synapses_config.items():
+                syn_type = task_specs['syn_type']
+                firing_rate = task_specs['firing_rate']
+                spike_train_mode = task_specs.get('spike_train_mode', 'pink_noise')
+                seed = task_specs.get('seed', 123456)
+                
+                # Find synapses with this task input_source
+                syn_mask = (synapses['input_source'] == task_name)
+                
+                if syn_mask.sum() == 0:
+                    continue
+                    
+                assigned_synapses = synapses.loc[syn_mask].copy()
+                random_state = np.random.RandomState(parameters.numpy_random_state + seed)
+                
+                # Generate spike trains for task synapses
+                assigned_synapses = self.generate_task_spike_trains(
+                    assigned_synapses, task_specs, h_tstop, random_state,
+                    all_synapses_full=all_synapses_full
+                )
+                
+                for col in ['spike_train', 'pc_mean_firing_rate', 'functional_group', 'presynaptic_cell']:
+                    synapses.loc[assigned_synapses.index, col] = assigned_synapses[col]
+                all_synapses_full.loc[assigned_synapses.index, 'spike_train'] = assigned_synapses['spike_train']
+
+        # --- Pass 3: non-delayed regular synapses ---
         for synapse_type in ['exc', 'inh']:
             properties_set = getattr(parameters, f"{synapse_type}_syn_properties")
             for input_source, props in properties_set.items():
                 mode = props.get('spike_train_mode', 'standard')
                 has_delay = (mode == 'delay') or (isinstance(mode, (list, tuple)) and 'delay' in mode)
                 if has_delay:
-                    continue  # defer to Pass 3
+                    continue  # defer to Pass 4
                 syn_mask = (
                     synapses['name'].str.contains(synapse_type, na=False) &
                     (synapses['input_source'] == input_source)
@@ -786,7 +1046,7 @@ class PreSimSynapseGenerator:
         # Prepare arrays for delay ref
         all_synapses_full['spike_train'] = all_synapses_full['spike_train'].apply(deserialize_spike_train)
 
-        # --- Pass 3: delayed sources ---
+        # --- Pass 4: delayed sources ---
         for synapse_type in ['exc', 'inh']:
             properties_set = getattr(parameters, f"{synapse_type}_syn_properties")
             for input_source, props in properties_set.items():
