@@ -9,7 +9,7 @@ from neuron import h
 from Modules.cell_model.recorder import SegmentRecorder, SynapseRecorder, SpikeRecorder, EmptySegmentRecorder
 from Modules.cell_model.recorder import SynapseRecorderList, SegmentRecorderList
 from Modules.cell_model.synapse import Synapse
-from logger import Logger
+from Modules.logger import Logger
 import warnings
 
 from dataclasses import dataclass
