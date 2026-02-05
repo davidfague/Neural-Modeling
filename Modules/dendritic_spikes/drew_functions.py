@@ -82,6 +82,12 @@ def plot_sta_stair(data_arr,ax):
     _ensure_axes()
     mean_data = np.mean(data_arr[eqt_inds[0]:eqt_inds[-1],t_inds[0]:t_inds[-1]],0)
 
+    # Check if mean_data is empty or all NaN before plotting
+    if len(mean_data) == 0 or np.all(np.isnan(mean_data)):
+        print("Warning: No valid data to plot in plot_sta_stair. Skipping plot.")
+        ax.text(0.5, 0.5, 'No data available', ha='center', va='center', transform=ax.transAxes)
+        return
+    
     ax_im = ax.stairs(mean_data, np.hstack((t_list[t_inds[:-1]], t_list[t_inds[-1]])),
                      fill=True, baseline=0)
     
