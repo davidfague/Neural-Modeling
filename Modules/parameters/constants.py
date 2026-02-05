@@ -3,7 +3,7 @@ from Modules.cell_model.synapse import CS2CP_syn_params, CP2CP_syn_params, FSI_s
 from Modules.parameters.distributions import (
 	norm_dist, log_norm_dist, precompute_bin_means, binned_log_norm_dist,
 	create_binned_version, exp_levy_dist, exp_levy_params_from_mean,
-	calibrate_exp_levy_params, gamma_dist, P_release_dist
+	calibrate_exp_levy_params, gamma_dist, P_release_dist, custom_gamma_dist, custom_weibull_dist
 )
 
 import numpy as np
@@ -652,17 +652,44 @@ class SimulationParameters:
 		# mean_fr distributions
 		# exc
 		if self.use_levy_dist_for_exc:
+			# Calculate target_std from std_multiplier if target_std is None
+			if self.exc_syn_firing_rate_dist['target_std'] is None:
+				target_std = self.exc_syn_firing_rate_dist['target_mean'] * self.exc_syn_firing_rate_dist['std_multiplier']
+			else:
+				target_std = self.exc_syn_firing_rate_dist['target_std']
+			
+			# Calculate dynamic clip range based on target mean
+			clip_range = (0, self.exc_syn_firing_rate_dist['target_mean'] * self.exc_syn_firing_rate_dist['clip_max_multiplier'])
+			
 			for input_source, syn_props in self.exc_syn_properties.items():
 				if 'L5' in input_source: # different mean FRs for L5 PNs
-					result = calibrate_exp_levy_params(target_mean=0.050, target_std=0.050, alpha=1.37, beta=-1.00, clip=(0,0.5))
+					result = calibrate_exp_levy_params(
+						target_mean=self.exc_syn_firing_rate_dist['target_mean'], 
+						target_std=target_std, 
+						alpha=self.exc_syn_firing_rate_dist['alpha'], 
+						beta=self.exc_syn_firing_rate_dist['beta'], 
+						clip=clip_range
+					)
 					levy_params = {'alpha': result['alpha'], 'beta': result['beta'], 
 					              'loc': result['loc'], 'scale': result['scale'], 'clip': result['clip']}
 				elif 'L23' in input_source: # different mean FRs for L23 PNs
-					result = calibrate_exp_levy_params(target_mean=0.050, target_std=0.050, alpha=1.37, beta=-1.00, clip=(0,0.5))
+					result = calibrate_exp_levy_params(
+						target_mean=self.exc_syn_firing_rate_dist['target_mean'], 
+						target_std=target_std, 
+						alpha=self.exc_syn_firing_rate_dist['alpha'], 
+						beta=self.exc_syn_firing_rate_dist['beta'], 
+						clip=clip_range
+					)
 					levy_params = {'alpha': result['alpha'], 'beta': result['beta'], 
 					              'loc': result['loc'], 'scale': result['scale'], 'clip': result['clip']}
 				elif 'distant' in input_source: # distant inputs (same as local L5 for now.)
-					result = calibrate_exp_levy_params(target_mean=0.050, target_std=0.050, alpha=1.37, beta=-1.00, clip=(0,0.5))
+					result = calibrate_exp_levy_params(
+						target_mean=self.exc_syn_firing_rate_dist['target_mean'], 
+						target_std=target_std, 
+						alpha=self.exc_syn_firing_rate_dist['alpha'], 
+						beta=self.exc_syn_firing_rate_dist['beta'], 
+						clip=clip_range
+					)
 					levy_params = {'alpha': result['alpha'], 'beta': result['beta'], 
 					              'loc': result['loc'], 'scale': result['scale'], 'clip': result['clip']}
 				else: # other input sources
