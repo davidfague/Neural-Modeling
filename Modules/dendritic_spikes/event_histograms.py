@@ -127,7 +127,13 @@ def post_process_na_df(na_df, na):
             pass#print(f"Retry {_ + 1}/{max_retries} failed: {e}")
     else:
         print("Maximum retries reached. Unable to process.")
-    na_df['duration'] = (na_df['duration_high'] - na_df['duration_low'] + 1)/10
+    
+    # Only compute duration if the columns exist and have valid data
+    if 'duration_high' in na_df.columns and 'duration_low' in na_df.columns:
+        na_df['duration'] = (na_df['duration_high'] - na_df['duration_low'] + 1)/10
+    else:
+        print("Warning: duration_high/duration_low columns not populated. Skipping duration computation.")
+        na_df['duration'] = np.nan
     return na_df
 
 def post_process_nmda_df(nmda_df):
