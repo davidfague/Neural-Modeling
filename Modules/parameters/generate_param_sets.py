@@ -196,6 +196,7 @@ def _materialize_varied_params(
             'apply_to' ∈ {'inh_syn_properties','exc_syn_properties'} or omitted.
         If omitted/None, we treat the key as a top-level parameter (pass-through).
       - 'sim_name_suffix' is preserved if present on varied_atomic.
+      - All input_sources: "all.param_path" applies to all input sources in the target dict.
     """
     result: Dict[str, Any] = {}
     rebuilt: Dict[str, Dict[str, Dict[str, Any]]] = {}  # apply_to -> (full props dict)
@@ -213,7 +214,26 @@ def _materialize_varied_params(
                 if base is None:
                     raise KeyError(f"{apply_to} missing in common_params.")
                 rebuilt[apply_to] = _copy_props(base)
-            _set_by_path(rebuilt[apply_to], key, value)
+            
+            # Check for wildcard "all" prefix
+            if key.startswith("all."):
+                # Warn if "all" is actually an input source key
+                if "all" in rebuilt[apply_to]:
+                    import warnings
+                    warnings.warn(
+                        f"Input source 'all' exists in {apply_to}. "
+                        f"Wildcard 'all.' may cause confusion. Consider renaming the input source.",
+                        UserWarning
+                    )
+                
+                # Apply to all input sources
+                remaining_path = key[4:]  # Remove "all." prefix
+                for input_source in rebuilt[apply_to].keys():
+                    full_path = f"{input_source}.{remaining_path}"
+                    _set_by_path(rebuilt[apply_to], full_path, value)
+            else:
+                # Normal path-based setting
+                _set_by_path(rebuilt[apply_to], key, value)
         else:
             # Treat as plain top-level override
             result[key] = value

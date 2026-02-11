@@ -85,6 +85,12 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     )
     index_matched = False  # set False to do every params_to_vary combination, True to make each matching index a combination
     # analogous example (True, A:[1,2,3], B:[4,5,6]) = [1;4], [2;5], [3;6]
+    
+    # Clustering & rhythmicity mode
+    cluster_exc = True
+    inh_mode = "delayed"  # "rhythmic" or "delayed"
+    assign_all_to_nearest_fg = True  # Assign all synapses to nearest FG (within input_source) even if outside radius
+    
     params_to_vary = {  # set to {} for no parameter sweep
         # "do_reduce_cell": {
         #     "apply_to": "common_params",
@@ -195,15 +201,10 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     # Background spike-train knobs for post-generation update
     inh_bg_rate, exc_bg_rate = 0.85, 0.01
     N_bg_synapses = 0  # how many synapses to force to "background" (via replace_N_synapses)
-
-    # Clustering & rhythmicity
-    cluster_exc = True
-    inh_mode = "delayed"
-    depth_values = [0]  # sweep over inhibitory rhythmic depth(s)
     
     # Build clustering configurations based on selected modes
-    exc_clustering_cfg = get_default_exc_clustering(mode=exc_clustering_mode)
-    inh_clustering_cfg = get_default_inh_clustering(mode=inh_clustering_mode)
+    exc_clustering_cfg = get_default_exc_clustering(mode=exc_clustering_mode, assign_all_to_nearest=assign_all_to_nearest_fg)
+    inh_clustering_cfg = get_default_inh_clustering(mode=inh_clustering_mode, assign_all_to_nearest=assign_all_to_nearest_fg)
 
     # Seeds
     numpy_random_states  = [5000]
@@ -227,84 +228,75 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
         raise ValueError(f"Unknown sim_type '{sim_type}'. Valid: {list(sim_type_params_all.keys())} see Modules/cell_model/simulation_templates.py")
     base_params = sim_type_params_all[sim_type].copy()
 
-    # Loop over your inhibitory rhythmic depths (small sweep)
-    for rhythmic_depth in depth_values:
-        # Load defaults from parameters.pkl if provided, else HayParameters("dummy")
-        if parameters_pkl_path and os.path.exists(parameters_pkl_path) and load_previous_sim_params:
-            with open(parameters_pkl_path, "rb") as f:
-                defaults = pickle.load(f)
-            print(f"[configure_sim_params] Loaded defaults from {parameters_pkl_path}")
+    # Load defaults from parameters.pkl if provided, else HayParameters("dummy")
+    if parameters_pkl_path and os.path.exists(parameters_pkl_path) and load_previous_sim_params:
+        with open(parameters_pkl_path, "rb") as f:
+            defaults = pickle.load(f)
+        print(f"[configure_sim_params] Loaded defaults from {parameters_pkl_path}")
+    else:
+        defaults = HayParameters("dummy")
+
+    # Deepcopy to avoid mutating shared defaults
+    inh_syn_properties = copy.deepcopy(defaults.inh_syn_properties)
+    exc_syn_properties = copy.deepcopy(defaults.exc_syn_properties)
+
+    # Configure all inhibitory section inputs based on mode
+    for input_source, props in inh_syn_properties.items():
+        if inh_mode == "rhythmic":
+            props["spike_train_mode"] = "rhythmic"
+            # rhythmic_depth will be set by params_to_vary
+            props.pop("delay_config", None)
+        elif inh_mode == "delayed":
+            props["spike_train_mode"] = "delay"
+            # Base delay_config structure (delay_shift will be varied by params_to_vary)
+            props["delay_config"] = {
+                "delay_shift": 4,          # default value, will be overridden by params_to_vary
+                "ref_synapse_type": "exc", # use excitatory trains
+                "ref_sec_type":   "all",   # across ALL exc input_sources
+                "ref_fg_id":      "all",   # across ALL exc FGs
+                "ref_pc_id":      "all",   # across ALL exc PCs
+            }
+            # Remove rhythmic keys if they exist
+            props.pop("rhythmic_frequency", None)
+            props.pop("rhythmic_depth", None)
         else:
-            defaults = HayParameters("dummy")
+            # Ensure rhythmic is removed if present
+            mode = props.get("spike_train_mode")
+            if isinstance(mode, list):
+                props["spike_train_mode"] = [m for m in mode if m != "rhythmic"]
+            elif mode == "rhythmic":
+                props["spike_train_mode"] = "poisson"
 
-        # Deepcopy to avoid mutating shared defaults
-        inh_syn_properties = copy.deepcopy(defaults.inh_syn_properties)
-        exc_syn_properties = copy.deepcopy(defaults.exc_syn_properties)
+    # Compose common params passed into the generator
+    common_params = base_params.copy()
+    common_params.update({
+        "inh_syn_properties": inh_syn_properties,
+        "exc_syn_properties": exc_syn_properties,
+        "exc_clustering":     exc_clustering_cfg,
+        "inh_clustering":     inh_clustering_cfg,
+        "h_i_amplitude":      0.0,
+        "CI_on":              False,
+        "skeleton_cell_type": skeleton_cell_type,
+        "do_reduce_cell":     do_reduce_cell,
+    })
 
-        # Modify all inhibitory section inputs per experiment design
-        for input_source, props in inh_syn_properties.items():
-            if inh_mode == "rhythmic":
-                props["spike_train_mode"] = "rhythmic"
-                props["rhythmic_depth"]  = rhythmic_depth
-                props.pop("delay_config", None)
-            elif inh_mode == "delayed":
-                props["spike_train_mode"] = "delay"
-                props["delay_config"] = {
-                    "delay_shift": 4,          # tweak if you want a lag/lead (ms)
-                    "ref_synapse_type": "exc", # use excitatory trains
-                    "ref_sec_type":   "all",   # across ALL exc input_sources
-                    "ref_fg_id":      "all",   # across ALL exc FGs
-                    "ref_pc_id":      "all",   # across ALL exc PCs
-                }
-                # Optional: if these were set in defaults, remove rhythmic keys
-                props.pop("rhythmic_frequency", None)
-                props.pop("rhythmic_depth", None)
-            else:
-                # ensure rhythmic is removed if present
-                mode = props.get("spike_train_mode")
-                if isinstance(mode, list):
-                    props["spike_train_mode"] = [m for m in mode if m != "rhythmic"]
-                elif mode == "rhythmic":
-                    props["spike_train_mode"] = "poisson"
-
-        # Compose common params passed into the generator
-        common_params = base_params.copy()
-        common_params.update({
-            "inh_syn_properties": inh_syn_properties,
-            "exc_syn_properties": exc_syn_properties,
-            "exc_clustering":     exc_clustering_cfg,
-            "inh_clustering":     inh_clustering_cfg,
-            "h_i_amplitude":      0.0,
-            "CI_on":              False,
-            "skeleton_cell_type": skeleton_cell_type,
-            "do_reduce_cell":     do_reduce_cell,
-        })
-
-        # Generate HayParameters objects (one per seed x profile combo)
-        param_objs = generate_simulations(
-            neuron_random_states=neuron_random_states,
-            numpy_random_states=numpy_random_states,
-            params_to_vary=params_to_vary,
-            common_params=common_params,
-            sim_type=sim_type,
-            morphologies=morphologies,
-            syn_reductions=syn_reductions,
-            ci_replacements=ci_replacements,
-            morphologies_to_use=morphologies_to_use,
-            syn_reductions_to_use=syn_reductions_to_use,
-            ci_replacements_to_use=ci_replacements_to_use,
-            index_matched=index_matched,
-        )
-
-        # # Name them to reflect your rhythmic depth and seed
-        # for p in param_objs:
-        #     if inh_mode == "delayed":
-        #         p.sim_name = f"allinh_delay_shift_{int(inh_syn_properties[next(iter(inh_syn_properties))]['delay_config']['delay_shift'])}ms_Np{p.numpy_random_state}"
-        #     else:
-        #         p.sim_name = f"allinh_rhythmic_depth_{rhythmic_depth:.2f}_Np{p.numpy_random_state}"
-
-        all_parameter_sets.extend(param_objs)
-        all_sim_titles.extend([p.sim_name for p in param_objs])
+    # Generate HayParameters objects (one per seed x profile x varied_param combo)
+    all_parameter_sets = generate_simulations(
+        neuron_random_states=neuron_random_states,
+        numpy_random_states=numpy_random_states,
+        params_to_vary=params_to_vary,
+        common_params=common_params,
+        sim_type=sim_type,
+        morphologies=morphologies,
+        syn_reductions=syn_reductions,
+        ci_replacements=ci_replacements,
+        morphologies_to_use=morphologies_to_use,
+        syn_reductions_to_use=syn_reductions_to_use,
+        ci_replacements_to_use=ci_replacements_to_use,
+        index_matched=index_matched,
+    )
+    
+    all_sim_titles = [p.sim_name for p in all_parameter_sets]
 
     # Return all the knobs your driver needs
     return (
