@@ -47,14 +47,17 @@ def filter_parameter_combinations(
     params_to_vary: Dict[str, Dict[str, Any]]
 ) -> List[Dict[str, Any]]:
     """
-    Filter parameter combinations based on 'requires' constraints.
+    Filter parameter combinations based on 'requires' and 'requires_mode' constraints.
     
     If a parameter has a 'requires' field like {\"do_reduce_cell\": True},
     then combinations where that requirement isn't met will have that
     parameter set to its first/default value only.
     
-    This prevents generating multiple variations of reduction parameters
-    when do_reduce_cell=False, for example.
+    If a parameter has 'requires_mode' like {\"all.spike_train_mode\": \"delayed\"},
+    then it's only varied when the spike_train_mode contains that mode.
+    
+    This prevents generating redundant  variations of parameters
+    for example when do_reduce_cell=False amongst a reduction parameter variation, or when spike_train_mode isn't delayed among a variation of delay parameters. (likewise for rhythmic)
     """
     filtered_combos: List[Dict[str, Any]] = []
     seen_signatures: set = set()
@@ -69,7 +72,9 @@ def filter_parameter_combinations(
                 
             spec = params_to_vary.get(key, {})
             requirements = spec.get("requires", {})
+            mode_requirements = spec.get("requires_mode", {})
             
+            # Check standard requirements
             if requirements:
                 # Check if all requirements are met
                 requirements_met = True
@@ -79,6 +84,20 @@ def filter_parameter_combinations(
                         break
                 
                 # If requirements not met, use the first/default value
+                if not requirements_met:
+                    default_val = spec["values"][0]
+                    adjusted_combo[key] = default_val
+            
+            # Check mode-specific requirements
+            if mode_requirements:
+                requirements_met = True
+                for mode_key, required_mode in mode_requirements.items():
+                    mode_value = combo.get(mode_key)
+                    if not _mode_contains(mode_value, required_mode):
+                        requirements_met = False
+                        break
+                
+                # If mode requirements not met, use the first/default value
                 if not requirements_met:
                     default_val = spec["values"][0]
                     adjusted_combo[key] = default_val
@@ -168,6 +187,25 @@ def _copy_props(props: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     """Deep-copy a dict-of-dicts without sharing references."""
     return {k: deepcopy(v) for k, v in props.items()}
 
+def _mode_contains(mode_value: Any, target_mode: str) -> bool:
+    """
+    Check if a spike_train_mode value contains the target mode.
+    
+    Args:
+        mode_value: Can be a string ("delayed"), a list (["delayed", "rhythmic"]), or None
+        target_mode: The mode to check for ("delayed", "rhythmic", "poisson")
+    
+    Returns:
+        True if mode_value contains target_mode
+    """
+    if mode_value is None:
+        return False
+    if isinstance(mode_value, str):
+        return mode_value == target_mode
+    if isinstance(mode_value, list):
+        return target_mode in mode_value
+    return False
+
 def _set_by_path(d: Dict[str, Any], path: str, value: Any) -> None:
     """
     Set d[path] where path is dot-separated, e.g. 'nexus.syn_density'
@@ -197,6 +235,7 @@ def _materialize_varied_params(
         If omitted/None, we treat the key as a top-level parameter (pass-through).
       - 'sim_name_suffix' is preserved if present on varied_atomic.
       - All input_sources: "all.param_path" applies to all input sources in the target dict.
+      - Special handling for spike_train_mode: auto-configures required fields for each mode.
     """
     result: Dict[str, Any] = {}
     rebuilt: Dict[str, Dict[str, Dict[str, Any]]] = {}  # apply_to -> (full props dict)
@@ -228,9 +267,49 @@ def _materialize_varied_params(
                 
                 # Apply to all input sources
                 remaining_path = key[4:]  # Remove "all." prefix
-                for input_source in rebuilt[apply_to].keys():
-                    full_path = f"{input_source}.{remaining_path}"
-                    _set_by_path(rebuilt[apply_to], full_path, value)
+                
+                # Special handling for spike_train_mode
+                if remaining_path == "spike_train_mode":
+                    for input_source in rebuilt[apply_to].keys():
+                        props = rebuilt[apply_to][input_source]
+                        props["spike_train_mode"] = value
+                        
+                        # Auto-configure mode-specific fields based on mode(s)
+                        # value can be a string or a list of modes
+                        has_delayed = _mode_contains(value, "delayed")
+                        has_rhythmic = _mode_contains(value, "rhythmic")
+                        has_poisson = _mode_contains(value, "poisson")
+                        
+                        if has_delayed:
+                            # Set up delay_config if not present or incomplete
+                            if "delay_config" not in props:
+                                props["delay_config"] = {}
+                            # Set defaults for required fields if missing
+                            props["delay_config"].setdefault("delay_shift", 4)
+                            props["delay_config"].setdefault("ref_synapse_type", "exc")
+                            props["delay_config"].setdefault("ref_sec_type", "all")
+                            props["delay_config"].setdefault("ref_fg_id", "all")
+                            props["delay_config"].setdefault("ref_pc_id", "all")
+                        else:
+                            # Remove delay_config if not using delayed mode
+                            props.pop("delay_config", None)
+                        
+                        if has_rhythmic:
+                            # Set up rhythmic fields if not present
+                            props.setdefault("rhythmic_frequency", 16)
+                            props.setdefault("rhythmic_depth", 0.15)
+                        else:
+                            # Remove rhythmic fields if not using rhythmic mode
+                            props.pop("rhythmic_frequency", None)
+                            props.pop("rhythmic_depth", None)
+                        
+                        # Note: poisson mode doesn't require special config,
+                        # just the absence of delay_config and rhythmic fields
+                else:
+                    # Normal wildcard path handling
+                    for input_source in rebuilt[apply_to].keys():
+                        full_path = f"{input_source}.{remaining_path}"
+                        _set_by_path(rebuilt[apply_to], full_path, value)
             else:
                 # Normal path-based setting
                 _set_by_path(rebuilt[apply_to], key, value)

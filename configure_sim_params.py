@@ -86,12 +86,60 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     index_matched = False  # set False to do every params_to_vary combination, True to make each matching index a combination
     # analogous example (True, A:[1,2,3], B:[4,5,6]) = [1;4], [2;5], [3;6]
     
-    # Clustering & rhythmicity mode
+    # Clustering configuration
     cluster_exc = True
-    inh_mode = "delayed"  # "rhythmic" or "delayed"
     assign_all_to_nearest_fg = True  # Assign all synapses to nearest FG (within input_source) even if outside radius
     
     params_to_vary = {  # set to {} for no parameter sweep
+        # # Vary inhibitory spike train mode - auto-configures required fields for each mode
+        # # Values can be: "delayed", "rhythmic", "poisson", or ["delayed", "rhythmic"] for combined modes
+        # "all.spike_train_mode": {
+        #     "apply_to": "inh_syn_properties",
+        #     "values": ["delayed", "rhythmic", ["delayed", "rhythmic"]],  # Try all three variations 
+        #     "sim_name_suffix": "Mode",
+        # },
+        
+        # # Vary delay shift - ONLY for simulations with "delayed" in spike_train_mode
+        # "all.delay_config.delay_shift": {
+        #     "apply_to": "inh_syn_properties",
+        #     "values": [2, 4, 6, 8],
+        #     "sim_name_suffix": "DelayShift",
+        #     "requires_mode": {"all.spike_train_mode": "delayed"},  # Only vary when delayed mode is active
+        # },
+        
+        # # Vary rhythmic depth - ONLY for simulations with "rhythmic" in spike_train_mode
+        # "all.rhythmic_depth": {
+        #     "apply_to": "inh_syn_properties",
+        #     "values": [0.1, 0.2, 0.3, 0.5],
+        #     "sim_name_suffix": "RhyDepth",
+        #     "requires_mode": {"all.spike_train_mode": "rhythmic"},  # Only vary when rhythmic mode is active
+        # },
+        
+        # "inh_proximal_mean_fr": {
+        #     "apply_to": "common_params",
+        #     "values": [0.1, 0.5],
+        #     "sim_name_suffix": "InhProxFR",
+        # },
+	    # "inh_proximal_std_fr": {
+        #     "apply_to": "common_params",
+        #     "values": [0.05, 0.25],
+        #     "sim_name_suffix": "InhProxFR",
+        # },
+	    # "inh_distal_mean_fr": {
+        #     "apply_to": "common_params",
+        #     "values": [0.1, 0.5],
+        #     "sim_name_suffix": "InhDistFR",
+        # },
+	    # "inh_distal_std_fr": {
+        #     "apply_to": "common_params",
+        #     "values": [0.05, 0.25],
+        #     "sim_name_suffix": "InhDistFR",
+        # },
+        # "exc_syn_firing_rate_dist.target_mean": {
+        #     "apply_to": "common_params",
+        #     "values": [0.001, 0.005,0.01, 0.05],
+        #     "sim_name_suffix": "ExcFR",
+        # },
         # "do_reduce_cell": {
         #     "apply_to": "common_params",
         #     "values": [False, True],
@@ -240,32 +288,9 @@ def configure_sim_params(parameters_pkl_path: Optional[str] = None) -> Tuple[
     inh_syn_properties = copy.deepcopy(defaults.inh_syn_properties)
     exc_syn_properties = copy.deepcopy(defaults.exc_syn_properties)
 
-    # Configure all inhibitory section inputs based on mode
-    for input_source, props in inh_syn_properties.items():
-        if inh_mode == "rhythmic":
-            props["spike_train_mode"] = "rhythmic"
-            # rhythmic_depth will be set by params_to_vary
-            props.pop("delay_config", None)
-        elif inh_mode == "delayed":
-            props["spike_train_mode"] = "delay"
-            # Base delay_config structure (delay_shift will be varied by params_to_vary)
-            props["delay_config"] = {
-                "delay_shift": 4,          # default value, will be overridden by params_to_vary
-                "ref_synapse_type": "exc", # use excitatory trains
-                "ref_sec_type":   "all",   # across ALL exc input_sources
-                "ref_fg_id":      "all",   # across ALL exc FGs
-                "ref_pc_id":      "all",   # across ALL exc PCs
-            }
-            # Remove rhythmic keys if they exist
-            props.pop("rhythmic_frequency", None)
-            props.pop("rhythmic_depth", None)
-        else:
-            # Ensure rhythmic is removed if present
-            mode = props.get("spike_train_mode")
-            if isinstance(mode, list):
-                props["spike_train_mode"] = [m for m in mode if m != "rhythmic"]
-            elif mode == "rhythmic":
-                props["spike_train_mode"] = "poisson"
+    # Note: spike_train_mode configuration is now handled by params_to_vary with "all.spike_train_mode"
+    # The mode-specific fields (delay_config, rhythmic_depth, etc.) are auto-configured
+    # by the parameter generation system based on the spike_train_mode value
 
     # Compose common params passed into the generator
     common_params = base_params.copy()
